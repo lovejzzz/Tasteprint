@@ -497,28 +497,28 @@ export default function App(){
           <div style={{position:"absolute",left:0,top:0,transform:`translate(${cam.x}px,${cam.y}px) scale(${cam.z})`,transformOrigin:"0 0",willChange:"transform"}}>
             {shapes.map(s=>{
               const isSel=sel===s.id,isDrg=drag===s.id,isHov=hov===s.id;
-              const mx=maxV(s.type),showBar=(isSel||isHov)&&!isDrg;
-              const showDel=(isSel||isHov)&&!isDrg;
+              const mx=maxV(s.type);
               const vn=varName(s.type,s.variant||0);
               const fn=FONTS[s.font||0]?.name||FONTS[0].name;
+              const ff=FONTS[s.font||0]?.family||FONTS[0].family;
               return(
                 <div key={s.id} style={{position:"absolute",left:s.x,top:s.y,width:s.w,zIndex:isDrg?100:isSel?50:1}}>
-                  {/* toolbar: variant + font pickers */}
-                  {showBar&&(
+                  {/* toolbar: variant + font pickers — only on select */}
+                  {isSel&&!isDrg&&(
                     <div style={{position:"absolute",top:-36,left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:1,zIndex:200,background:p.card,border:`1px solid ${p.bd}`,borderRadius:999,padding:"2px 3px",boxShadow:`0 4px 16px ${p.tx}10`,whiteSpace:"nowrap"}}>
                       {mx>1&&<>
                         <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycle(s.id,-1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"‹"}</button>
-                        <span style={{fontSize:9,color:p.mu,padding:"0 4px",minWidth:52,textAlign:"center"}}>{vn}</span>
+                        <span style={{fontSize:9,color:p.mu,padding:"0 4px",width:68,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis"}}>{vn}</span>
                         <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycle(s.id,1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"›"}</button>
                         <div style={{width:1,height:16,background:p.bd,margin:"0 2px"}}/>
                       </>}
                       <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycleFont(s.id,-1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"‹"}</button>
-                      <span style={{fontSize:9,color:p.ac,padding:"0 4px",minWidth:56,textAlign:"center",fontFamily:FONTS[s.font||0]?.family||FONTS[0].family,fontWeight:500}}>{fn}</span>
+                      <span style={{fontSize:9,color:p.ac,padding:"0 4px",width:100,textAlign:"center",fontFamily:ff,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis"}}>{fn}</span>
                       <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycleFont(s.id,1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"›"}</button>
                     </div>
                   )}
-                  {/* delete button */}
-                  {showDel&&(
+                  {/* delete button — only on select */}
+                  {isSel&&!isDrg&&(
                     <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();delShape(s.id)}}
                       style={{position:"absolute",top:-10,right:-10,width:22,height:22,borderRadius:999,background:p.mu+"88",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",zIndex:201,transition:"background .15s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#E0524D"}
