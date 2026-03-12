@@ -97,17 +97,31 @@ function Radar({taste,ac}){
 }
 
 /* ========== COMPONENT RENDERER ========== */
-function C({type,v=0,p}){
+function C({type,v=0,p,editable,texts={},onText}){
   const f="'DM Sans',system-ui,sans-serif";
   const b={width:"100%",height:"100%",fontFamily:f,overflow:"hidden"};
 
+  /* Editable text helper — renders plain span unless editable */
+  const T=({k,s,children})=>{
+    const val=texts[k]!==undefined?texts[k]:children;
+    if(!editable)return <span style={s}>{val}</span>;
+    return <span
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={e=>{const t=e.target.innerText.trim();onText?.(k,t||null)}}
+      onMouseDown={e=>e.stopPropagation()}
+      onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}}}
+      style={{...s,outline:"none",cursor:"text",minWidth:8}}
+    >{val}</span>;
+  };
+
   /* ---- BUTTON ---- */
   if(type==="button"){
-    if(v===0)return <div style={{...b,background:p.ac,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#fff",fontSize:13,fontWeight:500}}>Get started</span></div>;
-    if(v===1)return <div style={{...b,background:"transparent",borderRadius:10,border:`1.5px solid ${p.ac}55`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:p.ac,fontSize:13,fontWeight:500}}>Learn more</span></div>;
-    if(v===2)return <div style={{...b,background:"transparent",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:p.ac,fontSize:13,fontWeight:500}}>Learn more</span></div>;
-    if(v===3)return <div style={{...b,background:p.ac,borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#fff",fontSize:13,fontWeight:500}}>Get started</span></div>;
-    return <div style={{...b,background:p.tx,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",border:`2px solid ${p.tx}`}}><span style={{color:p.bg,fontSize:13,fontWeight:600,letterSpacing:"0.04em"}}>SUBMIT</span></div>;
+    if(v===0)return <div style={{...b,background:p.ac,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="label" s={{color:"#fff",fontSize:13,fontWeight:500}}>Get started</T></div>;
+    if(v===1)return <div style={{...b,background:"transparent",borderRadius:10,border:`1.5px solid ${p.ac}55`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>Learn more</T></div>;
+    if(v===2)return <div style={{...b,background:"transparent",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>Learn more</T></div>;
+    if(v===3)return <div style={{...b,background:p.ac,borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="label" s={{color:"#fff",fontSize:13,fontWeight:500}}>Get started</T></div>;
+    return <div style={{...b,background:p.tx,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",border:`2px solid ${p.tx}`}}><T k="label" s={{color:p.bg,fontSize:13,fontWeight:600,letterSpacing:"0.04em"}}>SUBMIT</T></div>;
   }
 
   /* ---- CARD ---- */
@@ -129,40 +143,41 @@ function C({type,v=0,p}){
 
   /* ---- HERO ---- */
   if(type==="hero"){
-    if(v===0)return <div style={{...b,background:`linear-gradient(135deg,${p.ac}12,${p.ac2}12)`,borderRadius:16,border:`1px solid ${p.bd}`,padding:32,display:"flex",flexDirection:"column",justifyContent:"center",gap:12}}><div style={{height:14,width:"42%",background:p.ac,opacity:.15,borderRadius:7}}/><div style={{height:9,width:"70%",background:p.mu,opacity:.1,borderRadius:5}}/><div style={{display:"flex",gap:10,marginTop:8}}><div style={{height:38,width:110,borderRadius:9,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#fff",fontSize:12,fontWeight:500}}>Get started</span></div><div style={{height:38,width:95,borderRadius:9,border:`1.5px solid ${p.ac}44`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:p.ac,fontSize:12,fontWeight:500}}>Learn more</span></div></div></div>;
-    if(v===1)return <div style={{...b,background:p.card,borderRadius:4,border:`1px solid ${p.bd}`,padding:"36px 32px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,textAlign:"center"}}><div style={{height:13,width:"32%",background:p.tx,opacity:.55,borderRadius:2}}/><div style={{height:8,width:"50%",background:p.mu,opacity:.12,borderRadius:2}}/><div style={{height:36,width:120,borderRadius:3,background:p.tx,marginTop:12,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:p.bg,fontSize:12,fontWeight:500}}>Start now</span></div></div>;
-    return <div style={{...b,background:p.ac,borderRadius:20,padding:36,display:"flex",flexDirection:"column",justifyContent:"center",gap:12}}><div style={{height:14,width:"45%",background:"#fff",opacity:.25,borderRadius:7}}/><div style={{height:9,width:"65%",background:"#fff",opacity:.15,borderRadius:5}}/><div style={{height:38,width:115,borderRadius:999,background:"#fff",marginTop:10,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:p.ac,fontSize:12,fontWeight:600}}>Get started</span></div></div>;
+    if(v===0)return <div style={{...b,background:`linear-gradient(135deg,${p.ac}12,${p.ac2}12)`,borderRadius:16,border:`1px solid ${p.bd}`,padding:32,display:"flex",flexDirection:"column",justifyContent:"center",gap:12}}><div style={{height:14,width:"42%",background:p.ac,opacity:.15,borderRadius:7}}/><div style={{height:9,width:"70%",background:p.mu,opacity:.1,borderRadius:5}}/><div style={{display:"flex",gap:10,marginTop:8}}><div style={{height:38,width:110,borderRadius:9,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:"#fff",fontSize:12,fontWeight:500}}>Get started</T></div><div style={{height:38,width:95,borderRadius:9,border:`1.5px solid ${p.ac}44`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta2" s={{color:p.ac,fontSize:12,fontWeight:500}}>Learn more</T></div></div></div>;
+    if(v===1)return <div style={{...b,background:p.card,borderRadius:4,border:`1px solid ${p.bd}`,padding:"36px 32px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,textAlign:"center"}}><div style={{height:13,width:"32%",background:p.tx,opacity:.55,borderRadius:2}}/><div style={{height:8,width:"50%",background:p.mu,opacity:.12,borderRadius:2}}/><div style={{height:36,width:120,borderRadius:3,background:p.tx,marginTop:12,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:p.bg,fontSize:12,fontWeight:500}}>Start now</T></div></div>;
+    return <div style={{...b,background:p.ac,borderRadius:20,padding:36,display:"flex",flexDirection:"column",justifyContent:"center",gap:12}}><div style={{height:14,width:"45%",background:"#fff",opacity:.25,borderRadius:7}}/><div style={{height:9,width:"65%",background:"#fff",opacity:.15,borderRadius:5}}/><div style={{height:38,width:115,borderRadius:999,background:"#fff",marginTop:10,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:p.ac,fontSize:12,fontWeight:600}}>Get started</T></div></div>;
   }
 
   /* ---- NAVBAR ---- */
   if(type==="navbar"){
-    const links=["Home","Features","Pricing"];
-    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:"0 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:16}}><div style={{width:20,height:20,borderRadius:6,background:p.ac,opacity:.6}}/>{links.map((t,i)=><span key={i} style={{fontSize:12,color:i===0?p.tx:p.mu,fontWeight:i===0?500:400}}>{t}</span>)}</div><div style={{height:30,width:74,borderRadius:8,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#fff",fontSize:11,fontWeight:500}}>Sign up</span></div></div>;
-    if(v===1)return <div style={{...b,borderBottom:`1.5px solid ${p.bd}`,padding:"0 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:20}}><span style={{fontSize:14,fontWeight:600,color:p.tx,letterSpacing:"-0.02em"}}>Brand</span>{links.map((t,i)=><span key={i} style={{fontSize:12,color:p.mu}}>{t}</span>)}</div><div style={{height:30,width:70,borderRadius:4,border:`1.5px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:p.tx,fontSize:11,fontWeight:500}}>Log in</span></div></div>;
-    return <div style={{...b,background:p.su,borderRadius:999,padding:"0 5px 0 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:14}}><div style={{width:18,height:18,borderRadius:999,background:p.ac,opacity:.5}}/>{links.map((t,i)=><span key={i} style={{fontSize:12,color:i===0?p.tx:p.mu,fontWeight:i===0?500:400}}>{t}</span>)}</div><div style={{height:34,width:78,borderRadius:999,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#fff",fontSize:11,fontWeight:500}}>Contact</span></div></div>;
+    const dl=["Home","Features","Pricing"];
+    const links=[texts.link0||dl[0],texts.link1||dl[1],texts.link2||dl[2]];
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:"0 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:16}}><div style={{width:20,height:20,borderRadius:6,background:p.ac,opacity:.6}}/>{dl.map((t,i)=><T key={i} k={`link${i}`} s={{fontSize:12,color:i===0?p.tx:p.mu,fontWeight:i===0?500:400}}>{t}</T>)}</div><div style={{height:30,width:74,borderRadius:8,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:"#fff",fontSize:11,fontWeight:500}}>Sign up</T></div></div>;
+    if(v===1)return <div style={{...b,borderBottom:`1.5px solid ${p.bd}`,padding:"0 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:20}}><T k="brand" s={{fontSize:14,fontWeight:600,color:p.tx,letterSpacing:"-0.02em"}}>Brand</T>{dl.map((t,i)=><T key={i} k={`link${i}`} s={{fontSize:12,color:p.mu}}>{t}</T>)}</div><div style={{height:30,width:70,borderRadius:4,border:`1.5px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:p.tx,fontSize:11,fontWeight:500}}>Log in</T></div></div>;
+    return <div style={{...b,background:p.su,borderRadius:999,padding:"0 5px 0 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:14}}><div style={{width:18,height:18,borderRadius:999,background:p.ac,opacity:.5}}/>{dl.map((t,i)=><T key={i} k={`link${i}`} s={{fontSize:12,color:i===0?p.tx:p.mu,fontWeight:i===0?500:400}}>{t}</T>)}</div><div style={{height:34,width:78,borderRadius:999,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:"#fff",fontSize:11,fontWeight:500}}>Contact</T></div></div>;
   }
 
   /* ---- TABS ---- */
   if(type==="tabs"){
-    const tabs=["Overview","Analytics","Reports"];
-    if(v===0)return <div style={{...b,background:p.su,borderRadius:10,padding:3,display:"flex",gap:2,alignItems:"center"}}>{tabs.map((t,i)=><div key={i} style={{flex:1,height:"calc(100% - 2px)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",background:i===0?p.card:"transparent",boxShadow:i===0?"0 1px 3px rgba(0,0,0,0.04)":"none"}}><span style={{fontSize:12,fontWeight:i===0?500:400,color:i===0?p.tx:p.mu}}>{t}</span></div>)}</div>;
-    if(v===1)return <div style={{...b,borderBottom:`2px solid ${p.bd}`,display:"flex",gap:24,alignItems:"stretch",padding:"0 4px"}}>{tabs.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",borderBottom:i===0?`2px solid ${p.ac}`:"2px solid transparent",marginBottom:-2}}><span style={{fontSize:12,fontWeight:i===0?500:400,color:i===0?p.ac:p.mu}}>{t}</span></div>)}</div>;
-    return <div style={{...b,display:"flex",gap:6,alignItems:"center"}}>{tabs.map((t,i)=><div key={i} style={{padding:"6px 14px",borderRadius:999,background:i===0?p.ac+"14":"transparent"}}><span style={{fontSize:12,fontWeight:i===0?500:400,color:i===0?p.ac:p.mu}}>{t}</span></div>)}</div>;
+    const dt=["Overview","Analytics","Reports"];
+    if(v===0)return <div style={{...b,background:p.su,borderRadius:10,padding:3,display:"flex",gap:2,alignItems:"center"}}>{dt.map((t,i)=><div key={i} style={{flex:1,height:"calc(100% - 2px)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",background:i===0?p.card:"transparent",boxShadow:i===0?"0 1px 3px rgba(0,0,0,0.04)":"none"}}><T k={`tab${i}`} s={{fontSize:12,fontWeight:i===0?500:400,color:i===0?p.tx:p.mu}}>{t}</T></div>)}</div>;
+    if(v===1)return <div style={{...b,borderBottom:`2px solid ${p.bd}`,display:"flex",gap:24,alignItems:"stretch",padding:"0 4px"}}>{dt.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",borderBottom:i===0?`2px solid ${p.ac}`:"2px solid transparent",marginBottom:-2}}><T k={`tab${i}`} s={{fontSize:12,fontWeight:i===0?500:400,color:i===0?p.ac:p.mu}}>{t}</T></div>)}</div>;
+    return <div style={{...b,display:"flex",gap:6,alignItems:"center"}}>{dt.map((t,i)=><div key={i} style={{padding:"6px 14px",borderRadius:999,background:i===0?p.ac+"14":"transparent"}}><T k={`tab${i}`} s={{fontSize:12,fontWeight:i===0?500:400,color:i===0?p.ac:p.mu}}>{t}</T></div>)}</div>;
   }
 
   /* ---- HEADING ---- */
   if(type==="heading"){
-    if(v===0)return <div style={{...b,display:"flex",alignItems:"flex-end"}}><span style={{fontSize:22,fontWeight:600,color:p.tx,letterSpacing:"-0.02em"}}>Page heading</span></div>;
-    if(v===1)return <div style={{...b,display:"flex",alignItems:"flex-end",gap:10}}><div style={{width:4,height:24,borderRadius:2,background:p.ac}}/><span style={{fontSize:20,fontWeight:600,color:p.tx}}>Page heading</span></div>;
-    return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:3}}><span style={{fontSize:10,fontWeight:600,color:p.ac,textTransform:"uppercase",letterSpacing:"0.1em"}}>Section</span><span style={{fontSize:20,fontWeight:500,color:p.tx}}>Page heading</span></div>;
+    if(v===0)return <div style={{...b,display:"flex",alignItems:"flex-end"}}><T k="title" s={{fontSize:22,fontWeight:600,color:p.tx,letterSpacing:"-0.02em"}}>Page heading</T></div>;
+    if(v===1)return <div style={{...b,display:"flex",alignItems:"flex-end",gap:10}}><div style={{width:4,height:24,borderRadius:2,background:p.ac}}/><T k="title" s={{fontSize:20,fontWeight:600,color:p.tx}}>Page heading</T></div>;
+    return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:3}}><T k="over" s={{fontSize:10,fontWeight:600,color:p.ac,textTransform:"uppercase",letterSpacing:"0.1em"}}>Section</T><T k="title" s={{fontSize:20,fontWeight:500,color:p.tx}}>Page heading</T></div>;
   }
 
   /* ---- STAT-CARD ---- */
   if(type==="stat-card"){
-    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><span style={{fontSize:10,color:p.mu,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>Revenue</span><span style={{fontSize:26,fontWeight:600,color:p.tx,letterSpacing:"-0.02em"}}>$48.2k</span><span style={{fontSize:11,color:"#4CAF50",fontWeight:500}}>+12.5%</span></div>;
-    if(v===1)return <div style={{...b,background:p.su,borderRadius:14,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:10,color:p.mu,fontWeight:500}}>Revenue</span><div style={{width:28,height:28,borderRadius:999,background:p.ac+"14",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:12,color:p.ac}}>$</span></div></div><span style={{fontSize:24,fontWeight:600,color:p.tx}}>$48.2k</span><div style={{height:4,borderRadius:2,background:p.ac+"1A"}}><div style={{width:"68%",height:"100%",borderRadius:2,background:p.ac,opacity:.5}}/></div></div>;
-    if(v===2)return <div style={{...b,background:p.card,borderRadius:4,borderLeft:`3px solid ${p.ac}`,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><span style={{fontSize:10,color:p.mu,fontWeight:500}}>REVENUE</span><span style={{fontSize:28,fontWeight:600,color:p.tx}}>$48.2k</span><span style={{fontSize:11,color:"#4CAF50",fontWeight:500}}>+12.5% vs prev</span></div>;
-    return <div style={{...b,background:p.ac,borderRadius:14,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><span style={{fontSize:10,color:"#ffffff88",fontWeight:500}}>Revenue</span><span style={{fontSize:26,fontWeight:600,color:"#fff"}}>$48.2k</span><span style={{fontSize:11,color:"#ffffff99"}}>+12.5%</span></div>;
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><T k="label" s={{fontSize:10,color:p.mu,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>Revenue</T><T k="value" s={{fontSize:26,fontWeight:600,color:p.tx,letterSpacing:"-0.02em"}}>$48.2k</T><T k="delta" s={{fontSize:11,color:"#4CAF50",fontWeight:500}}>+12.5%</T></div>;
+    if(v===1)return <div style={{...b,background:p.su,borderRadius:14,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><T k="label" s={{fontSize:10,color:p.mu,fontWeight:500}}>Revenue</T><div style={{width:28,height:28,borderRadius:999,background:p.ac+"14",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:12,color:p.ac}}>$</span></div></div><T k="value" s={{fontSize:24,fontWeight:600,color:p.tx}}>$48.2k</T><div style={{height:4,borderRadius:2,background:p.ac+"1A"}}><div style={{width:"68%",height:"100%",borderRadius:2,background:p.ac,opacity:.5}}/></div></div>;
+    if(v===2)return <div style={{...b,background:p.card,borderRadius:4,borderLeft:`3px solid ${p.ac}`,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><T k="label" s={{fontSize:10,color:p.mu,fontWeight:500}}>REVENUE</T><T k="value" s={{fontSize:28,fontWeight:600,color:p.tx}}>$48.2k</T><T k="delta" s={{fontSize:11,color:"#4CAF50",fontWeight:500}}>+12.5% vs prev</T></div>;
+    return <div style={{...b,background:p.ac,borderRadius:14,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><T k="label" s={{fontSize:10,color:"#ffffff88",fontWeight:500}}>Revenue</T><T k="value" s={{fontSize:26,fontWeight:600,color:"#fff"}}>$48.2k</T><T k="delta" s={{fontSize:11,color:"#ffffff99"}}>+12.5%</T></div>;
   }
 
   /* ---- IMAGE-PLACEHOLDER ---- */
@@ -170,7 +185,7 @@ function C({type,v=0,p}){
     const ico=<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={v===1?p.ac:p.mu} strokeWidth="1.5" strokeLinecap="round" opacity={v===1?.45:.2}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>;
     if(v===0)return <div style={{...b,background:p.su,borderRadius:12,border:`1px solid ${p.bd}`,display:"flex",alignItems:"center",justifyContent:"center"}}>{ico}</div>;
     if(v===1)return <div style={{...b,background:`linear-gradient(135deg,${p.ac}18,${p.ac2}18)`,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:48,height:48,borderRadius:999,background:p.ac+"14",display:"flex",alignItems:"center",justifyContent:"center"}}>{ico}</div></div>;
-    return <div style={{...b,background:p.su,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",border:`1.5px dashed ${p.mu}28`}}><span style={{fontSize:11,color:p.mu,opacity:.3}}>Drop image</span></div>;
+    return <div style={{...b,background:p.su,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",border:`1.5px dashed ${p.mu}28`}}><T k="label" s={{fontSize:11,color:p.mu,opacity:.3}}>Drop image</T></div>;
   }
 
   /* ---- AVATAR-ROW ---- */
@@ -188,17 +203,17 @@ function C({type,v=0,p}){
 
   /* ---- INPUT ---- */
   if(type==="input"){
-    if(v===0)return <div style={{...b,background:p.card,borderRadius:10,border:`1.5px solid ${p.bd}`,padding:"0 14px",display:"flex",alignItems:"center"}}><span style={{fontSize:13,color:p.mu,opacity:.45}}>Enter your email...</span></div>;
-    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:5,justifyContent:"flex-end"}}><span style={{fontSize:10,fontWeight:500,color:p.mu}}>Email</span><div style={{height:34,borderRadius:5,border:`1.5px solid ${p.bd}`,padding:"0 10px",display:"flex",alignItems:"center"}}><span style={{fontSize:13,color:p.mu,opacity:.4}}>you@example.com</span></div></div>;
-    return <div style={{...b,background:p.su,borderRadius:10,padding:"0 14px",display:"flex",alignItems:"center"}}><span style={{fontSize:13,color:p.mu,opacity:.4}}>Enter your email...</span></div>;
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:10,border:`1.5px solid ${p.bd}`,padding:"0 14px",display:"flex",alignItems:"center"}}><T k="ph" s={{fontSize:13,color:p.mu,opacity:.45}}>Enter your email...</T></div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:5,justifyContent:"flex-end"}}><T k="label" s={{fontSize:10,fontWeight:500,color:p.mu}}>Email</T><div style={{height:34,borderRadius:5,border:`1.5px solid ${p.bd}`,padding:"0 10px",display:"flex",alignItems:"center"}}><T k="ph" s={{fontSize:13,color:p.mu,opacity:.4}}>you@example.com</T></div></div>;
+    return <div style={{...b,background:p.su,borderRadius:10,padding:"0 14px",display:"flex",alignItems:"center"}}><T k="ph" s={{fontSize:13,color:p.mu,opacity:.4}}>Enter your email...</T></div>;
   }
 
   /* ---- SEARCH ---- */
   if(type==="search"){
     const ico=<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" opacity=".3"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>;
-    if(v===0)return <div style={{...b,background:p.card,borderRadius:10,border:`1.5px solid ${p.bd}`,padding:"0 12px",display:"flex",alignItems:"center",gap:8}}>{ico}<span style={{fontSize:13,color:p.mu,opacity:.4}}>Search...</span></div>;
-    if(v===1)return <div style={{...b,background:p.su,borderRadius:999,padding:"0 14px",display:"flex",alignItems:"center",gap:8}}>{ico}<span style={{fontSize:13,color:p.mu,opacity:.4}}>Search...</span><span style={{marginLeft:"auto",fontSize:9,color:p.mu,opacity:.25,border:`1px solid ${p.bd}`,borderRadius:4,padding:"2px 6px"}}>Cmd+K</span></div>;
-    return <div style={{...b,background:p.card,borderRadius:0,borderBottom:`2px solid ${p.ac}30`,padding:"0 8px",display:"flex",alignItems:"center",gap:8}}>{ico}<span style={{fontSize:13,color:p.mu,opacity:.4}}>Search...</span></div>;
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:10,border:`1.5px solid ${p.bd}`,padding:"0 12px",display:"flex",alignItems:"center",gap:8}}>{ico}<T k="ph" s={{fontSize:13,color:p.mu,opacity:.4}}>Search...</T></div>;
+    if(v===1)return <div style={{...b,background:p.su,borderRadius:999,padding:"0 14px",display:"flex",alignItems:"center",gap:8}}>{ico}<T k="ph" s={{fontSize:13,color:p.mu,opacity:.4}}>Search...</T><span style={{marginLeft:"auto",fontSize:9,color:p.mu,opacity:.25,border:`1px solid ${p.bd}`,borderRadius:4,padding:"2px 6px"}}>Cmd+K</span></div>;
+    return <div style={{...b,background:p.card,borderRadius:0,borderBottom:`2px solid ${p.ac}30`,padding:"0 8px",display:"flex",alignItems:"center",gap:8}}>{ico}<T k="ph" s={{fontSize:13,color:p.mu,opacity:.4}}>Search...</T></div>;
   }
 
   /* ---- TOGGLE ---- */
@@ -209,16 +224,16 @@ function C({type,v=0,p}){
 
   /* ---- BADGE ---- */
   if(type==="badge"){
-    if(v===0)return <div style={{...b,background:p.ac+"14",borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:11,fontWeight:600,color:p.ac}}>New</span></div>;
-    if(v===1)return <div style={{...b,background:p.ac,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:11,fontWeight:600,color:"#fff"}}>New</span></div>;
-    return <div style={{...b,border:`1.5px solid ${p.ac}44`,borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:11,fontWeight:500,color:p.ac}}>New</span></div>;
+    if(v===0)return <div style={{...b,background:p.ac+"14",borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="label" s={{fontSize:11,fontWeight:600,color:p.ac}}>New</T></div>;
+    if(v===1)return <div style={{...b,background:p.ac,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="label" s={{fontSize:11,fontWeight:600,color:"#fff"}}>New</T></div>;
+    return <div style={{...b,border:`1.5px solid ${p.ac}44`,borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="label" s={{fontSize:11,fontWeight:500,color:p.ac}}>New</T></div>;
   }
 
   /* ---- TOAST ---- */
   if(type==="toast"){
-    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:"0 14px",display:"flex",alignItems:"center",gap:10,boxShadow:`0 4px 20px ${p.tx}08`}}><div style={{width:20,height:20,borderRadius:999,background:"#4CAF5018"}}/><span style={{fontSize:12,color:p.tx,fontWeight:500}}>Changes saved</span></div>;
-    if(v===1)return <div style={{...b,background:p.tx,borderRadius:8,padding:"0 14px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:12,color:p.bg,fontWeight:500}}>Changes saved</span><span style={{marginLeft:"auto",fontSize:11,color:p.bg,opacity:.45}}>Undo</span></div>;
-    return <div style={{...b,background:p.card,borderRadius:4,borderLeft:`3px solid #4CAF50`,padding:"0 14px",display:"flex",alignItems:"center",boxShadow:`0 2px 10px ${p.tx}06`}}><span style={{fontSize:12,color:p.tx,fontWeight:500}}>Changes saved</span></div>;
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:"0 14px",display:"flex",alignItems:"center",gap:10,boxShadow:`0 4px 20px ${p.tx}08`}}><div style={{width:20,height:20,borderRadius:999,background:"#4CAF5018"}}/><T k="label" s={{fontSize:12,color:p.tx,fontWeight:500}}>Changes saved</T></div>;
+    if(v===1)return <div style={{...b,background:p.tx,borderRadius:8,padding:"0 14px",display:"flex",alignItems:"center",gap:10}}><T k="label" s={{fontSize:12,color:p.bg,fontWeight:500}}>Changes saved</T><T k="action" s={{marginLeft:"auto",fontSize:11,color:p.bg,opacity:.45}}>Undo</T></div>;
+    return <div style={{...b,background:p.card,borderRadius:4,borderLeft:`3px solid #4CAF50`,padding:"0 14px",display:"flex",alignItems:"center",boxShadow:`0 2px 10px ${p.tx}06`}}><T k="label" s={{fontSize:12,color:p.tx,fontWeight:500}}>Changes saved</T></div>;
   }
 
   /* ---- PROGRESS ---- */
@@ -317,10 +332,20 @@ export default function App(){
     if(sel===id)setSel(null);
   },[shapes,push,sel]);
 
+  const updateText=useCallback((id,key,value)=>{
+    setShapes(prev=>prev.map(s=>{
+      if(s.id!==id)return s;
+      const texts={...(s.texts||{})};
+      if(value===null||value===undefined)delete texts[key];
+      else texts[key]=value;
+      return{...s,texts};
+    }));
+  },[]);
+
   const onDrop=useCallback(e=>{
     e.preventDefault();const info=dRef.current;if(!info)return;
     const pt=toCanvas(e.clientX,e.clientY);
-    const ns={id:uid(),type:info.type,x:pt.x-info.w/2,y:pt.y-info.h/2,w:info.w,h:info.h,variant:prefV[info.type]||0};
+    const ns={id:uid(),type:info.type,x:pt.x-info.w/2,y:pt.y-info.h/2,w:info.w,h:info.h,variant:prefV[info.type]||0,texts:{}};
     const sn=snap(ns,shapes);if(sn.x!==null)ns.x=sn.x;if(sn.y!==null)ns.y=sn.y;
     push([...shapes,ns]);setSel(ns.id);nudge({complexity:.02});dRef.current=null;
   },[shapes,push,nudge,prefV,toCanvas]);
@@ -431,21 +456,19 @@ export default function App(){
         {/* CANVAS */}
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
-            /* middle-click or space not needed — right-click pan */
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
-            /* click on empty canvas to deselect */
             if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]")))setSel(null);
           }}
           onContextMenu={e=>e.preventDefault()}
           style={{flex:1,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default"}}>
 
-          {/* dot grid (fixed, doesn't zoom) */}
+          {/* dot grid */}
           <svg data-c="1" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
             <defs><pattern id="dots" x={cam.x%20} y={cam.y%20} width={20*cam.z} height={20*cam.z} patternUnits="userSpaceOnUse"><circle cx={10*cam.z} cy={10*cam.z} r={Math.max(.3,.5*cam.z)} fill={p.mu} opacity=".1"/></pattern></defs>
             <rect data-c="1" width="100%" height="100%" fill="url(#dots)" style={{pointerEvents:"all"}}/>
           </svg>
 
-          {/* snap guides (screen space) */}
+          {/* snap guides */}
           {guides.map((g,i)=><div key={i} style={{position:"absolute",pointerEvents:"none",zIndex:300,background:p.ac+"40",...(g.t==="v"?{left:g.p*cam.z+cam.x,top:0,width:1,height:"100%"}:{top:g.p*cam.z+cam.y,left:0,height:1,width:"100%"})}}/>)}
 
           {/* transform layer */}
@@ -476,7 +499,7 @@ export default function App(){
                   )}
                   <div onMouseDown={e=>onDown(e,s)} onMouseEnter={()=>setHov(s.id)} onMouseLeave={()=>setHov(null)}
                     style={{width:s.w,height:s.h,cursor:isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}55`:"none",outlineOffset:4,borderRadius:14}}>
-                    <C type={s.type} v={s.variant||0} p={p}/>
+                    <C type={s.type} v={s.variant||0} p={p} editable={isSel} texts={s.texts||{}} onText={(k,val)=>updateText(s.id,k,val)}/>
                     {isSel&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
                   </div>
                 </div>
