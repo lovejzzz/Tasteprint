@@ -183,15 +183,18 @@ function C({type,v=0,p,editable,texts={},onText,font=0}){
 
   const T=({k,s,children})=>{
     const val=texts[k]!==undefined?texts[k]:children;
-    if(!editable)return <span style={s}>{val}</span>;
-    return <span
-      contentEditable
-      suppressContentEditableWarning
-      onInput={e=>{const t=e.target.innerText.trim();onText?.(k,t||null)}}
-      onMouseDown={e=>e.stopPropagation()}
-      onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}}}
-      style={{...s,outline:"none",cursor:"text",minWidth:8}}
-    >{val}</span>;
+    const hasHtml=typeof val==="string"&&/<\w/.test(val);
+    if(!editable)return hasHtml
+      ?<span style={s} dangerouslySetInnerHTML={{__html:val}}/>
+      :<span style={s}>{val}</span>;
+    const ceProps={"data-text-key":k,contentEditable:true,suppressContentEditableWarning:true,
+      onInput:e=>{onText?.(k,e.target.innerHTML)},
+      onMouseDown:e=>e.stopPropagation(),
+      onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}},
+      style:{...s,outline:"none",cursor:"text",minWidth:8}};
+    return hasHtml
+      ?<span {...ceProps} dangerouslySetInnerHTML={{__html:val}}/>
+      :<span {...ceProps}>{val}</span>;
   };
 
   /* ---- BUTTON ---- */
@@ -521,6 +524,7 @@ export default function App(){
   const [hov,setHov]=useState(null);
   const [cam,setCam]=useState({x:0,y:0,z:1});
   const [pan,setPan]=useState(null);
+  const [selFont,setSelFont]=useState(null);
   const cRef=useRef(null);
   const dRef=useRef(null);
   const camRef=useRef(cam);
@@ -588,13 +592,35 @@ export default function App(){
   },[shapes,nudge]);
 
   const cycleFont=useCallback((id,dir)=>{
+    const ws=window.getSelection();
+    if(ws&&!ws.isCollapsed&&ws.rangeCount>0){
+      const range=ws.getRangeAt(0);
+      const anc=range.commonAncestorContainer;
+      const ceEl=(anc.nodeType===3?anc.parentElement:anc).closest?.("[contenteditable]");
+      if(ceEl){
+        const base=selFont!==null?selFont:(shapes.find(x=>x.id===id)?.font||0);
+        let nf=(base+dir)%FONTS.length;if(nf<0)nf=FONTS.length-1;
+        setSelFont(nf);
+        const span=document.createElement("span");
+        span.style.fontFamily=FONTS[nf].family;
+        const frag=range.extractContents();
+        span.appendChild(frag);
+        range.insertNode(span);
+        ws.removeAllRanges();
+        const nr=document.createRange();nr.selectNodeContents(span);ws.addRange(nr);
+        const key=ceEl.dataset.textKey;
+        if(key)updateText(id,key,ceEl.innerHTML);
+        return;
+      }
+    }
+    setSelFont(null);
     setShapes(prev=>prev.map(s=>{
       if(s.id!==id)return s;
       let nf=((s.font||0)+dir)%FONTS.length;
       if(nf<0)nf=FONTS.length-1;
       return{...s,font:nf};
     }));
-  },[]);
+  },[shapes,selFont,updateText]);
 
   const delShape=useCallback((id)=>{
     push(shapes.filter(s=>s.id!==id));
@@ -725,7 +751,7 @@ export default function App(){
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
-            if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]")))setSel(null);
+            if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){setSel(null);setSelFont(null)}
           }}
           onContextMenu={e=>e.preventDefault()}
           style={{flex:1,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default"}}>
@@ -745,8 +771,9 @@ export default function App(){
               const isSel=sel===s.id,isDrg=drag===s.id,isHov=hov===s.id;
               const mx=maxV(s.type);
               const vn=varName(s.type,s.variant||0);
-              const fn=FONTS[s.font||0]?.name||FONTS[0].name;
-              const ff=FONTS[s.font||0]?.family||FONTS[0].family;
+              const fontIdx=selFont!==null?selFont:(s.font||0);
+              const fn=FONTS[fontIdx]?.name||FONTS[0].name;
+              const ff=FONTS[fontIdx]?.family||FONTS[0].family;
               return(
                 <div key={s.id} style={{position:"absolute",left:s.x,top:s.y,width:s.w,zIndex:isDrg?100:isSel?50:1}}>
                   {/* toolbar: variant + font pickers — only on select */}
