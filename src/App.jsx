@@ -634,6 +634,7 @@ export default function App(){
   const dirtyText=useRef(null);
   const cardRefs=useRef(new Map());
   const prevRects=useRef(new Map());
+  const lastReorder=useRef(0);
   const camRef=useRef(cam);
   camRef.current=cam;
 
@@ -911,13 +912,12 @@ export default function App(){
       if(!el||!oldR)return;
       const newR=el.getBoundingClientRect();
       const dy=oldR.top-newR.top;
-      if(Math.abs(dy)<1)return;
-      el.style.transition="none";
-      el.style.transform=`translateY(${dy}px)`;
-      requestAnimationFrame(()=>{requestAnimationFrame(()=>{
-        el.style.transition="transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
-        el.style.transform="";
-      })});
+      if(Math.abs(dy)<2)return;
+      el.getAnimations().forEach(a=>a.cancel());
+      el.animate(
+        [{transform:`translateY(${dy}px)`},{transform:"translateY(0)"}],
+        {duration:280,easing:"cubic-bezier(0.22, 1, 0.36, 1)",fill:"none"}
+      );
     });
     prevRects.current=new Map();
   });
@@ -970,9 +970,9 @@ export default function App(){
                 <div key={item.type} ref={el=>{if(el)cardRefs.current.set(item.type,el);else cardRefs.current.delete(item.type)}}
                   draggable
                   onDragStart={e=>{dRef.current=item;setPDrag(item.type);e.dataTransfer.effectAllowed="copyMove"}}
-                  onDragOver={e=>{e.preventDefault();if(pDrag&&pDrag!==item.type)reorderLib(pDrag,item.type)}}
+                  onDragOver={e=>{e.preventDefault();if(pDrag&&pDrag!==item.type&&Date.now()-lastReorder.current>250){lastReorder.current=Date.now();reorderLib(pDrag,item.type)}}}
                   onDragEnd={()=>setPDrag(null)}
-                  style={{padding:10,borderRadius:10,cursor:"grab",display:"flex",flexDirection:"column",gap:6,border:`1px solid ${p.mu}22`,background:pDrag===item.type?p.su+"88":"transparent",opacity:pDrag===item.type?.6:1,transform:pDrag===item.type?"scale(0.97)":"scale(1)",transition:"opacity .2s, transform .2s, background .15s, border-color .15s"}}
+                  style={{padding:10,borderRadius:10,cursor:"grab",display:"flex",flexDirection:"column",gap:6,border:`1px solid ${p.mu}22`,background:pDrag===item.type?p.su+"88":"transparent",opacity:pDrag===item.type?.5:1,transition:"opacity .2s, background .15s, border-color .15s"}}
                   onMouseEnter={e=>{if(!pDrag)e.currentTarget.style.background=p.su;e.currentTarget.style.borderColor=p.mu+"44"}} onMouseLeave={e=>{if(!pDrag)e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=p.mu+"22"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:12,fontWeight:500,color:p.tx}}>{item.label}</span>
