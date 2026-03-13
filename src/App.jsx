@@ -70,6 +70,14 @@ const VARIANTS = {
   alert:     ["Info","Warning","Success","Error"],
   pagination:["Default","Dots","Minimal"],
   "pricing-card":["Default","Featured","Minimal"],
+  tooltip:   ["Default","Dark","Arrow"],
+  breadcrumb:["Slash","Arrow","Dots"],
+  skeleton:  ["Card","List","Profile"],
+  chart:     ["Bar","Line","Donut"],
+  testimonial:["Card","Minimal","Bubble"],
+  "cmd-palette":["Default","Minimal","Grouped"],
+  stepper:   ["Horizontal","Vertical","Dots"],
+  timeline:  ["Left","Centered","Minimal"],
 };
 
 const LIB = [
@@ -114,6 +122,18 @@ const LIB = [
   { cat:"Commerce", items:[
     {type:"pricing-card",label:"Pricing card",w:240,h:280},
   ]},
+  { cat:"Data", items:[
+    {type:"chart",label:"Chart",w:260,h:180},
+    {type:"testimonial",label:"Testimonial",w:280,h:140},
+    {type:"skeleton",label:"Skeleton",w:260,h:120},
+  ]},
+  { cat:"Utility", items:[
+    {type:"tooltip",label:"Tooltip",w:140,h:60},
+    {type:"breadcrumb",label:"Breadcrumb",w:240,h:28},
+    {type:"cmd-palette",label:"Cmd palette",w:300,h:200},
+    {type:"stepper",label:"Stepper",w:280,h:44},
+    {type:"timeline",label:"Timeline",w:240,h:200},
+  ]},
   { cat:"Overlay", items:[
     {type:"modal",label:"Modal",w:300,h:200},
   ]},
@@ -123,7 +143,7 @@ function uid(){return Math.random().toString(36).substr(2,9)}
 function maxV(t){return(VARIANTS[t]||[]).length||1}
 function varName(t,v){return(VARIANTS[t]||[])[v]||"Default"}
 
-const HAS_TEXT=new Set(["button","hero","navbar","tabs","heading","stat-card","input","search","badge","toast","image-placeholder","modal","sidebar","footer","accordion","table","dropdown","select","checkbox","alert","pagination","pricing-card"]);
+const HAS_TEXT=new Set(["button","hero","navbar","tabs","heading","stat-card","input","search","badge","toast","image-placeholder","modal","sidebar","footer","accordion","table","dropdown","select","checkbox","alert","pagination","pricing-card","tooltip","breadcrumb","testimonial","cmd-palette","stepper","timeline"]);
 
 function snap(s,all,thr=10){
   const r={x:null,y:null,g:[]}, cx=s.x+s.w/2, cy=s.y+s.h/2;
@@ -417,6 +437,68 @@ function C({type,v=0,p,editable,texts={},onText,font=0}){
     if(v===0)return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,padding:24,display:"flex",flexDirection:"column",gap:12}}><T k="plan" s={{fontSize:11,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"}}>Pro</T><div style={{display:"flex",alignItems:"baseline",gap:2}}><T k="price" s={{fontSize:32,fontWeight:700,color:p.tx}}>$29</T><T k="period" s={{fontSize:12,color:p.mu}}>/mo</T></div><div style={{height:1,background:p.bd,margin:"4px 0"}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>{features.map((f,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:14,height:14,borderRadius:999,background:p.ac+"18",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:p.ac}}>✓</span></div><T k={`f${i}`} s={{fontSize:12,color:p.tx}}>{f}</T></div>)}</div><div style={{height:38,borderRadius:10,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:12,color:"#fff",fontWeight:600}}>Get started</T></div></div>;
     if(v===1)return <div style={{...b,background:p.ac,borderRadius:16,padding:24,display:"flex",flexDirection:"column",gap:12,boxShadow:`0 8px 32px ${p.ac}30`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><T k="plan" s={{fontSize:11,color:"#fff",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",opacity:.8}}>Pro</T><div style={{background:"#fff22",borderRadius:999,padding:"2px 8px"}}><T k="badge" s={{fontSize:9,color:"#fff",fontWeight:600}}>POPULAR</T></div></div><div style={{display:"flex",alignItems:"baseline",gap:2}}><T k="price" s={{fontSize:32,fontWeight:700,color:"#fff"}}>$29</T><T k="period" s={{fontSize:12,color:"#fff",opacity:.6}}>/mo</T></div><div style={{height:1,background:"#fff2",margin:"4px 0"}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>{features.map((f,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:10,color:"#fff",opacity:.7}}>✓</span><T k={`f${i}`} s={{fontSize:12,color:"#fff",opacity:.9}}>{f}</T></div>)}</div><div style={{height:38,borderRadius:10,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:12,color:p.ac,fontWeight:600}}>Get started</T></div></div>;
     return <div style={{...b,background:p.card,borderRadius:12,padding:24,display:"flex",flexDirection:"column",gap:14}}><T k="plan" s={{fontSize:16,fontWeight:600,color:p.tx}}>Pro</T><div style={{display:"flex",alignItems:"baseline",gap:2}}><T k="price" s={{fontSize:28,fontWeight:600,color:p.tx}}>$29</T><T k="period" s={{fontSize:12,color:p.mu}}>/mo</T></div><div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>{features.map((f,i)=><T key={i} k={`f${i}`} s={{fontSize:12,color:p.mu}}>• {f}</T>)}</div><div style={{height:36,borderRadius:8,border:`1.5px solid ${p.ac}`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:12,color:p.ac,fontWeight:500}}>Choose plan</T></div></div>;
+  }
+
+  /* ---- TOOLTIP ---- */
+  if(type==="tooltip"){
+    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",gap:4}}><div style={{background:p.card,borderRadius:8,border:`1px solid ${p.bd}`,padding:"6px 12px",boxShadow:`0 4px 12px ${p.tx}08`}}><T k="label" s={{fontSize:11,color:p.tx}}>Tooltip text</T></div><div style={{width:8,height:8,background:p.card,border:`1px solid ${p.bd}`,borderTop:"none",borderLeft:"none",transform:"rotate(45deg)",marginTop:-6}}/></div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",gap:4}}><div style={{background:p.tx,borderRadius:6,padding:"6px 12px"}}><T k="label" s={{fontSize:11,color:p.bg}}>Tooltip text</T></div><div style={{width:8,height:8,background:p.tx,transform:"rotate(45deg)",marginTop:-6}}/></div>;
+    return <div style={{...b,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",gap:0}}><div style={{background:p.card,borderRadius:8,border:`1px solid ${p.bd}`,padding:"6px 12px",boxShadow:`0 4px 12px ${p.tx}08`,position:"relative"}}><T k="label" s={{fontSize:11,color:p.tx}}>Tooltip text</T></div><svg width="12" height="6" viewBox="0 0 12 6" style={{marginTop:-1}}><path d="M0 0L6 6L12 0" fill={p.card} stroke={p.bd} strokeWidth="1"/></svg></div>;
+  }
+
+  /* ---- BREADCRUMB ---- */
+  if(type==="breadcrumb"){
+    const items=["Home","Products","Details"];
+    const sep=v===0?" / ":v===1?" › ":"  •  ";
+    return <div style={{...b,display:"flex",alignItems:"center",gap:0}}>{items.map((it,i)=><React.Fragment key={i}>{i>0&&<span style={{fontSize:11,color:p.mu,opacity:.4}}>{sep}</span>}<T k={`b${i}`} s={{fontSize:12,color:i===items.length-1?p.tx:p.mu,fontWeight:i===items.length-1?500:400}}>{it}</T></React.Fragment>)}</div>;
+  }
+
+  /* ---- SKELETON ---- */
+  if(type==="skeleton"){
+    const shimmer={background:`linear-gradient(90deg,${p.su} 25%,${p.bd}40 50%,${p.su} 75%)`,backgroundSize:"200% 100%",borderRadius:8};
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:16,display:"flex",flexDirection:"column",gap:10}}><div style={{...shimmer,height:14,width:"50%"}}/><div style={{...shimmer,height:10,width:"80%"}}/><div style={{...shimmer,height:10,width:"65%"}}/><div style={{...shimmer,height:40,width:"100%",borderRadius:10,marginTop:4}}/></div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:10}}>{[0,1,2].map(i=><div key={i} style={{display:"flex",gap:10,alignItems:"center"}}><div style={{...shimmer,width:36,height:36,borderRadius:999,flexShrink:0}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}><div style={{...shimmer,height:10,width:`${60+i*10}%`}}/><div style={{...shimmer,height:8,width:`${80-i*10}%`}}/></div></div>)}</div>;
+    return <div style={{...b,display:"flex",gap:14,alignItems:"center"}}><div style={{...shimmer,width:56,height:56,borderRadius:999,flexShrink:0}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}><div style={{...shimmer,height:12,width:"40%"}}/><div style={{...shimmer,height:9,width:"70%"}}/><div style={{...shimmer,height:9,width:"55%"}}/></div></div>;
+  }
+
+  /* ---- CHART ---- */
+  if(type==="chart"){
+    if(v===0){const bars=[55,80,45,90,65,75];return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:16,display:"flex",flexDirection:"column"}}><div style={{height:10,width:"30%",background:p.su,borderRadius:4,marginBottom:12}}/><div style={{flex:1,display:"flex",alignItems:"flex-end",gap:8,paddingBottom:4}}>{bars.map((h,i)=><div key={i} style={{flex:1,height:`${h}%`,background:i===3?p.ac:p.ac+"30",borderRadius:4}}/> )}</div></div>}
+    if(v===1){const pts=[[0,60],[20,40],[40,65],[60,30],[80,55],[100,20]];const path="M"+pts.map(([x,y])=>`${x},${y}`).join(" L");return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:16,display:"flex",flexDirection:"column"}}><div style={{height:10,width:"30%",background:p.su,borderRadius:4,marginBottom:12}}/><svg style={{flex:1,width:"100%"}} viewBox="0 0 100 80" preserveAspectRatio="none"><path d={path} fill="none" stroke={p.ac} strokeWidth="2" strokeLinejoin="round"/><path d={path+" L100,80 L0,80 Z"} fill={p.ac+"12"}/></svg></div>}
+    const slices=[{pct:40,color:p.ac},{pct:25,color:p.ac2},{pct:20,color:p.mu+"50"},{pct:15,color:p.su}];
+    let acc=0;return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:16,display:"flex",alignItems:"center",gap:16}}><svg width="80" height="80" viewBox="0 0 80 80">{slices.map((s,i)=>{const start=acc;acc+=s.pct;const a1=(start/100)*Math.PI*2-Math.PI/2;const a2=((start+s.pct)/100)*Math.PI*2-Math.PI/2;const large=s.pct>50?1:0;return<path key={i} d={`M40,40 L${40+30*Math.cos(a1)},${40+30*Math.sin(a1)} A30,30 0 ${large},1 ${40+30*Math.cos(a2)},${40+30*Math.sin(a2)} Z`} fill={s.color}/>})}</svg><div style={{display:"flex",flexDirection:"column",gap:6}}>{slices.map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:2,background:s.color}}/><span style={{fontSize:10,color:p.mu}}>{s.pct}%</span></div>)}</div></div>;
+  }
+
+  /* ---- TESTIMONIAL ---- */
+  if(type==="testimonial"){
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:18,display:"flex",flexDirection:"column",gap:10}}><span style={{fontSize:24,color:p.ac,opacity:.3,lineHeight:1}}>"</span><T k="quote" s={{fontSize:12,color:p.tx,lineHeight:1.5,fontStyle:"italic"}}>This product changed how we work. Highly recommend it.</T><div style={{display:"flex",alignItems:"center",gap:8,marginTop:"auto"}}><div style={{width:28,height:28,borderRadius:999,background:p.ac+"20"}}/><div><T k="name" s={{fontSize:11,fontWeight:600,color:p.tx}}>Jane Doe</T><T k="role" s={{fontSize:10,color:p.mu,display:"block"}}>CEO, Acme</T></div></div></div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:8,padding:"8px 0"}}><T k="quote" s={{fontSize:13,color:p.tx,lineHeight:1.5}}>This product changed how we work.</T><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:4,height:4,borderRadius:999,background:p.ac}}/><T k="name" s={{fontSize:11,color:p.mu}}>Jane Doe, CEO</T></div></div>;
+    return <div style={{...b,background:p.su,borderRadius:16,padding:16,display:"flex",flexDirection:"column",gap:8,position:"relative"}}><div style={{position:"absolute",top:8,right:14,fontSize:32,color:p.ac,opacity:.12,lineHeight:1}}>"</div><T k="quote" s={{fontSize:12,color:p.tx,lineHeight:1.5}}>This product changed how we work. Highly recommend it.</T><div style={{display:"flex",alignItems:"center",gap:8,marginTop:"auto"}}><div style={{width:24,height:24,borderRadius:999,background:p.ac+"25"}}/><T k="name" s={{fontSize:11,fontWeight:500,color:p.tx}}>Jane Doe</T></div></div>;
+  }
+
+  /* ---- CMD PALETTE ---- */
+  if(type==="cmd-palette"){
+    const items=[{icon:"⌂",label:"Go to Dashboard"},{icon:"⚙",label:"Settings"},{icon:"?",label:"Help center"},{icon:"↗",label:"Open docs"}];
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,boxShadow:`0 16px 48px ${p.tx}12`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"10px 14px",borderBottom:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:8}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" opacity=".3"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><T k="search" s={{fontSize:12,color:p.mu,opacity:.4}}>Type a command...</T></div><div style={{flex:1,padding:4}}>{items.map((it,i)=><div key={i} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10,background:i===0?p.ac+"10":"transparent"}}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i}`} s={{fontSize:12,color:i===0?p.ac:p.tx}}>{it.label}</T>{i===0&&<span style={{marginLeft:"auto",fontSize:9,color:p.mu,opacity:.3}}>Enter ↵</span>}</div>)}</div></div>;
+    if(v===1)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,boxShadow:`0 8px 32px ${p.tx}08`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"10px 14px",borderBottom:`1px solid ${p.bd}`}}><T k="search" s={{fontSize:12,color:p.mu,opacity:.4}}>Search...</T></div><div style={{flex:1,padding:2}}>{items.map((it,i)=><div key={i} style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:10,background:i===0?p.su:"transparent"}}><T k={`c${i}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}</div></div>;
+    return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,boxShadow:`0 16px 48px ${p.tx}12`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"10px 14px",borderBottom:`1px solid ${p.bd}`}}><T k="search" s={{fontSize:12,color:p.mu,opacity:.4}}>Type a command...</T></div><div style={{padding:4}}><div style={{fontSize:9,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",padding:"6px 10px 2px"}}>Navigation</div>{items.slice(0,2).map((it,i)=><div key={i} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10,background:i===0?p.ac+"10":"transparent"}}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}<div style={{fontSize:9,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",padding:"6px 10px 2px"}}>Help</div>{items.slice(2).map((it,i)=><div key={i+2} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i+2}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}</div></div>;
+  }
+
+  /* ---- STEPPER ---- */
+  if(type==="stepper"){
+    const steps=["Account","Details","Confirm"];
+    const active=1;
+    if(v===0)return <div style={{...b,display:"flex",alignItems:"center",justifyContent:"space-between"}}>{steps.map((s,i)=><React.Fragment key={i}>{i>0&&<div style={{flex:1,height:2,background:i<=active?p.ac:p.bd,margin:"0 8px"}}/>}<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:24,height:24,borderRadius:999,background:i<active?p.ac:i===active?p.ac+"20":"transparent",border:i>active?`1.5px solid ${p.bd}`:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:10,color:i<active?"#fff":i===active?p.ac:p.mu,fontWeight:600}}>{i<active?"✓":i+1}</span></div><T k={`s${i}`} s={{fontSize:11,color:i<=active?p.tx:p.mu,fontWeight:i===active?500:400}}>{s}</T></div></React.Fragment>)}</div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:0,justifyContent:"center"}}>{steps.map((s,i)=><div key={i} style={{display:"flex",gap:10}}><div style={{display:"flex",flexDirection:"column",alignItems:"center"}}><div style={{width:20,height:20,borderRadius:999,background:i<=active?p.ac:p.su,border:i>active?`1.5px solid ${p.bd}`:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:9,color:i<=active?"#fff":p.mu,fontWeight:600}}>{i<active?"✓":i+1}</span></div>{i<2&&<div style={{width:2,height:16,background:i<active?p.ac:p.bd}}/>}</div><T k={`s${i}`} s={{fontSize:11,color:i<=active?p.tx:p.mu,fontWeight:i===active?500:400,paddingTop:2}}>{s}</T></div>)}</div>;
+    return <div style={{...b,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>{steps.map((s,i)=><React.Fragment key={i}>{i>0&&<div style={{width:20,height:1,background:p.bd}}/>}<div style={{width:10,height:10,borderRadius:999,background:i<=active?p.ac:p.bd}}/></React.Fragment>)}</div>;
+  }
+
+  /* ---- TIMELINE ---- */
+  if(type==="timeline"){
+    const events=[{title:"Project started",desc:"Initial setup complete"},{title:"Design review",desc:"Approved by team"},{title:"Launch",desc:"Coming soon"}];
+    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",gap:0}}>{events.map((ev,i)=><div key={i} style={{display:"flex",gap:12,paddingBottom:i<2?16:0}}><div style={{display:"flex",flexDirection:"column",alignItems:"center"}}><div style={{width:10,height:10,borderRadius:999,background:i===0?p.ac:p.su,border:`2px solid ${i===0?p.ac:p.bd}`,flexShrink:0}}/>{i<2&&<div style={{width:2,flex:1,background:p.bd}}/>}</div><div><T k={`t${i}`} s={{fontSize:12,fontWeight:500,color:p.tx}}>{ev.title}</T><T k={`d${i}`} s={{fontSize:10,color:p.mu,display:"block",marginTop:2}}>{ev.desc}</T></div></div>)}</div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:0}}>{events.map((ev,i)=><div key={i} style={{display:"flex",gap:0,paddingBottom:i<2?12:0}}><div style={{flex:1,textAlign:"right",paddingRight:16}}>{i%2===0&&<><T k={`t${i}`} s={{fontSize:12,fontWeight:500,color:p.tx}}>{ev.title}</T><T k={`d${i}`} s={{fontSize:10,color:p.mu,display:"block"}}>{ev.desc}</T></>}</div><div style={{display:"flex",flexDirection:"column",alignItems:"center"}}><div style={{width:8,height:8,borderRadius:999,background:p.ac,flexShrink:0}}/>{i<2&&<div style={{width:1,flex:1,background:p.bd}}/>}</div><div style={{flex:1,paddingLeft:16}}>{i%2===1&&<><T k={`t${i}`} s={{fontSize:12,fontWeight:500,color:p.tx}}>{ev.title}</T><T k={`d${i}`} s={{fontSize:10,color:p.mu,display:"block"}}>{ev.desc}</T></>}</div></div>)}</div>;
+    return <div style={{...b,display:"flex",flexDirection:"column",gap:12}}>{events.map((ev,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:6,height:6,borderRadius:999,background:i===0?p.ac:p.mu+"40",flexShrink:0}}/><T k={`t${i}`} s={{fontSize:12,color:i===0?p.tx:p.mu}}>{ev.title}</T></div>)}</div>;
   }
 
   return <div style={{...b,background:p.su,borderRadius:12}}/>;
