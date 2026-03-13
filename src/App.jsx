@@ -825,8 +825,35 @@ export default function App(){
     if(!drag&&!rsz)return;
     const pt=toCanvas(e.clientX,e.clientY);
     if(rsz){const s=shapes.find(x=>x.id===rsz);if(!s)return;let nw=Math.max(40,pt.x-s.x),nh=Math.max(20,pt.y-s.y);if(e.shiftKey){const ratio=s.w/s.h;if(nw/nh>ratio)nh=nw/ratio;else nw=nh*ratio;}setShapes(shapes.map(x=>x.id===rsz?{...x,w:nw,h:nh}:x));return}
-    if(drag){let nx=pt.x-off.x,ny=pt.y-off.y;const s=shapes.find(x=>x.id===drag);if(!s)return;const others=shapes.filter(x=>!selAll.has(x.id));const sn=snap({...s,x:nx,y:ny},others);if(sn.x!==null)nx=sn.x;if(sn.y!==null)ny=sn.y;setGuides(sn.g);const ddx=nx-s.x,ddy=ny-s.y;setShapes(shapes.map(x=>{if(x.id===drag)return{...x,x:nx,y:ny};if(selAll.has(x.id))return{...x,x:x.x+ddx,y:x.y+ddy};return x}))}
-  },[drag,rsz,shapes,off,pan,toCanvas,selAll]);
+    if(drag){
+      if(device!=="free"){
+        /* device mode: move shape + live reorder via functional updater */
+        const nx=pt.x-off.x,ny=pt.y-off.y;
+        setShapes(prev=>{
+          const dragged=prev.find(x=>x.id===drag);
+          if(!dragged)return prev;
+          const others=prev.filter(x=>x.id!==drag);
+          const containerW=device==="desktop"?1280:390;
+          const pad=device==="desktop"?32:16;
+          const gap=device==="desktop"?16:12;
+          const maxW=containerW-pad*2;
+          let cy=pad,targetIdx=others.length;
+          for(let i=0;i<others.length;i++){
+            const scale=Math.min(1,maxW/others[i].w);
+            const nh=others[i].h*scale;
+            if(ny<cy+nh/2){targetIdx=i;break;}
+            cy+=nh+gap;
+          }
+          const result=[...others];
+          result.splice(targetIdx,0,{...dragged,x:nx,y:ny});
+          return result;
+        });
+      }else{
+        /* free mode: existing snap + multi-select logic */
+        let nx=pt.x-off.x,ny=pt.y-off.y;const s=shapes.find(x=>x.id===drag);if(!s)return;const others=shapes.filter(x=>!selAll.has(x.id));const sn=snap({...s,x:nx,y:ny},others);if(sn.x!==null)nx=sn.x;if(sn.y!==null)ny=sn.y;setGuides(sn.g);const ddx=nx-s.x,ddy=ny-s.y;setShapes(shapes.map(x=>{if(x.id===drag)return{...x,x:nx,y:ny};if(selAll.has(x.id))return{...x,x:x.x+ddx,y:x.y+ddy};return x}))
+      }
+    }
+  },[drag,rsz,shapes,off,pan,toCanvas,selAll,device]);
 
   const onUp=useCallback(()=>{
     if(pan)setPan(null);
