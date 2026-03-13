@@ -525,6 +525,7 @@ export default function App(){
   const [cam,setCam]=useState({x:0,y:0,z:1});
   const [pan,setPan]=useState(null);
   const [selFont,setSelFont]=useState(null);
+  const [device,setDevice]=useState("free");
   const cRef=useRef(null);
   const dRef=useRef(null);
   const camRef=useRef(cam);
@@ -575,6 +576,7 @@ export default function App(){
 
   const push=useCallback(ns=>{setHist(h=>[...h.slice(-40),shapes]);setShapes(ns)},[shapes]);
   const undo=useCallback(()=>{if(!hist.length)return;setShapes(hist[hist.length-1]);setHist(h=>h.slice(0,-1))},[hist]);
+  const clearAll=useCallback(()=>{push([]);setSel(null)},[push]);
   const nudge=useCallback(d=>{setGest(g=>g+1);setTaste(prev=>{const t={...prev};for(const[k,val]of Object.entries(d))t[k]=Math.max(0,Math.min(1,(t[k]||0)+val));return t})},[]);
 
   const cycle=useCallback((id,dir)=>{
@@ -704,12 +706,17 @@ export default function App(){
 
       {/* HEADER */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 20px",borderBottom:`1px solid ${p.bd}`,background:p.card+"cc",backdropFilter:"blur(12px)",zIndex:50,transition:"all .4s"}}>
-        <div style={{display:"flex",alignItems:"baseline",gap:8}}><span style={{fontFamily:"'Instrument Serif',Georgia,serif",fontSize:22,color:p.tx,letterSpacing:"-0.02em"}}>Tasteprint</span><span style={{fontSize:10,color:p.mu,letterSpacing:"0.1em",textTransform:"uppercase"}}>playground</span></div>
+        <div style={{display:"flex",alignItems:"baseline",gap:8}}><span style={{fontFamily:"'Instrument Serif',Georgia,serif",fontSize:22,color:p.tx,letterSpacing:"-0.02em"}}>Tasteprint</span></div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{display:"flex",gap:4,flexWrap:"wrap",maxWidth:220}}>{Object.entries(PAL).map(([k,v])=><button key={k} onClick={()=>setPal(k)} title={v.name} style={{width:18,height:18,borderRadius:999,border:pal===k?`2px solid ${p.ac}`:"2px solid transparent",background:k==="noir"||k==="neon"?"#1A1A1E":v.ac,cursor:"pointer",transition:"all .2s",transform:pal===k?"scale(1.2)":"scale(1)"}}/>)}</div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:10,color:p.mu}}>{gest}</span><Radar taste={taste} ac={p.ac}/></div>
           <div style={{width:1,height:20,background:p.bd}}/>
+          <div style={{display:"flex",alignItems:"center",border:`1px solid ${p.bd}`,borderRadius:8,overflow:"hidden"}}>
+            {[{k:"free",l:"Free"},{k:"desktop",l:"Desktop"},{k:"phone",l:"Phone"}].map(d=><button key={d.k} onClick={()=>setDevice(d.k)} style={{background:device===d.k?p.su:"none",border:"none",padding:"5px 10px",fontSize:10,color:device===d.k?p.tx:p.mu,cursor:"pointer",fontFamily:"inherit",fontWeight:device===d.k?500:400}}>{d.l}</button>)}
+          </div>
+          <div style={{width:1,height:20,background:p.bd}}/>
+          <button onClick={clearAll} title="New canvas" style={btnSt}>New</button>
           <button onClick={exportJSON} title="Export layout" style={btnSt}>Export</button>
           <button onClick={importJSON} title="Import layout" style={btnSt}>Import</button>
           <button onClick={undo} style={btnSt}>Undo</button>
@@ -748,13 +755,14 @@ export default function App(){
         </div>
 
         {/* CANVAS */}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",background:device!=="free"?p.bg:"transparent"}}>
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
             if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){setSel(null);setSelFont(null)}
           }}
           onContextMenu={e=>e.preventDefault()}
-          style={{flex:1,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default"}}>
+          style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,maxWidth:"100%"}:{width:390}),height:device==="phone"?844:undefined,flex:device==="free"?1:undefined,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent",alignSelf:"center"}}>
 
           {/* dot grid */}
           <svg data-c="1" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
@@ -825,6 +833,7 @@ export default function App(){
             <button onClick={()=>setCam({x:0,y:0,z:1})} title="Reset zoom" style={{fontSize:10,color:p.mu,background:p.card,border:`1px solid ${p.bd}`,borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",minWidth:42,textAlign:"center"}}>{zoomPct}%</button>
             <button onClick={()=>setCam(c=>{const nz=Math.min(4,c.z+0.15);const el=cRef.current.getBoundingClientRect();const mx=el.width/2,my=el.height/2;return{x:mx-(mx-c.x)*(nz/c.z),y:my-(my-c.y)*(nz/c.z),z:nz}})} style={{width:24,height:24,borderRadius:6,border:`1px solid ${p.bd}`,background:p.card,color:p.mu,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui",padding:0}}>+</button>
           </div>
+        </div>
         </div>
       </div>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.12);border-radius:2px}`}</style>
