@@ -831,15 +831,27 @@ export default function App(){
   const onUp=useCallback(()=>{
     if(pan)setPan(null);
     if(drag){
-      if(device!=="free"&&rLayout){
+      if(device!=="free"){
         const ds=shapes.find(x=>x.id===drag);
         if(ds){
           const dropY=ds.y;
           const others=shapes.filter(x=>x.id!==drag);
+          /* compute layout positions WITHOUT the dragged shape */
+          const containerW=device==="desktop"?1280:390;
+          const pad=device==="desktop"?32:16;
+          const gap=device==="desktop"?16:12;
+          const maxW=containerW-pad*2;
+          let cy=pad;
+          const slots=others.map(o=>{
+            const scale=Math.min(1,maxW/o.w);
+            const nh=o.h*scale;
+            const mid=cy+nh/2;
+            cy+=nh+gap;
+            return mid;
+          });
           let idx=others.length;
-          for(let i=0;i<others.length;i++){
-            const rl=rLayout.get(others[i].id);
-            if(rl&&dropY<rl.y+rl.h/2){idx=i;break;}
+          for(let i=0;i<slots.length;i++){
+            if(dropY<slots[i]){idx=i;break;}
           }
           const reordered=[...others];
           reordered.splice(idx,0,ds);
@@ -849,7 +861,7 @@ export default function App(){
       nudge({density:.01});setDrag(null);setGuides([]);
     }
     if(rsz)setRsz(null);
-  },[drag,rsz,nudge,pan,device,rLayout,shapes]);
+  },[drag,rsz,nudge,pan,device,shapes]);
 
   const onDel=useCallback(()=>{if(selAll.size===0)return;push(shapes.filter(s=>!selAll.has(s.id)));setSel(null);setSelAll(new Set())},[selAll,shapes,push]);
 
