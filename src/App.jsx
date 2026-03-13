@@ -790,10 +790,12 @@ export default function App(){
       }
       setSel(s.id);
     }
+    const rl=rLayout?.get(s.id);
+    if(rl){setShapes(prev=>prev.map(x=>x.id===s.id?{...x,x:rl.x,y:rl.y}:x));s={...s,x:rl.x,y:rl.y}}
     setDrag(s.id);
     const pt=toCanvas(e.clientX,e.clientY);
     setOff({x:pt.x-s.x,y:pt.y-s.y});
-  },[toCanvas,flushDirtyText,sel,shapes,device]);
+  },[toCanvas,flushDirtyText,sel,shapes,device,rLayout]);
 
   const onMove=useCallback(e=>{
     if(pan){
