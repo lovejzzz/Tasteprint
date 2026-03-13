@@ -777,7 +777,6 @@ export default function App(){
   },[shapes,push,nudge,prefV,toCanvas]);
 
   const onDown=useCallback((e,s)=>{
-    if(device!=="free"){e.stopPropagation();flushDirtyText();setSel(s.id);setSelAll(new Set([s.id]));return}
     e.stopPropagation();flushDirtyText();
     if(e.shiftKey){
       setSelAll(prev=>{const n=new Set(prev);if(n.has(s.id))n.delete(s.id);else n.add(s.id);return n});
@@ -1011,9 +1010,10 @@ export default function App(){
           {/* transform layer */}
           <div style={{position:"absolute",left:0,top:0,...(device==="free"?{transform:`translate(${cam.x}px,${cam.y}px) scale(${cam.z})`,transformOrigin:"0 0",willChange:"transform"}:{}),width:device!=="free"?"100%":undefined,minHeight:rLayout?.get("__totalH")?.h||undefined}}>
             {shapes.map(s=>{
-              const rl=rLayout?.get(s.id);
+              const isDrg=drag===s.id;
+              const rl=(!isDrg&&rLayout)?rLayout.get(s.id):null;
               const sx=rl?rl.x:s.x,sy=rl?rl.y:s.y,sw=rl?rl.w:s.w,sh=rl?rl.h:s.h;
-              const isSel=selAll.has(s.id),isPrimary=sel===s.id,isDrg=drag===s.id;
+              const isSel=selAll.has(s.id),isPrimary=sel===s.id;
               const mx=maxV(s.type);
               const vn=varName(s.type,s.variant||0);
               const fontIdx=selFont!==null&&isPrimary?selFont:(s.font||0);
@@ -1047,9 +1047,9 @@ export default function App(){
                     </button>
                   )}
                   <div onMouseDown={e=>onDown(e,s)}
-                    style={{width:sw,height:sh,cursor:device!=="free"?"default":isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}${isPrimary?"88":"44"}`:"none",outlineOffset:4,borderRadius:14,...(rl?{overflow:"hidden"}:{})}}>
+                    style={{width:sw,height:sh,cursor:isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}${isPrimary?"88":"44"}`:"none",outlineOffset:4,borderRadius:14,...(rl?{overflow:"hidden"}:{})}}>
                     <C type={s.type} v={s.variant||0} p={p} editable={isPrimary} texts={s.texts||{}} onText={(k,val)=>updateText(s.id,k,val)} font={s.font||0}/>
-                    {isPrimary&&device==="free"&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
+                    {isPrimary&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
                   </div>
                 </div>
               );
