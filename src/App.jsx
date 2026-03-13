@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect } from "react";
 import { toPng } from "html-to-image";
 
 const STORE_KEY = "tasteprint";
@@ -72,6 +72,14 @@ const VARIANTS = {
   alert:     ["Info","Warning","Success","Error"],
   pagination:["Default","Dots","Minimal"],
   "pricing-card":["Default","Featured","Minimal"],
+  "product-card":["Standard","Sale badge","Horizontal"],
+  "cart-item":["Standard","Compact"],
+  "feature-table":["Checkmark","Highlighted","Minimal"],
+  "promo-banner":["Gradient","Pill"],
+  "order-summary":["Card","Compact"],
+  rating:["Stars","Compact","Review"],
+  receipt:["Dashed","Clean"],
+  "sub-toggle":["Cards","Switch"],
   tooltip:   ["Default","Dark","Arrow"],
   breadcrumb:["Slash","Arrow","Dots"],
   skeleton:  ["Card","List","Profile"],
@@ -123,6 +131,14 @@ const LIB = [
   ]},
   { cat:"Commerce", items:[
     {type:"pricing-card",label:"Pricing card",w:240,h:280},
+    {type:"product-card",label:"Product card",w:220,h:260},
+    {type:"cart-item",label:"Cart item",w:320,h:72},
+    {type:"feature-table",label:"Feature table",w:400,h:200},
+    {type:"promo-banner",label:"Promo banner",w:360,h:56},
+    {type:"order-summary",label:"Order summary",w:260,h:200},
+    {type:"rating",label:"Rating",w:220,h:60},
+    {type:"receipt",label:"Receipt",w:240,h:220},
+    {type:"sub-toggle",label:"Plan toggle",w:300,h:80},
   ]},
   { cat:"Data", items:[
     {type:"dash-panel",label:"Dashboard",w:280,h:180},
@@ -146,7 +162,7 @@ function uid(){return Math.random().toString(36).substr(2,9)}
 function maxV(t){return(VARIANTS[t]||[]).length||1}
 function varName(t,v){return(VARIANTS[t]||[])[v]||"Default"}
 
-const HAS_TEXT=new Set(["button","card","card-sm","hero","navbar","tabs","heading","stat-card","dash-panel","input","search","badge","toast","modal","sidebar","footer","accordion","table","list-item","dropdown","select","checkbox","alert","pagination","pricing-card","tooltip","breadcrumb","testimonial","cmd-palette","stepper","timeline","bento-grid","chart"]);
+const HAS_TEXT=new Set(["button","card","card-sm","hero","navbar","tabs","heading","stat-card","dash-panel","input","search","badge","toast","modal","sidebar","footer","accordion","table","list-item","dropdown","select","checkbox","alert","pagination","pricing-card","product-card","cart-item","feature-table","promo-banner","order-summary","rating","receipt","sub-toggle","tooltip","breadcrumb","testimonial","cmd-palette","stepper","timeline","bento-grid","chart"]);
 
 function snap(s,all,thr=10){
   const r={x:null,y:null,g:[]}, cx=s.x+s.w/2, cy=s.y+s.h/2;
@@ -462,6 +478,62 @@ function C({type,v=0,p,editable,texts={},onText,font=0}){
     return <div style={{...b,background:p.card,borderRadius:12,padding:24,display:"flex",flexDirection:"column",gap:14}}><T k="plan" s={{fontSize:16,fontWeight:600,color:p.tx}}>Pro</T><div style={{display:"flex",alignItems:"baseline",gap:2}}><T k="price" s={{fontSize:28,fontWeight:600,color:p.tx}}>$29</T><T k="period" s={{fontSize:12,color:p.mu}}>/mo</T></div><div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>{features.map((f,i)=><T key={i} k={`f${i}`} s={{fontSize:12,color:p.mu}}>• {f}</T>)}</div><div style={{height:36,borderRadius:8,border:`1.5px solid ${p.ac}`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:12,color:p.ac,fontWeight:500}}>Choose plan</T></div></div>;
   }
 
+  /* ---- PRODUCT CARD ---- */
+  if(type==="product-card"){
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><Img k="media" s={{height:"50%",background:p.su}}/><div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}><T k="title" s={{fontSize:13,fontWeight:600,color:p.tx}}>Product Name</T><T k="desc" s={{fontSize:10,color:p.mu}}>Short product description</T><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}><T k="price" s={{fontSize:16,fontWeight:700,color:p.tx}}>$49.00</T><div style={{height:30,width:72,borderRadius:8,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:"#fff",fontSize:10,fontWeight:600}}>Add</T></div></div></div></div>;
+    if(v===1)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative"}}><div style={{position:"absolute",top:10,left:10,background:"#E05050",borderRadius:6,padding:"2px 8px",zIndex:2}}><T k="badge" s={{fontSize:9,color:"#fff",fontWeight:600}}>SALE</T></div><Img k="media" s={{height:"50%",background:p.su}}/><div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}><T k="title" s={{fontSize:13,fontWeight:600,color:p.tx}}>Product Name</T><div style={{display:"flex",alignItems:"center",gap:8,marginTop:"auto"}}><T k="price" s={{fontSize:16,fontWeight:700,color:p.ac}}>$29.00</T><T k="orig" s={{fontSize:12,color:p.mu,textDecoration:"line-through"}}>$49.00</T></div></div></div>;
+    return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,display:"flex",gap:0,overflow:"hidden"}}><Img k="media" s={{width:"40%",background:p.su,flexShrink:0}}/><div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}><T k="title" s={{fontSize:13,fontWeight:600,color:p.tx}}>Product Name</T><T k="desc" s={{fontSize:10,color:p.mu,lineHeight:1.5}}>Short description</T><div style={{marginTop:"auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="price" s={{fontSize:15,fontWeight:700,color:p.tx}}>$49.00</T><div style={{height:28,width:66,borderRadius:6,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:"#fff",fontSize:10,fontWeight:600}}>Add</T></div></div></div></div>;
+  }
+
+  /* ---- CART ITEM ---- */
+  if(type==="cart-item"){
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:12,display:"flex",gap:12,alignItems:"center"}}><Img k="thumb" s={{width:48,height:48,borderRadius:8,background:p.su,flexShrink:0}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}><T k="name" s={{fontSize:12,fontWeight:600,color:p.tx}}>Product Name</T><T k="variant" s={{fontSize:10,color:p.mu}}>Size M · Black</T></div><div style={{display:"flex",alignItems:"center",gap:6,border:`1px solid ${p.bd}`,borderRadius:6,padding:"2px 6px"}}><span style={{fontSize:12,color:p.mu,cursor:"pointer"}}>−</span><T k="qty" s={{fontSize:11,fontWeight:500,color:p.tx,minWidth:16,textAlign:"center"}}>1</T><span style={{fontSize:12,color:p.mu,cursor:"pointer"}}>+</span></div><T k="price" s={{fontSize:13,fontWeight:600,color:p.tx,minWidth:50,textAlign:"right"}}>$49.00</T></div>;
+    return <div style={{...b,borderBottom:`1px solid ${p.bd}`,padding:"10px 0",display:"flex",gap:10,alignItems:"center"}}><Img k="thumb" s={{width:36,height:36,borderRadius:6,background:p.su,flexShrink:0}}/><T k="name" s={{flex:1,fontSize:11,fontWeight:500,color:p.tx}}>Product Name</T><T k="qty" s={{fontSize:10,color:p.mu}}>×1</T><T k="price" s={{fontSize:12,fontWeight:600,color:p.tx}}>$49</T></div>;
+  }
+
+  /* ---- FEATURE TABLE ---- */
+  if(type==="feature-table"){
+    const tiers=["Free","Pro","Team"];const feats=["Projects","Storage","Support","API"];const vals=[["3","10","∞"],["1GB","10GB","100GB"],["Email","Priority","24/7"],["—","✓","✓"]];
+    const hst={fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"};
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{display:"flex",borderBottom:`1px solid ${p.bd}`}}><div style={{flex:1.5,padding:"8px 12px"}}><span style={{...hst,color:p.mu}}>Feature</span></div>{tiers.map((t,i)=><div key={i} style={{flex:1,padding:"8px 8px",textAlign:"center"}}><T k={`t${i}`} s={{...hst,color:i===1?p.ac:p.mu}}>{t}</T></div>)}</div>{feats.map((f,fi)=><div key={fi} style={{display:"flex",borderBottom:fi<3?`1px solid ${p.bd}`:"none"}}><div style={{flex:1.5,padding:"6px 12px"}}><T k={`f${fi}`} s={{fontSize:11,color:p.tx}}>{f}</T></div>{vals[fi].map((val,vi)=><div key={vi} style={{flex:1,padding:"6px 8px",textAlign:"center"}}><span style={{fontSize:11,color:val==="✓"?"#4CAF50":val==="—"?p.mu:p.tx}}>{val}</span></div>)}</div>)}</div>;
+    if(v===1)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{display:"flex",borderBottom:`1px solid ${p.bd}`}}><div style={{flex:1.5,padding:"8px 12px"}}></div>{tiers.map((t,i)=><div key={i} style={{flex:1,padding:"8px 8px",textAlign:"center",background:i===1?p.ac+"0a":"transparent"}}><T k={`t${i}`} s={{...hst,color:i===1?p.ac:p.mu}}>{t}</T></div>)}</div>{feats.map((f,fi)=><div key={fi} style={{display:"flex",borderBottom:fi<3?`1px solid ${p.bd}`:"none"}}><div style={{flex:1.5,padding:"6px 12px"}}><T k={`f${fi}`} s={{fontSize:11,color:p.tx}}>{f}</T></div>{vals[fi].map((val,vi)=><div key={vi} style={{flex:1,padding:"6px 8px",textAlign:"center",background:vi===1?p.ac+"0a":"transparent"}}><span style={{fontSize:11,color:val==="✓"?"#4CAF50":val==="—"?p.mu:p.tx}}>{val}</span></div>)}</div>)}</div>;
+    return <div style={{...b,display:"flex",flexDirection:"column"}}><div style={{display:"flex",borderBottom:`1px solid ${p.bd}`,paddingBottom:6}}><div style={{flex:1.5}}></div>{tiers.map((t,i)=><div key={i} style={{flex:1,textAlign:"center"}}><T k={`t${i}`} s={{fontSize:11,fontWeight:600,color:p.tx}}>{t}</T></div>)}</div>{feats.map((f,fi)=><div key={fi} style={{display:"flex",padding:"5px 0"}}><div style={{flex:1.5}}><T k={`f${fi}`} s={{fontSize:11,color:p.mu}}>{f}</T></div>{vals[fi].map((val,vi)=><div key={vi} style={{flex:1,textAlign:"center"}}><span style={{fontSize:11,color:val==="✓"?p.ac:val==="—"?p.mu+"60":p.tx}}>{val}</span></div>)}</div>)}</div>;
+  }
+
+  /* ---- PROMO BANNER ---- */
+  if(type==="promo-banner"){
+    if(v===0)return <div style={{...b,background:`linear-gradient(135deg,${p.ac},${p.ac2})`,borderRadius:12,padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:12}}><T k="text" s={{fontSize:13,fontWeight:600,color:"#fff"}}>Summer Sale — 30% off</T><div style={{background:"#fff3",borderRadius:6,padding:"3px 10px"}}><T k="code" s={{fontSize:11,fontWeight:600,color:"#fff",letterSpacing:"0.06em"}}>SUMMER30</T></div></div><div style={{height:32,width:80,borderRadius:8,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:p.ac,fontSize:11,fontWeight:600}}>Shop now</T></div></div>;
+    return <div style={{...b,borderRadius:999,border:`1px solid ${p.bd}`,background:p.su,padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}><T k="text" s={{fontSize:12,fontWeight:500,color:p.tx}}>Use code</T><div style={{background:p.ac+"14",borderRadius:4,padding:"2px 8px"}}><T k="code" s={{fontSize:11,fontWeight:600,color:p.ac,letterSpacing:"0.04em"}}>SAVE20</T></div><T k="cta" s={{fontSize:12,fontWeight:500,color:p.ac}}>→</T></div>;
+  }
+
+  /* ---- ORDER SUMMARY ---- */
+  if(type==="order-summary"){
+    const lines=[{l:"Subtotal",v:"$98.00"},{l:"Shipping",v:"$5.00"},{l:"Tax",v:"$8.24"}];
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:18,display:"flex",flexDirection:"column",gap:8}}><T k="title" s={{fontSize:14,fontWeight:600,color:p.tx}}>Order Summary</T><div style={{height:1,background:p.bd}}/>{lines.map((l,i)=><div key={i} style={{display:"flex",justifyContent:"space-between"}}><T k={`l${i}`} s={{fontSize:12,color:p.mu}}>{l.l}</T><T k={`v${i}`} s={{fontSize:12,color:p.tx}}>{l.v}</T></div>)}<div style={{height:1,background:p.bd}}/><div style={{display:"flex",justifyContent:"space-between"}}><T k="total_label" s={{fontSize:13,fontWeight:600,color:p.tx}}>Total</T><T k="total" s={{fontSize:15,fontWeight:700,color:p.tx}}>$111.24</T></div><div style={{height:36,borderRadius:10,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",marginTop:4}}><T k="cta" s={{color:"#fff",fontSize:12,fontWeight:600}}>Checkout</T></div></div>;
+    return <div style={{...b,padding:12,display:"flex",flexDirection:"column",gap:6}}>{lines.map((l,i)=><div key={i} style={{display:"flex",justifyContent:"space-between"}}><T k={`l${i}`} s={{fontSize:11,color:p.mu}}>{l.l}</T><T k={`v${i}`} s={{fontSize:11,color:p.tx}}>{l.v}</T></div>)}<div style={{height:1,background:p.bd,margin:"2px 0"}}/><div style={{display:"flex",justifyContent:"space-between"}}><T k="total_label" s={{fontSize:12,fontWeight:600,color:p.tx}}>Total</T><T k="total" s={{fontSize:13,fontWeight:700,color:p.ac}}>$111.24</T></div></div>;
+  }
+
+  /* ---- RATING ---- */
+  if(type==="rating"){
+    const stars=(n,sz=14)=><span style={{fontSize:sz,letterSpacing:2}}>{Array(5).fill(0).map((_,i)=><span key={i} style={{color:i<n?p.ac:p.mu+"30"}}>{i<n?"★":"☆"}</span>)}</span>;
+    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>{stars(4,18)}<div style={{display:"flex",alignItems:"center",gap:6}}><T k="score" s={{fontSize:14,fontWeight:600,color:p.tx}}>4.0</T><T k="count" s={{fontSize:11,color:p.mu}}>(128 reviews)</T></div></div>;
+    if(v===1)return <div style={{...b,display:"flex",alignItems:"center",gap:8}}>{stars(4,14)}<T k="score" s={{fontSize:13,fontWeight:600,color:p.tx}}>4.0</T><T k="count" s={{fontSize:10,color:p.mu}}>128</T></div>;
+    return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",gap:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>{stars(5,14)}<T k="date" s={{fontSize:10,color:p.mu}}>2 days ago</T></div><T k="text" s={{fontSize:11,color:p.tx,lineHeight:1.5}}>Excellent quality, fast shipping. Would definitely buy again!</T><div style={{display:"flex",alignItems:"center",gap:6}}><Img k="avatar" s={{width:20,height:20,borderRadius:999,background:p.ac+"20"}}/><T k="author" s={{fontSize:10,fontWeight:500,color:p.mu}}>Jane D.</T></div></div>;
+  }
+
+  /* ---- RECEIPT ---- */
+  if(type==="receipt"){
+    const items=[{n:"Widget Pro",q:"2",p:"$49.00"},{n:"Adapter",q:"1",p:"$12.00"}];
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:4,border:`2px dashed ${p.bd}`,padding:18,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><div style={{textAlign:"center"}}><T k="store" s={{fontSize:12,fontWeight:600,color:p.tx}}>ACME STORE</T><div style={{fontSize:9,color:p.mu,marginTop:2}}>Order #12847</div></div><div style={{borderTop:`1px dashed ${p.bd}`,margin:"4px 0"}}/>{items.map((it,i)=><div key={i} style={{display:"flex",justifyContent:"space-between"}}><div><T k={`n${i}`} s={{fontSize:10,color:p.tx}}>{it.n}</T><span style={{fontSize:9,color:p.mu}}> ×{it.q}</span></div><T k={`p${i}`} s={{fontSize:10,color:p.tx}}>{it.p}</T></div>)}<div style={{borderTop:`1px dashed ${p.bd}`,margin:"4px 0"}}/><div style={{display:"flex",justifyContent:"space-between"}}><T k="total_l" s={{fontSize:11,fontWeight:600,color:p.tx}}>TOTAL</T><T k="total" s={{fontSize:11,fontWeight:600,color:p.tx}}>$110.00</T></div><div style={{textAlign:"center",marginTop:8}}><div style={{fontSize:8,color:p.mu,letterSpacing:"0.1em"}}>THANK YOU FOR YOUR PURCHASE</div></div></div>;
+    return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:18,display:"flex",flexDirection:"column",gap:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><T k="store" s={{fontSize:13,fontWeight:600,color:p.tx}}>Order #12847</T><div style={{background:"#4CAF5018",borderRadius:6,padding:"2px 8px"}}><span style={{fontSize:10,color:"#4CAF50",fontWeight:500}}>Paid</span></div></div>{items.map((it,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:6,background:p.su}}/><div><T k={`n${i}`} s={{fontSize:11,fontWeight:500,color:p.tx}}>{it.n}</T><div style={{fontSize:9,color:p.mu}}>Qty: {it.q}</div></div></div><T k={`p${i}`} s={{fontSize:11,fontWeight:500,color:p.tx}}>{it.p}</T></div>)}<div style={{height:1,background:p.bd}}/><div style={{display:"flex",justifyContent:"space-between"}}><T k="total_l" s={{fontSize:12,fontWeight:600,color:p.tx}}>Total</T><T k="total" s={{fontSize:13,fontWeight:700,color:p.tx}}>$110.00</T></div></div>;
+  }
+
+  /* ---- SUB TOGGLE ---- */
+  if(type==="sub-toggle"){
+    if(v===0)return <div style={{...b,display:"flex",gap:8}}><div style={{flex:1,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",gap:4}}><T k="plan0" s={{fontSize:12,fontWeight:600,color:p.tx}}>Monthly</T><T k="price0" s={{fontSize:18,fontWeight:700,color:p.tx}}>$29</T><T k="sub0" s={{fontSize:10,color:p.mu}}>per month</T></div><div style={{flex:1,background:p.ac+"0a",borderRadius:12,border:`2px solid ${p.ac}`,padding:14,display:"flex",flexDirection:"column",gap:4,position:"relative"}}><div style={{position:"absolute",top:-8,right:10,background:p.ac,borderRadius:4,padding:"1px 6px"}}><span style={{fontSize:8,color:"#fff",fontWeight:600}}>SAVE 20%</span></div><T k="plan1" s={{fontSize:12,fontWeight:600,color:p.tx}}>Annual</T><T k="price1" s={{fontSize:18,fontWeight:700,color:p.ac}}>$23</T><T k="sub1" s={{fontSize:10,color:p.mu}}>per month</T></div></div>;
+    return <div style={{...b,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}><T k="plan0" s={{fontSize:12,fontWeight:500,color:p.mu}}>Monthly</T><div style={{width:44,height:24,borderRadius:999,background:p.ac,padding:2,display:"flex",justifyContent:"flex-end"}}><div style={{width:20,height:20,borderRadius:999,background:"#fff"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><T k="plan1" s={{fontSize:12,fontWeight:600,color:p.tx}}>Annual</T><div style={{background:p.ac+"14",borderRadius:4,padding:"1px 6px"}}><T k="badge" s={{fontSize:9,fontWeight:600,color:p.ac}}>-20%</T></div></div></div>;
+  }
+
   /* ---- TOOLTIP ---- */
   if(type==="tooltip"){
     if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",gap:4}}><div style={{background:p.card,borderRadius:8,border:`1px solid ${p.bd}`,padding:"6px 12px",boxShadow:`0 4px 12px ${p.tx}08`}}><T k="label" s={{fontSize:11,color:p.tx}}>Tooltip text</T></div><div style={{width:8,height:8,background:p.card,border:`1px solid ${p.bd}`,borderTop:"none",borderLeft:"none",transform:"rotate(45deg)",marginTop:-6}}/></div>;
@@ -555,16 +627,20 @@ export default function App(){
   const [pan,setPan]=useState(null);
   const [selFont,setSelFont]=useState(null);
   const [device,setDevice]=useState("free");
+  const [libOrd,setLibOrd]=useState(()=>load("libOrd",{}));
+  const [pDrag,setPDrag]=useState(null);
   const cRef=useRef(null);
   const dRef=useRef(null);
   const dirtyText=useRef(null);
+  const cardRefs=useRef(new Map());
+  const prevRects=useRef(new Map());
   const camRef=useRef(cam);
   camRef.current=cam;
 
   /* ---- PERSIST ---- */
   useEffect(()=>{
-    localStorage.setItem(STORE_KEY,JSON.stringify({shapes,pal,taste,prefV,gest}));
-  },[shapes,pal,taste,prefV,gest]);
+    localStorage.setItem(STORE_KEY,JSON.stringify({shapes,pal,taste,prefV,gest,libOrd}));
+  },[shapes,pal,taste,prefV,gest,libOrd]);
 
   const updateText=useCallback((id,key,value)=>{
     setShapes(prev=>prev.map(s=>{
@@ -800,6 +876,52 @@ export default function App(){
     return m;
   },[shapes,device]);
 
+  /* ---- PANEL ITEM ORDERING ---- */
+  const catItems=useMemo(()=>{
+    const base=(LIB.find(c=>c.cat===expCat)?.items||[]);
+    const ord=libOrd[expCat];
+    if(!ord)return base;
+    const ordered=ord.map(t=>base.find(i=>i.type===t)).filter(Boolean);
+    const rest=base.filter(i=>!ord.includes(i.type));
+    return[...ordered,...rest];
+  },[expCat,libOrd]);
+
+  const saveRects=useCallback(()=>{
+    prevRects.current=new Map();
+    cardRefs.current.forEach((el,type)=>{if(el)prevRects.current.set(type,el.getBoundingClientRect())});
+  },[]);
+
+  const reorderLib=useCallback((fromType,toType)=>{
+    saveRects();
+    setLibOrd(prev=>{
+      const base=(LIB.find(c=>c.cat===expCat)?.items||[]).map(i=>i.type);
+      const cur=prev[expCat]||base;
+      const arr=[...cur];
+      const fi=arr.indexOf(fromType),ti=arr.indexOf(toType);
+      if(fi<0||ti<0||fi===ti)return prev;
+      arr.splice(fi,1);arr.splice(ti,0,fromType);
+      return{...prev,[expCat]:arr};
+    });
+  },[expCat,saveRects]);
+
+  useLayoutEffect(()=>{
+    if(prevRects.current.size===0)return;
+    cardRefs.current.forEach((el,type)=>{
+      const oldR=prevRects.current.get(type);
+      if(!el||!oldR)return;
+      const newR=el.getBoundingClientRect();
+      const dy=oldR.top-newR.top;
+      if(Math.abs(dy)<1)return;
+      el.style.transition="none";
+      el.style.transform=`translateY(${dy}px)`;
+      requestAnimationFrame(()=>{requestAnimationFrame(()=>{
+        el.style.transition="transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+        el.style.transform="";
+      })});
+    });
+    prevRects.current=new Map();
+  });
+
   const p=PAL[pal];
   const btnSt={background:"none",border:`1px solid ${p.bd}`,borderRadius:8,padding:"5px 12px",fontSize:11,color:p.mu,cursor:"pointer",fontFamily:"inherit"};
   const zoomPct=Math.round(cam.z*100);
@@ -840,14 +962,18 @@ export default function App(){
             ))}
           </div>
           {/* component cards */}
-          <div style={{width:280,padding:10,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
-            {(LIB.find(c=>c.cat===expCat)?.items||[]).map(item=>{
+          <div style={{width:280,padding:12,overflowY:"auto",display:"flex",flexDirection:"column",gap:14}}>
+            {catItems.map(item=>{
               const pv=prefV[item.type]||0;const vn=varName(item.type,pv);
               const tw=240,ts=Math.min(tw/item.w,1),th=item.h*ts;
               return(
-                <div key={item.type} draggable onDragStart={()=>{dRef.current=item}}
-                  style={{padding:10,borderRadius:10,cursor:"grab",display:"flex",flexDirection:"column",gap:6,transition:"background .12s",border:`1px solid ${p.bd}`}}
-                  onMouseEnter={e=>e.currentTarget.style.background=p.su} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div key={item.type} ref={el=>{if(el)cardRefs.current.set(item.type,el);else cardRefs.current.delete(item.type)}}
+                  draggable
+                  onDragStart={e=>{dRef.current=item;setPDrag(item.type);e.dataTransfer.effectAllowed="copyMove"}}
+                  onDragOver={e=>{e.preventDefault();if(pDrag&&pDrag!==item.type)reorderLib(pDrag,item.type)}}
+                  onDragEnd={()=>setPDrag(null)}
+                  style={{padding:10,borderRadius:10,cursor:"grab",display:"flex",flexDirection:"column",gap:6,border:`1px solid ${p.mu}22`,background:pDrag===item.type?p.su+"88":"transparent",opacity:pDrag===item.type?.6:1,transform:pDrag===item.type?"scale(0.97)":"scale(1)",transition:"opacity .2s, transform .2s, background .15s, border-color .15s"}}
+                  onMouseEnter={e=>{if(!pDrag)e.currentTarget.style.background=p.su;e.currentTarget.style.borderColor=p.mu+"44"}} onMouseLeave={e=>{if(!pDrag)e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=p.mu+"22"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:12,fontWeight:500,color:p.tx}}>{item.label}</span>
                     <span style={{fontSize:10,color:p.mu,opacity:.6}}>{vn}</span>
