@@ -809,12 +809,11 @@ export default function App(){
       }
       setSel(s.id);
     }
-    const rl=rLayout?.get(s.id);
-    if(rl){setShapes(prev=>prev.map(x=>x.id===s.id?{...x,x:rl.x,y:rl.y}:x));s={...s,x:rl.x,y:rl.y}}
+    if(device!=="free")return;
     setDrag(s.id);
     const pt=toCanvas(e.clientX,e.clientY);
     setOff({x:pt.x-s.x,y:pt.y-s.y});
-  },[toCanvas,flushDirtyText,sel,shapes,device,rLayout]);
+  },[toCanvas,flushDirtyText,sel,shapes,device]);
 
   const onMove=useCallback(e=>{
     if(pan){
@@ -830,38 +829,9 @@ export default function App(){
 
   const onUp=useCallback(()=>{
     if(pan)setPan(null);
-    if(drag){
-      if(device!=="free"){
-        const ds=shapes.find(x=>x.id===drag);
-        if(ds){
-          const dropY=ds.y;
-          const others=shapes.filter(x=>x.id!==drag);
-          /* compute layout positions WITHOUT the dragged shape */
-          const containerW=device==="desktop"?1280:390;
-          const pad=device==="desktop"?32:16;
-          const gap=device==="desktop"?16:12;
-          const maxW=containerW-pad*2;
-          let cy=pad;
-          const slots=others.map(o=>{
-            const scale=Math.min(1,maxW/o.w);
-            const nh=o.h*scale;
-            const mid=cy+nh/2;
-            cy+=nh+gap;
-            return mid;
-          });
-          let idx=others.length;
-          for(let i=0;i<slots.length;i++){
-            if(dropY<slots[i]){idx=i;break;}
-          }
-          const reordered=[...others];
-          reordered.splice(idx,0,ds);
-          setShapes(reordered);
-        }
-      }
-      nudge({density:.01});setDrag(null);setGuides([]);
-    }
+    if(drag){nudge({density:.01});setDrag(null);setGuides([])}
     if(rsz)setRsz(null);
-  },[drag,rsz,nudge,pan,device,shapes]);
+  },[drag,rsz,nudge,pan]);
 
   const onDel=useCallback(()=>{if(selAll.size===0)return;push(shapes.filter(s=>!selAll.has(s.id)));setSel(null);setSelAll(new Set())},[selAll,shapes,push]);
 
@@ -969,7 +939,7 @@ export default function App(){
           <div style={{display:"flex",gap:4,flexWrap:"wrap",maxWidth:220}}>{Object.entries(PAL).map(([k,v])=><button key={k} onClick={()=>setPal(k)} title={v.name} style={{width:18,height:18,borderRadius:999,border:pal===k?`2px solid ${p.ac}`:"2px solid transparent",background:k==="noir"||k==="neon"?"#1A1A1E":v.ac,cursor:"pointer",transition:"all .2s",transform:pal===k?"scale(1.2)":"scale(1)"}}/>)}</div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <div style={{display:"flex",alignItems:"center",border:`1px solid ${p.bd}`,borderRadius:8,overflow:"hidden"}}>
-            {[{k:"free",l:"Free"},{k:"desktop",l:"Desktop"},{k:"phone",l:"Phone"}].map(d=><button key={d.k} onClick={()=>{setDevice(d.k);setCam({x:0,y:0,z:1})}} style={{background:device===d.k?p.su:"none",border:"none",padding:"5px 10px",fontSize:10,color:device===d.k?p.tx:p.mu,cursor:"pointer",fontFamily:"inherit",fontWeight:device===d.k?500:400}}>{d.l}</button>)}
+            {[{k:"free",l:"Free"},{k:"desktop",l:"Desktop"},{k:"phone",l:"Phone"}].map(d=><button key={d.k} onClick={()=>{if(d.k!=="free")setShapes(prev=>[...prev].sort((a,b)=>a.y-b.y||a.x-b.x));setDevice(d.k);setCam({x:0,y:0,z:1})}} style={{background:device===d.k?p.su:"none",border:"none",padding:"5px 10px",fontSize:10,color:device===d.k?p.tx:p.mu,cursor:"pointer",fontFamily:"inherit",fontWeight:device===d.k?500:400}}>{d.l}</button>)}
           </div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <button onClick={clearAll} title="New canvas" style={btnSt}>New</button>
@@ -1078,7 +1048,7 @@ export default function App(){
                     </button>
                   )}
                   <div onMouseDown={e=>onDown(e,s)}
-                    style={{width:sw,height:sh,cursor:isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}${isPrimary?"88":"44"}`:"none",outlineOffset:4,borderRadius:14,...(rl?{overflow:"hidden"}:{})}}>
+                    style={{width:sw,height:sh,cursor:device!=="free"?"pointer":isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}${isPrimary?"88":"44"}`:"none",outlineOffset:4,borderRadius:14,...(rl?{overflow:"hidden"}:{})}}>
                     <C type={s.type} v={s.variant||0} p={p} editable={isPrimary} texts={s.texts||{}} onText={(k,val)=>updateText(s.id,k,val)} font={s.font||0}/>
                     {isPrimary&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
                   </div>
