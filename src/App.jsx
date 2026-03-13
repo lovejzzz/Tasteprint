@@ -776,6 +776,25 @@ export default function App(){
     push([...shapes,ns]);setSel(ns.id);setSelAll(new Set([ns.id]));nudge({complexity:.02});dRef.current=null;
   },[shapes,push,nudge,prefV,toCanvas]);
 
+  /* ---- RESPONSIVE FLOW LAYOUT ---- */
+  const rLayout=useMemo(()=>{
+    if(device==="free")return null;
+    const containerW=device==="desktop"?1280:390;
+    const pad=device==="desktop"?32:16;
+    const gap=device==="desktop"?16:12;
+    const maxW=containerW-pad*2;
+    const sorted=[...shapes].sort((a,b)=>a.y-b.y||a.x-b.x);
+    const m=new Map();let cy=pad;
+    for(const s of sorted){
+      const scale=Math.min(1,maxW/s.w);
+      const nw=s.w*scale,nh=s.h*scale;
+      m.set(s.id,{x:containerW/2-nw/2,y:cy,w:nw,h:nh});
+      cy+=nh+gap;
+    }
+    m.set("__totalH",{h:cy+pad});
+    return m;
+  },[shapes,device]);
+
   const onDown=useCallback((e,s)=>{
     e.stopPropagation();flushDirtyText();
     if(e.shiftKey){
@@ -860,25 +879,6 @@ export default function App(){
   },[]);
 
   useEffect(()=>{if(["warm","candy"].includes(pal))nudge({warmth:.04});else if(pal==="cool"||pal==="ocean")nudge({warmth:-.04});else if(pal==="noir"||pal==="neon")nudge({boldness:.05,warmth:-.06});else if(pal==="cloud")nudge({warmth:.03,density:-.02});else if(pal==="mint"||pal==="forest")nudge({warmth:-.02,roundness:.02});else if(pal==="mocha")nudge({warmth:.05,roundness:.02});else if(pal==="lavender")nudge({complexity:.03,warmth:.01})},[pal]);
-
-  /* ---- RESPONSIVE FLOW LAYOUT ---- */
-  const rLayout=useMemo(()=>{
-    if(device==="free")return null;
-    const containerW=device==="desktop"?1280:390;
-    const pad=device==="desktop"?32:16;
-    const gap=device==="desktop"?16:12;
-    const maxW=containerW-pad*2;
-    const sorted=[...shapes].sort((a,b)=>a.y-b.y||a.x-b.x);
-    const m=new Map();let cy=pad;
-    for(const s of sorted){
-      const scale=Math.min(1,maxW/s.w);
-      const nw=s.w*scale,nh=s.h*scale;
-      m.set(s.id,{x:containerW/2-nw/2,y:cy,w:nw,h:nh});
-      cy+=nh+gap;
-    }
-    m.set("__totalH",{h:cy+pad});
-    return m;
-  },[shapes,device]);
 
   /* ---- PANEL ITEM ORDERING ---- */
   const catItems=useMemo(()=>{
