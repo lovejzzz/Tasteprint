@@ -59,19 +59,19 @@ const VARIANTS = {
   badge:     ["Tinted","Solid","Outline","Glass","Brutal"],
   toast:     ["Card","Dark snack","Accent bar","Glass"],
   progress:  ["Round","Flat","Thin"],
-  modal:     ["Default","Minimal","Sheet"],
-  sidebar:   ["Default","Minimal","Grouped","Glass"],
+  modal:     ["Card","Minimal","Sheet"],
+  sidebar:   ["Full","Minimal","Grouped","Glass"],
   table:     ["Striped","Bordered","Minimal","Terminal"],
   accordion: ["Bordered","Card","Minimal"],
   footer:    ["Columns","Simple","Dark"],
   "bento-grid":["Even","Featured","Mixed"],
-  dropdown:  ["Default","Minimal","Rounded"],
-  select:    ["Default","Pill","Underline"],
+  dropdown:  ["Bordered","Minimal","Rounded"],
+  select:    ["Outlined","Pill","Underline"],
   checkbox:  ["Square","Round","Toggle row"],
-  slider:    ["Default","Thin","Stepped"],
+  slider:    ["Round","Thin","Stepped"],
   alert:     ["Info","Warning","Success","Error"],
-  pagination:["Default","Dots","Minimal"],
-  "pricing-card":["Default","Featured","Minimal"],
+  pagination:["Numbered","Dots","Minimal"],
+  "pricing-card":["Clean","Featured","Minimal"],
   "product-card":["Standard","Sale badge","Horizontal"],
   "cart-item":["Standard","Compact"],
   "feature-table":["Checkmark","Highlighted","Minimal"],
@@ -80,12 +80,12 @@ const VARIANTS = {
   rating:["Stars","Compact","Review"],
   receipt:["Dashed","Clean"],
   "sub-toggle":["Cards","Switch"],
-  tooltip:   ["Default","Dark","Arrow"],
+  tooltip:   ["Light","Dark","Arrow"],
   breadcrumb:["Slash","Arrow","Dots"],
   skeleton:  ["Card","List","Profile"],
   chart:     ["Bar","Line","Donut"],
   testimonial:["Card","Minimal","Bubble"],
-  "cmd-palette":["Default","Minimal","Grouped"],
+  "cmd-palette":["Full","Minimal","Grouped"],
   stepper:   ["Horizontal","Vertical","Dots"],
   timeline:  ["Left","Centered","Minimal"],
 };
@@ -160,7 +160,7 @@ const LIB = [
 
 function uid(){return Math.random().toString(36).substr(2,9)}
 function maxV(t){return(VARIANTS[t]||[]).length||1}
-function varName(t,v){return(VARIANTS[t]||[])[v]||"Default"}
+function varName(t,v){return(VARIANTS[t]||[])[v]||"Standard"}
 
 const HAS_TEXT=new Set(["button","card","card-sm","hero","navbar","tabs","heading","stat-card","dash-panel","input","search","badge","toast","modal","sidebar","footer","accordion","table","list-item","dropdown","select","checkbox","alert","pagination","pricing-card","product-card","cart-item","feature-table","promo-banner","order-summary","rating","receipt","sub-toggle","tooltip","breadcrumb","testimonial","cmd-palette","stepper","timeline","bento-grid","chart"]);
 
@@ -1023,7 +1023,7 @@ export default function App(){
                 <div key={s.id} style={{position:"absolute",left:sx,top:sy,width:sw,zIndex:isDrg?100:isSel?50:1}}>
                   {/* toolbar: variant + font pickers — only on primary select */}
                   {isPrimary&&!isDrg&&(mx>1||HAS_TEXT.has(s.type))&&(
-                    <div style={{position:"absolute",top:-36,left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:1,zIndex:200,background:p.card,border:`1px solid ${p.bd}`,borderRadius:999,padding:"2px 3px",boxShadow:`0 4px 16px ${p.tx}10`,whiteSpace:"nowrap",userSelect:"none"}}>
+                    <div style={{position:"absolute",top:-44,left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:1,zIndex:200,background:p.card,border:`1px solid ${p.bd}`,borderRadius:999,padding:"2px 3px",boxShadow:`0 4px 16px ${p.tx}10`,whiteSpace:"nowrap",userSelect:"none"}}>
                       {mx>1&&<>
                         <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycle(s.id,-1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"‹"}</button>
                         <span style={{fontSize:9,color:p.mu,padding:"0 4px",width:68,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis"}}>{vn}</span>
