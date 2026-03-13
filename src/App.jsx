@@ -783,9 +783,8 @@ export default function App(){
     const pad=device==="desktop"?32:16;
     const gap=device==="desktop"?16:12;
     const maxW=containerW-pad*2;
-    const sorted=[...shapes].sort((a,b)=>a.y-b.y||a.x-b.x);
     const m=new Map();let cy=pad;
-    for(const s of sorted){
+    for(const s of shapes){
       const scale=Math.min(1,maxW/s.w);
       const nw=s.w*scale,nh=s.h*scale;
       m.set(s.id,{x:containerW/2-nw/2,y:cy,w:nw,h:nh});
@@ -830,9 +829,26 @@ export default function App(){
 
   const onUp=useCallback(()=>{
     if(pan)setPan(null);
-    if(drag){nudge({density:.01});setDrag(null);setGuides([])}
+    if(drag){
+      if(device!=="free"&&rLayout){
+        const ds=shapes.find(x=>x.id===drag);
+        if(ds){
+          const dropY=ds.y;
+          const others=shapes.filter(x=>x.id!==drag);
+          let idx=others.length;
+          for(let i=0;i<others.length;i++){
+            const rl=rLayout.get(others[i].id);
+            if(rl&&dropY<rl.y+rl.h/2){idx=i;break;}
+          }
+          const reordered=[...others];
+          reordered.splice(idx,0,ds);
+          setShapes(reordered);
+        }
+      }
+      nudge({density:.01});setDrag(null);setGuides([]);
+    }
     if(rsz)setRsz(null);
-  },[drag,rsz,nudge,pan]);
+  },[drag,rsz,nudge,pan,device,rLayout,shapes]);
 
   const onDel=useCallback(()=>{if(selAll.size===0)return;push(shapes.filter(s=>!selAll.has(s.id)));setSel(null);setSelAll(new Set())},[selAll,shapes,push]);
 
