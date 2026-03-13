@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
 
 const STORE_KEY = "tasteprint";
@@ -521,6 +521,7 @@ function C({type,v=0,p,editable,texts={},onText,font=0}){
 export default function App(){
   const [shapes,setShapes]=useState(()=>load("shapes",[]));
   const [sel,setSel]=useState(null);
+  const [selAll,setSelAll]=useState(new Set());
   const [drag,setDrag]=useState(null);
   const [off,setOff]=useState({x:0,y:0});
   const [guides,setGuides]=useState([]);
@@ -546,6 +547,24 @@ export default function App(){
   useEffect(()=>{
     localStorage.setItem(STORE_KEY,JSON.stringify({shapes,pal,taste,prefV,gest}));
   },[shapes,pal,taste,prefV,gest]);
+
+  const updateText=useCallback((id,key,value)=>{
+    setShapes(prev=>prev.map(s=>{
+      if(s.id!==id)return s;
+      const texts={...(s.texts||{})};
+      if(value===null||value===undefined)delete texts[key];
+      else texts[key]=value;
+      return{...s,texts};
+    }));
+  },[]);
+
+  const flushDirtyText=useCallback(()=>{
+    if(!dirtyText.current)return;
+    const{id,key}=dirtyText.current;
+    const ce=document.querySelector(`[data-text-key="${key}"]`);
+    if(ce)updateText(id,key,ce.innerHTML);
+    dirtyText.current=null;
+  },[updateText]);
 
   /* ---- EXPORT / IMPORT ---- */
   const exportJSON=useCallback(()=>{
@@ -582,11 +601,11 @@ export default function App(){
   const exportPng=useCallback(()=>{
     flushDirtyText();
     const el=cRef.current;if(!el)return;
-    const prev=sel;setSel(null);
+    const prev=sel;const prevAll=selAll;setSel(null);setSelAll(new Set());
     requestAnimationFrame(()=>{
       toPng(el,{pixelRatio:2,cacheBust:true}).then(url=>{
         const a=document.createElement("a");a.href=url;a.download="tasteprint.png";a.click();
-      }).catch(()=>{}).finally(()=>setSel(prev));
+      }).catch(()=>{}).finally(()=>{setSel(prev);setSelAll(prevAll)});
     });
   },[sel,flushDirtyText]);
 
@@ -600,7 +619,7 @@ export default function App(){
   const push=useCallback(ns=>{setHist(h=>[...h.slice(-40),shapes]);setFuture([]);setShapes(ns)},[shapes]);
   const undo=useCallback(()=>{if(!hist.length)return;setFuture(f=>[...f,shapes]);setShapes(hist[hist.length-1]);setHist(h=>h.slice(0,-1))},[hist,shapes]);
   const redo=useCallback(()=>{if(!future.length)return;setHist(h=>[...h,shapes]);setShapes(future[future.length-1]);setFuture(f=>f.slice(0,-1))},[future,shapes]);
-  const clearAll=useCallback(()=>{push([]);setSel(null)},[push]);
+  const clearAll=useCallback(()=>{push([]);setSel(null);setSelAll(new Set())},[push]);
   const nudge=useCallback(d=>{setGest(g=>g+1);setTaste(prev=>{const t={...prev};for(const[k,val]of Object.entries(d))t[k]=Math.max(0,Math.min(1,(t[k]||0)+val));return t})},[]);
 
   const cycle=useCallback((id,dir)=>{
@@ -616,24 +635,6 @@ export default function App(){
     else if(vn.includes("glass"))nudge({complexity:.03,roundness:.02});
     else nudge({complexity:.01});
   },[shapes,nudge]);
-
-  const updateText=useCallback((id,key,value)=>{
-    setShapes(prev=>prev.map(s=>{
-      if(s.id!==id)return s;
-      const texts={...(s.texts||{})};
-      if(value===null||value===undefined)delete texts[key];
-      else texts[key]=value;
-      return{...s,texts};
-    }));
-  },[]);
-
-  const flushDirtyText=useCallback(()=>{
-    if(!dirtyText.current)return;
-    const{id,key}=dirtyText.current;
-    const ce=document.querySelector(`[data-text-key="${key}"]`);
-    if(ce)updateText(id,key,ce.innerHTML);
-    dirtyText.current=null;
-  },[updateText]);
 
   const cycleFont=useCallback((id,dir)=>{
     const ws=window.getSelection();
@@ -668,23 +669,37 @@ export default function App(){
 
   const delShape=useCallback((id)=>{
     flushDirtyText();
-    push(shapes.filter(s=>s.id!==id));
-    if(sel===id)setSel(null);
-  },[shapes,push,sel,flushDirtyText]);
+    push(shapes.filter(s=>!selAll.has(s.id)));
+    setSel(null);setSelAll(new Set());
+  },[shapes,push,selAll,flushDirtyText]);
 
   const onDrop=useCallback(e=>{
     e.preventDefault();const info=dRef.current;if(!info)return;
     const pt=toCanvas(e.clientX,e.clientY);
     const ns={id:uid(),type:info.type,x:pt.x-info.w/2,y:pt.y-info.h/2,w:info.w,h:info.h,variant:prefV[info.type]||0,texts:{},font:0};
     const sn=snap(ns,shapes);if(sn.x!==null)ns.x=sn.x;if(sn.y!==null)ns.y=sn.y;
-    push([...shapes,ns]);setSel(ns.id);nudge({complexity:.02});dRef.current=null;
+    push([...shapes,ns]);setSel(ns.id);setSelAll(new Set([ns.id]));nudge({complexity:.02});dRef.current=null;
   },[shapes,push,nudge,prefV,toCanvas]);
 
   const onDown=useCallback((e,s)=>{
-    e.stopPropagation();flushDirtyText();setSel(s.id);setDrag(s.id);
+    if(device!=="free"){e.stopPropagation();flushDirtyText();setSel(s.id);setSelAll(new Set([s.id]));return}
+    e.stopPropagation();flushDirtyText();
+    if(e.shiftKey){
+      setSelAll(prev=>{const n=new Set(prev);if(n.has(s.id))n.delete(s.id);else n.add(s.id);return n});
+      if(!sel)setSel(s.id);
+    }else{
+      if(s.group){
+        const members=shapes.filter(x=>x.group===s.group);
+        setSelAll(new Set(members.map(x=>x.id)));
+      }else{
+        setSelAll(new Set([s.id]));
+      }
+      setSel(s.id);
+    }
+    setDrag(s.id);
     const pt=toCanvas(e.clientX,e.clientY);
     setOff({x:pt.x-s.x,y:pt.y-s.y});
-  },[toCanvas,flushDirtyText]);
+  },[toCanvas,flushDirtyText,sel,shapes,device]);
 
   const onMove=useCallback(e=>{
     if(pan){
@@ -695,8 +710,8 @@ export default function App(){
     if(!drag&&!rsz)return;
     const pt=toCanvas(e.clientX,e.clientY);
     if(rsz){const s=shapes.find(x=>x.id===rsz);if(!s)return;let nw=Math.max(40,pt.x-s.x),nh=Math.max(20,pt.y-s.y);if(e.shiftKey){const ratio=s.w/s.h;if(nw/nh>ratio)nh=nw/ratio;else nw=nh*ratio;}setShapes(shapes.map(x=>x.id===rsz?{...x,w:nw,h:nh}:x));return}
-    if(drag){let nx=pt.x-off.x,ny=pt.y-off.y;const s=shapes.find(x=>x.id===drag);if(!s)return;const sn=snap({...s,x:nx,y:ny},shapes);if(sn.x!==null)nx=sn.x;if(sn.y!==null)ny=sn.y;setGuides(sn.g);setShapes(shapes.map(x=>x.id===drag?{...x,x:nx,y:ny}:x))}
-  },[drag,rsz,shapes,off,pan,toCanvas]);
+    if(drag){let nx=pt.x-off.x,ny=pt.y-off.y;const s=shapes.find(x=>x.id===drag);if(!s)return;const others=shapes.filter(x=>!selAll.has(x.id));const sn=snap({...s,x:nx,y:ny},others);if(sn.x!==null)nx=sn.x;if(sn.y!==null)ny=sn.y;setGuides(sn.g);const ddx=nx-s.x,ddy=ny-s.y;setShapes(shapes.map(x=>{if(x.id===drag)return{...x,x:nx,y:ny};if(selAll.has(x.id))return{...x,x:x.x+ddx,y:x.y+ddy};return x}))}
+  },[drag,rsz,shapes,off,pan,toCanvas,selAll]);
 
   const onUp=useCallback(()=>{
     if(pan)setPan(null);
@@ -704,13 +719,15 @@ export default function App(){
     if(rsz)setRsz(null);
   },[drag,rsz,nudge,pan]);
 
-  const onDel=useCallback(()=>{if(!sel)return;push(shapes.filter(s=>s.id!==sel));setSel(null)},[sel,shapes,push]);
+  const onDel=useCallback(()=>{if(selAll.size===0)return;push(shapes.filter(s=>!selAll.has(s.id)));setSel(null);setSelAll(new Set())},[selAll,shapes,push]);
 
   const dupShape=useCallback(()=>{
-    if(!sel)return;const s=shapes.find(x=>x.id===sel);if(!s)return;
-    const ns={...s,id:uid(),x:s.x+20,y:s.y+20,texts:{...(s.texts||{})}};
-    push([...shapes,ns]);setSel(ns.id);
-  },[sel,shapes,push]);
+    if(selAll.size===0)return;
+    const newGroup=selAll.size>1?uid():null;
+    const duped=shapes.filter(s=>selAll.has(s.id)).map(s=>({...s,id:uid(),x:s.x+20,y:s.y+20,texts:{...(s.texts||{})},group:newGroup||s.group}));
+    push([...shapes,...duped]);
+    setSelAll(new Set(duped.map(s=>s.id)));setSel(duped[0]?.id||null);
+  },[selAll,shapes,push]);
 
   /* ---- KEYBOARD ---- */
   useEffect(()=>{const h=e=>{
@@ -718,13 +735,15 @@ export default function App(){
     if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==="z"){e.preventDefault();redo();return}
     if((e.metaKey||e.ctrlKey)&&e.key==="z"){e.preventDefault();undo()}
     if((e.metaKey||e.ctrlKey)&&e.key==="d"){e.preventDefault();dupShape()}
-    if(sel&&!e.target.isContentEditable&&["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)){
+    if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==="g"){e.preventDefault();setShapes(prev=>prev.map(s=>selAll.has(s.id)?{...s,group:undefined}:s));return}
+    if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key==="g"){e.preventDefault();if(selAll.size>1){const gid=uid();setShapes(prev=>prev.map(s=>selAll.has(s.id)?{...s,group:gid}:s))}return}
+    if(selAll.size>0&&!e.target.isContentEditable&&["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)){
       e.preventDefault();const d=e.shiftKey?10:1;
       const dx=e.key==="ArrowLeft"?-d:e.key==="ArrowRight"?d:0;
       const dy=e.key==="ArrowUp"?-d:e.key==="ArrowDown"?d:0;
-      setShapes(prev=>prev.map(s=>s.id===sel?{...s,x:s.x+dx,y:s.y+dy}:s));
+      setShapes(prev=>prev.map(s=>selAll.has(s.id)?{...s,x:s.x+dx,y:s.y+dy}:s));
     }
-  };window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h)},[onDel,undo,redo,dupShape,sel]);
+  };window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h)},[onDel,undo,redo,dupShape,selAll]);
 
   /* ---- WHEEL: pan & zoom ---- */
   useEffect(()=>{
@@ -746,6 +765,23 @@ export default function App(){
 
   useEffect(()=>{if(["warm","candy"].includes(pal))nudge({warmth:.04});else if(pal==="cool"||pal==="ocean")nudge({warmth:-.04});else if(pal==="noir"||pal==="neon")nudge({boldness:.05,warmth:-.06});else if(pal==="cloud")nudge({warmth:.03,density:-.02});else if(pal==="mint"||pal==="forest")nudge({warmth:-.02,roundness:.02});else if(pal==="mocha")nudge({warmth:.05,roundness:.02});else if(pal==="lavender")nudge({complexity:.03,warmth:.01})},[pal]);
 
+  /* ---- RESPONSIVE FLOW LAYOUT ---- */
+  const rLayout=useMemo(()=>{
+    if(device==="free")return null;
+    const vw=device==="desktop"?1248:358;
+    const pad=16,gap=12;
+    const sorted=[...shapes].sort((a,b)=>a.y-b.y||a.x-b.x);
+    const m=new Map();let cy=pad;
+    for(const s of sorted){
+      const scale=Math.min(1,(vw)/s.w);
+      const nw=s.w*scale,nh=s.h*scale;
+      m.set(s.id,{x:(device==="desktop"?1280:390)/2-nw/2,y:cy,w:nw,h:nh});
+      cy+=nh+gap;
+    }
+    m.set("__totalH",{h:cy+pad});
+    return m;
+  },[shapes,device]);
+
   const p=PAL[pal];
   const btnSt={background:"none",border:`1px solid ${p.bd}`,borderRadius:8,padding:"5px 12px",fontSize:11,color:p.mu,cursor:"pointer",fontFamily:"inherit"};
   const zoomPct=Math.round(cam.z*100);
@@ -761,7 +797,7 @@ export default function App(){
           <div style={{display:"flex",gap:4,flexWrap:"wrap",maxWidth:220}}>{Object.entries(PAL).map(([k,v])=><button key={k} onClick={()=>setPal(k)} title={v.name} style={{width:18,height:18,borderRadius:999,border:pal===k?`2px solid ${p.ac}`:"2px solid transparent",background:k==="noir"||k==="neon"?"#1A1A1E":v.ac,cursor:"pointer",transition:"all .2s",transform:pal===k?"scale(1.2)":"scale(1)"}}/>)}</div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <div style={{display:"flex",alignItems:"center",border:`1px solid ${p.bd}`,borderRadius:8,overflow:"hidden"}}>
-            {[{k:"free",l:"Free"},{k:"desktop",l:"Desktop"},{k:"phone",l:"Phone"}].map(d=><button key={d.k} onClick={()=>setDevice(d.k)} style={{background:device===d.k?p.su:"none",border:"none",padding:"5px 10px",fontSize:10,color:device===d.k?p.tx:p.mu,cursor:"pointer",fontFamily:"inherit",fontWeight:device===d.k?500:400}}>{d.l}</button>)}
+            {[{k:"free",l:"Free"},{k:"desktop",l:"Desktop"},{k:"phone",l:"Phone"}].map(d=><button key={d.k} onClick={()=>{setDevice(d.k);setCam({x:0,y:0,z:1})}} style={{background:device===d.k?p.su:"none",border:"none",padding:"5px 10px",fontSize:10,color:device===d.k?p.tx:p.mu,cursor:"pointer",fontFamily:"inherit",fontWeight:device===d.k?500:400}}>{d.l}</button>)}
           </div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <button onClick={clearAll} title="New canvas" style={btnSt}>New</button>
@@ -812,10 +848,10 @@ export default function App(){
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
-            if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){flushDirtyText();setSel(null);setSelFont(null)}
+            if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){flushDirtyText();setSel(null);setSelAll(new Set());setSelFont(null)}
           }}
           onContextMenu={e=>e.preventDefault()}
-          style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,maxWidth:"100%"}:{width:390}),height:device==="phone"?844:undefined,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent"}}>
+          style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,maxWidth:"100%"}:{width:390}),height:device==="phone"?844:undefined,position:"relative",overflow:device!=="free"?"auto":"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent"}}>
 
           {/* dot grid */}
           <svg data-c="1" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
@@ -827,18 +863,20 @@ export default function App(){
           {guides.map((g,i)=><div key={i} style={{position:"absolute",pointerEvents:"none",zIndex:300,background:p.ac+"40",...(g.t==="v"?{left:g.p*cam.z+cam.x,top:0,width:1,height:"100%"}:{top:g.p*cam.z+cam.y,left:0,height:1,width:"100%"})}}/>)}
 
           {/* transform layer */}
-          <div style={{position:"absolute",left:0,top:0,transform:`translate(${cam.x}px,${cam.y}px) scale(${cam.z})`,transformOrigin:"0 0",willChange:"transform"}}>
+          <div style={{position:"absolute",left:0,top:0,...(device==="free"?{transform:`translate(${cam.x}px,${cam.y}px) scale(${cam.z})`,transformOrigin:"0 0",willChange:"transform"}:{}),width:device!=="free"?"100%":undefined,minHeight:rLayout?.get("__totalH")?.h||undefined}}>
             {shapes.map(s=>{
-              const isSel=sel===s.id,isDrg=drag===s.id;
+              const rl=rLayout?.get(s.id);
+              const sx=rl?rl.x:s.x,sy=rl?rl.y:s.y,sw=rl?rl.w:s.w,sh=rl?rl.h:s.h;
+              const isSel=selAll.has(s.id),isPrimary=sel===s.id,isDrg=drag===s.id;
               const mx=maxV(s.type);
               const vn=varName(s.type,s.variant||0);
-              const fontIdx=selFont!==null?selFont:(s.font||0);
+              const fontIdx=selFont!==null&&isPrimary?selFont:(s.font||0);
               const fn=FONTS[fontIdx]?.name||FONTS[0].name;
               const ff=FONTS[fontIdx]?.family||FONTS[0].family;
               return(
-                <div key={s.id} style={{position:"absolute",left:s.x,top:s.y,width:s.w,zIndex:isDrg?100:isSel?50:1}}>
-                  {/* toolbar: variant + font pickers — only on select */}
-                  {isSel&&!isDrg&&(mx>1||HAS_TEXT.has(s.type))&&(
+                <div key={s.id} style={{position:"absolute",left:sx,top:sy,width:sw,zIndex:isDrg?100:isSel?50:1}}>
+                  {/* toolbar: variant + font pickers — only on primary select */}
+                  {isPrimary&&!isDrg&&(mx>1||HAS_TEXT.has(s.type))&&(
                     <div style={{position:"absolute",top:-36,left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:1,zIndex:200,background:p.card,border:`1px solid ${p.bd}`,borderRadius:999,padding:"2px 3px",boxShadow:`0 4px 16px ${p.tx}10`,whiteSpace:"nowrap",userSelect:"none"}}>
                       {mx>1&&<>
                         <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycle(s.id,-1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"‹"}</button>
@@ -853,8 +891,8 @@ export default function App(){
                       </>}
                     </div>
                   )}
-                  {/* delete button — only on select */}
-                  {isSel&&!isDrg&&(
+                  {/* delete button — only on primary select */}
+                  {isPrimary&&!isDrg&&(
                     <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();delShape(s.id)}}
                       style={{position:"absolute",top:-10,right:-10,width:22,height:22,borderRadius:999,background:p.mu+"88",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",zIndex:201,transition:"background .15s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#E0524D"}
@@ -863,9 +901,9 @@ export default function App(){
                     </button>
                   )}
                   <div onMouseDown={e=>onDown(e,s)}
-                    style={{width:s.w,height:s.h,cursor:isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}55`:"none",outlineOffset:4,borderRadius:14}}>
-                    <C type={s.type} v={s.variant||0} p={p} editable={isSel} texts={s.texts||{}} onText={(k,val)=>updateText(s.id,k,val)} font={s.font||0}/>
-                    {isSel&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
+                    style={{width:sw,height:sh,cursor:device!=="free"?"default":isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}${isPrimary?"88":"44"}`:"none",outlineOffset:4,borderRadius:14,...(rl?{overflow:"hidden"}:{})}}>
+                    <C type={s.type} v={s.variant||0} p={p} editable={isPrimary} texts={s.texts||{}} onText={(k,val)=>updateText(s.id,k,val)} font={s.font||0}/>
+                    {isPrimary&&device==="free"&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
                   </div>
                 </div>
               );
@@ -879,6 +917,11 @@ export default function App(){
               <p style={{fontSize:13,color:p.mu,opacity:.2}}>Switch styles with arrows. Your taste is remembered.</p>
             </div>
           )}
+
+          {/* selection info */}
+          {selAll.size>1&&<div style={{position:"absolute",bottom:12,left:14,display:"flex",alignItems:"center",gap:6,zIndex:60,background:p.card,border:`1px solid ${p.bd}`,borderRadius:8,padding:"4px 10px",fontSize:10,color:p.mu,boxShadow:`0 2px 8px ${p.tx}08`}}>
+            {selAll.size} selected <span style={{opacity:.5,marginLeft:4}}>⌘G group · ⌘⇧G ungroup</span>
+          </div>}
 
           {/* zoom indicator */}
           <div style={{position:"absolute",bottom:12,right:14,display:"flex",alignItems:"center",gap:6,zIndex:60}}>
