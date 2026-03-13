@@ -538,6 +538,7 @@ export default function App(){
   const [device,setDevice]=useState("free");
   const cRef=useRef(null);
   const dRef=useRef(null);
+  const dirtyText=useRef(null);
   const camRef=useRef(cam);
   camRef.current=cam;
 
@@ -548,13 +549,14 @@ export default function App(){
 
   /* ---- EXPORT / IMPORT ---- */
   const exportJSON=useCallback(()=>{
+    flushDirtyText();
     const data=JSON.stringify({shapes,pal,taste,prefV,gest},null,2);
     const blob=new Blob([data],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
     a.href=url;a.download="tasteprint-layout.json";a.click();
     URL.revokeObjectURL(url);
-  },[shapes,pal,taste,prefV,gest]);
+  },[shapes,pal,taste,prefV,gest,flushDirtyText]);
 
   const importJSON=useCallback(()=>{
     const input=document.createElement("input");
@@ -578,6 +580,7 @@ export default function App(){
   },[]);
 
   const exportPng=useCallback(()=>{
+    flushDirtyText();
     const el=cRef.current;if(!el)return;
     const prev=sel;setSel(null);
     requestAnimationFrame(()=>{
@@ -585,7 +588,7 @@ export default function App(){
         const a=document.createElement("a");a.href=url;a.download="tasteprint.png";a.click();
       }).catch(()=>{}).finally(()=>setSel(prev));
     });
-  },[sel]);
+  },[sel,flushDirtyText]);
 
   /* ---- CANVAS COORD HELPERS ---- */
   const toCanvas=useCallback((cx,cy)=>{
@@ -624,6 +627,14 @@ export default function App(){
     }));
   },[]);
 
+  const flushDirtyText=useCallback(()=>{
+    if(!dirtyText.current)return;
+    const{id,key}=dirtyText.current;
+    const ce=document.querySelector(`[data-text-key="${key}"]`);
+    if(ce)updateText(id,key,ce.innerHTML);
+    dirtyText.current=null;
+  },[updateText]);
+
   const cycleFont=useCallback((id,dir)=>{
     const ws=window.getSelection();
     if(ws&&!ws.isCollapsed&&ws.rangeCount>0){
@@ -642,7 +653,7 @@ export default function App(){
         ws.removeAllRanges();
         const nr=document.createRange();nr.selectNodeContents(span);ws.addRange(nr);
         const key=ceEl.dataset.textKey;
-        if(key)updateText(id,key,ceEl.innerHTML);
+        if(key)dirtyText.current={id,key};
         return;
       }
     }
@@ -656,9 +667,10 @@ export default function App(){
   },[shapes,selFont,updateText]);
 
   const delShape=useCallback((id)=>{
+    flushDirtyText();
     push(shapes.filter(s=>s.id!==id));
     if(sel===id)setSel(null);
-  },[shapes,push,sel]);
+  },[shapes,push,sel,flushDirtyText]);
 
   const onDrop=useCallback(e=>{
     e.preventDefault();const info=dRef.current;if(!info)return;
@@ -669,10 +681,10 @@ export default function App(){
   },[shapes,push,nudge,prefV,toCanvas]);
 
   const onDown=useCallback((e,s)=>{
-    e.stopPropagation();setSel(s.id);setDrag(s.id);
+    e.stopPropagation();flushDirtyText();setSel(s.id);setDrag(s.id);
     const pt=toCanvas(e.clientX,e.clientY);
     setOff({x:pt.x-s.x,y:pt.y-s.y});
-  },[toCanvas]);
+  },[toCanvas,flushDirtyText]);
 
   const onMove=useCallback(e=>{
     if(pan){
@@ -800,7 +812,7 @@ export default function App(){
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
-            if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){setSel(null);setSelFont(null)}
+            if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){flushDirtyText();setSel(null);setSelFont(null)}
           }}
           onContextMenu={e=>e.preventDefault()}
           style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,maxWidth:"100%"}:{width:390}),height:device==="phone"?844:undefined,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent"}}>
