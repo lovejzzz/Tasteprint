@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { toPng } from "html-to-image";
 
 const STORE_KEY = "tasteprint";
 function load(k,d){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||"{}");return s[k]!==undefined?s[k]:d}catch{return d}}
@@ -527,10 +528,10 @@ export default function App(){
   const [taste,setTaste]=useState(()=>load("taste",{density:.2,roundness:.3,warmth:.5,complexity:.2,boldness:.3}));
   const [gest,setGest]=useState(()=>load("gest",0));
   const [hist,setHist]=useState([]);
+  const [future,setFuture]=useState([]);
   const [rsz,setRsz]=useState(null);
   const [expCat,setExpCat]=useState("Structure");
   const [prefV,setPrefV]=useState(()=>load("prefV",{}));
-  const [hov,setHov]=useState(null);
   const [cam,setCam]=useState({x:0,y:0,z:1});
   const [pan,setPan]=useState(null);
   const [selFont,setSelFont]=useState(null);
@@ -576,6 +577,16 @@ export default function App(){
     input.click();
   },[]);
 
+  const exportPng=useCallback(()=>{
+    const el=cRef.current;if(!el)return;
+    const prev=sel;setSel(null);
+    requestAnimationFrame(()=>{
+      toPng(el,{pixelRatio:2,cacheBust:true}).then(url=>{
+        const a=document.createElement("a");a.href=url;a.download="tasteprint.png";a.click();
+      }).catch(()=>{}).finally(()=>setSel(prev));
+    });
+  },[sel]);
+
   /* ---- CANVAS COORD HELPERS ---- */
   const toCanvas=useCallback((cx,cy)=>{
     const r=cRef.current.getBoundingClientRect();
@@ -583,8 +594,9 @@ export default function App(){
     return{x:(cx-r.left-c.x)/c.z,y:(cy-r.top-c.y)/c.z};
   },[]);
 
-  const push=useCallback(ns=>{setHist(h=>[...h.slice(-40),shapes]);setShapes(ns)},[shapes]);
-  const undo=useCallback(()=>{if(!hist.length)return;setShapes(hist[hist.length-1]);setHist(h=>h.slice(0,-1))},[hist]);
+  const push=useCallback(ns=>{setHist(h=>[...h.slice(-40),shapes]);setFuture([]);setShapes(ns)},[shapes]);
+  const undo=useCallback(()=>{if(!hist.length)return;setFuture(f=>[...f,shapes]);setShapes(hist[hist.length-1]);setHist(h=>h.slice(0,-1))},[hist,shapes]);
+  const redo=useCallback(()=>{if(!future.length)return;setHist(h=>[...h,shapes]);setShapes(future[future.length-1]);setFuture(f=>f.slice(0,-1))},[future,shapes]);
   const clearAll=useCallback(()=>{push([]);setSel(null)},[push]);
   const nudge=useCallback(d=>{setGest(g=>g+1);setTaste(prev=>{const t={...prev};for(const[k,val]of Object.entries(d))t[k]=Math.max(0,Math.min(1,(t[k]||0)+val));return t})},[]);
 
@@ -682,8 +694,25 @@ export default function App(){
 
   const onDel=useCallback(()=>{if(!sel)return;push(shapes.filter(s=>s.id!==sel));setSel(null)},[sel,shapes,push]);
 
+  const dupShape=useCallback(()=>{
+    if(!sel)return;const s=shapes.find(x=>x.id===sel);if(!s)return;
+    const ns={...s,id:uid(),x:s.x+20,y:s.y+20,texts:{...(s.texts||{})}};
+    push([...shapes,ns]);setSel(ns.id);
+  },[sel,shapes,push]);
+
   /* ---- KEYBOARD ---- */
-  useEffect(()=>{const h=e=>{if((e.key==="Backspace"||e.key==="Delete")&&!e.target.isContentEditable){e.preventDefault();onDel()}if((e.metaKey||e.ctrlKey)&&e.key==="z"){e.preventDefault();undo()}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h)},[onDel,undo]);
+  useEffect(()=>{const h=e=>{
+    if((e.key==="Backspace"||e.key==="Delete")&&!e.target.isContentEditable){e.preventDefault();onDel()}
+    if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==="z"){e.preventDefault();redo();return}
+    if((e.metaKey||e.ctrlKey)&&e.key==="z"){e.preventDefault();undo()}
+    if((e.metaKey||e.ctrlKey)&&e.key==="d"){e.preventDefault();dupShape()}
+    if(sel&&!e.target.isContentEditable&&["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)){
+      e.preventDefault();const d=e.shiftKey?10:1;
+      const dx=e.key==="ArrowLeft"?-d:e.key==="ArrowRight"?d:0;
+      const dy=e.key==="ArrowUp"?-d:e.key==="ArrowDown"?d:0;
+      setShapes(prev=>prev.map(s=>s.id===sel?{...s,x:s.x+dx,y:s.y+dy}:s));
+    }
+  };window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h)},[onDel,undo,redo,dupShape,sel]);
 
   /* ---- WHEEL: pan & zoom ---- */
   useEffect(()=>{
@@ -724,9 +753,11 @@ export default function App(){
           </div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <button onClick={clearAll} title="New canvas" style={btnSt}>New</button>
-          <button onClick={exportJSON} title="Export layout" style={btnSt}>Export</button>
-          <button onClick={importJSON} title="Import layout" style={btnSt}>Import</button>
-          <button onClick={undo} style={btnSt}>Undo</button>
+          <button onClick={exportPng} title="Export as PNG" style={btnSt}>PNG</button>
+          <button onClick={exportJSON} title="Export JSON" style={btnSt}>Export</button>
+          <button onClick={importJSON} title="Import JSON" style={btnSt}>Import</button>
+          <button onClick={undo} title="Undo (⌘Z)" style={btnSt}>Undo</button>
+          <button onClick={redo} title="Redo (⌘⇧Z)" style={btnSt}>Redo</button>
         </div>
       </div>
 
@@ -786,7 +817,7 @@ export default function App(){
           {/* transform layer */}
           <div style={{position:"absolute",left:0,top:0,transform:`translate(${cam.x}px,${cam.y}px) scale(${cam.z})`,transformOrigin:"0 0",willChange:"transform"}}>
             {shapes.map(s=>{
-              const isSel=sel===s.id,isDrg=drag===s.id,isHov=hov===s.id;
+              const isSel=sel===s.id,isDrg=drag===s.id;
               const mx=maxV(s.type);
               const vn=varName(s.type,s.variant||0);
               const fontIdx=selFont!==null?selFont:(s.font||0);
@@ -819,7 +850,7 @@ export default function App(){
                       <svg width="10" height="10" viewBox="0 0 10 10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>
                     </button>
                   )}
-                  <div onMouseDown={e=>onDown(e,s)} onMouseEnter={()=>setHov(s.id)} onMouseLeave={()=>setHov(null)}
+                  <div onMouseDown={e=>onDown(e,s)}
                     style={{width:s.w,height:s.h,cursor:isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}55`:"none",outlineOffset:4,borderRadius:14}}>
                     <C type={s.type} v={s.variant||0} p={p} editable={isSel} texts={s.texts||{}} onText={(k,val)=>updateText(s.id,k,val)} font={s.font||0}/>
                     {isSel&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
