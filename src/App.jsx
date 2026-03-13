@@ -164,18 +164,6 @@ function snap(s,all,thr=10){
   return r;
 }
 
-function Radar({taste,ac}){
-  const d=[{k:"density",l:"Dense"},{k:"roundness",l:"Round"},{k:"warmth",l:"Warm"},{k:"complexity",l:"Rich"},{k:"boldness",l:"Bold"}];
-  const n=d.length,cx=50,cy=50,R=36;
-  const pts=d.map((dm,i)=>{const a=(Math.PI*2*i)/n-Math.PI/2;const v=taste[dm.k]||0;return{x:cx+Math.cos(a)*R*v,y:cy+Math.sin(a)*R*v,lx:cx+Math.cos(a)*(R+13),ly:cy+Math.sin(a)*(R+13),l:dm.l}});
-  return(<svg width="100" height="100" viewBox="0 0 100 100">
-    {[.33,.66,1].map((s,i)=><polygon key={i} points={d.map((_,j)=>{const a=(Math.PI*2*j)/n-Math.PI/2;return`${cx+Math.cos(a)*R*s},${cy+Math.sin(a)*R*s}`}).join(" ")} fill="none" stroke="rgba(128,128,128,0.1)" strokeWidth="0.5"/>)}
-    <polygon points={pts.map(p=>`${p.x},${p.y}`).join(" ")} fill={ac+"18"} stroke={ac} strokeWidth="1.5" strokeLinejoin="round"/>
-    {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="2.5" fill={ac}/>)}
-    {pts.map((p,i)=><text key={`l${i}`} x={p.lx} y={p.ly} textAnchor="middle" dominantBaseline="central" fontSize="6.5" fill="rgba(128,128,128,0.5)" fontFamily="system-ui">{p.l}</text>)}
-  </svg>);
-}
-
 /* ========== COMPONENT RENDERER ========== */
 function C({type,v=0,p,editable,texts={},onText,font=0}){
   const f=FONTS[font]?.family||FONTS[0].family;
@@ -712,8 +700,6 @@ export default function App(){
         <div style={{display:"flex",alignItems:"baseline",gap:8}}><span style={{fontFamily:"'Instrument Serif',Georgia,serif",fontSize:22,color:p.tx,letterSpacing:"-0.02em"}}>Tasteprint</span></div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{display:"flex",gap:4,flexWrap:"wrap",maxWidth:220}}>{Object.entries(PAL).map(([k,v])=><button key={k} onClick={()=>setPal(k)} title={v.name} style={{width:18,height:18,borderRadius:999,border:pal===k?`2px solid ${p.ac}`:"2px solid transparent",background:k==="noir"||k==="neon"?"#1A1A1E":v.ac,cursor:"pointer",transition:"all .2s",transform:pal===k?"scale(1.2)":"scale(1)"}}/>)}</div>
-          <div style={{width:1,height:20,background:p.bd}}/>
-          <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:10,color:p.mu}}>{gest}</span><Radar taste={taste} ac={p.ac}/></div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <div style={{display:"flex",alignItems:"center",border:`1px solid ${p.bd}`,borderRadius:8,overflow:"hidden"}}>
             {[{k:"free",l:"Free"},{k:"desktop",l:"Desktop"},{k:"phone",l:"Phone"}].map(d=><button key={d.k} onClick={()=>setDevice(d.k)} style={{background:device===d.k?p.su:"none",border:"none",padding:"5px 10px",fontSize:10,color:device===d.k?p.tx:p.mu,cursor:"pointer",fontFamily:"inherit",fontWeight:device===d.k?500:400}}>{d.l}</button>)}
