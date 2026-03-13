@@ -670,7 +670,7 @@ export default function App(){
     }
     if(!drag&&!rsz)return;
     const pt=toCanvas(e.clientX,e.clientY);
-    if(rsz){const s=shapes.find(x=>x.id===rsz);if(!s)return;setShapes(shapes.map(x=>x.id===rsz?{...x,w:Math.max(40,pt.x-x.x),h:Math.max(20,pt.y-x.y)}:x));return}
+    if(rsz){const s=shapes.find(x=>x.id===rsz);if(!s)return;let nw=Math.max(40,pt.x-s.x),nh=Math.max(20,pt.y-s.y);if(e.shiftKey){const ratio=s.w/s.h;if(nw/nh>ratio)nh=nw/ratio;else nw=nh*ratio;}setShapes(shapes.map(x=>x.id===rsz?{...x,w:nw,h:nh}:x));return}
     if(drag){let nx=pt.x-off.x,ny=pt.y-off.y;const s=shapes.find(x=>x.id===drag);if(!s)return;const sn=snap({...s,x:nx,y:ny},shapes);if(sn.x!==null)nx=sn.x;if(sn.y!==null)ny=sn.y;setGuides(sn.g);setShapes(shapes.map(x=>x.id===drag?{...x,x:nx,y:ny}:x))}
   },[drag,rsz,shapes,off,pan,toCanvas]);
 
