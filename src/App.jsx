@@ -725,34 +725,36 @@ export default function App(){
 
       <div style={{display:"flex",flex:1,overflow:"hidden"}}>
         {/* LIBRARY */}
-        <div style={{width:320,padding:"10px 0",overflowY:"auto",borderRight:`1px solid ${p.bd}`,background:p.card+"88",backdropFilter:"blur(8px)",flexShrink:0,transition:"all .4s"}}>
-          <div style={{padding:"2px 16px 8px",fontSize:9,color:p.mu,textTransform:"uppercase",letterSpacing:"0.1em"}}>Components</div>
-          {LIB.map(cat=>(
-            <div key={cat.cat}>
-              <div onClick={()=>setExpCat(expCat===cat.cat?null:cat.cat)} style={{padding:"6px 16px",fontSize:12,fontWeight:500,color:expCat===cat.cat?p.tx:p.mu,cursor:"pointer",userSelect:"none"}}><span style={{display:"inline-block",width:14,fontSize:10,transition:"transform .2s",transform:expCat===cat.cat?"rotate(90deg)":"rotate(0)"}}>{">"}</span>{cat.cat}</div>
-              {expCat===cat.cat&&(
-                <div style={{padding:"0 10px 10px",display:"flex",flexDirection:"column",gap:6}}>
-                  {cat.items.map(item=>{
-                    const pv=prefV[item.type]||0;const vn=varName(item.type,pv);
-                    const tw=280,ts=Math.min(tw/item.w,1),th=item.h*ts;
-                    return(
-                      <div key={item.type} draggable onDragStart={()=>{dRef.current=item}}
-                        style={{padding:10,borderRadius:10,cursor:"grab",display:"flex",flexDirection:"column",gap:6,transition:"background .12s",border:`1px solid ${p.bd}`}}
-                        onMouseEnter={e=>e.currentTarget.style.background=p.su} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <span style={{fontSize:12,fontWeight:500,color:p.tx}}>{item.label}</span>
-                          <span style={{fontSize:10,color:p.mu,opacity:.6}}>{vn}</span>
-                        </div>
-                        <div style={{width:tw,height:th,borderRadius:6,overflow:"hidden",pointerEvents:"none",alignSelf:"center"}}>
-                          <div style={{transform:`scale(${ts})`,transformOrigin:"top left",width:item.w,height:item.h}}><C type={item.type} v={pv} p={p}/></div>
-                        </div>
-                      </div>
-                    );
-                  })}
+        <div style={{display:"flex",flexShrink:0,borderRight:`1px solid ${p.bd}`,background:p.card+"88",backdropFilter:"blur(8px)",transition:"all .4s"}}>
+          {/* category list */}
+          <div style={{width:100,padding:"10px 0",overflowY:"auto",borderRight:`1px solid ${p.bd}`,display:"flex",flexDirection:"column",gap:1}}>
+            {LIB.map(cat=>(
+              <div key={cat.cat} onClick={()=>setExpCat(cat.cat)}
+                style={{padding:"10px 12px",fontSize:11,fontWeight:expCat===cat.cat?600:400,color:expCat===cat.cat?p.tx:p.mu,cursor:"pointer",userSelect:"none",background:expCat===cat.cat?p.su:"transparent",borderRight:expCat===cat.cat?`2px solid ${p.ac}`:"2px solid transparent",transition:"all .15s"}}>
+                {cat.cat}
+              </div>
+            ))}
+          </div>
+          {/* component cards */}
+          <div style={{width:280,padding:10,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+            {(LIB.find(c=>c.cat===expCat)?.items||[]).map(item=>{
+              const pv=prefV[item.type]||0;const vn=varName(item.type,pv);
+              const tw=240,ts=Math.min(tw/item.w,1),th=item.h*ts;
+              return(
+                <div key={item.type} draggable onDragStart={()=>{dRef.current=item}}
+                  style={{padding:10,borderRadius:10,cursor:"grab",display:"flex",flexDirection:"column",gap:6,transition:"background .12s",border:`1px solid ${p.bd}`}}
+                  onMouseEnter={e=>e.currentTarget.style.background=p.su} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:12,fontWeight:500,color:p.tx}}>{item.label}</span>
+                    <span style={{fontSize:10,color:p.mu,opacity:.6}}>{vn}</span>
+                  </div>
+                  <div style={{width:tw,height:th,borderRadius:6,overflow:"hidden",pointerEvents:"none",alignSelf:"center"}}>
+                    <div style={{transform:`scale(${ts})`,transformOrigin:"top left",width:item.w,height:item.h}}><C type={item.type} v={pv} p={p}/></div>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
 
         {/* CANVAS */}
