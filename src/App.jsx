@@ -18,6 +18,9 @@ const FONTS = [
   {name:"JetBrains Mono",family:"'JetBrains Mono',monospace"},
   {name:"Playfair Display",family:"'Playfair Display',Georgia,serif"},
   {name:"Bricolage Grotesque",family:"'Bricolage Grotesque',system-ui,sans-serif"},
+  {name:"General Sans",family:"'General Sans',system-ui,sans-serif"},
+  {name:"Cabinet Grotesk",family:"'Cabinet Grotesk',system-ui,sans-serif"},
+  {name:"Poppins",family:"'Poppins',system-ui,sans-serif"},
 ];
 
 const PAL = {
@@ -30,6 +33,10 @@ const PAL = {
   mono:  { bg:"#F5F5F5",card:"#FFFFFF",ac:"#555555",ac2:"#888888",tx:"#1A1A1A",mu:"#888888",bd:"rgba(0,0,0,0.08)",su:"#EEEEEE",name:"Mono" },
   neon:  { bg:"#0F1114",card:"#1A1D22",ac:"#39FF14",ac2:"#CCFF00",tx:"#E8E8E8",mu:"#6B7080",bd:"rgba(57,255,20,0.1)",su:"#161920",name:"Neon" },
   mint:  { bg:"#F2F8F6",card:"#FFFFFF",ac:"#3B9B7A",ac2:"#6BC4A6",tx:"#1E3A30",mu:"#7A9E90",bd:"rgba(59,155,122,0.12)",su:"#E8F4F0",name:"Mint" },
+  mocha: { bg:"#F5F0EB",card:"#FFFFFF",ac:"#6F4E37",ac2:"#A0785C",tx:"#2C2018",mu:"#8C7A6B",bd:"rgba(111,78,55,0.12)",su:"#EDE6DF",name:"Mocha" },
+  lavender:{ bg:"#F5F2FA",card:"#FFFFFF",ac:"#7C5CBF",ac2:"#A78BDA",tx:"#2A2040",mu:"#8A80A0",bd:"rgba(124,92,191,0.12)",su:"#ECE8F6",name:"Lavender" },
+  ocean: { bg:"#F0F6FA",card:"#FFFFFF",ac:"#2B7A9E",ac2:"#5BAFCE",tx:"#1A3040",mu:"#6A8C9E",bd:"rgba(43,122,158,0.12)",su:"#E4F0F6",name:"Ocean" },
+  forest:{ bg:"#F0F4F0",card:"#FFFFFF",ac:"#3D6B4E",ac2:"#6B9E7C",tx:"#1A2E20",mu:"#6A8B72",bd:"rgba(61,107,78,0.12)",su:"#E4EDE6",name:"Forest" },
 };
 
 const VARIANTS = {
@@ -56,6 +63,13 @@ const VARIANTS = {
   accordion: ["Bordered","Card","Minimal"],
   footer:    ["Columns","Simple","Dark"],
   "bento-grid":["Even","Featured","Mixed"],
+  dropdown:  ["Default","Minimal","Rounded"],
+  select:    ["Default","Pill","Underline"],
+  checkbox:  ["Square","Round","Toggle row"],
+  slider:    ["Default","Thin","Stepped"],
+  alert:     ["Info","Warning","Success","Error"],
+  pagination:["Default","Dots","Minimal"],
+  "pricing-card":["Default","Featured","Minimal"],
 };
 
 const LIB = [
@@ -85,11 +99,20 @@ const LIB = [
     {type:"input",label:"Text input",w:248,h:44},
     {type:"search",label:"Search",w:270,h:44},
     {type:"toggle",label:"Toggle",w:48,h:28},
+    {type:"dropdown",label:"Dropdown",w:200,h:150},
+    {type:"select",label:"Select",w:220,h:40},
+    {type:"checkbox",label:"Checkbox",w:180,h:90},
+    {type:"slider",label:"Slider",w:200,h:28},
   ]},
   { cat:"Feedback", items:[
     {type:"badge",label:"Badge",w:72,h:28},
     {type:"toast",label:"Toast",w:290,h:56},
     {type:"progress",label:"Progress",w:220,h:8},
+    {type:"alert",label:"Alert",w:300,h:56},
+    {type:"pagination",label:"Pagination",w:220,h:36},
+  ]},
+  { cat:"Commerce", items:[
+    {type:"pricing-card",label:"Pricing card",w:240,h:280},
   ]},
   { cat:"Overlay", items:[
     {type:"modal",label:"Modal",w:300,h:200},
@@ -100,7 +123,7 @@ function uid(){return Math.random().toString(36).substr(2,9)}
 function maxV(t){return(VARIANTS[t]||[]).length||1}
 function varName(t,v){return(VARIANTS[t]||[])[v]||"Default"}
 
-const HAS_TEXT=new Set(["button","hero","navbar","tabs","heading","stat-card","input","search","badge","toast","image-placeholder","modal","sidebar","footer","accordion","table"]);
+const HAS_TEXT=new Set(["button","hero","navbar","tabs","heading","stat-card","input","search","badge","toast","image-placeholder","modal","sidebar","footer","accordion","table","dropdown","select","checkbox","alert","pagination","pricing-card"]);
 
 function snap(s,all,thr=10){
   const r={x:null,y:null,g:[]}, cx=s.x+s.w/2, cy=s.y+s.h/2;
@@ -337,6 +360,65 @@ function C({type,v=0,p,editable,texts={},onText,font=0}){
     return <div style={{...b,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gridTemplateRows:"1fr 1fr",gap:8}}>{cell({gridColumn:"1/3"})}{cell({})}{cell({})}{cell({gridColumn:"2/4"})}</div>;
   }
 
+  /* ---- DROPDOWN ---- */
+  if(type==="dropdown"){
+    const items=["Option one","Option two","Option three"];
+    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column"}}><div style={{height:36,background:p.card,borderRadius:10,border:`1px solid ${p.bd}`,padding:"0 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="sel" s={{fontSize:12,color:p.tx}}>Select...</T><span style={{fontSize:10,color:p.mu}}>▾</span></div><div style={{marginTop:4,background:p.card,borderRadius:10,border:`1px solid ${p.bd}`,boxShadow:`0 8px 24px ${p.tx}08`,overflow:"hidden"}}>{items.map((it,i)=><div key={i} style={{padding:"8px 12px",background:i===0?p.ac+"12":"transparent"}}><T k={`o${i}`} s={{fontSize:12,color:i===0?p.ac:p.tx}}>{it}</T></div>)}</div></div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column"}}><div style={{height:36,borderBottom:`1.5px solid ${p.bd}`,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="sel" s={{fontSize:12,color:p.tx}}>Select...</T><span style={{fontSize:10,color:p.mu}}>▾</span></div><div style={{marginTop:4,background:p.card,border:`1px solid ${p.bd}`,overflow:"hidden"}}>{items.map((it,i)=><div key={i} style={{padding:"8px 12px",borderBottom:i<2?`1px solid ${p.bd}`:"none"}}><T k={`o${i}`} s={{fontSize:12,color:p.tx}}>{it}</T></div>)}</div></div>;
+    return <div style={{...b,display:"flex",flexDirection:"column"}}><div style={{height:36,background:p.su,borderRadius:999,padding:"0 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="sel" s={{fontSize:12,color:p.tx}}>Select...</T><span style={{fontSize:10,color:p.mu}}>▾</span></div><div style={{marginTop:4,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,boxShadow:`0 8px 24px ${p.tx}08`,overflow:"hidden"}}>{items.map((it,i)=><div key={i} style={{padding:"8px 14px",borderRadius:8,margin:2,background:i===0?p.ac+"12":"transparent"}}><T k={`o${i}`} s={{fontSize:12,color:i===0?p.ac:p.tx}}>{it}</T></div>)}</div></div>;
+  }
+
+  /* ---- SELECT ---- */
+  if(type==="select"){
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:10,border:`1.5px solid ${p.bd}`,padding:"0 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="val" s={{fontSize:13,color:p.tx}}>Choose option</T><span style={{fontSize:10,color:p.mu}}>▾</span></div>;
+    if(v===1)return <div style={{...b,background:p.su,borderRadius:999,padding:"0 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="val" s={{fontSize:13,color:p.tx}}>Choose option</T><span style={{fontSize:10,color:p.mu}}>▾</span></div>;
+    return <div style={{...b,borderBottom:`2px solid ${p.ac}30`,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="val" s={{fontSize:13,color:p.tx}}>Choose option</T><span style={{fontSize:10,color:p.mu}}>▾</span></div>;
+  }
+
+  /* ---- CHECKBOX ---- */
+  if(type==="checkbox"){
+    const items=[{label:"Option A",checked:true},{label:"Option B",checked:false},{label:"Option C",checked:false}];
+    const box=(checked,round)=><div style={{width:16,height:16,borderRadius:round?999:4,border:checked?`none`:`1.5px solid ${p.bd}`,background:checked?p.ac:p.card,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{checked&&<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><path d="M2 5l2.5 2.5L8 3"/></svg>}</div>;
+    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",gap:8,justifyContent:"center"}}>{items.map((it,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}>{box(it.checked,false)}<T k={`l${i}`} s={{fontSize:12,color:it.checked?p.tx:p.mu}}>{it.label}</T></div>)}</div>;
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:8,justifyContent:"center"}}>{items.map((it,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}>{box(it.checked,true)}<T k={`l${i}`} s={{fontSize:12,color:it.checked?p.tx:p.mu}}>{it.label}</T></div>)}</div>;
+    return <div style={{...b,display:"flex",flexDirection:"column",gap:4,justifyContent:"center"}}>{items.map((it,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 10px",borderRadius:8,background:it.checked?p.ac+"12":"transparent"}}><div style={{width:32,height:18,borderRadius:999,background:it.checked?p.ac:p.mu+"30",padding:2,display:"flex",alignItems:it.checked?"center":"center",justifyContent:it.checked?"flex-end":"flex-start"}}><div style={{width:14,height:14,borderRadius:999,background:"#fff",boxShadow:"0 1px 2px rgba(0,0,0,.1)"}}/></div><T k={`l${i}`} s={{fontSize:12,color:it.checked?p.tx:p.mu}}>{it.label}</T></div>)}</div>;
+  }
+
+  /* ---- SLIDER ---- */
+  if(type==="slider"){
+    const pct=65;
+    if(v===0)return <div style={{...b,display:"flex",alignItems:"center"}}><div style={{width:"100%",height:6,borderRadius:999,background:p.su,position:"relative"}}><div style={{width:`${pct}%`,height:"100%",borderRadius:999,background:p.ac}}/><div style={{position:"absolute",left:`${pct}%`,top:"50%",transform:"translate(-50%,-50%)",width:16,height:16,borderRadius:999,background:p.card,border:`2px solid ${p.ac}`,boxShadow:`0 1px 4px ${p.tx}12`}}/></div></div>;
+    if(v===1)return <div style={{...b,display:"flex",alignItems:"center"}}><div style={{width:"100%",height:3,borderRadius:999,background:p.su,position:"relative"}}><div style={{width:`${pct}%`,height:"100%",borderRadius:999,background:p.ac}}/><div style={{position:"absolute",left:`${pct}%`,top:"50%",transform:"translate(-50%,-50%)",width:12,height:12,borderRadius:999,background:p.ac}}/></div></div>;
+    return <div style={{...b,display:"flex",alignItems:"center"}}><div style={{width:"100%",height:6,borderRadius:999,background:p.su,position:"relative",display:"flex",alignItems:"center"}}>{[0,25,50,75,100].map(s=><div key={s} style={{position:"absolute",left:`${s}%`,width:2,height:10,background:p.mu+"30",borderRadius:1,transform:"translateX(-50%)"}}/>)}<div style={{width:`${pct}%`,height:"100%",borderRadius:999,background:p.ac,position:"absolute"}}/><div style={{position:"absolute",left:`${pct}%`,top:"50%",transform:"translate(-50%,-50%)",width:14,height:14,borderRadius:4,background:p.ac}}/></div></div>;
+  }
+
+  /* ---- ALERT ---- */
+  if(type==="alert"){
+    const configs=[
+      {bg:"#EBF5FF",bc:"#3B82F6",ic:"ℹ",tx:"#1E40AF",label:"Info: Check the docs for details."},
+      {bg:"#FFF8E1",bc:"#F59E0B",ic:"⚠",tx:"#92400E",label:"Warning: This action cannot be undone."},
+      {bg:"#ECFDF5",bc:"#10B981",ic:"✓",tx:"#065F46",label:"Success: Your changes have been saved."},
+      {bg:"#FEF2F2",bc:"#EF4444",ic:"✕",tx:"#991B1B",label:"Error: Something went wrong."},
+    ];
+    const c=configs[v]||configs[0];
+    return <div style={{...b,background:c.bg,borderRadius:10,borderLeft:`3px solid ${c.bc}`,padding:"0 14px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,color:c.bc}}>{c.ic}</span><T k="label" s={{fontSize:12,color:c.tx,fontWeight:500}}>{c.label}</T></div>;
+  }
+
+  /* ---- PAGINATION ---- */
+  if(type==="pagination"){
+    if(v===0)return <div style={{...b,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{["‹",1,2,3,"…",8,"›"].map((pg,i)=><div key={i} style={{width:28,height:28,borderRadius:8,background:pg===2?p.ac:"transparent",border:typeof pg==="number"&&pg!==2?`1px solid ${p.bd}`:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><T k={`p${i}`} s={{fontSize:11,color:pg===2?"#fff":p.mu,fontWeight:pg===2?600:400}}>{pg}</T></div>)}</div>;
+    if(v===1)return <div style={{...b,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{[1,2,3,4,5].map((pg,i)=><div key={i} style={{width:8,height:8,borderRadius:999,background:pg===2?p.ac:p.mu+"30"}}/>)}</div>;
+    return <div style={{...b,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 8px"}}><T k="prev" s={{fontSize:11,color:p.mu}}>← Previous</T><T k="info" s={{fontSize:11,color:p.mu}}>Page 2 of 8</T><T k="next" s={{fontSize:11,color:p.ac,fontWeight:500}}>Next →</T></div>;
+  }
+
+  /* ---- PRICING CARD ---- */
+  if(type==="pricing-card"){
+    const features=["10 projects","5GB storage","Priority support","Custom domain"];
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,padding:24,display:"flex",flexDirection:"column",gap:12}}><T k="plan" s={{fontSize:11,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"}}>Pro</T><div style={{display:"flex",alignItems:"baseline",gap:2}}><T k="price" s={{fontSize:32,fontWeight:700,color:p.tx}}>$29</T><T k="period" s={{fontSize:12,color:p.mu}}>/mo</T></div><div style={{height:1,background:p.bd,margin:"4px 0"}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>{features.map((f,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:14,height:14,borderRadius:999,background:p.ac+"18",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:p.ac}}>✓</span></div><T k={`f${i}`} s={{fontSize:12,color:p.tx}}>{f}</T></div>)}</div><div style={{height:38,borderRadius:10,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:12,color:"#fff",fontWeight:600}}>Get started</T></div></div>;
+    if(v===1)return <div style={{...b,background:p.ac,borderRadius:16,padding:24,display:"flex",flexDirection:"column",gap:12,boxShadow:`0 8px 32px ${p.ac}30`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><T k="plan" s={{fontSize:11,color:"#fff",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",opacity:.8}}>Pro</T><div style={{background:"#fff22",borderRadius:999,padding:"2px 8px"}}><T k="badge" s={{fontSize:9,color:"#fff",fontWeight:600}}>POPULAR</T></div></div><div style={{display:"flex",alignItems:"baseline",gap:2}}><T k="price" s={{fontSize:32,fontWeight:700,color:"#fff"}}>$29</T><T k="period" s={{fontSize:12,color:"#fff",opacity:.6}}>/mo</T></div><div style={{height:1,background:"#fff2",margin:"4px 0"}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>{features.map((f,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:10,color:"#fff",opacity:.7}}>✓</span><T k={`f${i}`} s={{fontSize:12,color:"#fff",opacity:.9}}>{f}</T></div>)}</div><div style={{height:38,borderRadius:10,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:12,color:p.ac,fontWeight:600}}>Get started</T></div></div>;
+    return <div style={{...b,background:p.card,borderRadius:12,padding:24,display:"flex",flexDirection:"column",gap:14}}><T k="plan" s={{fontSize:16,fontWeight:600,color:p.tx}}>Pro</T><div style={{display:"flex",alignItems:"baseline",gap:2}}><T k="price" s={{fontSize:28,fontWeight:600,color:p.tx}}>$29</T><T k="period" s={{fontSize:12,color:p.mu}}>/mo</T></div><div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>{features.map((f,i)=><T key={i} k={`f${i}`} s={{fontSize:12,color:p.mu}}>• {f}</T>)}</div><div style={{height:36,borderRadius:8,border:`1.5px solid ${p.ac}`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:12,color:p.ac,fontWeight:500}}>Choose plan</T></div></div>;
+  }
+
   return <div style={{...b,background:p.su,borderRadius:12}}/>;
 }
 
@@ -502,7 +584,7 @@ export default function App(){
     return()=>el.removeEventListener("wheel",h);
   },[]);
 
-  useEffect(()=>{if(["warm","candy"].includes(pal))nudge({warmth:.04});else if(pal==="cool")nudge({warmth:-.04});else if(pal==="noir"||pal==="neon")nudge({boldness:.05,warmth:-.06});else if(pal==="cloud")nudge({warmth:.03,density:-.02});else if(pal==="mint")nudge({warmth:-.02,roundness:.02})},[pal]);
+  useEffect(()=>{if(["warm","candy"].includes(pal))nudge({warmth:.04});else if(pal==="cool"||pal==="ocean")nudge({warmth:-.04});else if(pal==="noir"||pal==="neon")nudge({boldness:.05,warmth:-.06});else if(pal==="cloud")nudge({warmth:.03,density:-.02});else if(pal==="mint"||pal==="forest")nudge({warmth:-.02,roundness:.02});else if(pal==="mocha")nudge({warmth:.05,roundness:.02});else if(pal==="lavender")nudge({complexity:.03,warmth:.01})},[pal]);
 
   const p=PAL[pal];
   const btnSt={background:"none",border:`1px solid ${p.bd}`,borderRadius:8,padding:"5px 12px",fontSize:11,color:p.mu,cursor:"pointer",fontFamily:"inherit"};
@@ -510,7 +592,7 @@ export default function App(){
 
   return(
     <div style={{width:"100%",height:"100vh",display:"flex",flexDirection:"column",background:p.bg,fontFamily:"'DM Sans',system-ui,sans-serif",color:p.tx,transition:"background .4s,color .4s"}}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Instrument+Serif&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Instrument+Serif&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
       {/* HEADER */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 20px",borderBottom:`1px solid ${p.bd}`,background:p.card+"cc",backdropFilter:"blur(12px)",zIndex:50,transition:"all .4s"}}>
