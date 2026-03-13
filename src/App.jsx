@@ -187,7 +187,7 @@ function C({type,v=0,p,editable,texts={},onText,font=0}){
     return <span
       contentEditable
       suppressContentEditableWarning
-      onBlur={e=>{const t=e.target.innerText.trim();onText?.(k,t||null)}}
+      onInput={e=>{const t=e.target.innerText.trim();onText?.(k,t||null)}}
       onMouseDown={e=>e.stopPropagation()}
       onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}}}
       style={{...s,outline:"none",cursor:"text",minWidth:8}}
