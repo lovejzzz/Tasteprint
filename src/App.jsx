@@ -863,14 +863,16 @@ export default function App(){
   /* ---- RESPONSIVE FLOW LAYOUT ---- */
   const rLayout=useMemo(()=>{
     if(device==="free")return null;
-    const vw=device==="desktop"?1248:358;
-    const pad=16,gap=12;
+    const containerW=device==="desktop"?1280:390;
+    const pad=device==="desktop"?32:16;
+    const gap=device==="desktop"?16:12;
+    const maxW=containerW-pad*2;
     const sorted=[...shapes].sort((a,b)=>a.y-b.y||a.x-b.x);
     const m=new Map();let cy=pad;
     for(const s of sorted){
-      const scale=Math.min(1,(vw)/s.w);
+      const scale=Math.min(1,maxW/s.w);
       const nw=s.w*scale,nh=s.h*scale;
-      m.set(s.id,{x:(device==="desktop"?1280:390)/2-nw/2,y:cy,w:nw,h:nh});
+      m.set(s.id,{x:containerW/2-nw/2,y:cy,w:nw,h:nh});
       cy+=nh+gap;
     }
     m.set("__totalH",{h:cy+pad});
@@ -988,14 +990,14 @@ export default function App(){
         </div>
 
         {/* CANVAS */}
-        <div style={{flex:1,display:"flex",alignItems:device==="free"?"stretch":"center",justifyContent:"center",overflow:"hidden",background:device!=="free"?p.su:"transparent"}} onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
+        <div style={{flex:1,display:"flex",alignItems:device==="free"?"stretch":"flex-start",justifyContent:"center",overflow:device!=="free"?"auto":"hidden",background:device!=="free"?p.su:"transparent",padding:device!=="free"?"32px 40px":"0"}} onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
             if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){flushDirtyText();setSel(null);setSelAll(new Set());setSelFont(null)}
           }}
           onContextMenu={e=>e.preventDefault()}
-          style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,maxWidth:"100%"}:{width:390}),height:device==="phone"?844:undefined,position:"relative",overflow:device!=="free"?"auto":"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent"}}>
+          style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,flexShrink:0}:{width:390,flexShrink:0}),height:device==="phone"?844:device==="desktop"?Math.max(720,(rLayout?.get("__totalH")?.h||720)):undefined,minHeight:device==="desktop"?720:undefined,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent"}}>
 
           {/* dot grid */}
           <svg data-c="1" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
