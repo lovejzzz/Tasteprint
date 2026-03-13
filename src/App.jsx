@@ -707,9 +707,10 @@ export default function App(){
   /* ---- CANVAS COORD HELPERS ---- */
   const toCanvas=useCallback((cx,cy)=>{
     const r=cRef.current.getBoundingClientRect();
+    if(device!=="free")return{x:cx-r.left,y:cy-r.top};
     const c=camRef.current;
     return{x:(cx-r.left-c.x)/c.z,y:(cy-r.top-c.y)/c.z};
-  },[]);
+  },[device]);
 
   const push=useCallback(ns=>{setHist(h=>[...h.slice(-40),shapes]);setFuture([]);setShapes(ns)},[shapes]);
   const undo=useCallback(()=>{if(!hist.length)return;setFuture(f=>[...f,shapes]);setShapes(hist[hist.length-1]);setHist(h=>h.slice(0,-1))},[hist,shapes]);
