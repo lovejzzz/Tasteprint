@@ -761,7 +761,7 @@ export default function App(){
         </div>
 
         {/* CANVAS */}
-        <div style={{flex:1,display:"flex",alignItems:device==="free"?"stretch":"center",justifyContent:"center",overflow:"hidden",background:device!=="free"?p.bg:"transparent"}} onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
+        <div style={{flex:1,display:"flex",alignItems:device==="free"?"stretch":"center",justifyContent:"center",overflow:"hidden",background:device!=="free"?p.su:"transparent"}} onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
