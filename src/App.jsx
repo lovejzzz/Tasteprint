@@ -74,6 +74,8 @@ const LIB = [
   ]},
 ];
 
+const HAS_TEXT=new Set(["button","hero","navbar","tabs","heading","stat-card","input","search","badge","toast","image-placeholder"]);
+
 function uid(){return Math.random().toString(36).substr(2,9)}
 function maxV(t){return(VARIANTS[t]||[]).length||1}
 function varName(t,v){return(VARIANTS[t]||[])[v]||"Default"}
@@ -504,17 +506,19 @@ export default function App(){
               return(
                 <div key={s.id} style={{position:"absolute",left:s.x,top:s.y,width:s.w,zIndex:isDrg?100:isSel?50:1}}>
                   {/* toolbar: variant + font pickers — only on select */}
-                  {isSel&&!isDrg&&(
+                  {isSel&&!isDrg&&(mx>1||HAS_TEXT.has(s.type))&&(
                     <div style={{position:"absolute",top:-36,left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:1,zIndex:200,background:p.card,border:`1px solid ${p.bd}`,borderRadius:999,padding:"2px 3px",boxShadow:`0 4px 16px ${p.tx}10`,whiteSpace:"nowrap",userSelect:"none"}}>
                       {mx>1&&<>
                         <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycle(s.id,-1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"‹"}</button>
                         <span style={{fontSize:9,color:p.mu,padding:"0 4px",width:68,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis"}}>{vn}</span>
                         <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycle(s.id,1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"›"}</button>
-                        <div style={{width:1,height:16,background:p.bd,margin:"0 2px"}}/>
+                        {HAS_TEXT.has(s.type)&&<div style={{width:1,height:16,background:p.bd,margin:"0 2px"}}/>}
                       </>}
-                      <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycleFont(s.id,-1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"‹"}</button>
-                      <span style={{fontSize:9,color:p.ac,padding:"0 4px",width:100,textAlign:"center",fontFamily:ff,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis"}}>{fn}</span>
-                      <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycleFont(s.id,1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"›"}</button>
+                      {HAS_TEXT.has(s.type)&&<>
+                        <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycleFont(s.id,-1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"‹"}</button>
+                        <span style={{fontSize:9,color:p.ac,padding:"0 4px",width:100,textAlign:"center",fontFamily:ff,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis"}}>{fn}</span>
+                        <button onPointerDown={e=>{e.stopPropagation();e.preventDefault();cycleFont(s.id,1)}} style={{width:26,height:26,borderRadius:999,border:"none",background:p.su,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,fontSize:15,fontFamily:"system-ui",padding:0}}>{"›"}</button>
+                      </>}
                     </div>
                   )}
                   {/* delete button — only on select */}
