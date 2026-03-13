@@ -593,6 +593,16 @@ export default function App(){
     else nudge({complexity:.01});
   },[shapes,nudge]);
 
+  const updateText=useCallback((id,key,value)=>{
+    setShapes(prev=>prev.map(s=>{
+      if(s.id!==id)return s;
+      const texts={...(s.texts||{})};
+      if(value===null||value===undefined)delete texts[key];
+      else texts[key]=value;
+      return{...s,texts};
+    }));
+  },[]);
+
   const cycleFont=useCallback((id,dir)=>{
     const ws=window.getSelection();
     if(ws&&!ws.isCollapsed&&ws.rangeCount>0){
@@ -628,16 +638,6 @@ export default function App(){
     push(shapes.filter(s=>s.id!==id));
     if(sel===id)setSel(null);
   },[shapes,push,sel]);
-
-  const updateText=useCallback((id,key,value)=>{
-    setShapes(prev=>prev.map(s=>{
-      if(s.id!==id)return s;
-      const texts={...(s.texts||{})};
-      if(value===null||value===undefined)delete texts[key];
-      else texts[key]=value;
-      return{...s,texts};
-    }));
-  },[]);
 
   const onDrop=useCallback(e=>{
     e.preventDefault();const info=dRef.current;if(!info)return;
