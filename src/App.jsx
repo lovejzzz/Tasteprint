@@ -758,14 +758,14 @@ export default function App(){
         </div>
 
         {/* CANVAS */}
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",background:device!=="free"?p.bg:"transparent"}}>
+        <div style={{flex:1,display:"flex",alignItems:device==="free"?"stretch":"center",justifyContent:"center",overflow:"hidden",background:device!=="free"?p.bg:"transparent"}} onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
         <div ref={cRef} onDrop={onDrop} onDragOver={e=>e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
           onMouseDown={e=>{
             if(e.button===1){e.preventDefault();setPan({x:e.clientX,y:e.clientY})}
             if(e.button===0&&(e.target===cRef.current||e.target.closest("[data-c]"))){setSel(null);setSelFont(null)}
           }}
           onContextMenu={e=>e.preventDefault()}
-          style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,maxWidth:"100%"}:{width:390}),height:device==="phone"?844:undefined,flex:device==="free"?1:undefined,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent",alignSelf:"center"}}>
+          style={{...(device==="free"?{flex:1}:device==="desktop"?{width:1280,maxWidth:"100%"}:{width:390}),height:device==="phone"?844:undefined,position:"relative",overflow:"hidden",cursor:pan?"grabbing":"default",borderRadius:device!=="free"?16:0,border:device!=="free"?`1px solid ${p.bd}`:"none",boxShadow:device!=="free"?`0 4px 24px ${p.tx}08`:"none",background:device!=="free"?p.bg:"transparent"}}>
 
           {/* dot grid */}
           <svg data-c="1" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
