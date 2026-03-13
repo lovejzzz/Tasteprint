@@ -725,25 +725,26 @@ export default function App(){
 
       <div style={{display:"flex",flex:1,overflow:"hidden"}}>
         {/* LIBRARY */}
-        <div style={{width:210,padding:"10px 0",overflowY:"auto",borderRight:`1px solid ${p.bd}`,background:p.card+"88",backdropFilter:"blur(8px)",flexShrink:0,transition:"all .4s"}}>
-          <div style={{padding:"2px 14px 8px",fontSize:9,color:p.mu,textTransform:"uppercase",letterSpacing:"0.1em"}}>Components</div>
+        <div style={{width:320,padding:"10px 0",overflowY:"auto",borderRight:`1px solid ${p.bd}`,background:p.card+"88",backdropFilter:"blur(8px)",flexShrink:0,transition:"all .4s"}}>
+          <div style={{padding:"2px 16px 8px",fontSize:9,color:p.mu,textTransform:"uppercase",letterSpacing:"0.1em"}}>Components</div>
           {LIB.map(cat=>(
             <div key={cat.cat}>
-              <div onClick={()=>setExpCat(expCat===cat.cat?null:cat.cat)} style={{padding:"6px 14px",fontSize:11,fontWeight:500,color:expCat===cat.cat?p.tx:p.mu,cursor:"pointer",userSelect:"none"}}><span style={{display:"inline-block",width:12,fontSize:9,transition:"transform .2s",transform:expCat===cat.cat?"rotate(90deg)":"rotate(0)"}}>{">"}</span>{cat.cat}</div>
+              <div onClick={()=>setExpCat(expCat===cat.cat?null:cat.cat)} style={{padding:"6px 16px",fontSize:12,fontWeight:500,color:expCat===cat.cat?p.tx:p.mu,cursor:"pointer",userSelect:"none"}}><span style={{display:"inline-block",width:14,fontSize:10,transition:"transform .2s",transform:expCat===cat.cat?"rotate(90deg)":"rotate(0)"}}>{">"}</span>{cat.cat}</div>
               {expCat===cat.cat&&(
-                <div style={{padding:"0 6px 6px",display:"flex",flexDirection:"column",gap:2}}>
+                <div style={{padding:"0 10px 10px",display:"flex",flexDirection:"column",gap:6}}>
                   {cat.items.map(item=>{
                     const pv=prefV[item.type]||0;const vn=varName(item.type,pv);
+                    const tw=280,ts=Math.min(tw/item.w,1),th=item.h*ts;
                     return(
                       <div key={item.type} draggable onDragStart={()=>{dRef.current=item}}
-                        style={{padding:"7px 8px",borderRadius:8,cursor:"grab",display:"flex",alignItems:"center",gap:10,transition:"background .12s"}}
+                        style={{padding:10,borderRadius:10,cursor:"grab",display:"flex",flexDirection:"column",gap:6,transition:"background .12s",border:`1px solid ${p.bd}`}}
                         onMouseEnter={e=>e.currentTarget.style.background=p.su} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        <div style={{width:44,height:30,borderRadius:5,overflow:"hidden",flexShrink:0,pointerEvents:"none",border:`1px solid ${p.bd}`,transition:"all .25s"}}>
-                          <div style={{transform:`scale(${Math.min(44/item.w,30/item.h)})`,transformOrigin:"top left",width:item.w,height:item.h}}><C type={item.type} v={pv} p={p}/></div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span style={{fontSize:12,fontWeight:500,color:p.tx}}>{item.label}</span>
+                          <span style={{fontSize:10,color:p.mu,opacity:.6}}>{vn}</span>
                         </div>
-                        <div style={{display:"flex",flexDirection:"column",gap:1,minWidth:0}}>
-                          <span style={{fontSize:11,color:p.tx}}>{item.label}</span>
-                          <span style={{fontSize:9,color:p.mu,opacity:.6}}>{vn}</span>
+                        <div style={{width:tw,height:th,borderRadius:6,overflow:"hidden",pointerEvents:"none",alignSelf:"center"}}>
+                          <div style={{transform:`scale(${ts})`,transformOrigin:"top left",width:item.w,height:item.h}}><C type={item.type} v={pv} p={p}/></div>
                         </div>
                       </div>
                     );
