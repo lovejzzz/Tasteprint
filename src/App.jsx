@@ -698,7 +698,7 @@ export default function App(){
     const el=cRef.current;if(!el)return;
     const prev=sel;const prevAll=selAll;setSel(null);setSelAll(new Set());
     requestAnimationFrame(()=>{
-      toPng(el,{pixelRatio:2,cacheBust:true}).then(url=>{
+      toPng(el,{pixelRatio:2,cacheBust:true,filter:n=>!n?.dataset?.noExport}).then(url=>{
         const a=document.createElement("a");a.href=url;a.download="tasteprint.png";a.click();
       }).catch(()=>{}).finally(()=>{setSel(prev);setSelAll(prevAll)});
     });
@@ -941,8 +941,8 @@ export default function App(){
           </div>
           <div style={{width:1,height:20,background:p.bd}}/>
           <button onClick={clearAll} title="New canvas" style={btnSt}>New</button>
-          <button onClick={exportPng} title="Export as PNG" style={btnSt}>PNG</button>
-          <button onClick={exportJSON} title="Export JSON" style={btnSt}>Export</button>
+          <button onClick={exportPng} title="Export as PNG" disabled={!shapes.length} style={{...btnSt,opacity:shapes.length?1:.4,cursor:shapes.length?"pointer":"default"}}>PNG</button>
+          <button onClick={exportJSON} title="Export JSON" disabled={!shapes.length} style={{...btnSt,opacity:shapes.length?1:.4,cursor:shapes.length?"pointer":"default"}}>JSON</button>
           <button onClick={importJSON} title="Import JSON" style={btnSt}>Import</button>
           <button onClick={undo} title="Undo (⌘Z)" style={btnSt}>Undo</button>
           <button onClick={redo} title="Redo (⌘⇧Z)" style={btnSt}>Redo</button>
@@ -1063,12 +1063,12 @@ export default function App(){
           )}
 
           {/* selection info */}
-          {selAll.size>1&&<div style={{position:"absolute",bottom:12,left:14,display:"flex",alignItems:"center",gap:6,zIndex:60,background:p.card,border:`1px solid ${p.bd}`,borderRadius:8,padding:"4px 10px",fontSize:10,color:p.mu,boxShadow:`0 2px 8px ${p.tx}08`}}>
+          {selAll.size>1&&<div data-no-export="1" style={{position:"absolute",bottom:12,left:14,display:"flex",alignItems:"center",gap:6,zIndex:60,background:p.card,border:`1px solid ${p.bd}`,borderRadius:8,padding:"4px 10px",fontSize:10,color:p.mu,boxShadow:`0 2px 8px ${p.tx}08`}}>
             {selAll.size} selected <span style={{opacity:.5,marginLeft:4}}>⌘G group · ⌘⇧G ungroup</span>
           </div>}
 
           {/* zoom indicator */}
-          <div style={{position:"absolute",bottom:12,right:14,display:"flex",alignItems:"center",gap:6,zIndex:60}}>
+          <div data-no-export="1" style={{position:"absolute",bottom:12,right:14,display:"flex",alignItems:"center",gap:6,zIndex:60}}>
             <button onClick={()=>setCam(c=>{const nz=Math.max(.15,c.z-0.15);const el=cRef.current.getBoundingClientRect();const mx=el.width/2,my=el.height/2;return{x:mx-(mx-c.x)*(nz/c.z),y:my-(my-c.y)*(nz/c.z),z:nz}})} style={{width:24,height:24,borderRadius:6,border:`1px solid ${p.bd}`,background:p.card,color:p.mu,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui",padding:0}}>-</button>
             <button onClick={()=>setCam({x:0,y:0,z:1})} title="Reset zoom" style={{fontSize:10,color:p.mu,background:p.card,border:`1px solid ${p.bd}`,borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",minWidth:42,textAlign:"center"}}>{zoomPct}%</button>
             <button onClick={()=>setCam(c=>{const nz=Math.min(4,c.z+0.15);const el=cRef.current.getBoundingClientRect();const mx=el.width/2,my=el.height/2;return{x:mx-(mx-c.x)*(nz/c.z),y:my-(my-c.y)*(nz/c.z),z:nz}})} style={{width:24,height:24,borderRadius:6,border:`1px solid ${p.bd}`,background:p.card,color:p.mu,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui",padding:0}}>+</button>
