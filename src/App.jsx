@@ -1048,7 +1048,7 @@ export default function App(){
                     </button>
                   )}
                   <div onMouseDown={e=>onDown(e,s)}
-                    style={{width:sw,height:sh,cursor:device!=="free"?"pointer":isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}${isPrimary?"88":"44"}`:"none",outlineOffset:4,borderRadius:14,...(rl?{overflow:"hidden"}:{})}}>
+                    style={{width:sw,height:sh,cursor:isDrg?"grabbing":"grab",transition:isDrg?"none":"transform .1s",transform:isDrg?"scale(1.015)":"scale(1)",filter:isDrg?`drop-shadow(0 8px 20px ${p.ac}15)`:"none",outline:isSel?`2px solid ${p.ac}${isPrimary?"88":"44"}`:"none",outlineOffset:4,borderRadius:14,...(rl?{overflow:"hidden"}:{})}}>
                     <C type={s.type} v={s.variant||0} p={p} editable={isPrimary} texts={s.texts||{}} onText={(k,val)=>updateText(s.id,k,val)} font={s.font||0}/>
                     {isPrimary&&<div onMouseDown={e=>{e.stopPropagation();setRsz(s.id)}} style={{position:"absolute",right:-4,bottom:-4,width:8,height:8,background:p.ac,borderRadius:2,cursor:"nwse-resize",zIndex:11}}/>}
                   </div>
