@@ -6,8 +6,20 @@ import { useKeyboard } from "./hooks/useKeyboard";
 import Header from "./components/Header";
 import LibrarySidebar from "./components/LibrarySidebar";
 import ShapeItem from "./components/ShapeItem";
+import C from "./components/ComponentRenderer";
+
+function useIsMobile() {
+  const [m, setM] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return m;
+}
 
 export default function App() {
+  const mobile = useIsMobile();
   const [shapes, setShapes] = useState(() => load("shapes", []));
   const [sel, setSel] = useState(null);
   const [selAll, setSelAll] = useState(new Set());
@@ -27,6 +39,7 @@ export default function App() {
   const [device, setDevice] = useState("free");
   const [libOrd, setLibOrd] = useState(() => load("libOrd", {}));
   const [pDrag, setPDrag] = useState(null);
+  const [libOpen, setLibOpen] = useState(false);
   const cRef = useRef(null);
   const dRef = useRef(null);
   const dirtyText = useRef(null);
@@ -182,6 +195,14 @@ export default function App() {
     push([...shapes, ns]); setSel(ns.id); setSelAll(new Set([ns.id])); dRef.current = null;
   }, [shapes, push, prefV, toCanvas]);
 
+  /* Tap-to-add for mobile */
+  const addShape = useCallback((item) => {
+    const lastY = shapes.length ? Math.max(...shapes.map(s => s.y + s.h)) + 20 : 40;
+    const vw = window.innerWidth;
+    const ns = { id: uid(), type: item.type, x: Math.max(10, vw / 2 - item.w / 2), y: lastY, w: Math.min(item.w, vw - 20), h: item.h, variant: prefV[item.type] || 0, texts: {}, font: 0 };
+    push([...shapes, ns]); setSel(ns.id); setSelAll(new Set([ns.id]));
+  }, [shapes, push, prefV]);
+
   /* ---- DEVICE CANVAS HEIGHT ---- */
   const deviceH = useMemo(() => {
     if (device === "free") return 0;
@@ -190,6 +211,8 @@ export default function App() {
 
   const onDown = useCallback((e, s) => {
     e.stopPropagation(); flushDirtyText();
+    const cx = e.clientX ?? e.touches?.[0]?.clientX;
+    const cy = e.clientY ?? e.touches?.[0]?.clientY;
     if (e.shiftKey) {
       setSelAll(prev => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n });
       if (!sel) setSel(s.id);
@@ -203,18 +226,21 @@ export default function App() {
       setSel(s.id);
     }
     setDrag(s.id);
-    const pt = toCanvas(e.clientX, e.clientY);
+    const pt = toCanvas(cx, cy);
     setOff({ x: pt.x - s.x, y: pt.y - s.y });
   }, [toCanvas, flushDirtyText, sel, shapes]);
 
   const onMove = useCallback(e => {
+    const cx = e.clientX ?? e.touches?.[0]?.clientX;
+    const cy = e.clientY ?? e.touches?.[0]?.clientY;
+    if (cx === undefined) return;
     if (pan) {
-      setCam(c => ({ ...c, x: c.x + (e.clientX - pan.x), y: c.y + (e.clientY - pan.y) }));
-      setPan({ x: e.clientX, y: e.clientY });
+      setCam(c => ({ ...c, x: c.x + (cx - pan.x), y: c.y + (cy - pan.y) }));
+      setPan({ x: cx, y: cy });
       return;
     }
     if (!drag && !rsz) return;
-    const pt = toCanvas(e.clientX, e.clientY);
+    const pt = toCanvas(cx, cy);
     if (rsz) {
       const s = shapes.find(x => x.id === rsz); if (!s) return;
       let nw = Math.max(40, pt.x - s.x), nh = Math.max(20, pt.y - s.y);
@@ -308,21 +334,23 @@ export default function App() {
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: p.bg, fontFamily: "'DM Sans',system-ui,sans-serif", color: p.tx, transition: "background .4s,color .4s" }}>
       <link href={FONT_URL} rel="stylesheet" />
 
-      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} />
+      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} mobile={mobile} />
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <LibrarySidebar expCat={expCat} setExpCat={setExpCat} catItems={catItems} prefV={prefV} p={p} pDrag={pDrag} setPDrag={setPDrag} dRef={dRef} reorderLib={reorderLib} lastReorder={lastReorder} />
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: mobile ? "column" : "row" }}>
+        {!mobile && <LibrarySidebar expCat={expCat} setExpCat={setExpCat} catItems={catItems} prefV={prefV} p={p} pDrag={pDrag} setPDrag={setPDrag} dRef={dRef} reorderLib={reorderLib} lastReorder={lastReorder} />}
 
         {/* CANVAS */}
-        <main style={{ flex: 1, display: "flex", alignItems: device === "free" ? "stretch" : "flex-start", justifyContent: "center", overflow: device !== "free" ? "auto" : "hidden", background: device !== "free" ? p.su : "transparent", padding: device !== "free" ? "32px 40px" : "0" }}
+        <main style={{ flex: 1, display: "flex", alignItems: device === "free" || mobile ? "stretch" : "flex-start", justifyContent: "center", overflow: device !== "free" && !mobile ? "auto" : "hidden", background: device !== "free" && !mobile ? p.su : "transparent", padding: device !== "free" && !mobile ? "32px 40px" : "0" }}
           onDragOver={e => e.preventDefault()} onDrop={onDrop} role="application" aria-label="Design canvas">
           <div ref={cRef} onDrop={onDrop} onDragOver={e => e.preventDefault()} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+            onTouchMove={e => { if (drag || rsz) { e.preventDefault(); onMove(e.touches[0]) } }}
+            onTouchEnd={onUp}
             onMouseDown={e => {
               if (e.button === 1) { e.preventDefault(); setPan({ x: e.clientX, y: e.clientY }) }
               if (e.button === 0 && (e.target === cRef.current || e.target.closest("[data-c]"))) { flushDirtyText(); setSel(null); setSelAll(new Set()); setSelFont(null) }
             }}
             onContextMenu={e => e.preventDefault()}
-            style={{ ...(device === "free" ? { flex: 1 } : device === "desktop" ? { width: 1280, flexShrink: 0 } : { width: 390, flexShrink: 0 }), height: device === "phone" ? 844 : device === "desktop" ? Math.max(720, (deviceH || 720)) : undefined, minHeight: device === "desktop" ? 720 : undefined, position: "relative", overflow: "hidden", cursor: pan ? "grabbing" : "default", borderRadius: device !== "free" ? 16 : 0, border: device !== "free" ? `1px solid ${p.bd}` : "none", boxShadow: device !== "free" ? `0 4px 24px ${p.tx}08` : "none", background: device !== "free" ? p.bg : "transparent" }}>
+            style={{ ...(device === "free" || mobile ? { flex: 1 } : device === "desktop" ? { width: 1280, flexShrink: 0 } : { width: 390, flexShrink: 0 }), height: !mobile && device === "phone" ? 844 : !mobile && device === "desktop" ? Math.max(720, (deviceH || 720)) : undefined, minHeight: !mobile && device === "desktop" ? 720 : undefined, position: "relative", overflow: "hidden", cursor: pan ? "grabbing" : "default", borderRadius: device !== "free" && !mobile ? 16 : 0, border: device !== "free" && !mobile ? `1px solid ${p.bd}` : "none", boxShadow: device !== "free" && !mobile ? `0 4px 24px ${p.tx}08` : "none", background: device !== "free" && !mobile ? p.bg : "transparent" }}>
 
             {/* dot grid */}
             <svg data-c="1" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} aria-hidden="true">
@@ -334,7 +362,7 @@ export default function App() {
             {guides.map((g, i) => <div key={i} aria-hidden="true" style={{ position: "absolute", pointerEvents: "none", zIndex: 300, background: p.ac + "40", ...(g.t === "v" ? { left: g.p * cam.z + cam.x, top: 0, width: 1, height: "100%" } : { top: g.p * cam.z + cam.y, left: 0, height: 1, width: "100%" }) }} />)}
 
             {/* transform layer */}
-            <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : {}), width: device !== "free" ? "100%" : undefined, minHeight: deviceH || undefined }}>
+            <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
                   onDown={onDown} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} delShape={delShape} setRsz={setRsz} />
@@ -343,27 +371,79 @@ export default function App() {
 
             {/* empty state */}
             {shapes.length === 0 && (
-              <div data-c="1" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-                <p style={{ fontFamily: "'Instrument Serif',Georgia,serif", fontSize: 26, color: p.mu, opacity: .3, margin: "0 0 6px" }}>Drag components here</p>
-                <p style={{ fontSize: 13, color: p.mu, opacity: .2 }}>Switch styles with arrows. Your taste is remembered.</p>
+              <div data-c="1" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: mobile ? 24 : 0 }}>
+                <p style={{ fontFamily: "'Instrument Serif',Georgia,serif", fontSize: mobile ? 20 : 26, color: p.mu, opacity: .3, margin: "0 0 6px", textAlign: "center" }}>{mobile ? "Tap + to add components" : "Drag components here"}</p>
+                <p style={{ fontSize: mobile ? 11 : 13, color: p.mu, opacity: .2, textAlign: "center" }}>{mobile ? "Tap to select, drag to move" : "Switch styles with arrows. Your taste is remembered."}</p>
               </div>
             )}
 
             {/* selection info */}
-            {selAll.size > 1 && <div data-no-export="1" style={{ position: "absolute", bottom: 12, left: 14, display: "flex", alignItems: "center", gap: 6, zIndex: 60, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 8, padding: "4px 10px", fontSize: 10, color: p.mu, boxShadow: `0 2px 8px ${p.tx}08` }}>
-              {selAll.size} selected <span style={{ opacity: .5, marginLeft: 4 }}>⌘G group · ⌘⇧G ungroup</span>
+            {selAll.size > 1 && <div data-no-export="1" style={{ position: "absolute", bottom: mobile ? 70 : 12, left: 14, display: "flex", alignItems: "center", gap: 6, zIndex: 60, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 8, padding: "4px 10px", fontSize: 10, color: p.mu, boxShadow: `0 2px 8px ${p.tx}08` }}>
+              {selAll.size} selected {!mobile && <span style={{ opacity: .5, marginLeft: 4 }}>⌘G group · ⌘⇧G ungroup</span>}
             </div>}
 
-            {/* zoom controls */}
-            <div data-no-export="1" style={{ position: "absolute", bottom: 12, right: 14, display: "flex", alignItems: "center", gap: 6, zIndex: 60 }} role="group" aria-label="Zoom controls">
+            {/* zoom controls - hide on mobile */}
+            {!mobile && <div data-no-export="1" style={{ position: "absolute", bottom: 12, right: 14, display: "flex", alignItems: "center", gap: 6, zIndex: 60 }} role="group" aria-label="Zoom controls">
               <button aria-label="Zoom out" onClick={() => setCam(c => { const nz = Math.max(.15, c.z - 0.15); const el = cRef.current.getBoundingClientRect(); const mx = el.width / 2, my = el.height / 2; return { x: mx - (mx - c.x) * (nz / c.z), y: my - (my - c.y) * (nz / c.z), z: nz } })} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${p.bd}`, background: p.card, color: p.mu, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui", padding: 0 }}>-</button>
               <button aria-label={`Reset zoom (${zoomPct}%)`} onClick={() => setCam({ x: 0, y: 0, z: 1 })} title="Reset zoom" style={{ fontSize: 10, color: p.mu, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit", minWidth: 42, textAlign: "center" }}>{zoomPct}%</button>
               <button aria-label="Zoom in" onClick={() => setCam(c => { const nz = Math.min(4, c.z + 0.15); const el = cRef.current.getBoundingClientRect(); const mx = el.width / 2, my = el.height / 2; return { x: mx - (mx - c.x) * (nz / c.z), y: my - (my - c.y) * (nz / c.z), z: nz } })} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${p.bd}`, background: p.card, color: p.mu, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui", padding: 0 }}>+</button>
-            </div>
+            </div>}
           </div>
         </main>
       </div>
-      <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.12);border-radius:2px}`}</style>
+
+      {/* Mobile bottom drawer - component library */}
+      {mobile && <>
+        {/* FAB toggle */}
+        <button onClick={() => setLibOpen(!libOpen)} aria-label={libOpen ? "Close library" : "Open library"}
+          style={{ position: "fixed", bottom: libOpen ? "55vh" : 20, right: 16, zIndex: 1001, width: 52, height: 52, borderRadius: 999, background: p.ac, border: "none", color: (() => { const hex = p.ac.replace("#", ""); const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); return (r*299+g*587+b*114)/1000 > 150 ? "#1a1a1a" : "#fff" })(), fontSize: 24, fontWeight: 300, cursor: "pointer", boxShadow: `0 4px 20px ${p.ac}40`, display: "flex", alignItems: "center", justifyContent: "center", transition: "bottom .3s ease, transform .2s", transform: libOpen ? "rotate(45deg)" : "none" }}>+</button>
+
+        {/* Drawer backdrop */}
+        {libOpen && <div onClick={() => setLibOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.3)", zIndex: 999 }} />}
+
+        {/* Drawer */}
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: "55vh", background: p.card, borderTop: `1px solid ${p.bd}`, borderRadius: "20px 20px 0 0", zIndex: 1000, transform: libOpen ? "translateY(0)" : "translateY(100%)", transition: "transform .3s ease", display: "flex", flexDirection: "column", boxShadow: libOpen ? `0 -8px 32px ${p.tx}10` : "none" }}>
+          {/* Handle */}
+          <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 6px" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: p.mu + "30" }} />
+          </div>
+
+          {/* Category tabs - horizontal scroll */}
+          <div style={{ display: "flex", gap: 2, padding: "0 12px 8px", overflowX: "auto", flexShrink: 0, WebkitOverflowScrolling: "touch" }}>
+            {LIB.map(cat => (
+              <button key={cat.cat} onClick={() => setExpCat(cat.cat)}
+                style={{ padding: "6px 14px", fontSize: 12, fontWeight: expCat === cat.cat ? 600 : 400, color: expCat === cat.cat ? p.tx : p.mu, background: expCat === cat.cat ? p.su : "transparent", border: "none", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", transition: "all .15s", flexShrink: 0 }}>
+                {cat.cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Component grid */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px 12px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignContent: "start", WebkitOverflowScrolling: "touch" }}>
+            {catItems.map(item => {
+              const pv = prefV[item.type] || 0;
+              const tw = (window.innerWidth - 44) / 2;
+              const ts = Math.min(tw / item.w, 1);
+              const th = Math.min(item.h * ts, 120);
+              return (
+                <button key={item.type} onClick={() => { addShape(item); setLibOpen(false) }}
+                  style={{ padding: 8, borderRadius: 10, border: `1px solid ${p.bd}`, background: p.card, cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", fontFamily: "inherit", transition: "background .15s", WebkitTapHighlightColor: "transparent" }}
+                  onTouchStart={e => e.currentTarget.style.background = p.su}
+                  onTouchEnd={e => e.currentTarget.style.background = p.card}>
+                  <div style={{ width: "100%", height: th, borderRadius: 6, overflow: "hidden", pointerEvents: "none", display: "flex", justifyContent: "center" }}>
+                    <div style={{ transform: `scale(${ts})`, transformOrigin: "top center", width: item.w, height: item.h }}>
+                      <C type={item.type} v={pv} p={p} />
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: p.tx }}>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </>}
+
+      <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.12);border-radius:2px}html,body{overscroll-behavior:none;-webkit-overflow-scrolling:touch}body{position:fixed;width:100%;height:100%}#root{width:100%;height:100%}`}</style>
     </div>
   );
 }

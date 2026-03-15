@@ -34,16 +34,16 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
       )}
       {isPrimary && !isDrg && (
         <button aria-label="Delete component" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); delShape(s.id) }}
-          style={{ position: "absolute", top: -10, right: -10, width: 22, height: 22, borderRadius: 999, background: p.mu + "88", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 201, transition: "background .15s" }}
+          style={{ position: "absolute", top: -12, right: -12, width: 28, height: 28, borderRadius: 999, background: p.mu + "88", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 201, transition: "background .15s" }}
           onMouseEnter={e => e.currentTarget.style.background = "#E0524D"}
           onMouseLeave={e => e.currentTarget.style.background = p.mu + "88"}>
           <svg width="10" height="10" viewBox="0 0 10 10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" /></svg>
         </button>
       )}
-      <div onMouseDown={e => onDown(e, s)}
-        style={{ width: sw, height: sh, cursor: isDrg ? "grabbing" : "grab", transition: isDrg ? "none" : "transform .1s", transform: isDrg ? "scale(1.015)" : "scale(1)", filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : "none", outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : "none", outlineOffset: 4, borderRadius: 14, ...(device !== "free" ? { overflow: "hidden" } : {}) }}>
+      <div onMouseDown={e => onDown(e, s)} onTouchStart={e => onDown(e, s)}
+        style={{ width: sw, height: sh, cursor: isDrg ? "grabbing" : "grab", transition: isDrg ? "none" : "transform .1s", transform: isDrg ? "scale(1.015)" : "scale(1)", filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : "none", outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : "none", outlineOffset: 4, borderRadius: 14, ...(device !== "free" ? { overflow: "hidden" } : {}), WebkitTapHighlightColor: "transparent", touchAction: "none" }}>
         <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} />
-        {isPrimary && <div onMouseDown={e => { e.stopPropagation(); setRsz(s.id) }} style={{ position: "absolute", right: -4, bottom: -4, width: 8, height: 8, background: p.ac, borderRadius: 2, cursor: "nwse-resize", zIndex: 11 }} />}
+        {isPrimary && <div onMouseDown={e => { e.stopPropagation(); setRsz(s.id) }} onTouchStart={e => { e.stopPropagation(); setRsz(s.id) }} style={{ position: "absolute", right: -4, bottom: -4, width: 14, height: 14, background: p.ac, borderRadius: 3, cursor: "nwse-resize", zIndex: 11 }} />}
       </div>
       {isPrimary && !isDrg && HAS_PROPS.has(s.type) && <PropsPanel type={s.type} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} p={p} />}
     </div>
