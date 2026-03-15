@@ -340,6 +340,49 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Context menu ---- */
   const [ctxMenu, setCtxMenu] = React.useState(null);
 
+  /* ---- Bracket matching ---- */
+  const matchBracket = React.useMemo(() => {
+    if (!taRef.current) return null;
+    const pos = taRef.current.selectionStart;
+    const ch = code[pos] || code[pos - 1];
+    const actualPos = code[pos] && '()[]{}' .includes(code[pos]) ? pos : (code[pos - 1] && '()[]{}' .includes(code[pos - 1]) ? pos - 1 : -1);
+    if (actualPos === -1) return null;
+    const c = code[actualPos];
+    const open = '([{'; const close = ')]}';
+    const oi = open.indexOf(c), ci = close.indexOf(c);
+    if (oi !== -1) {
+      let depth = 1, i = actualPos + 1;
+      while (i < code.length && depth > 0) { if (code[i] === open[oi]) depth++; if (code[i] === close[oi]) depth--; i++; }
+      if (depth === 0) return [actualPos, i - 1];
+    } else if (ci !== -1) {
+      let depth = 1, i = actualPos - 1;
+      while (i >= 0 && depth > 0) { if (code[i] === close[ci]) depth++; if (code[i] === open[ci]) depth--; i--; }
+      if (depth === 0) return [i + 1, actualPos];
+    }
+    return null;
+  }, [code, activeLn, cursor]);
+
+  /* ---- Selected word occurrences ---- */
+  const [selectedWord, setSelectedWord] = React.useState('');
+  const wordOccurrences = React.useMemo(() => {
+    if (!selectedWord || selectedWord.length < 2) return new Set();
+    const occ = new Set();
+    let idx = 0;
+    while (idx < code.length) {
+      const found = code.indexOf(selectedWord, idx);
+      if (found === -1) break;
+      // Which line is this on?
+      const ln = code.substring(0, found).split('\n').length;
+      occ.add(ln);
+      idx = found + 1;
+    }
+    return occ;
+  }, [code, selectedWord]);
+
+  /* ---- Terminal resize ---- */
+  const [termHeight, setTermHeight] = React.useState(120);
+  const termDrag = React.useRef(null);
+
   /* ---- Explorer new file input ---- */
   const [newFileInput, setNewFileInput] = React.useState(false);
   const [newFileName, setNewFileName] = React.useState('');
@@ -969,6 +1012,24 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             })}
           </div>
 
+          {/* Breadcrumb */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px', background: '#1a1a2e', borderBottom: '1px solid #ffffff06', flexShrink: 0, gap: 4 }}>
+            {activeFile.split('/').map((part, i, arr) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span style={{ fontSize: 7, color: '#444' }}>{'\u203A'}</span>}
+                <span style={{ fontSize: fs(8), color: i === arr.length - 1 ? '#cdd6f4' : '#666', cursor: i < arr.length - 1 ? 'pointer' : 'default' }}
+                  onClick={() => {
+                    if (i < arr.length - 1) {
+                      const folder = arr.slice(0, i + 1).join('/');
+                      setOpenFolders(prev => ({ ...prev, [part]: true }));
+                    }
+                  }}
+                  onMouseDown={stop}>{part}</span>
+              </React.Fragment>
+            ))}
+            {readonly && <span style={{ fontSize: 7, color: '#f9e2af', opacity: .4, marginLeft: 4 }}>read-only</span>}
+          </div>
+
           {/* Search bar */}
           {searchOpen && (
             <div onMouseDown={stop} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff08', flexShrink: 0, alignItems: 'center' }}>
@@ -1064,53 +1125,107 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             {/* Code editor */}
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
               {/* Line numbers */}
-              <div ref={lnRef} style={{
-                padding: '8px 0', width: 32, textAlign: 'right', userSelect: 'none',
-                borderRight: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'hidden'
-              }}>
-                <div style={{ transform: `translateY(-${scrollTop}px)` }}>
-                  {lines.map((_, i) => (
-                    <div key={i} style={{
-                      fontSize: fs(9), lineHeight: lh,
-                      color: i + 1 === activeLn ? '#cdd6f4' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
-                      paddingRight: 6,
-                      background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
-                    }}>{i + 1}</div>
-                  ))}
-                </div>
-              </div>
+              {(() => {
+                const gutterW = lines.length >= 1000 ? 44 : lines.length >= 100 ? 38 : 32;
+                return (
+                  <div ref={lnRef} style={{
+                    padding: '8px 0', width: gutterW, textAlign: 'right', userSelect: 'none',
+                    borderRight: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'hidden'
+                  }}>
+                    <div style={{ transform: `translateY(-${scrollTop}px)` }}>
+                      {lines.map((_, i) => {
+                        const isBracketLine = matchBracket && (
+                          code.substring(0, matchBracket[0]).split('\n').length === i + 1 ||
+                          code.substring(0, matchBracket[1]).split('\n').length === i + 1
+                        );
+                        return (
+                          <div key={i} style={{
+                            fontSize: fs(9), lineHeight: lh,
+                            color: i + 1 === activeLn ? '#cdd6f4' : isBracketLine ? '#cba6f7' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
+                            paddingRight: 6,
+                            background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
+                          }}>{i + 1}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Syntax highlight overlay */}
-              <div ref={hlRef} style={{ position: 'absolute', left: 33, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
-                <div style={{ transform: `translateY(-${scrollTop}px)` }}>
-                {lines.map((l, i) => {
-                  /* Search match highlighting for this line */
-                  let searchHighlights = null;
-                  if (searchOpen && searchTerm && l.toLowerCase().includes(searchTerm.toLowerCase())) {
-                    const parts = [];
-                    let rest = l, idx = 0;
-                    const tl = searchTerm.length;
-                    while (true) {
-                      const fi = rest.toLowerCase().indexOf(searchTerm.toLowerCase());
-                      if (fi === -1) { parts.push(<span key={idx}><HighlightLine text={rest} /></span>); break; }
-                      if (fi > 0) parts.push(<span key={idx++}><HighlightLine text={rest.substring(0, fi)} /></span>);
-                      parts.push(<span key={idx++} style={{ background: '#f9e2af40', borderRadius: 2, outline: '1px solid #f9e2af60' }}><HighlightLine text={rest.substring(fi, fi + tl)} /></span>);
-                      rest = rest.substring(fi + tl);
-                    }
-                    searchHighlights = parts;
-                  }
-                  return (
-                    <div key={i} style={{
-                      fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
-                      height: Math.round(16 * fsize),
-                      background: i + 1 === activeLn ? '#ffffff04' : output?.errLn === i + 1 ? '#f38ba808' : 'transparent',
-                    }}>
-                      {searchHighlights || <HighlightLine text={l} />}
+              {(() => {
+                const gutterW = lines.length >= 1000 ? 44 : lines.length >= 100 ? 38 : 32;
+                const charW = fs(6.1);
+                // Precompute bracket match line positions
+                const bracketLines = {};
+                if (matchBracket) {
+                  const ln1 = code.substring(0, matchBracket[0]).split('\n').length;
+                  const col1 = matchBracket[0] - code.lastIndexOf('\n', matchBracket[0] - 1) - 1;
+                  const ln2 = code.substring(0, matchBracket[1]).split('\n').length;
+                  const col2 = matchBracket[1] - code.lastIndexOf('\n', matchBracket[1] - 1) - 1;
+                  bracketLines[ln1] = col1;
+                  bracketLines[ln2] = col2;
+                }
+                return (
+                  <div ref={hlRef} style={{ position: 'absolute', left: gutterW + 1, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
+                    <div style={{ transform: `translateY(-${scrollTop}px)` }}>
+                    {lines.map((l, i) => {
+                      /* Indent guides */
+                      const indent = l.match(/^(\s*)/)[0].length;
+                      const guides = [];
+                      for (let g = 2; g <= indent; g += 2) {
+                        guides.push(
+                          <span key={`g${g}`} style={{
+                            position: 'absolute', left: (g - 1) * charW, top: 0, bottom: 0, width: 1,
+                            background: g === indent ? '#ffffff0a' : '#ffffff06'
+                          }} />
+                        );
+                      }
+
+                      /* Search match highlighting */
+                      let searchHighlights = null;
+                      if (searchOpen && searchTerm && l.toLowerCase().includes(searchTerm.toLowerCase())) {
+                        const parts = [];
+                        let rest = l, idx = 0;
+                        const tl = searchTerm.length;
+                        while (true) {
+                          const fi = rest.toLowerCase().indexOf(searchTerm.toLowerCase());
+                          if (fi === -1) { parts.push(<span key={idx}><HighlightLine text={rest} /></span>); break; }
+                          if (fi > 0) parts.push(<span key={idx++}><HighlightLine text={rest.substring(0, fi)} /></span>);
+                          parts.push(<span key={idx++} style={{ background: '#f9e2af40', borderRadius: 2, outline: '1px solid #f9e2af60' }}><HighlightLine text={rest.substring(fi, fi + tl)} /></span>);
+                          rest = rest.substring(fi + tl);
+                        }
+                        searchHighlights = parts;
+                      }
+
+                      /* Word occurrence highlight on this line */
+                      const hasOccurrence = wordOccurrences.has(i + 1) && !searchHighlights;
+
+                      /* Bracket match indicator */
+                      const bracketCol = bracketLines[i + 1];
+
+                      return (
+                        <div key={i} style={{
+                          fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
+                          height: Math.round(16 * fsize), position: 'relative',
+                          background: i + 1 === activeLn ? '#ffffff04' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : 'transparent',
+                        }}>
+                          {guides}
+                          {searchHighlights || <HighlightLine text={l} />}
+                          {bracketCol !== undefined && (
+                            <span style={{
+                              position: 'absolute', left: bracketCol * charW, top: 0,
+                              width: charW, height: '100%',
+                              background: '#cba6f718', borderBottom: '1px solid #cba6f740'
+                            }} />
+                          )}
+                        </div>
+                      );
+                    })}
                     </div>
-                  );
-                })}
-                </div>
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* Textarea */}
               <textarea
@@ -1133,6 +1248,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 }}
                 onScroll={e => setScrollTop(e.target.scrollTop)}
                 onMouseDown={e => { stop(e); setCtxMenu(null); }}
+                onMouseUp={e => {
+                  updateCursor(e.target);
+                  const el = e.target;
+                  const s = el.selectionStart, en = el.selectionEnd;
+                  if (s !== en) {
+                    const sel = code.substring(s, en).trim();
+                    if (sel && /^\w+$/.test(sel)) setSelectedWord(sel);
+                    else setSelectedWord('');
+                  } else setSelectedWord('');
+                }}
                 onClick={e => updateCursor(e.target)}
                 onContextMenu={e => {
                   e.preventDefault(); e.stopPropagation();
@@ -1257,10 +1382,27 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             {/* Terminal */}
             {termOpen && (
               <div style={{
-                height: '35%', minHeight: 60, maxHeight: 200,
-                background: '#11111b', borderTop: '1px solid #ffffff10',
-                display: 'flex', flexDirection: 'column', flexShrink: 0
+                height: termHeight, minHeight: 50, maxHeight: 300,
+                background: '#11111b', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative'
               }}>
+                {/* Drag handle */}
+                <div
+                  onMouseDown={e => {
+                    e.preventDefault(); e.stopPropagation();
+                    termDrag.current = { startY: e.clientY, startH: termHeight };
+                    const onMove = ev => {
+                      const dy = termDrag.current.startY - ev.clientY;
+                      setTermHeight(Math.max(50, Math.min(300, termDrag.current.startH + dy)));
+                    };
+                    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); termDrag.current = null; };
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                  }}
+                  style={{ height: 3, cursor: 'ns-resize', background: 'transparent', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3 }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#cba6f740'}
+                  onMouseLeave={e => { if (!termDrag.current) e.currentTarget.style.background = 'transparent'; }}
+                />
+                <div style={{ borderTop: '1px solid #ffffff10' }}></div>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px',
                   borderBottom: '1px solid #ffffff08', flexShrink: 0
@@ -1311,20 +1453,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       </div>
 
       {/* Status bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', padding: '2px 10px',
-        borderTop: '1px solid #ffffff08', gap: 8, flexShrink: 0, background: '#181825'
-      }}>
-        <span style={{ fontSize: fs(8), color: output?.err ? '#f38ba8' : '#27c93f' }}>{'\u25CF'}</span>
-        <span style={{ fontSize: fs(8), color: '#555' }}>Ln {cursor.ln}, Col {cursor.col}</span>
-        <span style={{ fontSize: fs(8), color: '#555' }}>{lines.length} lines</span>
-        {readonly && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }}>Read-only</span>}
-        {tp && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .4 }}>tp</span>}
-        <span style={{ fontSize: fs(8), color: '#555', marginLeft: 'auto' }}>
-          {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
-        </span>
-        <span style={{ fontSize: fs(8), color: '#555' }}>UTF-8</span>
-      </div>
+      {(() => {
+        const el = taRef.current;
+        const hasSel = el && el.selectionStart !== el.selectionEnd;
+        const selLen = hasSel ? Math.abs(el.selectionEnd - el.selectionStart) : 0;
+        const selLines = hasSel ? code.substring(Math.min(el.selectionStart, el.selectionEnd), Math.max(el.selectionStart, el.selectionEnd)).split('\n').length : 0;
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', padding: '2px 10px',
+            borderTop: '1px solid #ffffff08', gap: 8, flexShrink: 0, background: '#181825'
+          }}>
+            <span style={{ fontSize: fs(8), color: output?.err ? '#f38ba8' : '#27c93f' }}>{'\u25CF'}</span>
+            <span style={{ fontSize: fs(8), color: '#555' }}>Ln {cursor.ln}, Col {cursor.col}</span>
+            {hasSel && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .6 }}>({selLen} chars, {selLines} lines)</span>}
+            <span style={{ fontSize: fs(8), color: '#555' }}>{lines.length} lines</span>
+            {readonly && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }}>Read-only</span>}
+            {tp && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .4 }}>tp</span>}
+            <span style={{ fontSize: fs(8), color: '#555', marginLeft: 'auto' }}>Spaces: 2</span>
+            <span style={{ fontSize: fs(8), color: '#555' }}>
+              {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
+            </span>
+            <span style={{ fontSize: fs(8), color: '#555' }}>UTF-8</span>
+          </div>
+        );
+      })()}
     </div>
   );
 }
