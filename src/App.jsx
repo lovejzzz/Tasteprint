@@ -181,6 +181,15 @@ export default function App() {
     }));
   }, [shapes, selFont]);
 
+  const cycleFsize = useCallback((id, dir) => {
+    setShapes(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      const cur = s.fsize || 1;
+      const nf = Math.max(0.5, Math.min(2, +(cur + dir * 0.1).toFixed(2)));
+      return { ...s, fsize: nf };
+    }));
+  }, []);
+
   const delShape = useCallback(() => {
     flushDirtyText();
     push(shapes.filter(s => !selAll.has(s.id)));
@@ -365,7 +374,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} delShape={delShape} setRsz={setRsz} />
+                  onDown={onDown} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} delShape={delShape} setRsz={setRsz} />
               ))}
             </div>
 

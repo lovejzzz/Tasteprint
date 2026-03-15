@@ -4,7 +4,7 @@ import PropsPanel from "./PropsPanel";
 import { FONTS, HAS_TEXT, HAS_PROPS } from "../constants";
 import { maxV, varName } from "../utils";
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, onProp, cycle, cycleFont, delShape, setRsz }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, onProp, cycle, cycleFont, cycleFsize, delShape, setRsz }) {
   /* eslint-disable react-hooks/exhaustive-deps */
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
@@ -29,6 +29,10 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             <button aria-label="Previous font" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"‹"}</button>
             <span style={{ fontSize: 9, color: p.ac, padding: "0 4px", width: 100, textAlign: "center", fontFamily: ff, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }}>{fn}</span>
             <button aria-label="Next font" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, 1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"›"}</button>
+            <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px" }} />
+            <button aria-label="Decrease font size" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFsize(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 11, fontFamily: "system-ui", padding: 0, fontWeight: 600 }}>A&#x2212;</button>
+            <span style={{ fontSize: 9, color: p.mu, padding: "0 2px", width: 32, textAlign: "center" }}>{Math.round((s.fsize || 1) * 100)}%</span>
+            <button aria-label="Increase font size" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFsize(s.id, 1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 13, fontFamily: "system-ui", padding: 0, fontWeight: 600 }}>A+</button>
           </>}
         </div>
       )}
@@ -42,7 +46,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
       )}
       <div onMouseDown={e => onDown(e, s)} onTouchStart={e => onDown(e, s)}
         style={{ width: sw, height: sh, cursor: isDrg ? "grabbing" : "grab", transition: isDrg ? "none" : "transform .1s", transform: isDrg ? "scale(1.015)" : "scale(1)", filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : "none", outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : "none", outlineOffset: 4, borderRadius: 14, ...(device !== "free" ? { overflow: "hidden" } : {}), WebkitTapHighlightColor: "transparent", touchAction: "none" }}>
-        <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} />
+        <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} fsize={s.fsize || 1} />
         {isPrimary && <div onMouseDown={e => { e.stopPropagation(); setRsz(s.id) }} onTouchStart={e => { e.stopPropagation(); setRsz(s.id) }} style={{ position: "absolute", right: -4, bottom: -4, width: 14, height: 14, background: p.ac, borderRadius: 3, cursor: "nwse-resize", zIndex: 11 }} />}
       </div>
       {isPrimary && !isDrg && HAS_PROPS.has(s.type) && <PropsPanel type={s.type} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} p={p} />}

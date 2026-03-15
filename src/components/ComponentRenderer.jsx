@@ -159,6 +159,7 @@ function CodeIDE({b,p}){
         <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6,flexShrink:0}}>
           <span style={{fontSize:8,color:'#555',textTransform:'uppercase',letterSpacing:'.06em'}}>Console</span>
           {out.ms&&<span style={{fontSize:8,color:'#27c93f',opacity:.5}}>{out.ms}ms</span>}
+          <span onClick={()=>{const txt=out.logs.map(l=>(l.t==='err'?'✗ ':l.t==='warn'?'⚠ ':' ')+l.v).join('\n')+(out.err?'\n'+out.err:'');navigator.clipboard.writeText(txt)}} onMouseDown={stop} style={{fontSize:8,color:'#555',cursor:'pointer',opacity:.7}} title="Copy output">⎘</span>
           <span onClick={()=>setOut(null)} onMouseDown={stop} style={{marginLeft:'auto',fontSize:8,color:'#555',cursor:'pointer'}}>✕</span>
         </div>
         <div style={{flex:1,overflow:'auto'}}>
@@ -413,7 +414,7 @@ function CodeTypewriter({b}){
   </div>;
 }
 
-function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0}){
+function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1}){
   const f=FONTS[font]?.family||FONTS[0].family;
   const b={width:"100%",height:"100%",fontFamily:f,overflow:"hidden"};
   const dp=DEFAULT_PROPS[type]||{};
@@ -427,14 +428,15 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0}){
   const T=({k,s,children})=>{
     const val=texts[k]!==undefined?texts[k]:children;
     const hasHtml=typeof val==="string"&&/<\w/.test(val);
+    const fs=s&&s.fontSize&&fsize!==1?{...s,fontSize:typeof s.fontSize==='number'?s.fontSize*fsize:s.fontSize}:s;
     if(!editable)return hasHtml
-      ?<span style={s} dangerouslySetInnerHTML={{__html:sanitizeHtml(val)}}/>
-      :<span style={s}>{val}</span>;
+      ?<span style={fs} dangerouslySetInnerHTML={{__html:sanitizeHtml(val)}}/>
+      :<span style={fs}>{val}</span>;
     const ceProps={"data-text-key":k,contentEditable:true,suppressContentEditableWarning:true,
       onInput:e=>{onText?.(k,e.target.innerHTML)},
       onMouseDown:e=>e.stopPropagation(),
       onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}},
-      style:{...s,outline:"none",cursor:"text",minWidth:8}};
+      style:{...fs,outline:"none",cursor:"text",minWidth:8}};
     return hasHtml
       ?<span {...ceProps} dangerouslySetInnerHTML={{__html:sanitizeHtml(val)}}/>
       :<span {...ceProps}>{val}</span>;
