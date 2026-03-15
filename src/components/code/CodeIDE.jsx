@@ -557,6 +557,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [renameSymbol, setRenameSymbol] = React.useState(null);
   const renameSymbolRef = React.useRef(null);
 
+  /* ---- Welcome tab ---- */
+  const [welcomeDismissed, setWelcomeDismissed] = React.useState(false);
+
+  /* ---- Breadcrumb dropdown ---- */
+  const [breadcrumbDrop, setBreadcrumbDrop] = React.useState(null);
+
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
     const known = new Set();
@@ -1487,30 +1493,43 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
 
         {/* Activity bar */}
-        <div style={{ width: 28, background: '#11111b', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4, gap: 2, flexShrink: 0, borderRight: '1px solid #ffffff06' }}>
-          {[
-            { id: 'files', icon: '\u2630', title: 'Explorer' },
-            { id: 'search', icon: '\u26B2', title: 'Search' },
-            { id: 'outline', icon: '\u2261', title: 'Outline' },
-            { id: 'settings', icon: '\u2699', title: 'Settings' },
-          ].map(item => (
-            <div key={item.id}
-              onClick={() => setSidebarMode(m => m === item.id ? null : item.id)}
-              onMouseDown={stop}
-              style={{
-                width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, cursor: 'pointer', borderRadius: 4, userSelect: 'none',
-                color: sidebarMode === item.id ? '#cba6f7' : '#555',
-                background: sidebarMode === item.id ? '#cba6f710' : 'transparent',
-                borderLeft: sidebarMode === item.id ? '2px solid #cba6f7' : '2px solid transparent',
-                transition: 'all .15s',
-              }}
-              onMouseEnter={e => { if (sidebarMode !== item.id) e.currentTarget.style.color = '#888'; }}
-              onMouseLeave={e => { if (sidebarMode !== item.id) e.currentTarget.style.color = '#555'; }}
-              title={item.title}
-            >{item.icon}</div>
-          ))}
-        </div>
+        {(() => {
+          const modCount = Object.keys(editFiles).filter(p => initFiles[p] !== undefined && editFiles[p] !== initFiles[p]).length;
+          return (
+            <div style={{ width: 28, background: '#11111b', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4, gap: 2, flexShrink: 0, borderRight: '1px solid #ffffff06' }}>
+              {[
+                { id: 'files', icon: '\u2630', title: 'Explorer', badge: modCount || null },
+                { id: 'search', icon: '\u26B2', title: 'Search' },
+                { id: 'outline', icon: '\u2261', title: 'Outline', badge: outlineSymbols.length || null },
+                { id: 'settings', icon: '\u2699', title: 'Settings' },
+              ].map(item => (
+                <div key={item.id}
+                  onClick={() => setSidebarMode(m => m === item.id ? null : item.id)}
+                  onMouseDown={stop}
+                  style={{
+                    width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, cursor: 'pointer', borderRadius: 4, userSelect: 'none', position: 'relative',
+                    color: sidebarMode === item.id ? '#cba6f7' : '#555',
+                    background: sidebarMode === item.id ? '#cba6f710' : 'transparent',
+                    borderLeft: sidebarMode === item.id ? '2px solid #cba6f7' : '2px solid transparent',
+                    transition: 'all .15s',
+                  }}
+                  onMouseEnter={e => { if (sidebarMode !== item.id) e.currentTarget.style.color = '#888'; }}
+                  onMouseLeave={e => { if (sidebarMode !== item.id) e.currentTarget.style.color = '#555'; }}
+                  title={item.title}
+                >
+                  {item.icon}
+                  {item.badge && <span style={{
+                    position: 'absolute', top: -2, right: -2, fontSize: 6, fontWeight: 700,
+                    background: '#cba6f7', color: '#11111b', borderRadius: 99,
+                    minWidth: 10, height: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 2px', lineHeight: 1, fontFamily: 'system-ui',
+                  }}>{item.badge}</span>}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* File tree sidebar */}
         {sidebarMode === 'files' && <div onClick={() => setExplorerCtx(null)} style={{
@@ -1871,18 +1890,53 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           )}
 
           {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px', background: '#1a1a2e', borderBottom: '1px solid #ffffff06', flexShrink: 0, gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px', background: '#1a1a2e', borderBottom: '1px solid #ffffff06', flexShrink: 0, gap: 4, position: 'relative' }}
+            onClick={() => setBreadcrumbDrop(null)}>
             {activeFile.split('/').map((part, i, arr) => (
               <React.Fragment key={i}>
                 {i > 0 && <span style={{ fontSize: 7, color: '#444' }}>{'\u203A'}</span>}
-                <span style={{ fontSize: fs(8), color: i === arr.length - 1 ? '#cdd6f4' : '#666', cursor: i < arr.length - 1 ? 'pointer' : 'default' }}
-                  onClick={() => {
-                    if (i < arr.length - 1) {
-                      const folder = arr.slice(0, i + 1).join('/');
+                <span style={{ fontSize: fs(8), color: breadcrumbDrop === i ? '#cba6f7' : i === arr.length - 1 ? '#cdd6f4' : '#666', cursor: 'pointer', position: 'relative', padding: '1px 2px', borderRadius: 3, background: breadcrumbDrop === i ? '#cba6f712' : 'transparent' }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (i === arr.length - 1) {
+                      // Last segment: show sibling files in same folder
+                      setBreadcrumbDrop(breadcrumbDrop === i ? null : i);
+                    } else {
+                      // Folder segment: show children
+                      setBreadcrumbDrop(breadcrumbDrop === i ? null : i);
                       setOpenFolders(prev => ({ ...prev, [part]: true }));
                     }
                   }}
-                  onMouseDown={stop}>{part}</span>
+                  onMouseDown={stop}>{part}
+                  {breadcrumbDrop === i && (() => {
+                    const parts = arr.slice(0, i + 1);
+                    const isFolder = i < arr.length - 1;
+                    const folderName = isFolder ? part : arr.slice(0, -1).join('/');
+                    const folder = TREE.find(f => f.name === (isFolder ? part : arr[0]));
+                    const items = folder ? folder.children : [];
+                    return (
+                      <div onMouseDown={stop} onClick={e => e.stopPropagation()} style={{
+                        position: 'absolute', top: '100%', left: 0, marginTop: 2, zIndex: 20,
+                        background: '#181825', border: '1px solid #ffffff15', borderRadius: 6,
+                        boxShadow: '0 4px 12px rgba(0,0,0,.5)', minWidth: 120, maxHeight: 150, overflow: 'auto',
+                      }}>
+                        {items.map(f => (
+                          <div key={f.path} onClick={() => { openFile(f.path); setBreadcrumbDrop(null); }}
+                            style={{
+                              padding: '3px 10px', fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                              color: f.path === activeFile ? '#cba6f7' : '#a6adc8',
+                              background: f.path === activeFile ? '#cba6f710' : 'transparent',
+                            }}
+                            onMouseEnter={e => { if (f.path !== activeFile) e.currentTarget.style.background = '#ffffff08'; }}
+                            onMouseLeave={e => { if (f.path !== activeFile) e.currentTarget.style.background = 'transparent'; }}>
+                            <span style={{ fontSize: 5, color: FCOLORS[f.name] || '#555' }}>{'\u25CF'}</span>
+                            {f.name}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </span>
               </React.Fragment>
             ))}
             {currentScope && <>
@@ -2107,6 +2161,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
             {/* Code editor */}
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative', outline: editorFocused ? '1px solid #cba6f720' : 'none', outlineOffset: -1, transition: 'outline-color .2s' }}>
+              {/* Scroll shadows */}
+              {scrollTop > 10 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 12, background: 'linear-gradient(to bottom, #1e1e2e, transparent)', zIndex: 4, pointerEvents: 'none' }} />}
               {/* Line numbers with fold arrows */}
               {(() => {
                 const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
@@ -2774,21 +2830,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   </>)}
                 </div>
                 {/* REPL input */}
-                <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px 4px', borderTop: '1px solid #ffffff06', gap: 4, flexShrink: 0 }}>
-                  <span style={{ fontSize: fs(9), color: '#cba6f7', flexShrink: 0 }}>{'\u276F'}</span>
-                  <input ref={termInputRef} value={termInput}
+                <div style={{ display: 'flex', alignItems: 'flex-start', padding: '2px 10px 4px', borderTop: '1px solid #ffffff06', gap: 4, flexShrink: 0 }}>
+                  <span style={{ fontSize: fs(9), color: '#cba6f7', flexShrink: 0, lineHeight: Math.round(15 * zf) + 'px', paddingTop: 2 }}>{termInput.includes('\n') ? '\u22EE' : '\u276F'}</span>
+                  <textarea ref={termInputRef} value={termInput}
                     onChange={e => setTermInput(e.target.value)}
                     placeholder="tp.shapes()..."
                     spellCheck={false}
+                    rows={Math.min(termInput.split('\n').length, 5)}
                     onMouseDown={stop}
                     onKeyDown={e => {
                       e.stopPropagation();
-                      if (e.key === 'Enter' && termInput.trim()) { runTermInput(termInput); }
-                      if (e.key === 'ArrowUp') { e.preventDefault(); if (termHistory.length) { const idx = termHistIdx < 0 ? termHistory.length - 1 : Math.max(0, termHistIdx - 1); setTermHistIdx(idx); setTermInput(termHistory[idx]); } }
-                      if (e.key === 'ArrowDown') { e.preventDefault(); if (termHistIdx >= 0) { const idx = termHistIdx + 1; if (idx >= termHistory.length) { setTermHistIdx(-1); setTermInput(''); } else { setTermHistIdx(idx); setTermInput(termHistory[idx]); } } }
+                      if (e.key === 'Enter' && e.shiftKey) { return; /* allow newline */ }
+                      if (e.key === 'Enter' && termInput.trim()) { e.preventDefault(); runTermInput(termInput); }
+                      if (e.key === 'ArrowUp' && !termInput.includes('\n')) { e.preventDefault(); if (termHistory.length) { const idx = termHistIdx < 0 ? termHistory.length - 1 : Math.max(0, termHistIdx - 1); setTermHistIdx(idx); setTermInput(termHistory[idx]); } }
+                      if (e.key === 'ArrowDown' && !termInput.includes('\n')) { e.preventDefault(); if (termHistIdx >= 0) { const idx = termHistIdx + 1; if (idx >= termHistory.length) { setTermHistIdx(-1); setTermInput(''); } else { setTermHistIdx(idx); setTermInput(termHistory[idx]); } } }
                       if (e.key === 'Tab') {
                         e.preventDefault();
-                        // Tab completion for tp methods and built-in commands
                         const val = termInput;
                         const dotMatch = val.match(/tp\.(\w*)$/);
                         if (dotMatch) {
@@ -2808,8 +2865,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     style={{
                       flex: 1, background: 'transparent', border: 'none', outline: 'none',
                       fontSize: fs(9), color: '#cdd6f4', fontFamily: MONO, padding: '2px 0',
-                      caretColor: '#cba6f7'
+                      caretColor: '#cba6f7', resize: 'none', lineHeight: Math.round(15 * zf) + 'px',
+                      minHeight: Math.round(15 * zf), overflow: 'hidden',
                     }} />
+                  {termInput.includes('\n') && <span style={{ fontSize: 7, color: '#555', flexShrink: 0, paddingTop: 3, cursor: 'pointer' }}
+                    onClick={() => { runTermInput(termInput); }} onMouseDown={stop} title="Run (Enter)">▶</span>}
                 </div>
               </div>
             )}
