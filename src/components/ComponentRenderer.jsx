@@ -51,23 +51,29 @@ function CodeIDE({b,p}){
         {busy?'● RUN':'▶ Run'}
       </button>
     </div>
-    <div style={{flex:out?0:1,minHeight:0,display:'flex',overflow:'hidden'}}>
-      <div style={{padding:'8px 0',width:28,textAlign:'right',userSelect:'none',borderRight:'1px solid #ffffff08',background:'#16162a'}}>
-        {Array.from({length:lines},(_,i)=><div key={i} style={{fontSize:9,lineHeight:'16px',color:'#444',paddingRight:6}}>{i+1}</div>)}
+    <div style={{flex:1,display:'flex',minHeight:0}}>
+      {/* Editor pane */}
+      <div style={{flex:1,display:'flex',minWidth:0,overflow:'hidden',borderRight:out?'1px solid #ffffff10':'none'}}>
+        <div style={{padding:'8px 0',width:28,textAlign:'right',userSelect:'none',borderRight:'1px solid #ffffff08',background:'#16162a',flexShrink:0}}>
+          {Array.from({length:lines},(_,i)=><div key={i} style={{fontSize:9,lineHeight:'16px',color:'#444',paddingRight:6}}>{i+1}</div>)}
+        </div>
+        <textarea value={code} onChange={e=>setCode(e.target.value)} onMouseDown={stop}
+          onKeyDown={e=>{e.stopPropagation();if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart,en=e.target.selectionEnd;setCode(code.substring(0,s)+'  '+code.substring(en));setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2},0);}}}
+          spellCheck={false} style={{flex:1,background:'transparent',color:'#cdd6f4',border:'none',outline:'none',resize:'none',padding:8,fontSize:10,lineHeight:'16px',fontFamily:mono,tabSize:2,whiteSpace:'pre',overflowX:'auto',minWidth:0}}/>
       </div>
-      <textarea value={code} onChange={e=>setCode(e.target.value)} onMouseDown={stop}
-        onKeyDown={e=>{e.stopPropagation();if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart,en=e.target.selectionEnd;setCode(code.substring(0,s)+'  '+code.substring(en));setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2},0);}}}
-        spellCheck={false} style={{flex:1,background:'transparent',color:'#cdd6f4',border:'none',outline:'none',resize:'none',padding:8,fontSize:10,lineHeight:'16px',fontFamily:mono,tabSize:2,whiteSpace:'pre',overflowX:'auto'}}/>
+      {/* Output pane (side by side) */}
+      {out&&<div style={{flex:1,background:'#12122a',overflow:'auto',padding:8,display:'flex',flexDirection:'column',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6,flexShrink:0}}>
+          <span style={{fontSize:8,color:'#555',textTransform:'uppercase',letterSpacing:'.06em'}}>Output</span>
+          {out.ms&&<span style={{fontSize:8,color:'#27c93f',opacity:.5}}>{out.ms}ms</span>}
+          <span onClick={()=>setOut(null)} onMouseDown={stop} style={{marginLeft:'auto',fontSize:8,color:'#555',cursor:'pointer'}}>✕</span>
+        </div>
+        <div style={{flex:1,overflow:'auto'}}>
+          {out.logs.map((l,i)=><div key={i} style={{fontSize:9,lineHeight:'15px',color:l.t==='err'?'#f38ba8':l.t==='warn'?'#f9e2af':l.t==='ret'?'#89b4fa':'#a6adc8',animation:`tp-fadein .15s ease-out ${i*0.05}s both`,whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{l.v}</div>)}
+          {out.err&&<div style={{fontSize:9,color:'#f38ba8',marginTop:2,animation:'tp-slidein .2s ease-out'}}>✗ {out.err}</div>}
+        </div>
+      </div>}
     </div>
-    {out&&<div style={{borderTop:'1px solid #ffffff10',background:'#12122a',flex:1,minHeight:0,overflow:'auto',padding:8}}>
-      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
-        <span style={{fontSize:8,color:'#555',textTransform:'uppercase',letterSpacing:'.06em'}}>Output</span>
-        {out.ms&&<span style={{fontSize:8,color:'#27c93f',opacity:.5}}>{out.ms}ms</span>}
-        <span onClick={()=>setOut(null)} onMouseDown={stop} style={{marginLeft:'auto',fontSize:8,color:'#555',cursor:'pointer'}}>✕</span>
-      </div>
-      {out.logs.map((l,i)=><div key={i} style={{fontSize:9,lineHeight:'15px',color:l.t==='err'?'#f38ba8':l.t==='warn'?'#f9e2af':l.t==='ret'?'#89b4fa':'#a6adc8',animation:`tp-fadein .15s ease-out ${i*0.05}s both`,whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{l.v}</div>)}
-      {out.err&&<div style={{fontSize:9,color:'#f38ba8',marginTop:2,animation:'tp-slidein .2s ease-out'}}>✗ {out.err}</div>}
-    </div>}
     <div style={{display:'flex',alignItems:'center',padding:'3px 10px',borderTop:'1px solid #ffffff08',gap:8}} onMouseDown={stop}>
       <span style={{fontSize:8,color:out?.err?'#f38ba8':'#27c93f'}}>●</span>
       <span style={{fontSize:8,color:'#555'}}>{lines} lines</span>
