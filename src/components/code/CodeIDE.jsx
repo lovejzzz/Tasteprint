@@ -550,8 +550,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
   };
 
-  /* ---- Tab context menu ---- */
+  /* ---- Tab context menu / pinned tabs ---- */
   const [tabCtx, setTabCtx] = React.useState(null);
+  const [pinnedTabs, setPinnedTabs] = React.useState(new Set());
 
   /* ---- Rename symbol ---- */
   const [renameSymbol, setRenameSymbol] = React.useState(null);
@@ -900,6 +901,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   const closeTab = (path, e) => {
     e?.stopPropagation();
+    if (pinnedTabs.has(path)) return; // cannot close pinned tabs
     const next = openTabs.filter(t => t !== path);
     if (next.length === 0) return;
     setOpenTabs(next);
@@ -1021,14 +1023,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     setBusy(true);
     setTermOpen(true);
     const logs = [];
+    const ts = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const fc = {
-      log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
-      error: (...a) => logs.push({ t: 'err', v: a.map(String).join(' ') }),
-      warn: (...a) => logs.push({ t: 'warn', v: a.map(String).join(' ') }),
-      info: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ') }),
-      debug: (...a) => logs.push({ t: 'dbg', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
+      log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' '), ts: ts() }),
+      error: (...a) => logs.push({ t: 'err', v: a.map(String).join(' '), ts: ts() }),
+      warn: (...a) => logs.push({ t: 'warn', v: a.map(String).join(' '), ts: ts() }),
+      info: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '), ts: ts() }),
+      debug: (...a) => logs.push({ t: 'dbg', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' '), ts: ts() }),
       clear: () => { logs.length = 0 },
-      table: (...a) => logs.push({ t: 'log', v: a.map(x => JSON.stringify(x, null, 2)).join(' ') }),
+      table: (...a) => logs.push({ t: 'log', v: a.map(x => JSON.stringify(x, null, 2)).join(' '), ts: ts() }),
     };
     const t0 = performance.now();
     try {
@@ -1839,10 +1842,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     borderLeft: dragOverTab === path && dragTab !== path ? '2px solid #cba6f7' : '2px solid transparent',
                     opacity: dragTab === path ? .4 : 1,
                   }}>
-                  <span style={{ fontSize: 6, color: FCOLORS[name] || '#555' }}>{'\u25CF'}</span>
-                  <span style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                  <span style={{ fontSize: 6, color: FCOLORS[name] || '#555' }}>{pinnedTabs.has(path) ? '\uD83D\uDCCC' : '\u25CF'}</span>
+                  <span style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', fontStyle: pinnedTabs.has(path) ? 'italic' : 'normal' }}>{name}</span>
                   {isRO && <span style={{ fontSize: 7, color: '#555', opacity: .5 }}>ro</span>}
-                  {openTabs.length > 1 ? (
+                  {pinnedTabs.has(path) ? null : openTabs.length > 1 ? (
                     <span onClick={(e) => closeTab(path, e)}
                       onMouseEnter={() => setHoverTab(path)}
                       onMouseLeave={() => setHoverTab(null)}
@@ -1868,10 +1871,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 boxShadow: '0 4px 16px rgba(0,0,0,.5)', minWidth: 140, overflow: 'hidden', zIndex: 26,
               }}>
                 {[
+                  { label: pinnedTabs.has(tabCtx.path) ? 'Unpin Tab' : 'Pin Tab', action: () => {
+                    setPinnedTabs(prev => { const n = new Set(prev); if (n.has(tabCtx.path)) n.delete(tabCtx.path); else n.add(tabCtx.path); return n; });
+                  }},
+                  null,
                   { label: 'Close', action: () => closeTab(tabCtx.path) },
-                  { label: 'Close Others', action: () => { setOpenTabs([tabCtx.path]); setActiveFile(tabCtx.path); } },
-                  { label: 'Close to the Right', action: () => { const idx = openTabs.indexOf(tabCtx.path); setOpenTabs(openTabs.slice(0, idx + 1)); if (!openTabs.slice(0, idx + 1).includes(activeFile)) setActiveFile(tabCtx.path); } },
-                  { label: 'Close All', action: () => { setOpenTabs(['src/main.js']); setActiveFile('src/main.js'); } },
+                  { label: 'Close Others', action: () => { setOpenTabs(prev => prev.filter(t => t === tabCtx.path || pinnedTabs.has(t))); setActiveFile(tabCtx.path); } },
+                  { label: 'Close to the Right', action: () => { const idx = openTabs.indexOf(tabCtx.path); setOpenTabs(prev => prev.filter((t, i) => i <= idx || pinnedTabs.has(t))); if (!openTabs.slice(0, openTabs.indexOf(tabCtx.path) + 1).includes(activeFile)) setActiveFile(tabCtx.path); } },
+                  { label: 'Close All Unpinned', action: () => { const pinned = openTabs.filter(t => pinnedTabs.has(t)); setOpenTabs(pinned.length ? pinned : ['src/main.js']); if (!pinnedTabs.has(activeFile)) setActiveFile(pinned[0] || 'src/main.js'); } },
                   null,
                   { label: 'Copy Path', action: () => { navigator.clipboard?.writeText(tabCtx.path); showToast('Path copied!', 'info'); } },
                   { label: 'Copy Name', action: () => { navigator.clipboard?.writeText(tabCtx.path.split('/').pop()); showToast('Name copied!', 'info'); } },
@@ -2288,8 +2295,24 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         }
                       }
 
-                      /* Word occurrence highlight on this line */
+                      /* Word occurrence highlight on this line — inline highlights */
                       const hasOccurrence = wordOccurrences.has(i + 1) && !searchHighlights;
+                      let wordHighlights = null;
+                      if (hasOccurrence && selectedWord) {
+                        const parts = [];
+                        let cur = 0, pidx = 0;
+                        const rx = new RegExp(`\\b(${selectedWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'g');
+                        let wm;
+                        while ((wm = rx.exec(l)) !== null) {
+                          if (wm.index > cur) parts.push(<span key={pidx++}><HighlightLine text={l.substring(cur, wm.index)} /></span>);
+                          parts.push(<span key={pidx++} style={{ background: '#cba6f725', borderRadius: 2, outline: '1px solid #cba6f740' }}><HighlightLine text={wm[0]} /></span>);
+                          cur = wm.index + wm[0].length;
+                        }
+                        if (parts.length) {
+                          if (cur < l.length) parts.push(<span key={pidx}><HighlightLine text={l.substring(cur)} /></span>);
+                          wordHighlights = parts;
+                        }
+                      }
 
                       /* Bracket match indicator */
                       const bracketCol = bracketLines[i + 1];
@@ -2301,7 +2324,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           background: i + 1 === activeLn ? '#ffffff04' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : 'transparent',
                         }}>
                           {guides}
-                          {searchHighlights || <HighlightLine text={l} />}
+                          {searchHighlights || wordHighlights || <HighlightLine text={l} />}
                           {isFolded && (
                             <span onClick={() => toggleFold(i)} style={{
                               background: '#cba6f715', border: '1px solid #cba6f730', borderRadius: 3,
@@ -2434,7 +2457,21 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     if (sel && /^\w+$/.test(sel)) setSelectedWord(sel);
                   }
                 }}
-                onClick={e => updateCursor(e.target)}
+                onClick={e => {
+                  updateCursor(e.target);
+                  // Cmd+Click: go to definition for tp methods
+                  if (e.metaKey || e.ctrlKey) {
+                    const el = e.target;
+                    const pos = el.selectionStart;
+                    const before = code.substring(Math.max(0, pos - 30), pos);
+                    const after = code.substring(pos, Math.min(code.length, pos + 30));
+                    const m = (before + after).match(/tp\.(\w+)/);
+                    if (m && TP_DOCS.find(d => d.method === m[1])) {
+                      openFile('docs/api.js');
+                      showToast(`Jumped to tp.${m[1]} docs`, 'info');
+                    }
+                  }
+                }}
                 onContextMenu={e => {
                   e.preventDefault(); e.stopPropagation();
                   updateCursor(e.target);
@@ -2750,7 +2787,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         padding: '4px 10px', cursor: 'pointer',
                         color: termTab === tab ? '#cba6f7' : '#555',
                         borderBottom: termTab === tab ? '1px solid #cba6f7' : '1px solid transparent',
-                      }}>{tab}{tab === 'problems' && output?.err ? ' \u25CF' : ''}</span>
+                      }}>{tab}{tab === 'problems' && (output?.err || lines.some(l => /\bvar\b/.test(l) || (/==(?!=)/.test(l) && !/===/.test(l)))) ? ' \u25CF' : ''}</span>
                   ))}
                   {output?.ms && <span style={{ fontSize: 8, color: '#27c93f', opacity: .5, marginLeft: 6 }}>{output.ms}ms</span>}
                   {output?.logs?.length > 0 && <span onClick={() => {
@@ -2788,6 +2825,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               </span>
                             )}
                             {l.t === 'err' ? '\u2717 ' : l.t === 'warn' ? '\u26A0 ' : l.t === 'ret' ? '  ' : l.t === 'dbg' ? '\u25E6 ' : !isExpandable ? '\u276F ' : ''}{preview}
+                            {l.ts && <span style={{ float: 'right', fontSize: 7, color: '#444', fontStyle: 'normal', marginLeft: 8 }}>{l.ts}</span>}
                           </div>
                         );
                       })}
@@ -2797,8 +2835,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       </div>
                     )}
                   </>) : (<>
-                    {/* Problems tab */}
-                    {output?.err ? (
+                    {/* Problems tab — lint + runtime errors */}
+                    {(() => {
+                      const hints = [];
+                      lines.forEach((l, i) => {
+                        if (/\bvar\b/.test(l)) hints.push({ ln: i + 1, msg: 'Prefer const/let over var', sev: 'warn' });
+                        if (/console\.log/.test(l) && !activeFile.includes('playground')) hints.push({ ln: i + 1, msg: 'console.log left in code', sev: 'info' });
+                        if (/==(?!=)/.test(l) && !/===/.test(l)) hints.push({ ln: i + 1, msg: 'Use === instead of ==', sev: 'warn' });
+                        if (/!=(?!=)/.test(l) && !/!==/.test(l)) hints.push({ ln: i + 1, msg: 'Use !== instead of !=', sev: 'warn' });
+                      });
+                      return hints.length > 0 || output?.err ? (<>
+                        {output?.err && (
                       <div style={{
                         fontSize: fs(9), color: '#f38ba8', marginTop: 4,
                         padding: '4px 6px', background: '#f38ba810',
@@ -2816,17 +2863,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         {output.errLn && <span style={{ opacity: .5, marginLeft: 6 }}>line {output.errLn}</span>}
                         <div style={{ marginTop: 2, color: '#f38ba8cc' }}>{output.err}</div>
                       </div>
-                    ) : output?.logs?.some(l => l.t === 'warn') ? (
-                      output.logs.filter(l => l.t === 'warn').map((l, i) => (
-                        <div key={i} style={{ fontSize: fs(9), color: '#f9e2af', padding: '2px 6px', marginTop: 2 }}>
-                          {'\u26A0'} {l.v}
-                        </div>
-                      ))
-                    ) : (
-                      <div style={{ fontSize: fs(9), color: '#27c93f', padding: '4px 0', opacity: .5 }}>
-                        {'\u2713'} No problems detected
-                      </div>
                     )}
+                    {hints.map((h, i) => (
+                      <div key={`h${i}`} onClick={() => {
+                        setActiveLn(h.ln); setCursor({ ln: h.ln, col: 1 });
+                        const pos = code.split('\n').slice(0, h.ln - 1).join('\n').length + (h.ln > 1 ? 1 : 0);
+                        setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                      }} style={{
+                        fontSize: fs(9), padding: '2px 6px', marginTop: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                        color: h.sev === 'warn' ? '#f9e2af' : '#89b4fa',
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <span>{h.sev === 'warn' ? '\u26A0' : '\u24D8'}</span>
+                        <span style={{ flex: 1 }}>{h.msg}</span>
+                        <span style={{ fontSize: 7, color: '#555' }}>:{h.ln}</span>
+                      </div>
+                    ))}
+                      </>) : (
+                        <div style={{ fontSize: fs(9), color: '#27c93f', padding: '4px 0', opacity: .5 }}>
+                          {'\u2713'} No problems detected
+                        </div>
+                      );
+                    })()}
                   </>)}
                 </div>
                 {/* REPL input */}
