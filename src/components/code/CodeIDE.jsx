@@ -903,8 +903,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   return (
     <div data-ide-scroll style={{ ...b, background: '#1e1e2e', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: MONO }}>
 
-      {/* Title bar */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', borderBottom: '1px solid #ffffff10', gap: 6, flexShrink: 0, background: '#181825' }}>
+      {/* Title bar — drag handle for moving IDE on canvas */}
+      <div data-ide-drag style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', borderBottom: '1px solid #ffffff10', gap: 6, flexShrink: 0, background: '#181825', cursor: 'grab' }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {[
             { c: '#ff5f56', title: 'Close IDE', action: () => { const ids = tp?.find('code-block'); if (ids?.length) tp.remove(ids[0]); } },
