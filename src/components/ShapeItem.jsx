@@ -1,0 +1,50 @@
+import React, { memo } from "react";
+import C from "./ComponentRenderer";
+import { FONTS, HAS_TEXT } from "../constants";
+import { maxV, varName } from "../utils";
+
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, cycle, cycleFont, delShape, setRsz }) {
+  const isDrg = drag === s.id;
+  const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
+  const isSel = selAll.has(s.id), isPrimary = sel === s.id;
+  const mx = maxV(s.type);
+  const vn = varName(s.type, s.variant || 0);
+  const fontIdx = selFont !== null && isPrimary ? selFont : (s.font || 0);
+  const fn = FONTS[fontIdx]?.name || FONTS[0].name;
+  const ff = FONTS[fontIdx]?.family || FONTS[0].family;
+
+  return (
+    <div style={{ position: "absolute", left: sx, top: sy, width: sw, zIndex: isDrg ? 100 : isSel ? 50 : 1 }}>
+      {isPrimary && !isDrg && (mx > 1 || HAS_TEXT.has(s.type)) && (
+        <div style={{ position: "absolute", top: -44, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 1, zIndex: 200, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 999, padding: "2px 3px", boxShadow: `0 4px 16px ${p.tx}10`, whiteSpace: "nowrap", userSelect: "none" }}>
+          {mx > 1 && <>
+            <button aria-label="Previous variant" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"‹"}</button>
+            <span style={{ fontSize: 9, color: p.mu, padding: "0 4px", width: 68, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis" }}>{vn}</span>
+            <button aria-label="Next variant" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, 1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"›"}</button>
+            {HAS_TEXT.has(s.type) && <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px" }} />}
+          </>}
+          {HAS_TEXT.has(s.type) && <>
+            <button aria-label="Previous font" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"‹"}</button>
+            <span style={{ fontSize: 9, color: p.ac, padding: "0 4px", width: 100, textAlign: "center", fontFamily: ff, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }}>{fn}</span>
+            <button aria-label="Next font" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, 1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"›"}</button>
+          </>}
+        </div>
+      )}
+      {isPrimary && !isDrg && (
+        <button aria-label="Delete component" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); delShape(s.id) }}
+          style={{ position: "absolute", top: -10, right: -10, width: 22, height: 22, borderRadius: 999, background: p.mu + "88", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 201, transition: "background .15s" }}
+          onMouseEnter={e => e.currentTarget.style.background = "#E0524D"}
+          onMouseLeave={e => e.currentTarget.style.background = p.mu + "88"}>
+          <svg width="10" height="10" viewBox="0 0 10 10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" /></svg>
+        </button>
+      )}
+      <div onMouseDown={e => onDown(e, s)}
+        style={{ width: sw, height: sh, cursor: isDrg ? "grabbing" : "grab", transition: isDrg ? "none" : "transform .1s", transform: isDrg ? "scale(1.015)" : "scale(1)", filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : "none", outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : "none", outlineOffset: 4, borderRadius: 14, ...(device !== "free" ? { overflow: "hidden" } : {}) }}>
+        <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} font={s.font || 0} />
+        {isPrimary && <div onMouseDown={e => { e.stopPropagation(); setRsz(s.id) }} style={{ position: "absolute", right: -4, bottom: -4, width: 8, height: 8, background: p.ac, borderRadius: 2, cursor: "nwse-resize", zIndex: 11 }} />}
+      </div>
+    </div>
+  );
+});
+
+export default ShapeItem;
