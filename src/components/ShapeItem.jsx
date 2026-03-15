@@ -17,19 +17,21 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
 
   return (
     <div style={{ position: "absolute", left: sx, top: sy, width: sw, zIndex: isDrg ? 100 : isSel ? 50 : 1 }}>
-      {isPrimary && !isDrg && s.type !== 'code-block' && (mx > 1 || HAS_TEXT.has(s.type)) && (
+      {isPrimary && !isDrg && (mx > 1 || HAS_TEXT.has(s.type)) && (
         <div style={{ position: "absolute", top: -44, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 1, zIndex: 200, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 999, padding: "2px 3px", boxShadow: `0 4px 16px ${p.tx}10`, whiteSpace: "nowrap", userSelect: "none" }}>
           {mx > 1 && <>
             <button aria-label="Previous variant" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"‹"}</button>
             <span style={{ fontSize: 9, color: p.mu, padding: "0 4px", width: 68, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis" }}>{vn}</span>
             <button aria-label="Next variant" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, 1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"›"}</button>
-            {HAS_TEXT.has(s.type) && <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px" }} />}
+            {(HAS_TEXT.has(s.type) || s.type === 'code-block') && <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px" }} />}
           </>}
-          {HAS_TEXT.has(s.type) && <>
+          {HAS_TEXT.has(s.type) && s.type !== 'code-block' && <>
             <button aria-label="Previous font" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"‹"}</button>
             <span style={{ fontSize: 9, color: p.ac, padding: "0 4px", width: 100, textAlign: "center", fontFamily: ff, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }}>{fn}</span>
             <button aria-label="Next font" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, 1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"›"}</button>
             <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px" }} />
+          </>}
+          {(HAS_TEXT.has(s.type) || s.type === 'code-block') && <>
             <button aria-label="Decrease font size" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFsize(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 11, fontFamily: "system-ui", padding: 0, fontWeight: 600 }}>A&#x2212;</button>
             <span style={{ fontSize: 9, color: p.mu, padding: "0 2px", width: 32, textAlign: "center" }}>{Math.round((s.fsize || 1) * 100)}%</span>
             <button aria-label="Increase font size" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFsize(s.id, 1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 13, fontFamily: "system-ui", padding: 0, fontWeight: 600 }}>A+</button>
