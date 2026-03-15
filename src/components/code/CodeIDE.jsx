@@ -84,8 +84,8 @@ const API_DOCS = `/**
  */
 `;
 
-/* File tree structure */
-const TREE = [
+/* File tree structure — static skeleton, user files added dynamically */
+const TREE_BASE = [
   { name: 'src', children: [
     { name: 'main.js', path: 'src/main.js' },
     { name: 'playground.js', path: 'src/playground.js' },
@@ -93,6 +93,15 @@ const TREE = [
   { name: 'config', children: [
     { name: 'palette.js', path: 'config/palette.js' },
     { name: 'shapes.js', path: 'config/shapes.js' },
+    { name: 'fonts.js', path: 'config/fonts.js' },
+    { name: 'variants.js', path: 'config/variants.js' },
+    { name: 'types.js', path: 'config/types.js' },
+    { name: 'device.js', path: 'config/device.js' },
+  ]},
+  { name: 'snippets', children: [
+    { name: 'layout.js', path: 'snippets/layout.js' },
+    { name: 'theme.js', path: 'snippets/theme.js' },
+    { name: 'batch.js', path: 'snippets/batch.js' },
   ]},
   { name: 'docs', children: [
     { name: 'api.js', path: 'docs/api.js' },
@@ -101,9 +110,81 @@ const TREE = [
 
 const FCOLORS = {
   'main.js':'#f9e2af', 'playground.js':'#f9e2af',
-  'palette.js':'#89b4fa', 'shapes.js':'#89b4fa',
+  'palette.js':'#89b4fa', 'shapes.js':'#89b4fa', 'fonts.js':'#89b4fa',
+  'variants.js':'#89b4fa', 'types.js':'#89b4fa', 'device.js':'#89b4fa',
+  'layout.js':'#fab387', 'theme.js':'#fab387', 'batch.js':'#fab387',
   'api.js':'#a6e3a1',
 };
+
+/* Snippet content */
+const SNIPPET_LAYOUT = `// Layout Builder — create a full page structure
+// Run with \u25B6 or \u2318+Enter
+
+tp.clear();
+tp.setPalette('cool');
+tp.setDevice('desktop');
+
+// Nav
+tp.add('navbar', { x: 0, y: 0, w: 1280, h: 52 });
+
+// Hero
+tp.add('hero', { x: 50, y: 72, w: 1180, h: 240 });
+
+// 3-column cards
+for (let i = 0; i < 3; i++) {
+  tp.add('card', { x: 50 + i * 393, y: 340, w: 370, h: 200 });
+}
+
+// Stats row
+for (let i = 0; i < 4; i++) {
+  tp.add('stat-card', { x: 50 + i * 290, y: 570, w: 270, h: 110 });
+}
+
+// Footer
+tp.add('footer', { x: 0, y: 710, w: 1280, h: 110 });
+
+console.log('Page layout created!');
+`;
+
+const SNIPPET_THEME = `// Theme Explorer — cycle through all palettes
+// Run with \u25B6 or \u2318+Enter
+
+const palettes = tp.palettes();
+const current = tp.palette();
+const idx = palettes.indexOf(current);
+const next = palettes[(idx + 1) % palettes.length];
+
+tp.setPalette(next);
+console.log(\`Switched: \${current} \u2192 \${next}\`);
+console.log('Run again to cycle to next theme');
+
+// All available palettes:
+palettes.forEach((p, i) => {
+  const marker = p === next ? '\u25B6' : ' ';
+  console.log(\`  \${marker} \${p}\`);
+});
+`;
+
+const SNIPPET_BATCH = `// Batch Operations — modify all shapes at once
+// Run with \u25B6 or \u2318+Enter
+
+const shapes = tp.shapes();
+console.log(\`Processing \${shapes.length} shapes...\`);
+
+shapes.forEach(s => {
+  // Set all shapes to font 0 (DM Sans) and size 1.0
+  tp.update(s.id, { font: 0, fsize: 1 });
+});
+
+// List all shapes with their details
+shapes.forEach(s => {
+  const variants = tp.variants(s.type);
+  const vName = variants[s.variant] || 'default';
+  console.log(\`  \${s.type} [\${vName}] at (\${s.x}, \${s.y})\`);
+});
+
+console.log('Done!');
+`;
 
 /* Generated file builders */
 function genPalette(tp) {
@@ -119,6 +200,31 @@ function genShapes(tp) {
   return `// Canvas components (${s.length})\n// Auto-generated \u2014 modify via tp.add/remove/update\n\nexport default ${JSON.stringify(s, null, 2)};`;
 }
 
+function genFonts(tp) {
+  if (!tp) return '// tp API not available';
+  const fonts = tp.fonts();
+  return `// Available fonts (${fonts.length})\n// Use: tp.setFont(shapeId, index)\n\nexport default ${JSON.stringify(fonts.map((f, i) => ({ index: i, name: f })), null, 2)};`;
+}
+
+function genVariants(tp) {
+  if (!tp) return '// tp API not available';
+  const types = tp.types();
+  const all = {};
+  types.forEach(t => { const v = tp.variants(t); if (v.length) all[t] = v; });
+  return `// All variant styles by component type\n// Use: tp.update(id, { variant: index })\n\nexport default ${JSON.stringify(all, null, 2)};`;
+}
+
+function genTypes(tp) {
+  if (!tp) return '// tp API not available';
+  const types = tp.types();
+  return `// All ${types.length} component types available\n// Use: tp.add(typeName, { x, y })\n\nexport default ${JSON.stringify(types, null, 2)};`;
+}
+
+function genDevice(tp) {
+  if (!tp) return '// tp API not available';
+  return `// Current device mode: "${tp.device()}"\n// Use: tp.setDevice("free" | "desktop" | "phone")\n\nexport default "${tp.device()}";`;
+}
+
 /* ========== Component ========== */
 export default function CodeIDE({ b, p, fsize = 1 }) {
   const tp = React.useContext(TpContext);
@@ -129,17 +235,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const initFiles = React.useMemo(() => ({
     'src/main.js': MAIN_DEFAULT,
     'src/playground.js': PLAYGROUND_DEFAULT,
+    'snippets/layout.js': SNIPPET_LAYOUT,
+    'snippets/theme.js': SNIPPET_THEME,
+    'snippets/batch.js': SNIPPET_BATCH,
   }), []);
   const [editFiles, setEditFiles] = React.useState(initFiles);
   const [activeFile, setActiveFile] = React.useState('src/main.js');
   const [openTabs, setOpenTabs] = React.useState(['src/main.js']);
-  const [openFolders, setOpenFolders] = React.useState({ src: true, config: false, docs: false });
+  const [openFolders, setOpenFolders] = React.useState({ src: true, config: false, docs: false, snippets: false, user: false });
   const [showTree, setShowTree] = React.useState(true);
 
   /* ---- Editor state ---- */
   const [cursor, setCursor] = React.useState({ ln: 1, col: 1 });
   const [activeLn, setActiveLn] = React.useState(1);
+  const [scrollTop, setScrollTop] = React.useState(0);
   const taRef = React.useRef(null);
+  const lnRef = React.useRef(null);
+  const hlRef = React.useRef(null);
 
   /* ---- Terminal state ---- */
   const [termOpen, setTermOpen] = React.useState(false);
@@ -159,13 +271,43 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [cmdQuery, setCmdQuery] = React.useState('');
   const cmdRef = React.useRef(null);
 
+  /* ---- Dynamic tree (base + user files) ---- */
+  const userFiles = React.useMemo(() => {
+    const known = new Set();
+    TREE_BASE.forEach(f => f.children.forEach(c => known.add(c.path)));
+    return Object.keys(editFiles).filter(p => !known.has(p));
+  }, [editFiles]);
+
+  const TREE = React.useMemo(() => {
+    const tree = TREE_BASE.map(f => ({ ...f, children: [...f.children] }));
+    if (userFiles.length > 0) {
+      tree.push({ name: 'user', children: userFiles.map(p => ({ name: p.split('/').pop(), path: p })) });
+    }
+    return tree;
+  }, [userFiles]);
+
   /* ---- File helpers ---- */
+  const GEN_FILES = {
+    'config/palette.js': () => genPalette(tp),
+    'config/shapes.js': () => genShapes(tp),
+    'config/fonts.js': () => genFonts(tp),
+    'config/variants.js': () => genVariants(tp),
+    'config/types.js': () => genTypes(tp),
+    'config/device.js': () => genDevice(tp),
+    'docs/api.js': () => API_DOCS,
+  };
+
   const getFile = (path) => {
     if (editFiles[path] !== undefined) return { content: editFiles[path], readonly: false };
-    if (path === 'config/palette.js') return { content: genPalette(tp), readonly: true };
-    if (path === 'config/shapes.js') return { content: genShapes(tp), readonly: true };
-    if (path === 'docs/api.js') return { content: API_DOCS, readonly: true };
+    if (GEN_FILES[path]) return { content: GEN_FILES[path](), readonly: true };
     return null;
+  };
+
+  const createFile = (name) => {
+    const path = 'user/' + name;
+    if (editFiles[path] !== undefined) return;
+    setEditFiles(prev => ({ ...prev, [path]: `// ${name}\n` }));
+    openFile(path);
   };
 
   const file = getFile(activeFile);
@@ -232,7 +374,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     const files = [];
     TREE.forEach(f => f.children.forEach(c => files.push(c.path)));
     return files;
-  }, []);
+  }, [TREE]);
 
   const commands = React.useMemo(() => {
     const cmds = [
@@ -241,6 +383,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Toggle Explorer', key: 'tree', hint: '' },
       { label: 'Find', key: 'find', hint: '\u2318+F' },
       { label: 'Find & Replace', key: 'replace', hint: '\u2318+H' },
+      { label: 'New File...', key: 'newfile', hint: '' },
       { label: 'Save State', key: 'save', hint: '' },
       { label: 'Reset to Default', key: 'reset', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
@@ -257,6 +400,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'tree') setShowTree(t => !t);
     else if (key === 'find') { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }
     else if (key === 'replace') { setSearchOpen(true); setShowReplace(true); setTimeout(() => searchRef.current?.focus(), 50); }
+    else if (key === 'newfile') { const name = prompt('File name (e.g. script.js):'); if (name) createFile(name); }
     else if (key === 'save') tp?.save();
     else if (key === 'reset') tp?.reset();
     else if (key.startsWith('file:')) openFile(key.slice(5));
@@ -554,7 +698,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               </div>
               {openFolders[folder.name] && folder.children.map(f => {
                 const isActive = f.path === activeFile;
-                const isReadonly = !editFiles.hasOwnProperty(f.path);
+                const isReadonly = !editFiles.hasOwnProperty(f.path) && GEN_FILES[f.path];
                 return (
                   <div key={f.path}
                     onClick={() => openFile(f.path)} onMouseDown={stop}
@@ -565,7 +709,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       color: isActive ? '#cdd6f4' : '#777',
                       borderLeft: isActive ? '2px solid #cba6f7' : '2px solid transparent',
                     }}>
-                    <span style={{ fontSize: 6, color: FCOLORS[f.name] || '#555' }}>{'\u25CF'}</span>
+                    <span style={{ fontSize: 6, color: FCOLORS[f.name] || (f.path.startsWith('user/') ? '#cba6f7' : '#555') }}>{'\u25CF'}</span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name}</span>
                     {isReadonly && <span style={{ fontSize: 7, color: '#555', flexShrink: 0 }}>{'\uD83D\uDD12'}</span>}
                   </div>
@@ -573,6 +717,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               })}
             </React.Fragment>
           ))}
+          {/* New file button */}
+          <div onClick={() => { const name = prompt('File name (e.g. script.js):'); if (name) createFile(name); }}
+            onMouseDown={stop}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', marginTop: 4,
+              cursor: 'pointer', fontSize: fs(8), color: '#555', userSelect: 'none', borderTop: '1px solid #ffffff06' }}>
+            <span style={{ fontSize: 10, lineHeight: 1 }}>+</span>
+            <span>New file</span>
+          </div>
         </div>}
 
         {/* Editor area */}
@@ -662,22 +814,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             {/* Code editor */}
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
               {/* Line numbers */}
-              <div style={{
+              <div ref={lnRef} style={{
                 padding: '8px 0', width: 32, textAlign: 'right', userSelect: 'none',
                 borderRight: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'hidden'
               }}>
-                {lines.map((_, i) => (
-                  <div key={i} style={{
-                    fontSize: fs(9), lineHeight: lh,
-                    color: i + 1 === activeLn ? '#cdd6f4' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
-                    paddingRight: 6,
-                    background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
-                  }}>{i + 1}</div>
-                ))}
+                <div style={{ transform: `translateY(-${scrollTop}px)` }}>
+                  {lines.map((_, i) => (
+                    <div key={i} style={{
+                      fontSize: fs(9), lineHeight: lh,
+                      color: i + 1 === activeLn ? '#cdd6f4' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
+                      paddingRight: 6,
+                      background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
+                    }}>{i + 1}</div>
+                  ))}
+                </div>
               </div>
 
               {/* Syntax highlight overlay */}
-              <div style={{ position: 'absolute', left: 33, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
+              <div ref={hlRef} style={{ position: 'absolute', left: 33, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
+                <div style={{ transform: `translateY(-${scrollTop}px)` }}>
                 {lines.map((l, i) => {
                   /* Search match highlighting for this line */
                   let searchHighlights = null;
@@ -704,12 +859,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     </div>
                   );
                 })}
+                </div>
               </div>
 
               {/* Textarea */}
               <textarea
                 ref={taRef} value={code}
                 onChange={e => { setCode(e.target.value); updateCursor(e.target); }}
+                onScroll={e => setScrollTop(e.target.scrollTop)}
                 onMouseDown={stop} onClick={e => updateCursor(e.target)}
                 onKeyUp={e => updateCursor(e.target)} onKeyDown={handleKey}
                 readOnly={readonly} spellCheck={false}
@@ -718,7 +875,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   caretColor: readonly ? 'transparent' : '#cba6f7',
                   border: 'none', outline: 'none', resize: 'none', padding: 8,
                   fontSize: fs(10), lineHeight: lh, fontFamily: MONO,
-                  tabSize: 2, whiteSpace: 'pre', overflowX: 'auto', minWidth: 0,
+                  tabSize: 2, whiteSpace: 'pre', overflow: 'auto', minWidth: 0,
                   position: 'relative', zIndex: 1, cursor: readonly ? 'default' : 'text',
                 }}
               />
