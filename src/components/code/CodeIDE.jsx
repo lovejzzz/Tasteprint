@@ -499,6 +499,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Outline panel ---- */
   const [outlineOpen, setOutlineOpen] = React.useState(false);
 
+  /* ---- Activity bar / sidebar mode ---- */
+  const [sidebarMode, setSidebarMode] = React.useState('files'); // 'files' | 'search' | 'outline' | 'settings' | null
+
+  /* ---- Settings ---- */
+  const [showMinimap, setShowMinimap] = React.useState(true);
+  const [showBracketColors, setShowBracketColors] = React.useState(true);
+  const [showIndentRainbow, setShowIndentRainbow] = React.useState(true);
+  const [autoSave, setAutoSave] = React.useState(true);
+
   /* ---- Editor zoom ---- */
   const [editorZoom, setEditorZoom] = React.useState(1);
 
@@ -936,17 +945,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     setCmdOpen(false); setCmdQuery('');
     if (key === 'run') runCode();
     else if (key === 'term') setTermOpen(t => !t);
-    else if (key === 'tree') setShowTree(t => !t);
+    else if (key === 'tree') setSidebarMode(m => m === 'files' ? null : 'files');
     else if (key === 'find') { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }
     else if (key === 'replace') { setSearchOpen(true); setShowReplace(true); setTimeout(() => searchRef.current?.focus(), 50); }
-    else if (key === 'newfile') { setNewFileInput(true); setShowTree(true); setNewFileName(''); setTimeout(() => newFileRef.current?.focus(), 100); }
+    else if (key === 'newfile') { setNewFileInput(true); setSidebarMode('files'); setNewFileName(''); setTimeout(() => newFileRef.current?.focus(), 100); }
     else if (key === 'save') { tp?.save(); showToast('State saved!', 'success'); }
     else if (key === 'reset') { tp?.reset(); showToast('Reset to default!', 'warn'); }
     else if (key === 'wrap') setWordWrap(w => !w);
     else if (key === 'format') formatCode();
-    else if (key === 'gsearch') { setGlobalSearchOpen(o => !o); setGlobalSearchTerm(''); setTimeout(() => globalSearchRef.current?.focus(), 50); }
+    else if (key === 'gsearch') { setGlobalSearchOpen(true); setSidebarMode('search'); setGlobalSearchTerm(''); setTimeout(() => globalSearchRef.current?.focus(), 50); }
     else if (key === 'diff') setDiffOpen(d => !d);
-    else if (key === 'outline') setOutlineOpen(o => !o);
+    else if (key === 'outline') setSidebarMode(m => m === 'outline' ? 'files' : 'outline');
     else if (key === 'foldall') { setFoldedLines(new Set(Object.keys(foldableRanges).map(Number))); showToast('All folded', 'info'); }
     else if (key === 'unfoldall') { setFoldedLines(new Set()); showToast('All unfolded', 'info'); }
     else if (key.startsWith('file:')) openFile(key.slice(5));
@@ -955,6 +964,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Code execution ---- */
   const runCode = () => {
     if (readonly) return;
+    if (autoSave && tp) { tp.save(); }
     setBusy(true);
     setTermOpen(true);
     const logs = [];
@@ -1065,7 +1075,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     /* Global search: Cmd+Shift+F */
     if (e.key === 'f' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
-      e.preventDefault(); setGlobalSearchOpen(o => !o); setGlobalSearchTerm('');
+      e.preventDefault(); setGlobalSearchOpen(true); setSidebarMode('search'); setGlobalSearchTerm('');
       setTimeout(() => globalSearchRef.current?.focus(), 50); return;
     }
 
@@ -1362,9 +1372,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             onMouseLeave={e => e.currentTarget.style.opacity = '.6'}
             title={btn.title} />)}
         </div>
-        <span onClick={() => setShowTree(t => !t)} onMouseDown={stop}
-          style={{ fontSize: 11, color: showTree ? '#cba6f7' : '#555', cursor: 'pointer', marginLeft: 4, lineHeight: 1 }}
-          title="Toggle explorer">{showTree ? '\u25E7' : '\u2630'}</span>
+        <span onClick={() => setSidebarMode(m => m === 'files' ? null : 'files')} onMouseDown={stop}
+          style={{ fontSize: 11, color: sidebarMode === 'files' ? '#cba6f7' : '#555', cursor: 'pointer', marginLeft: 4, lineHeight: 1 }}
+          title="Toggle explorer">{sidebarMode === 'files' ? '\u25E7' : '\u2630'}</span>
         <span style={{ fontSize: fs(9), color: '#666', flex: 1, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           tasteprint <span style={{ color: '#444' }}>/</span> {activeFile}
         </span>
@@ -1390,8 +1400,34 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       {/* Main area */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
 
+        {/* Activity bar */}
+        <div style={{ width: 28, background: '#11111b', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4, gap: 2, flexShrink: 0, borderRight: '1px solid #ffffff06' }}>
+          {[
+            { id: 'files', icon: '\u2630', title: 'Explorer' },
+            { id: 'search', icon: '\u26B2', title: 'Search' },
+            { id: 'outline', icon: '\u2261', title: 'Outline' },
+            { id: 'settings', icon: '\u2699', title: 'Settings' },
+          ].map(item => (
+            <div key={item.id}
+              onClick={() => setSidebarMode(m => m === item.id ? null : item.id)}
+              onMouseDown={stop}
+              style={{
+                width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, cursor: 'pointer', borderRadius: 4, userSelect: 'none',
+                color: sidebarMode === item.id ? '#cba6f7' : '#555',
+                background: sidebarMode === item.id ? '#cba6f710' : 'transparent',
+                borderLeft: sidebarMode === item.id ? '2px solid #cba6f7' : '2px solid transparent',
+                transition: 'all .15s',
+              }}
+              onMouseEnter={e => { if (sidebarMode !== item.id) e.currentTarget.style.color = '#888'; }}
+              onMouseLeave={e => { if (sidebarMode !== item.id) e.currentTarget.style.color = '#555'; }}
+              title={item.title}
+            >{item.icon}</div>
+          ))}
+        </div>
+
         {/* File tree sidebar */}
-        {showTree && !globalSearchOpen && <div onClick={() => setExplorerCtx(null)} style={{
+        {sidebarMode === 'files' && <div onClick={() => setExplorerCtx(null)} style={{
           width: explorerW, background: '#181825', borderRight: 'none',
           display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto', position: 'relative'
         }}>
@@ -1513,19 +1549,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           )}
         </div>}
 
-        {/* Global search panel (replaces explorer when open) */}
-        {globalSearchOpen && <div onMouseDown={stop} style={{
+        {/* Global search panel */}
+        {(sidebarMode === 'search' || globalSearchOpen) && <div onMouseDown={stop} style={{
           width: explorerW + 20, background: '#181825', borderRight: 'none',
           display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden'
         }}>
           <div style={{ padding: '6px 8px', borderBottom: '1px solid #ffffff08' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
               <span style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', flex: 1 }}>Search</span>
-              <span onClick={() => setGlobalSearchOpen(false)} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+              <span onClick={() => { setGlobalSearchOpen(false); setSidebarMode('files'); }} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
             </div>
             <input ref={globalSearchRef} value={globalSearchTerm} onChange={e => setGlobalSearchTerm(e.target.value)}
               placeholder="Search in files..." spellCheck={false} autoFocus
-              onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setGlobalSearchOpen(false); taRef.current?.focus(); } }}
+              onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setGlobalSearchOpen(false); setSidebarMode('files'); taRef.current?.focus(); } }}
               style={{ width: '100%', background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '3px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO, boxSizing: 'border-box' }} />
             {globalSearchTerm && <div style={{ fontSize: 8, color: '#555', marginTop: 3 }}>{globalSearchResults.length} results</div>}
           </div>
@@ -1552,8 +1588,99 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           </div>
         </div>}
 
+        {/* Outline sidebar */}
+        {sidebarMode === 'outline' && (
+          <div onMouseDown={stop} style={{
+            width: explorerW, background: '#181825', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden'
+          }}>
+            <div style={{ padding: '6px 10px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', borderBottom: '1px solid #ffffff06' }}>
+              Outline
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: '2px 0' }}>
+              {outlineSymbols.length === 0 ? (
+                <div style={{ fontSize: 8, color: '#444', padding: '8px', textAlign: 'center' }}>No symbols</div>
+              ) : outlineSymbols.map((sym, si) => (
+                <div key={si}
+                  onClick={() => {
+                    setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
+                    const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
+                    setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
+                    cursor: 'pointer', fontSize: 8,
+                    color: sym.line === activeLn ? '#cdd6f4' : '#777',
+                    background: sym.line === activeLn ? '#ffffff08' : 'transparent',
+                    borderLeft: sym.line === activeLn ? '2px solid #cba6f7' : '2px solid transparent',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
+                  onMouseLeave={e => e.currentTarget.style.background = sym.line === activeLn ? '#ffffff08' : 'transparent'}>
+                  <span style={{
+                    fontSize: 7, fontWeight: 600, width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: 3, flexShrink: 0,
+                    color: sym.kind === 'fn' ? '#cba6f7' : sym.kind === 'class' ? '#f9e2af' : '#89b4fa',
+                    background: sym.kind === 'fn' ? '#cba6f712' : sym.kind === 'class' ? '#f9e2af12' : '#89b4fa12',
+                  }}>{sym.kind === 'fn' ? 'F' : sym.kind === 'class' ? 'C' : 'V'}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sym.name}</span>
+                  <span style={{ fontSize: 7, color: '#444', flexShrink: 0 }}>{sym.line}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Settings sidebar */}
+        {sidebarMode === 'settings' && (
+          <div onMouseDown={stop} style={{
+            width: explorerW + 10, background: '#181825', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto'
+          }}>
+            <div style={{ padding: '6px 10px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', borderBottom: '1px solid #ffffff06' }}>
+              Settings
+            </div>
+            <div style={{ padding: '4px 0' }}>
+              {[
+                { label: 'Word Wrap', val: wordWrap, set: setWordWrap },
+                { label: 'Minimap', val: showMinimap, set: setShowMinimap },
+                { label: 'Bracket Colors', val: showBracketColors, set: setShowBracketColors },
+                { label: 'Indent Rainbow', val: showIndentRainbow, set: setShowIndentRainbow },
+                { label: 'Auto Save on Run', val: autoSave, set: setAutoSave },
+              ].map(opt => (
+                <div key={opt.label}
+                  onClick={() => opt.set(v => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+                    cursor: 'pointer', fontSize: 8, color: '#a6adc8', userSelect: 'none',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <span style={{
+                    width: 14, height: 8, borderRadius: 4, flexShrink: 0,
+                    background: opt.val ? '#cba6f7' : '#333',
+                    position: 'relative', transition: 'background .2s',
+                  }}>
+                    <span style={{
+                      position: 'absolute', width: 6, height: 6, borderRadius: 3,
+                      background: '#fff', top: 1, transition: 'left .2s',
+                      left: opt.val ? 7 : 1,
+                    }} />
+                  </span>
+                  <span>{opt.label}</span>
+                </div>
+              ))}
+              <div style={{ height: 1, background: '#ffffff06', margin: '4px 0' }} />
+              <div style={{ padding: '4px 10px', fontSize: 8, color: '#555' }}>
+                Zoom: {Math.round(editorZoom * 100)}%
+                <span onClick={() => setEditorZoom(1)} style={{ color: '#cba6f7', cursor: 'pointer', marginLeft: 6 }}>Reset</span>
+              </div>
+              <div style={{ padding: '4px 10px', fontSize: 8, color: '#555' }}>
+                Snippets: {Object.keys(SNIPPETS).join(', ')}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Explorer resize handle */}
-        {showTree && !globalSearchOpen && <div
+        {sidebarMode === 'files' && <div
           onMouseDown={e => {
             e.preventDefault(); e.stopPropagation();
             explorerDrag.current = { startX: e.clientX, startW: explorerW };
@@ -1896,7 +2023,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         guides.push(
                           <span key={`g${g}`} style={{
                             position: 'absolute', left: (g - 1) * charW, top: 0, bottom: 0, width: 1,
-                            background: g === indent ? INDENT_COLORS[depthIdx % INDENT_COLORS.length].replace('18', '30') : INDENT_COLORS[depthIdx % INDENT_COLORS.length]
+                            background: showIndentRainbow
+                              ? (g === indent ? INDENT_COLORS[depthIdx % INDENT_COLORS.length].replace('18', '30') : INDENT_COLORS[depthIdx % INDENT_COLORS.length])
+                              : (g === indent ? '#ffffff0a' : '#ffffff06')
                           }} />
                         );
                       }
@@ -1942,7 +2071,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             }}>{`... ${foldableRanges[i] - i} lines`}</span>
                           )}
                           {/* Bracket pair colorization */}
-                          {bracketColorMap[i]?.map((b, bi) => (
+                          {showBracketColors && bracketColorMap[i]?.map((b, bi) => (
                             <span key={`bc${bi}`} style={{
                               position: 'absolute', left: b.col * charW, top: 0,
                               width: charW, height: '100%', color: b.color, fontWeight: 700,
@@ -2219,7 +2348,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               )}
 
               {/* Minimap */}
-              {lines.length > 10 && (
+              {showMinimap && lines.length > 10 && (
                 <div
                   onClick={e => {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -2234,18 +2363,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   }}>
                   {/* Code density lines */}
                   <div style={{ padding: '2px 2px', pointerEvents: 'none' }}>
-                    {lines.map((l, i) => {
-                      const trimLen = Math.min(l.trimStart().length, 36);
-                      const isErr = output?.errLn === i + 1;
-                      const isActive = i + 1 === activeLn;
-                      return <div key={i} style={{
-                        height: Math.max(1, Math.min(2, 120 / lines.length)),
-                        marginBottom: lines.length > 100 ? 0 : 1,
-                        width: `${Math.max(4, (trimLen / 36) * 100)}%`,
-                        background: isErr ? '#f38ba8' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
-                        borderRadius: 1,
-                      }} />;
-                    })}
+                    {(() => {
+                      // Precompute which lines have search matches for minimap highlighting
+                      const searchMatchLines = new Set();
+                      if (searchOpen && searchMatches.length) {
+                        for (const m of searchMatches) {
+                          const ln = code.substring(0, m.pos).split('\n').length;
+                          searchMatchLines.add(ln);
+                        }
+                      }
+                      return lines.map((l, i) => {
+                        const trimLen = Math.min(l.trimStart().length, 36);
+                        const isErr = output?.errLn === i + 1;
+                        const isActive = i + 1 === activeLn;
+                        const isSearch = searchMatchLines.has(i + 1);
+                        return <div key={i} style={{
+                          height: Math.max(1, Math.min(2, 120 / lines.length)),
+                          marginBottom: lines.length > 100 ? 0 : 1,
+                          width: `${Math.max(4, (trimLen / 36) * 100)}%`,
+                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
+                          borderRadius: 1,
+                        }} />;
+                      });
+                    })()}
                   </div>
                   {/* Viewport indicator */}
                   <div style={{
@@ -2305,48 +2445,6 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 }}>read-only</div>
               )}
             </div>
-
-            {/* Outline panel */}
-            {outlineOpen && (
-              <div onMouseDown={stop} style={{
-                width: 120, background: '#181825', borderLeft: '1px solid #ffffff08',
-                flexShrink: 0, overflow: 'auto', display: 'flex', flexDirection: 'column'
-              }}>
-                <div style={{ padding: '4px 8px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', borderBottom: '1px solid #ffffff06', display: 'flex', alignItems: 'center' }}>
-                  <span style={{ flex: 1 }}>Outline</span>
-                  <span onClick={() => setOutlineOpen(false)} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
-                </div>
-                <div style={{ flex: 1, overflow: 'auto', padding: '2px 0' }}>
-                  {outlineSymbols.length === 0 && (
-                    <div style={{ fontSize: 8, color: '#444', padding: '8px', textAlign: 'center' }}>No symbols</div>
-                  )}
-                  {outlineSymbols.map((sym, si) => (
-                    <div key={si}
-                      onClick={() => {
-                        setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
-                        const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
-                        setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
-                      }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
-                        cursor: 'pointer', fontSize: 8,
-                        color: sym.line === activeLn ? '#cdd6f4' : '#777',
-                        background: sym.line === activeLn ? '#ffffff08' : 'transparent',
-                        borderLeft: sym.line === activeLn ? '2px solid #cba6f7' : '2px solid transparent',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
-                      onMouseLeave={e => e.currentTarget.style.background = sym.line === activeLn ? '#ffffff08' : 'transparent'}>
-                      <span style={{
-                        fontSize: 7, fontWeight: 600, width: 12, textAlign: 'center', flexShrink: 0,
-                        color: sym.kind === 'fn' ? '#cba6f7' : sym.kind === 'class' ? '#f9e2af' : '#89b4fa',
-                      }}>{sym.kind === 'fn' ? 'f' : sym.kind === 'class' ? 'C' : 'v'}</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sym.name}</span>
-                      <span style={{ fontSize: 7, color: '#444', marginLeft: 'auto', flexShrink: 0 }}>{sym.line}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Terminal */}
             {termOpen && (
