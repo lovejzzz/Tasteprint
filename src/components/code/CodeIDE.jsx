@@ -216,6 +216,36 @@ const TP_AC = [
   { label: 'export()', desc: 'Export state object', insert: 'export()' },
 ];
 
+/* Hover docs for tp methods */
+const TP_DOCS = {
+  palette: 'tp.palette() → string\nReturns current palette name',
+  palettes: 'tp.palettes() → string[]\nAll available palette names',
+  colors: 'tp.colors() → { bg, card, ac, ac2, tx, mu, bd, su }\nCurrent palette colors',
+  shapes: 'tp.shapes() → Shape[]\nAll canvas shapes with id, type, x, y, w, h, variant, etc.',
+  get: 'tp.get(id) → Shape | null\nGet a shape by id',
+  find: 'tp.find(type) → string[]\nFind shape IDs matching type',
+  device: 'tp.device() → "free" | "desktop" | "phone"\nCurrent device mode',
+  fonts: 'tp.fonts() → string[]\nAvailable font names',
+  types: 'tp.types() → string[]\nAll component type names',
+  variants: 'tp.variants(type) → string[]\nVariant names for a type',
+  setPalette: 'tp.setPalette(name)\nChange the active palette',
+  setDevice: 'tp.setDevice(mode)\nSet device to "free", "desktop", or "phone"',
+  add: 'tp.add(type, opts?) → string\nAdd a component, returns id\nopts: { x, y, w, h, variant, font, fsize, texts, props }',
+  remove: 'tp.remove(id)\nRemove a shape from canvas',
+  update: 'tp.update(id, changes)\nUpdate shape properties',
+  setText: 'tp.setText(id, key, value)\nSet a text field on a shape',
+  setProp: 'tp.setProp(id, key, value)\nSet a prop field on a shape',
+  setFont: 'tp.setFont(id, fontIndex)\nSet font by index (0–16)',
+  setFsize: 'tp.setFsize(id, size)\nSet font size (0.5–2.0)',
+  clear: 'tp.clear()\nRemove all shapes (keeps IDE)',
+  save: 'tp.save(name?)\nSave current state to localStorage',
+  load: 'tp.load(name?)\nRestore a saved state',
+  saves: 'tp.saves() → string[]\nList all saved state names',
+  deleteSave: 'tp.deleteSave(name?)\nDelete a saved state',
+  reset: 'tp.reset()\nReset everything to defaults',
+  export: 'tp.export() → { shapes, pal, device }\nExport state as object',
+};
+
 /* Keyboard shortcuts */
 const SHORTCUTS = [
   ['\u2318+Enter', 'Run code'],
@@ -385,6 +415,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Code folding ---- */
   const [foldedLines, setFoldedLines] = React.useState(new Set());
+
+  /* ---- Explorer resize ---- */
+  const [explorerW, setExplorerW] = React.useState(130);
+  const explorerDrag = React.useRef(null);
+
+  /* ---- Word wrap ---- */
+  const [wordWrap, setWordWrap] = React.useState(false);
+
+  /* ---- Hover docs ---- */
+  const [hoverDoc, setHoverDoc] = React.useState(null);
+  const hoverTimer = React.useRef(null);
 
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
@@ -637,6 +678,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'New File...', key: 'newfile', hint: '' },
       { label: 'Save State', key: 'save', hint: '' },
       { label: 'Reset to Default', key: 'reset', hint: '' },
+      { label: wordWrap ? 'Disable Word Wrap' : 'Enable Word Wrap', key: 'wrap', hint: '' },
+      { label: 'Format Document', key: 'format', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -652,8 +695,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'find') { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }
     else if (key === 'replace') { setSearchOpen(true); setShowReplace(true); setTimeout(() => searchRef.current?.focus(), 50); }
     else if (key === 'newfile') { setNewFileInput(true); setShowTree(true); setNewFileName(''); setTimeout(() => newFileRef.current?.focus(), 100); }
-    else if (key === 'save') tp?.save();
-    else if (key === 'reset') tp?.reset();
+    else if (key === 'save') { tp?.save(); showToast('State saved!', 'success'); }
+    else if (key === 'reset') { tp?.reset(); showToast('Reset to default!', 'warn'); }
+    else if (key === 'wrap') setWordWrap(w => !w);
+    else if (key === 'format') formatCode();
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
@@ -685,6 +730,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setOutput({ logs, ms: null, err: e.message, errLn: ln });
     }
     setTimeout(() => setBusy(false), 300);
+  };
+
+  /* ---- Format code (simple auto-indent) ---- */
+  const formatCode = () => {
+    if (readonly) return;
+    const lines = code.split('\n');
+    let indent = 0;
+    const formatted = lines.map(l => {
+      const trimmed = l.trim();
+      if (!trimmed) return '';
+      // Decrease indent for closing brackets
+      if (/^[}\])]/.test(trimmed)) indent = Math.max(0, indent - 1);
+      const result = '  '.repeat(indent) + trimmed;
+      // Increase indent for opening brackets
+      const opens = (trimmed.match(/[{[(]/g) || []).length;
+      const closes = (trimmed.match(/[}\])]/g) || []).length;
+      indent = Math.max(0, indent + opens - closes);
+      // If line started with close bracket, we already decreased, re-add opens
+      if (/^[}\])]/.test(trimmed)) indent += opens;
+      return result;
+    });
+    setCode(formatted.join('\n'));
+    showToast('Formatted!', 'info');
   };
 
   /* ---- Cursor tracking ---- */
@@ -1013,7 +1081,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
         {/* File tree sidebar */}
         {showTree && <div onClick={() => setExplorerCtx(null)} style={{
-          width: 130, background: '#181825', borderRight: '1px solid #ffffff08',
+          width: explorerW, background: '#181825', borderRight: 'none',
           display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto', position: 'relative'
         }}>
           <div style={{ padding: '6px 10px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
@@ -1133,6 +1201,24 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
         </div>}
+
+        {/* Explorer resize handle */}
+        {showTree && <div
+          onMouseDown={e => {
+            e.preventDefault(); e.stopPropagation();
+            explorerDrag.current = { startX: e.clientX, startW: explorerW };
+            const onMove = ev => {
+              const dx = ev.clientX - explorerDrag.current.startX;
+              setExplorerW(Math.max(80, Math.min(250, explorerDrag.current.startW + dx)));
+            };
+            const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); explorerDrag.current = null; };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+          }}
+          style={{ width: 3, cursor: 'col-resize', background: 'transparent', flexShrink: 0, position: 'relative', zIndex: 5 }}
+          onMouseEnter={e => e.currentTarget.style.background = '#cba6f740'}
+          onMouseLeave={e => { if (!explorerDrag.current) e.currentTarget.style.background = 'transparent'; }}
+        />}
 
         {/* Editor area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
@@ -1449,6 +1535,40 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   const rect = e.target.getBoundingClientRect();
                   setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
                 }}
+                onMouseMove={e => {
+                  // Hover docs: detect tp.method under cursor position
+                  clearTimeout(hoverTimer.current);
+                  const el = e.target;
+                  const rect = el.getBoundingClientRect();
+                  const gutterW = lines.length >= 1000 ? 44 : lines.length >= 100 ? 38 : 32;
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top + el.scrollTop;
+                  const lineH = Math.round(16 * fsize);
+                  const lineIdx = Math.floor(y / lineH);
+                  const charW = fs(6.1);
+                  const colIdx = Math.floor(x / charW);
+                  if (lineIdx >= 0 && lineIdx < lines.length) {
+                    const line = lines[lineIdx];
+                    // Find tp.word at this column
+                    const tpMatch = line.match(/tp\.(\w+)/g);
+                    if (tpMatch) {
+                      for (const m of tpMatch) {
+                        const col = line.indexOf(m);
+                        if (colIdx >= col && colIdx <= col + m.length) {
+                          const method = m.substring(3);
+                          if (TP_DOCS[method]) {
+                            hoverTimer.current = setTimeout(() => {
+                              setHoverDoc({ text: TP_DOCS[method], x: Math.min(x, 220), y: (lineIdx + 1) * lineH - el.scrollTop });
+                            }, 400);
+                            return;
+                          }
+                        }
+                      }
+                    }
+                  }
+                  setHoverDoc(null);
+                }}
+                onMouseLeave={() => { clearTimeout(hoverTimer.current); setHoverDoc(null); }}
                 onKeyUp={e => updateCursor(e.target)} onKeyDown={handleKey}
                 readOnly={readonly} spellCheck={false}
                 style={{
@@ -1456,7 +1576,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   caretColor: readonly ? 'transparent' : '#cba6f7',
                   border: 'none', outline: 'none', resize: 'none', padding: 8,
                   fontSize: fs(10), lineHeight: lh, fontFamily: MONO,
-                  tabSize: 2, whiteSpace: 'pre', overflow: 'auto', minWidth: 0,
+                  tabSize: 2, whiteSpace: wordWrap ? 'pre-wrap' : 'pre', wordBreak: wordWrap ? 'break-all' : 'normal', overflow: 'auto', minWidth: 0,
                   position: 'relative', zIndex: 1, cursor: readonly ? 'default' : 'text',
                 }}
               />
@@ -1503,8 +1623,27 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 );
               })()}
 
-              {/* Minimap scrollbar */}
-              {lines.length > 20 && (
+              {/* Hover docs tooltip */}
+              {hoverDoc && !acOpen && (
+                <div style={{
+                  position: 'absolute', left: Math.min(hoverDoc.x + 33, 240), top: hoverDoc.y + 16,
+                  zIndex: 12, background: '#1e1e2e', border: '1px solid #ffffff15',
+                  borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.5)',
+                  padding: '6px 10px', maxWidth: 280, pointerEvents: 'none'
+                }}>
+                  {hoverDoc.text.split('\n').map((line, i) => (
+                    <div key={i} style={{
+                      fontSize: 8, lineHeight: '13px', fontFamily: MONO,
+                      color: i === 0 ? '#cba6f7' : '#a6adc8',
+                      fontWeight: i === 0 ? 600 : 400,
+                      whiteSpace: 'pre-wrap',
+                    }}>{line}</div>
+                  ))}
+                </div>
+              )}
+
+              {/* Minimap */}
+              {lines.length > 10 && (
                 <div
                   onClick={e => {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -1513,14 +1652,32 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     if (taRef.current) taRef.current.scrollTop = pct * totalH;
                   }}
                   style={{
-                    position: 'absolute', top: 0, right: 0, width: 8, bottom: 0,
-                    background: '#ffffff04', zIndex: 2, cursor: 'pointer'
+                    position: 'absolute', top: 0, right: 0, width: 40, bottom: 0,
+                    background: '#16162a', zIndex: 2, cursor: 'pointer', overflow: 'hidden',
+                    borderLeft: '1px solid #ffffff06'
                   }}>
+                  {/* Code density lines */}
+                  <div style={{ padding: '2px 2px', pointerEvents: 'none' }}>
+                    {lines.map((l, i) => {
+                      const trimLen = Math.min(l.trimStart().length, 36);
+                      const isErr = output?.errLn === i + 1;
+                      const isActive = i + 1 === activeLn;
+                      return <div key={i} style={{
+                        height: Math.max(1, Math.min(2, 120 / lines.length)),
+                        marginBottom: lines.length > 100 ? 0 : 1,
+                        width: `${Math.max(4, (trimLen / 36) * 100)}%`,
+                        background: isErr ? '#f38ba8' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
+                        borderRadius: 1,
+                      }} />;
+                    })}
+                  </div>
+                  {/* Viewport indicator */}
                   <div style={{
-                    position: 'absolute', top: `${(scrollTop / (lines.length * Math.round(16 * fsize))) * 100}%`,
-                    width: '100%', height: `${Math.max(10, (100 / lines.length) * 20)}%`,
-                    background: '#cba6f720', borderRadius: 4, minHeight: 8,
-                    pointerEvents: 'none'
+                    position: 'absolute', left: 0, right: 0,
+                    top: `${(scrollTop / Math.max(1, lines.length * Math.round(16 * fsize))) * 100}%`,
+                    height: `${Math.max(8, (100 / Math.max(1, lines.length)) * 20)}%`,
+                    background: '#cba6f710', border: '1px solid #cba6f720',
+                    borderRadius: 2, pointerEvents: 'none', minHeight: 8,
                   }} />
                 </div>
               )}
@@ -1536,6 +1693,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     { label: 'Cut', action: () => { document.execCommand('cut'); }, disabled: readonly },
                     { label: 'Copy', action: () => { document.execCommand('copy'); } },
                     { label: 'Paste', action: () => { navigator.clipboard?.readText().then(t => { const el = taRef.current; if (el && t) { const s = el.selectionStart, en = el.selectionEnd; setCode(code.substring(0, s) + t + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + t.length }, 0); } }); }, disabled: readonly },
+                    { label: 'Select All', action: () => { const el = taRef.current; if (el) { el.selectionStart = 0; el.selectionEnd = code.length; el.focus(); } }, hint: '\u2318A' },
                     null,
                     { label: 'Toggle Comment', action: () => { const el = taRef.current; if (el) { const evt = new KeyboardEvent('keydown', { key: '/', metaKey: true }); handleKey({ ...evt, target: el, preventDefault: () => {}, stopPropagation: () => {} }); } }, hint: '\u2318/' },
                     { label: 'Duplicate Line', action: () => { const el = taRef.current; if (el) { const s = el.selectionStart, en = el.selectionEnd; const [ls, le] = getLineRange(s); const line = code.substring(ls, le); const nc = code.substring(0, le) + '\n' + line + code.substring(le); setCode(nc); } }, disabled: readonly },
@@ -1543,6 +1701,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     null,
                     { label: 'Find', action: () => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }, hint: '\u2318F' },
                     { label: 'Go to Line', action: () => { setGotoOpen(true); setTimeout(() => gotoRef.current?.focus(), 50); }, hint: 'Ctrl+G' },
+                    { label: 'Format Document', action: formatCode, disabled: readonly },
                     { label: 'Run', action: runCode, hint: '\u2318+Enter', disabled: readonly },
                   ].map((item, i) => item === null ? (
                     <div key={`sep-${i}`} style={{ height: 1, background: '#ffffff08', margin: '2px 0' }} />
@@ -1695,7 +1854,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             <span style={{ fontSize: fs(8), color: '#555' }}>{lines.length} lines</span>
             {readonly && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }}>Read-only</span>}
             {tp && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .4 }}>tp</span>}
-            <span style={{ fontSize: fs(8), color: '#555', marginLeft: 'auto' }}>Spaces: 2</span>
+            <span onClick={() => setWordWrap(w => !w)} onMouseDown={stop}
+              style={{ fontSize: fs(8), color: wordWrap ? '#cba6f7' : '#555', marginLeft: 'auto', cursor: 'pointer' }}
+              title="Toggle word wrap">{wordWrap ? 'Wrap: On' : 'Wrap: Off'}</span>
+            <span style={{ fontSize: fs(8), color: '#555' }}>Spaces: 2</span>
             <span style={{ fontSize: fs(8), color: '#555' }}>
               {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
             </span>
