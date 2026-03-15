@@ -186,6 +186,55 @@ shapes.forEach(s => {
 console.log('Done!');
 `;
 
+/* tp autocomplete entries */
+const TP_AC = [
+  { label: 'palette()', desc: 'Current palette name', insert: 'palette()' },
+  { label: 'palettes()', desc: 'All palette names', insert: 'palettes()' },
+  { label: 'colors()', desc: '{ bg, card, ac, ... }', insert: 'colors()' },
+  { label: 'shapes()', desc: 'All canvas shapes', insert: 'shapes()' },
+  { label: 'get(id)', desc: 'Full shape by id', insert: 'get(' },
+  { label: 'find(type)', desc: 'Shape ids by type', insert: 'find(' },
+  { label: 'device()', desc: 'Current device mode', insert: 'device()' },
+  { label: 'fonts()', desc: 'Available font names', insert: 'fonts()' },
+  { label: 'types()', desc: 'All component types', insert: 'types()' },
+  { label: 'variants(type)', desc: 'Variant names', insert: 'variants(' },
+  { label: 'setPalette(name)', desc: 'Change palette', insert: "setPalette('" },
+  { label: 'setDevice(mode)', desc: 'Set device mode', insert: "setDevice('" },
+  { label: 'add(type, opts?)', desc: 'Add component', insert: "add('" },
+  { label: 'remove(id)', desc: 'Remove shape', insert: 'remove(' },
+  { label: 'update(id, ch)', desc: 'Update shape props', insert: 'update(' },
+  { label: 'setText(id, k, v)', desc: 'Set text field', insert: 'setText(' },
+  { label: 'setProp(id, k, v)', desc: 'Set prop field', insert: 'setProp(' },
+  { label: 'setFont(id, idx)', desc: 'Set font index', insert: 'setFont(' },
+  { label: 'setFsize(id, s)', desc: 'Set font size', insert: 'setFsize(' },
+  { label: 'clear()', desc: 'Remove all shapes', insert: 'clear()' },
+  { label: 'save(name?)', desc: 'Save state', insert: 'save(' },
+  { label: 'load(name?)', desc: 'Load saved state', insert: 'load(' },
+  { label: 'saves()', desc: 'List saved states', insert: 'saves()' },
+  { label: 'deleteSave(name?)', desc: 'Delete save', insert: 'deleteSave(' },
+  { label: 'reset()', desc: 'Reset everything', insert: 'reset()' },
+  { label: 'export()', desc: 'Export state object', insert: 'export()' },
+];
+
+/* Keyboard shortcuts */
+const SHORTCUTS = [
+  ['\u2318+Enter', 'Run code'],
+  ['\u2318+/', 'Toggle comment'],
+  ['\u2318+F', 'Find'],
+  ['\u2318+H', 'Find & Replace'],
+  ['\u2318+P', 'Command palette'],
+  ['\u2318+L', 'Select line'],
+  ['\u2318+Shift+D', 'Duplicate line'],
+  ['Ctrl+G', 'Go to line'],
+  ['Ctrl+Shift+K', 'Delete line'],
+  ['Alt+\u2191/\u2193', 'Move line up/down'],
+  ['Tab / Shift+Tab', 'Indent / Outdent'],
+  ['\u2318+Z', 'Undo'],
+  ['\u2318+Shift+Z', 'Redo'],
+  ['\u2318+K', 'Shortcuts help'],
+  ['Esc', 'Close overlay'],
+];
+
 /* Generated file builders */
 function genPalette(tp) {
   if (!tp) return '// tp API not available';
@@ -271,6 +320,34 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [cmdQuery, setCmdQuery] = React.useState('');
   const cmdRef = React.useRef(null);
 
+  /* ---- Autocomplete ---- */
+  const [acOpen, setAcOpen] = React.useState(false);
+  const [acItems, setAcItems] = React.useState([]);
+  const [acIdx, setAcIdx] = React.useState(0);
+
+  /* ---- Go to line ---- */
+  const [gotoOpen, setGotoOpen] = React.useState(false);
+  const [gotoVal, setGotoVal] = React.useState('');
+  const gotoRef = React.useRef(null);
+
+  /* ---- Keyboard help ---- */
+  const [helpOpen, setHelpOpen] = React.useState(false);
+
+  /* ---- Editor undo/redo ---- */
+  const editorHist = React.useRef([]);
+  const editorFuture = React.useRef([]);
+
+  /* ---- Context menu ---- */
+  const [ctxMenu, setCtxMenu] = React.useState(null);
+
+  /* ---- Explorer new file input ---- */
+  const [newFileInput, setNewFileInput] = React.useState(false);
+  const [newFileName, setNewFileName] = React.useState('');
+  const newFileRef = React.useRef(null);
+
+  /* ---- Explorer context menu ---- */
+  const [explorerCtx, setExplorerCtx] = React.useState(null);
+
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
     const known = new Set();
@@ -304,10 +381,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   };
 
   const createFile = (name) => {
-    const path = 'user/' + name;
+    if (!name) return;
+    const path = name.includes('/') ? name : 'user/' + name;
     if (editFiles[path] !== undefined) return;
     setEditFiles(prev => ({ ...prev, [path]: `// ${name}\n` }));
+    setOpenFolders(prev => ({ ...prev, user: true }));
     openFile(path);
+  };
+
+  const deleteFile = (path) => {
+    // Can't delete built-in files
+    if (initFiles[path] !== undefined || GEN_FILES[path]) return;
+    setEditFiles(prev => {
+      const next = { ...prev };
+      delete next[path];
+      return next;
+    });
+    // Close tab if open
+    setOpenTabs(prev => {
+      const next = prev.filter(t => t !== path);
+      if (activeFile === path && next.length) setActiveFile(next[next.length - 1]);
+      else if (!next.length) { setActiveFile('src/main.js'); return ['src/main.js']; }
+      return next;
+    });
   };
 
   const file = getFile(activeFile);
@@ -315,9 +411,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const readonly = file?.readonly || false;
   const lines = code.split('\n');
 
-  const setCode = (c) => {
+  const setCode = (c, skipHist) => {
     if (readonly) return;
+    if (!skipHist) {
+      editorHist.current = [...editorHist.current.slice(-50), code];
+      editorFuture.current = [];
+    }
     setEditFiles(prev => ({ ...prev, [activeFile]: c }));
+  };
+
+  const editorUndo = () => {
+    if (!editorHist.current.length) return;
+    editorFuture.current = [...editorFuture.current, code];
+    const prev = editorHist.current[editorHist.current.length - 1];
+    editorHist.current = editorHist.current.slice(0, -1);
+    setEditFiles(p => ({ ...p, [activeFile]: prev }));
+  };
+
+  const editorRedo = () => {
+    if (!editorFuture.current.length) return;
+    editorHist.current = [...editorHist.current, code];
+    const next = editorFuture.current[editorFuture.current.length - 1];
+    editorFuture.current = editorFuture.current.slice(0, -1);
+    setEditFiles(p => ({ ...p, [activeFile]: next }));
   };
 
   const openFile = (path) => {
@@ -400,7 +516,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'tree') setShowTree(t => !t);
     else if (key === 'find') { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }
     else if (key === 'replace') { setSearchOpen(true); setShowReplace(true); setTimeout(() => searchRef.current?.focus(), 50); }
-    else if (key === 'newfile') { const name = prompt('File name (e.g. script.js):'); if (name) createFile(name); }
+    else if (key === 'newfile') { setNewFileInput(true); setShowTree(true); setNewFileName(''); setTimeout(() => newFileRef.current?.focus(), 100); }
     else if (key === 'save') tp?.save();
     else if (key === 'reset') tp?.reset();
     else if (key.startsWith('file:')) openFile(key.slice(5));
@@ -483,8 +599,55 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     /* Escape: close overlays */
     if (e.key === 'Escape') {
+      if (acOpen) { setAcOpen(false); return; }
       if (searchOpen) { setSearchOpen(false); return; }
       if (cmdOpen) { setCmdOpen(false); return; }
+      if (gotoOpen) { setGotoOpen(false); return; }
+      if (helpOpen) { setHelpOpen(false); return; }
+    }
+
+    /* Autocomplete navigation */
+    if (acOpen) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setAcIdx(i => Math.min(i + 1, acItems.length - 1)); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setAcIdx(i => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const item = acItems[acIdx];
+        if (item) {
+          // Find "tp." before cursor and replace with tp.{insert}
+          const before = code.substring(0, s);
+          const dotIdx = before.lastIndexOf('tp.');
+          if (dotIdx !== -1) {
+            const nc = code.substring(0, dotIdx + 3) + item.insert + code.substring(s);
+            setCode(nc);
+            const newPos = dotIdx + 3 + item.insert.length;
+            setTimeout(() => { el.selectionStart = el.selectionEnd = newPos }, 0);
+          }
+        }
+        setAcOpen(false);
+        return;
+      }
+    }
+
+    /* Undo: Cmd+Z */
+    if (e.key === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault(); editorUndo(); return;
+    }
+
+    /* Redo: Cmd+Shift+Z */
+    if (e.key === 'z' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault(); editorRedo(); return;
+    }
+
+    /* Go to line: Ctrl+G */
+    if (e.key === 'g' && e.ctrlKey && !e.metaKey) {
+      e.preventDefault(); setGotoOpen(true); setGotoVal('');
+      setTimeout(() => gotoRef.current?.focus(), 50); return;
+    }
+
+    /* Shortcuts help: Cmd+K */
+    if (e.key === 'k' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault(); setHelpOpen(h => !h); return;
     }
 
     /* Toggle comment: Cmd+/ */
@@ -675,9 +838,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
 
         {/* File tree sidebar */}
-        {showTree && <div style={{
+        {showTree && <div onClick={() => setExplorerCtx(null)} style={{
           width: 130, background: '#181825', borderRight: '1px solid #ffffff08',
-          display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto'
+          display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto', position: 'relative'
         }}>
           <div style={{ padding: '6px 10px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
             Explorer
@@ -699,9 +862,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               {openFolders[folder.name] && folder.children.map(f => {
                 const isActive = f.path === activeFile;
                 const isReadonly = !editFiles.hasOwnProperty(f.path) && GEN_FILES[f.path];
+                const isDeletable = editFiles.hasOwnProperty(f.path) && !initFiles[f.path];
                 return (
                   <div key={f.path}
-                    onClick={() => openFile(f.path)} onMouseDown={stop}
+                    onClick={() => { openFile(f.path); setExplorerCtx(null); }}
+                    onMouseDown={stop}
+                    onContextMenu={e => {
+                      e.preventDefault(); e.stopPropagation();
+                      const rect = e.currentTarget.closest('[style*="width: 130"]')?.getBoundingClientRect();
+                      setExplorerCtx({ path: f.path, x: e.clientX - (rect?.left || 0), y: e.clientY - (rect?.top || 0), deletable: isDeletable, readonly: isReadonly });
+                    }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 22px',
                       cursor: 'pointer', fontSize: fs(9), userSelect: 'none',
@@ -717,14 +887,53 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               })}
             </React.Fragment>
           ))}
-          {/* New file button */}
-          <div onClick={() => { const name = prompt('File name (e.g. script.js):'); if (name) createFile(name); }}
-            onMouseDown={stop}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', marginTop: 4,
-              cursor: 'pointer', fontSize: fs(8), color: '#555', userSelect: 'none', borderTop: '1px solid #ffffff06' }}>
-            <span style={{ fontSize: 10, lineHeight: 1 }}>+</span>
-            <span>New file</span>
-          </div>
+          {/* Explorer context menu */}
+          {explorerCtx && (
+            <div onMouseDown={stop} style={{
+              position: 'absolute', left: explorerCtx.x, top: explorerCtx.y, zIndex: 15,
+              background: '#181825', border: '1px solid #ffffff15', borderRadius: 6,
+              boxShadow: '0 4px 12px rgba(0,0,0,.5)', minWidth: 100, overflow: 'hidden'
+            }}>
+              <div onClick={() => { openFile(explorerCtx.path); setExplorerCtx(null); }}
+                style={{ padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                Open
+              </div>
+              {explorerCtx.deletable && <>
+                <div style={{ height: 1, background: '#ffffff08' }} />
+                <div onClick={() => { deleteFile(explorerCtx.path); setExplorerCtx(null); }}
+                  style={{ padding: '4px 10px', fontSize: 9, color: '#f38ba8', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  Delete
+                </div>
+              </>}
+            </div>
+          )}
+
+          {/* New file input or button */}
+          {newFileInput ? (
+            <div style={{ padding: '3px 8px', borderTop: '1px solid #ffffff06', marginTop: 4 }}>
+              <input ref={newFileRef} value={newFileName} onChange={e => setNewFileName(e.target.value)}
+                placeholder="filename.js" spellCheck={false} autoFocus
+                onKeyDown={e => {
+                  e.stopPropagation();
+                  if (e.key === 'Enter' && newFileName.trim()) { createFile(newFileName.trim()); setNewFileInput(false); setNewFileName(''); }
+                  if (e.key === 'Escape') { setNewFileInput(false); setNewFileName(''); }
+                }}
+                onBlur={() => { if (newFileName.trim()) createFile(newFileName.trim()); setNewFileInput(false); setNewFileName(''); }}
+                style={{ width: '100%', background: '#1e1e2e', border: '1px solid #cba6f740', borderRadius: 3, padding: '2px 4px', fontSize: 8, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+            </div>
+          ) : (
+            <div onClick={() => { setNewFileInput(true); setNewFileName(''); setTimeout(() => newFileRef.current?.focus(), 50); }}
+              onMouseDown={stop}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', marginTop: 4,
+                cursor: 'pointer', fontSize: fs(8), color: '#555', userSelect: 'none', borderTop: '1px solid #ffffff06' }}>
+              <span style={{ fontSize: 10, lineHeight: 1 }}>+</span>
+              <span>New file</span>
+            </div>
+          )}
         </div>}
 
         {/* Editor area */}
@@ -808,6 +1017,47 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
+          {/* Go to line dialog */}
+          {gotoOpen && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '20%', right: '20%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 9, color: '#555' }}>Go to line:</span>
+              <input ref={gotoRef} value={gotoVal} onChange={e => setGotoVal(e.target.value.replace(/\D/g, ''))}
+                placeholder={`1-${lines.length}`} spellCheck={false}
+                onKeyDown={e => {
+                  e.stopPropagation();
+                  if (e.key === 'Escape') { setGotoOpen(false); taRef.current?.focus(); }
+                  if (e.key === 'Enter') {
+                    const ln = parseInt(gotoVal);
+                    if (ln >= 1 && ln <= lines.length) {
+                      const pos = code.split('\n').slice(0, ln - 1).join('\n').length + (ln > 1 ? 1 : 0);
+                      setActiveLn(ln); setCursor({ ln, col: 1 });
+                      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                    }
+                    setGotoOpen(false);
+                  }
+                }}
+                style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+            </div>
+          )}
+
+          {/* Keyboard shortcuts help */}
+          {helpOpen && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '5%', right: '5%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 280 }}>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderBottom: '1px solid #ffffff08' }}>
+                <span style={{ fontSize: 9, color: '#cba6f7', fontWeight: 600 }}>Keyboard Shortcuts</span>
+                <span onClick={() => setHelpOpen(false)} style={{ marginLeft: 'auto', fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+              </div>
+              <div style={{ padding: '4px 10px', maxHeight: 230, overflow: 'auto' }}>
+                {SHORTCUTS.map(([key, desc]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', padding: '2px 0', fontSize: 9 }}>
+                    <span style={{ color: '#cba6f7', minWidth: 100, fontWeight: 500 }}>{key}</span>
+                    <span style={{ color: '#a6adc8' }}>{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Editor + Terminal split */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
@@ -865,9 +1115,31 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               {/* Textarea */}
               <textarea
                 ref={taRef} value={code}
-                onChange={e => { setCode(e.target.value); updateCursor(e.target); }}
+                onChange={e => {
+                  const val = e.target.value;
+                  const pos = e.target.selectionStart;
+                  setCode(val); updateCursor(e.target);
+                  // Autocomplete trigger: check if cursor is after "tp."
+                  const before = val.substring(0, pos);
+                  const dotMatch = before.match(/tp\.(\w*)$/);
+                  if (dotMatch) {
+                    const partial = dotMatch[1].toLowerCase();
+                    const filtered = partial ? TP_AC.filter(a => a.label.toLowerCase().startsWith(partial)) : TP_AC;
+                    if (filtered.length) { setAcItems(filtered); setAcIdx(0); setAcOpen(true); }
+                    else setAcOpen(false);
+                  } else {
+                    setAcOpen(false);
+                  }
+                }}
                 onScroll={e => setScrollTop(e.target.scrollTop)}
-                onMouseDown={stop} onClick={e => updateCursor(e.target)}
+                onMouseDown={e => { stop(e); setCtxMenu(null); }}
+                onClick={e => updateCursor(e.target)}
+                onContextMenu={e => {
+                  e.preventDefault(); e.stopPropagation();
+                  updateCursor(e.target);
+                  const rect = e.target.getBoundingClientRect();
+                  setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                }}
                 onKeyUp={e => updateCursor(e.target)} onKeyDown={handleKey}
                 readOnly={readonly} spellCheck={false}
                 style={{
@@ -879,6 +1151,98 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   position: 'relative', zIndex: 1, cursor: readonly ? 'default' : 'text',
                 }}
               />
+
+              {/* Autocomplete dropdown */}
+              {acOpen && acItems.length > 0 && (() => {
+                const lineH = Math.round(16 * fsize);
+                const top = (activeLn * lineH) + 8 - scrollTop + lineH;
+                const lineStart = code.lastIndexOf('\n', (taRef.current?.selectionStart || 0) - 1) + 1;
+                const col = (taRef.current?.selectionStart || 0) - lineStart;
+                const left = col * fs(6.1) + 8;
+                return (
+                  <div onMouseDown={stop} style={{
+                    position: 'absolute', top: Math.min(top, 200), left: Math.min(left, 200),
+                    zIndex: 10, background: '#1e1e2e', border: '1px solid #ffffff15',
+                    borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.5)',
+                    maxHeight: 150, overflow: 'auto', minWidth: 180
+                  }}>
+                    {acItems.map((item, i) => (
+                      <div key={item.label}
+                        onClick={() => {
+                          const s = taRef.current?.selectionStart || 0;
+                          const before = code.substring(0, s);
+                          const dotIdx = before.lastIndexOf('tp.');
+                          if (dotIdx !== -1) {
+                            const nc = code.substring(0, dotIdx + 3) + item.insert + code.substring(s);
+                            setCode(nc);
+                            const newPos = dotIdx + 3 + item.insert.length;
+                            setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = newPos; el.focus(); } }, 0);
+                          }
+                          setAcOpen(false);
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px',
+                          fontSize: 9, cursor: 'pointer',
+                          background: i === acIdx ? '#ffffff10' : 'transparent',
+                          color: i === acIdx ? '#cdd6f4' : '#a6adc8',
+                        }}>
+                        <span style={{ color: '#cba6f7', fontWeight: 500, minWidth: 0 }}>{item.label}</span>
+                        <span style={{ color: '#555', fontSize: 8, marginLeft: 'auto', flexShrink: 0 }}>{item.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Minimap scrollbar */}
+              {lines.length > 20 && (
+                <div style={{
+                  position: 'absolute', top: 0, right: 0, width: 8, bottom: 0,
+                  background: '#ffffff04', zIndex: 2
+                }}>
+                  <div style={{
+                    position: 'absolute', top: `${(scrollTop / (lines.length * Math.round(16 * fsize))) * 100}%`,
+                    width: '100%', height: `${Math.max(10, (100 / lines.length) * 20)}%`,
+                    background: '#cba6f720', borderRadius: 4, minHeight: 8
+                  }} />
+                </div>
+              )}
+
+              {/* Right-click context menu */}
+              {ctxMenu && (
+                <div onMouseDown={stop} style={{
+                  position: 'absolute', left: Math.min(ctxMenu.x + 33, 200), top: ctxMenu.y,
+                  zIndex: 15, background: '#181825', border: '1px solid #ffffff15',
+                  borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.5)', minWidth: 140, overflow: 'hidden'
+                }}>
+                  {[
+                    { label: 'Cut', action: () => { document.execCommand('cut'); }, disabled: readonly },
+                    { label: 'Copy', action: () => { document.execCommand('copy'); } },
+                    { label: 'Paste', action: () => { navigator.clipboard?.readText().then(t => { const el = taRef.current; if (el && t) { const s = el.selectionStart, en = el.selectionEnd; setCode(code.substring(0, s) + t + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + t.length }, 0); } }); }, disabled: readonly },
+                    null,
+                    { label: 'Toggle Comment', action: () => { const el = taRef.current; if (el) { const evt = new KeyboardEvent('keydown', { key: '/', metaKey: true }); handleKey({ ...evt, target: el, preventDefault: () => {}, stopPropagation: () => {} }); } }, hint: '\u2318/' },
+                    { label: 'Duplicate Line', action: () => { const el = taRef.current; if (el) { const s = el.selectionStart, en = el.selectionEnd; const [ls, le] = getLineRange(s); const line = code.substring(ls, le); const nc = code.substring(0, le) + '\n' + line + code.substring(le); setCode(nc); } }, disabled: readonly },
+                    { label: 'Delete Line', action: () => { const el = taRef.current; if (el) { const s = el.selectionStart; const [ls, le] = getLineRange(s); const delEnd = le < code.length ? le + 1 : ls > 0 ? ls - 1 : le; const delStart = le < code.length ? ls : ls > 0 ? ls - 1 : ls; setCode(code.substring(0, delStart) + code.substring(delEnd) || '\n'); } }, disabled: readonly },
+                    null,
+                    { label: 'Find', action: () => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }, hint: '\u2318F' },
+                    { label: 'Go to Line', action: () => { setGotoOpen(true); setTimeout(() => gotoRef.current?.focus(), 50); }, hint: 'Ctrl+G' },
+                    { label: 'Run', action: runCode, hint: '\u2318+Enter', disabled: readonly },
+                  ].map((item, i) => item === null ? (
+                    <div key={`sep-${i}`} style={{ height: 1, background: '#ffffff08', margin: '2px 0' }} />
+                  ) : (
+                    <div key={item.label} onClick={() => { if (!item.disabled) { item.action(); setCtxMenu(null); } }}
+                      style={{
+                        display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9,
+                        color: item.disabled ? '#444' : '#a6adc8', cursor: item.disabled ? 'default' : 'pointer', gap: 6
+                      }}
+                      onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = '#ffffff08'; }}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      {item.hint && <span style={{ fontSize: 8, color: '#555' }}>{item.hint}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Read-only badge */}
               {readonly && (
