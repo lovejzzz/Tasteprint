@@ -261,6 +261,7 @@ const SHORTCUTS = [
   ['Ctrl+Shift+K', 'Delete line'],
   ['Alt+\u2191/\u2193', 'Move line up/down'],
   ['Tab / Shift+Tab', 'Indent / Outdent'],
+  ['\u2318+A', 'Select all'],
   ['\u2318+Z', 'Undo'],
   ['\u2318+Shift+Z', 'Redo'],
   ['\u2318+K', 'Shortcuts help'],
@@ -427,6 +428,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [hoverDoc, setHoverDoc] = React.useState(null);
   const hoverTimer = React.useRef(null);
 
+  /* ---- Editor focus ---- */
+  const [editorFocused, setEditorFocused] = React.useState(false);
+
+  /* ---- Terminal tabs ---- */
+  const [termTab, setTermTab] = React.useState('output');
+
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
     const known = new Set();
@@ -563,6 +570,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     return occ;
   }, [code, selectedWord]);
+
+  /* ---- Breadcrumb scope detection ---- */
+  const currentScope = React.useMemo(() => {
+    const upTo = lines.slice(0, activeLn);
+    for (let i = upTo.length - 1; i >= 0; i--) {
+      const m = upTo[i].match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async)|(\w+)\s*\(.*\)\s*\{)/);
+      if (m) return m[1] || m[2] || m[3];
+    }
+    return null;
+  }, [lines, activeLn]);
 
   const setCode = (c, skipHist) => {
     if (readonly) return;
@@ -848,13 +865,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         e.preventDefault();
         const item = acItems[acIdx];
         if (item) {
-          // Find "tp." before cursor and replace with tp.{insert}
           const before = code.substring(0, s);
           const dotIdx = before.lastIndexOf('tp.');
-          if (dotIdx !== -1) {
+          if (dotIdx !== -1 && item.desc !== 'keyword') {
+            // tp.method completion
             const nc = code.substring(0, dotIdx + 3) + item.insert + code.substring(s);
             setCode(nc);
             const newPos = dotIdx + 3 + item.insert.length;
+            setTimeout(() => { el.selectionStart = el.selectionEnd = newPos }, 0);
+          } else {
+            // JS keyword completion — append remaining chars
+            const nc = code.substring(0, s) + item.insert + code.substring(s);
+            setCode(nc);
+            const newPos = s + item.insert.length;
             setTimeout(() => { el.selectionStart = el.selectionEnd = newPos }, 0);
           }
         }
@@ -877,6 +900,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (e.key === 'g' && e.ctrlKey && !e.metaKey) {
       e.preventDefault(); setGotoOpen(true); setGotoVal('');
       setTimeout(() => gotoRef.current?.focus(), 50); return;
+    }
+
+    /* Select all: Cmd+A */
+    if (e.key === 'a' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      setTimeout(() => { el.selectionStart = 0; el.selectionEnd = code.length; }, 0);
+      return;
     }
 
     /* Shortcuts help: Cmd+K */
@@ -1010,9 +1040,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       const currentLine = code.substring(lineStart, s);
       const indent = currentLine.match(/^\s*/)[0];
       const bef = code[s - 1];
-      if (bef === '{') {
+      const OPEN_CLOSE = { '{': '}', '[': ']', '(': ')' };
+      if (OPEN_CLOSE[bef]) {
         e.preventDefault();
-        const after = code[s] === '}';
+        const closer = OPEN_CLOSE[bef];
+        const after = code[s] === closer;
         const nc = code.substring(0, s) + '\n' + indent + '  ' + (after ? '\n' + indent : '') + code.substring(s);
         setCode(nc);
         setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + 3 }, 0);
@@ -1284,6 +1316,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   onMouseDown={stop}>{part}</span>
               </React.Fragment>
             ))}
+            {currentScope && <>
+              <span style={{ fontSize: 7, color: '#444' }}>{'\u203A'}</span>
+              <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .7 }}>{currentScope}()</span>
+            </>}
             {readonly && <span style={{ fontSize: 7, color: '#f9e2af', opacity: .4, marginLeft: 4 }}>read-only</span>}
           </div>
 
@@ -1389,7 +1425,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
             {/* Code editor */}
-            <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+            <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative', outline: editorFocused ? '1px solid #cba6f720' : 'none', outlineOffset: -1, transition: 'outline-color .2s' }}>
               {/* Line numbers */}
               {(() => {
                 const gutterW = lines.length >= 1000 ? 44 : lines.length >= 100 ? 38 : 32;
@@ -1509,11 +1545,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   const dotMatch = before.match(/tp\.(\w*)$/);
                   if (dotMatch) {
                     const partial = dotMatch[1].toLowerCase();
-                    const filtered = partial ? TP_AC.filter(a => a.label.toLowerCase().startsWith(partial)) : TP_AC;
-                    if (filtered.length) { setAcItems(filtered); setAcIdx(0); setAcOpen(true); }
-                    else setAcOpen(false);
+                    if (!partial) { setAcItems(TP_AC); setAcIdx(0); setAcOpen(true); }
+                    else {
+                      // Fuzzy match: prefix first, then contains
+                      const prefix = TP_AC.filter(a => a.label.toLowerCase().startsWith(partial));
+                      const contains = TP_AC.filter(a => !a.label.toLowerCase().startsWith(partial) && a.label.toLowerCase().includes(partial));
+                      const filtered = [...prefix, ...contains];
+                      if (filtered.length) { setAcItems(filtered); setAcIdx(0); setAcOpen(true); }
+                      else setAcOpen(false);
+                    }
                   } else {
-                    setAcOpen(false);
+                    // Also autocomplete JS keywords after partial word
+                    const wordMatch = before.match(/\b(\w{2,})$/);
+                    if (wordMatch && !before.match(/\.\w*$/)) {
+                      const partial = wordMatch[1].toLowerCase();
+                      const JS_KW = ['const','let','var','function','return','if','else','for','while','console','forEach','map','filter','reduce','length','push','splice','indexOf','includes','toString','parseInt','parseFloat','JSON','stringify','parse','Math','random','floor','ceil','round','setTimeout','setInterval','Promise','async','await','try','catch','throw','true','false','null','undefined'];
+                      const filtered = JS_KW.filter(k => k.toLowerCase().startsWith(partial) && k.toLowerCase() !== partial).slice(0, 8);
+                      if (filtered.length) {
+                        setAcItems(filtered.map(k => ({ label: k, desc: 'keyword', insert: k.slice(partial.length) })));
+                        setAcIdx(0); setAcOpen(true);
+                      } else setAcOpen(false);
+                    } else {
+                      setAcOpen(false);
+                    }
                   }
                 }}
                 onScroll={e => setScrollTop(e.target.scrollTop)}
@@ -1527,6 +1581,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     if (sel && /^\w+$/.test(sel)) setSelectedWord(sel);
                     else setSelectedWord('');
                   } else setSelectedWord('');
+                }
+                }
+                onDoubleClick={e => {
+                  // Auto-select word on double click and highlight occurrences
+                  const el = e.target;
+                  const s = el.selectionStart, en = el.selectionEnd;
+                  if (s !== en) {
+                    const sel = code.substring(s, en).trim();
+                    if (sel && /^\w+$/.test(sel)) setSelectedWord(sel);
+                  }
                 }}
                 onClick={e => updateCursor(e.target)}
                 onContextMenu={e => {
@@ -1569,6 +1633,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   setHoverDoc(null);
                 }}
                 onMouseLeave={() => { clearTimeout(hoverTimer.current); setHoverDoc(null); }}
+                onFocus={() => setEditorFocused(true)}
+                onBlur={() => setEditorFocused(false)}
                 onKeyUp={e => updateCursor(e.target)} onKeyDown={handleKey}
                 readOnly={readonly} spellCheck={false}
                 style={{
@@ -1755,11 +1821,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 />
                 <div style={{ borderTop: '1px solid #ffffff10' }}></div>
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px',
+                  display: 'flex', alignItems: 'center', gap: 0, padding: '0 10px 0 0',
                   borderBottom: '1px solid #ffffff08', flexShrink: 0
                 }}>
-                  <span style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, letterSpacing: '.04em' }}>TERMINAL</span>
-                  {output?.ms && <span style={{ fontSize: 8, color: '#27c93f', opacity: .5 }}>{output.ms}ms</span>}
+                  {['output', 'problems'].map(tab => (
+                    <span key={tab} onClick={() => setTermTab(tab)} onMouseDown={stop}
+                      style={{
+                        fontSize: 8, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
+                        padding: '4px 10px', cursor: 'pointer',
+                        color: termTab === tab ? '#cba6f7' : '#555',
+                        borderBottom: termTab === tab ? '1px solid #cba6f7' : '1px solid transparent',
+                      }}>{tab}{tab === 'problems' && output?.err ? ' \u25CF' : ''}</span>
+                  ))}
+                  {output?.ms && <span style={{ fontSize: 8, color: '#27c93f', opacity: .5, marginLeft: 6 }}>{output.ms}ms</span>}
                   {output?.logs?.length > 0 && <span onClick={() => {
                     const text = output.logs.map(l => l.v).join('\n');
                     navigator.clipboard?.writeText(text);
@@ -1771,31 +1845,54 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u2500'}</span>
                 </div>
                 <div ref={termRef} style={{ flex: 1, overflow: 'auto', padding: '4px 10px' }}>
-                  {output ? (<>
-                    {output.logs.map((l, i) => (
-                      <div key={i} style={{
-                        fontSize: fs(9), lineHeight: Math.round(15 * fsize) + 'px',
-                        color: l.t === 'err' ? '#f38ba8' : l.t === 'warn' ? '#f9e2af' : l.t === 'ret' ? '#89b4fa' : l.t === 'dbg' ? '#6c7086' : '#a6adc8',
-                        whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0'
-                      }}>
-                        {l.t === 'err' ? '\u2717 ' : l.t === 'warn' ? '\u26A0 ' : l.t === 'ret' ? '  ' : l.t === 'dbg' ? '\u25E6 ' : '\u276F '}{l.v}
+                  {termTab === 'output' ? (<>
+                    {output ? (<>
+                      {output.logs.map((l, i) => (
+                        <div key={i} style={{
+                          fontSize: fs(9), lineHeight: Math.round(15 * fsize) + 'px',
+                          color: l.t === 'err' ? '#f38ba8' : l.t === 'warn' ? '#f9e2af' : l.t === 'ret' ? '#89b4fa' : l.t === 'dbg' ? '#6c7086' : '#a6adc8',
+                          whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0'
+                        }}>
+                          {l.t === 'err' ? '\u2717 ' : l.t === 'warn' ? '\u26A0 ' : l.t === 'ret' ? '  ' : l.t === 'dbg' ? '\u25E6 ' : '\u276F '}{l.v}
+                        </div>
+                      ))}
+                    </>) : (
+                      <div style={{ fontSize: fs(9), color: '#444', padding: '4px 0' }}>
+                        {'\u276F'} Run code with <span style={{ color: '#cba6f7' }}>{'\u25B6 Run'}</span> or <span style={{ color: '#cba6f7' }}>{'\u2318+Enter'}</span>
                       </div>
-                    ))}
-                    {output.err && (
+                    )}
+                  </>) : (<>
+                    {/* Problems tab */}
+                    {output?.err ? (
                       <div style={{
                         fontSize: fs(9), color: '#f38ba8', marginTop: 4,
                         padding: '4px 6px', background: '#f38ba810',
-                        borderRadius: 4, borderLeft: '2px solid #f38ba8'
+                        borderRadius: 4, borderLeft: '2px solid #f38ba8',
+                        cursor: output.errLn ? 'pointer' : 'default',
+                      }} onClick={() => {
+                        if (output.errLn) {
+                          setActiveLn(output.errLn);
+                          setCursor({ ln: output.errLn, col: 1 });
+                          const pos = code.split('\n').slice(0, output.errLn - 1).join('\n').length + (output.errLn > 1 ? 1 : 0);
+                          setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                        }
                       }}>
-                        {output.errLn && <span style={{ opacity: .5, marginRight: 4 }}>Ln {output.errLn}:</span>}
-                        {output.err}
+                        <span style={{ color: '#f38ba8', fontWeight: 600 }}>{'\u2717'} Error</span>
+                        {output.errLn && <span style={{ opacity: .5, marginLeft: 6 }}>line {output.errLn}</span>}
+                        <div style={{ marginTop: 2, color: '#f38ba8cc' }}>{output.err}</div>
+                      </div>
+                    ) : output?.logs?.some(l => l.t === 'warn') ? (
+                      output.logs.filter(l => l.t === 'warn').map((l, i) => (
+                        <div key={i} style={{ fontSize: fs(9), color: '#f9e2af', padding: '2px 6px', marginTop: 2 }}>
+                          {'\u26A0'} {l.v}
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: fs(9), color: '#27c93f', padding: '4px 0', opacity: .5 }}>
+                        {'\u2713'} No problems detected
                       </div>
                     )}
-                  </>) : (
-                    <div style={{ fontSize: fs(9), color: '#444', padding: '4px 0' }}>
-                      {'\u276F'} Run code with <span style={{ color: '#cba6f7' }}>{'\u25B6 Run'}</span> or <span style={{ color: '#cba6f7' }}>{'\u2318+Enter'}</span>
-                    </div>
-                  )}
+                  </>)}
                 </div>
                 {/* REPL input */}
                 <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px 4px', borderTop: '1px solid #ffffff06', gap: 4, flexShrink: 0 }}>
