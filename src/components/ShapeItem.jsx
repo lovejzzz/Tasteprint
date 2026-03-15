@@ -49,13 +49,14 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     </div>
   );
 }, (prev, next) => {
-  /* Only re-render when data/state that affects output changes — skip callback refs */
+  /* Only re-render when data/state that affects THIS shape changes */
   const id = prev.s.id;
+  const wasPrimary = prev.sel === id, isPrimary = next.sel === id;
   return prev.s === next.s &&
-    prev.sel === next.sel &&
-    prev.drag === next.drag &&
+    wasPrimary === isPrimary &&
+    (prev.drag === id) === (next.drag === id) &&
     prev.device === next.device &&
-    prev.selFont === next.selFont &&
+    (wasPrimary ? prev.selFont : null) === (isPrimary ? next.selFont : null) &&
     prev.p === next.p &&
     prev.selAll.has(id) === next.selAll.has(id);
 });
