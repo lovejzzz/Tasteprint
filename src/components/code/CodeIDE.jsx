@@ -417,6 +417,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Code folding ---- */
   const [foldedLines, setFoldedLines] = React.useState(new Set());
+  const toggleFold = (lineIdx) => {
+    setFoldedLines(prev => {
+      const next = new Set(prev);
+      if (next.has(lineIdx)) next.delete(lineIdx);
+      else next.add(lineIdx);
+      return next;
+    });
+  };
 
   /* ---- Explorer resize ---- */
   const [explorerW, setExplorerW] = React.useState(130);
@@ -523,6 +531,47 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (!input.trim()) return;
     setTermHistory(prev => [...prev.slice(-50), input]);
     setTermHistIdx(-1);
+    const cmd = input.trim();
+    // Built-in terminal commands
+    if (cmd === 'clear') { setOutput(null); setTermInput(''); return; }
+    if (cmd === 'help') {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F help' },
+        { t: 'log', v: 'Built-in commands:' },
+        { t: 'log', v: '  clear    — Clear output' },
+        { t: 'log', v: '  help     — Show this help' },
+        { t: 'log', v: '  ls       — List files' },
+        { t: 'log', v: '  cat <f>  — Show file contents' },
+        { t: 'log', v: '  echo <x> — Print text' },
+        { t: 'log', v: '  run      — Run active file' },
+        { t: 'log', v: '  pwd      — Show current file' },
+        { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
+      ], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd === 'ls') {
+      const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ls' },
+        ...allPaths.map(p => ({ t: 'log', v: '  ' + p }))
+      ], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('cat ')) {
+      const path = cmd.slice(4).trim();
+      const f = getFile(path);
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F cat ' + path },
+        f ? { t: 'log', v: f.content } : { t: 'err', v: `File not found: ${path}` }
+      ], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('echo ')) {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F echo ...' }, { t: 'log', v: cmd.slice(5) }], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd === 'pwd') {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F pwd' }, { t: 'log', v: activeFile }], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd === 'run') { runCode(); setTermInput(''); return; }
     const logs = [];
     const fc = {
       log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
@@ -592,6 +641,53 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     return null;
   }, [lines, activeLn]);
+
+  /* ---- Foldable lines (lines that start a block with { ) ---- */
+  const foldableRanges = React.useMemo(() => {
+    const ranges = {};
+    const stack = [];
+    for (let i = 0; i < lines.length; i++) {
+      for (let j = 0; j < lines[i].length; j++) {
+        const ch = lines[i][j];
+        if (ch === '{' || ch === '[' || ch === '(') stack.push({ line: i, ch });
+        else if ((ch === '}' || ch === ']' || ch === ')') && stack.length) {
+          const open = stack.pop();
+          if (open.line < i) ranges[open.line] = i; // multi-line block
+        }
+      }
+    }
+    return ranges;
+  }, [lines]);
+
+  /* ---- Visible lines (accounting for folds) ---- */
+  const visibleLines = React.useMemo(() => {
+    const vis = [];
+    let i = 0;
+    while (i < lines.length) {
+      vis.push(i);
+      if (foldedLines.has(i) && foldableRanges[i] !== undefined) {
+        i = foldableRanges[i] + 1; // skip to after the closing brace
+      } else {
+        i++;
+      }
+    }
+    return vis;
+  }, [lines, foldedLines, foldableRanges]);
+
+  /* ---- Sticky scroll: enclosing scope when scrolled past its declaration ---- */
+  const stickyScope = React.useMemo(() => {
+    if (scrollTop < 30) return null;
+    const lineH = Math.round(16 * fsize);
+    const topVisibleLine = Math.floor(scrollTop / lineH);
+    // Find the nearest enclosing scope that started above the viewport
+    for (let i = topVisibleLine; i >= 0; i--) {
+      const m = lines[i]?.match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async|\(?\s*\w)|(\w+)\s*\(.*\)\s*\{)/);
+      if (m && foldableRanges[i] !== undefined && foldableRanges[i] >= topVisibleLine) {
+        return { name: m[1] || m[2] || m[3], line: i, text: lines[i] };
+      }
+    }
+    return null;
+  }, [scrollTop, lines, fsize, foldableRanges]);
 
   /* ---- Global search results ---- */
   const globalSearchResults = React.useMemo(() => {
@@ -759,6 +855,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Format Document', key: 'format', hint: '' },
       { label: 'Search in Files', key: 'gsearch', hint: '\u2318+Shift+F' },
       { label: diffOpen ? 'Close Diff View' : 'Show Changes (Diff)', key: 'diff', hint: '' },
+      { label: 'Fold All', key: 'foldall', hint: '' },
+      { label: 'Unfold All', key: 'unfoldall', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -780,6 +878,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'format') formatCode();
     else if (key === 'gsearch') { setGlobalSearchOpen(o => !o); setGlobalSearchTerm(''); setTimeout(() => globalSearchRef.current?.focus(), 50); }
     else if (key === 'diff') setDiffOpen(d => !d);
+    else if (key === 'foldall') { setFoldedLines(new Set(Object.keys(foldableRanges).map(Number))); showToast('All folded', 'info'); }
+    else if (key === 'unfoldall') { setFoldedLines(new Set()); showToast('All unfolded', 'info'); }
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
@@ -1568,40 +1668,72 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
+          {/* Sticky scroll — shows enclosing scope */}
+          {stickyScope && (
+            <div onClick={() => {
+              setActiveLn(stickyScope.line + 1); setCursor({ ln: stickyScope.line + 1, col: 1 });
+              const pos = code.split('\n').slice(0, stickyScope.line).join('\n').length + (stickyScope.line > 0 ? 1 : 0);
+              setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.scrollTop = stickyScope.line * Math.round(16 * fsize); el.focus(); } }, 0);
+            }} style={{
+              padding: '1px 10px 1px 46px', background: '#181825ee', borderBottom: '1px solid #ffffff08',
+              fontSize: fs(9), lineHeight: lh, fontFamily: MONO, color: '#a6adc860', whiteSpace: 'pre',
+              cursor: 'pointer', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis',
+              backdropFilter: 'blur(4px)',
+            }}>
+              <HighlightLine text={stickyScope.text} />
+            </div>
+          )}
+
           {/* Editor + Terminal split */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
             {/* Code editor */}
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative', outline: editorFocused ? '1px solid #cba6f720' : 'none', outlineOffset: -1, transition: 'outline-color .2s' }}>
-              {/* Line numbers */}
+              {/* Line numbers with fold arrows */}
               {(() => {
-                const gutterW = lines.length >= 1000 ? 44 : lines.length >= 100 ? 38 : 32;
+                const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
                 return (
                   <div ref={lnRef} style={{
                     padding: '8px 0', width: gutterW, textAlign: 'right', userSelect: 'none',
                     borderRight: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'hidden'
                   }}>
                     <div style={{ transform: `translateY(-${scrollTop}px)` }}>
-                      {lines.map((_, i) => {
+                      {visibleLines.map((i) => {
                         const isBracketLine = matchBracket && (
                           code.substring(0, matchBracket[0]).split('\n').length === i + 1 ||
                           code.substring(0, matchBracket[1]).split('\n').length === i + 1
                         );
+                        const isFoldable = foldableRanges[i] !== undefined;
+                        const isFolded = foldedLines.has(i);
                         return (
-                          <div key={i}
-                            onClick={() => {
-                              // Click line number to select entire line
-                              const lineStart = code.split('\n').slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
-                              const lineEnd = lineStart + lines[i].length;
-                              setActiveLn(i + 1); setCursor({ ln: i + 1, col: 1 });
-                              setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = lineStart; el.selectionEnd = lineEnd; el.focus(); } }, 0);
-                            }}
-                            style={{
-                              fontSize: fs(9), lineHeight: lh, cursor: 'pointer',
-                              color: i + 1 === activeLn ? '#cdd6f4' : isBracketLine ? '#cba6f7' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
-                              paddingRight: 6,
-                              background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
-                            }}>{i + 1}</div>
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            {/* Fold arrow */}
+                            <span
+                              onClick={e => { e.stopPropagation(); if (isFoldable) toggleFold(i); }}
+                              style={{
+                                width: 10, fontSize: 7, textAlign: 'center', flexShrink: 0,
+                                color: isFoldable ? (isFolded ? '#cba6f7' : '#555') : 'transparent',
+                                cursor: isFoldable ? 'pointer' : 'default',
+                                lineHeight: lh, transition: 'color .15s',
+                              }}
+                              onMouseEnter={e => { if (isFoldable) e.currentTarget.style.color = '#cba6f7'; }}
+                              onMouseLeave={e => { if (isFoldable) e.currentTarget.style.color = isFolded ? '#cba6f7' : '#555'; }}
+                            >{isFoldable ? (isFolded ? '\u25B8' : '\u25BE') : ' '}</span>
+                            <span
+                              onClick={() => {
+                                const lineStart = code.split('\n').slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
+                                const lineEnd = lineStart + lines[i].length;
+                                setActiveLn(i + 1); setCursor({ ln: i + 1, col: 1 });
+                                setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = lineStart; el.selectionEnd = lineEnd; el.focus(); } }, 0);
+                              }}
+                              style={{
+                                fontSize: fs(9), lineHeight: lh, cursor: 'pointer', flex: 1,
+                                color: i + 1 === activeLn ? '#cdd6f4' : isBracketLine ? '#cba6f7' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
+                                paddingRight: 4,
+                                background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
+                              }}>{i + 1}</span>
+                            {isFolded && <span style={{ position: 'absolute', right: -2, fontSize: 6, color: '#cba6f760' }}>...</span>}
+                          </div>
                         );
                       })}
                     </div>
@@ -1611,7 +1743,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
               {/* Syntax highlight overlay */}
               {(() => {
-                const gutterW = lines.length >= 1000 ? 44 : lines.length >= 100 ? 38 : 32;
+                const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
                 const charW = fs(6.1);
                 // Precompute bracket match line positions
                 const bracketLines = {};
@@ -1626,7 +1758,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 return (
                   <div ref={hlRef} style={{ position: 'absolute', left: gutterW + 1, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
                     <div style={{ transform: `translateY(-${scrollTop}px)` }}>
-                    {lines.map((l, i) => {
+                    {visibleLines.map((i) => {
+                      const l = lines[i];
+                      const isFolded = foldedLines.has(i) && foldableRanges[i] !== undefined;
                       /* Indent guides */
                       const indent = l.match(/^(\s*)/)[0].length;
                       const guides = [];
@@ -1642,7 +1776,6 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       /* Search match highlighting */
                       let searchHighlights = null;
                       if (searchOpen && searchTerm) {
-                        // Find matches on this line
                         const lineStart = i === 0 ? 0 : code.split('\n').slice(0, i).join('\n').length + 1;
                         const lineMatches = searchMatches.filter(m => m.pos >= lineStart && m.pos < lineStart + l.length);
                         if (lineMatches.length) {
@@ -1673,6 +1806,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         }}>
                           {guides}
                           {searchHighlights || <HighlightLine text={l} />}
+                          {isFolded && (
+                            <span onClick={() => toggleFold(i)} style={{
+                              background: '#cba6f715', border: '1px solid #cba6f730', borderRadius: 3,
+                              padding: '0 4px', fontSize: 8, color: '#cba6f7', cursor: 'pointer', marginLeft: 4,
+                              pointerEvents: 'auto', position: 'relative', zIndex: 3,
+                            }}>{`... ${foldableRanges[i] - i} lines`}</span>
+                          )}
                           {bracketCol !== undefined && (
                             <span style={{
                               position: 'absolute', left: bracketCol * charW, top: 0,
@@ -1795,6 +1935,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   setHoverDoc(null);
                 }}
                 onMouseLeave={() => { clearTimeout(hoverTimer.current); setHoverDoc(null); }}
+                onPaste={e => {
+                  if (readonly) return;
+                  const text = e.clipboardData?.getData('text');
+                  if (!text || !text.includes('\n')) return; // single-line paste handled natively
+                  e.preventDefault();
+                  const el = e.target;
+                  const s = el.selectionStart, en = el.selectionEnd;
+                  // Detect current indent level
+                  const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+                  const currentIndent = code.substring(lineStart, s).match(/^(\s*)/)[0];
+                  // Re-indent pasted text to match context
+                  const pastedLines = text.split('\n');
+                  const pasteIndent = pastedLines[0].match(/^(\s*)/)[0];
+                  const reindented = pastedLines.map((l, idx) => {
+                    if (idx === 0) return l.trimStart(); // first line: just trim leading space, it joins inline
+                    const stripped = l.startsWith(pasteIndent) ? l.slice(pasteIndent.length) : l.trimStart();
+                    return currentIndent + stripped;
+                  }).join('\n');
+                  const nc = code.substring(0, s) + reindented + code.substring(en);
+                  setCode(nc);
+                  const newPos = s + reindented.length;
+                  setTimeout(() => { el.selectionStart = el.selectionEnd = newPos; }, 0);
+                }}
                 onFocus={() => setEditorFocused(true)}
                 onBlur={() => setEditorFocused(false)}
                 onKeyUp={e => updateCursor(e.target)} onKeyDown={handleKey}
