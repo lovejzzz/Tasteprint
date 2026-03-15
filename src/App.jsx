@@ -3,6 +3,7 @@ import { toPng } from "html-to-image";
 import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT, HAS_PROPS } from "./constants";
 import { load, uid, maxV, varName, snap, validateImport } from "./utils";
 import { useKeyboard } from "./hooks/useKeyboard";
+import { TpContext } from "./contexts/TpContext";
 import Header from "./components/Header";
 import LibrarySidebar from "./components/LibrarySidebar";
 import ShapeItem from "./components/ShapeItem";
@@ -339,7 +340,69 @@ export default function App() {
   const p = PAL[pal];
   const zoomPct = Math.round(cam.z * 100);
 
+  /* ---- tp API for Live IDE ---- */
+  const shapesRef = useRef(shapes);
+  shapesRef.current = shapes;
+  const palRef = useRef(pal);
+  palRef.current = pal;
+  const deviceRef = useRef(device);
+  deviceRef.current = device;
+
+  const libSizes = useMemo(() => {
+    const m = {};
+    LIB.forEach(cat => cat.items.forEach(it => { m[it.type] = { w: it.w, h: it.h }; }));
+    return m;
+  }, []);
+
+  const tp = useMemo(() => ({
+    palette: () => palRef.current,
+    palettes: () => Object.keys(PAL),
+    colors: () => PAL[palRef.current],
+    shapes: () => shapesRef.current.map(s => ({ id: s.id, type: s.type, x: Math.round(s.x), y: Math.round(s.y), w: s.w, h: s.h, variant: s.variant || 0 })),
+    device: () => deviceRef.current,
+    fonts: () => FONTS.map(f => f.name),
+    setPalette: (name) => { if (PAL[name]) setPal(name); },
+    setDevice: (m) => { if (['free', 'desktop', 'phone'].includes(m)) setDevice(m); },
+    add: (type, opts = {}) => {
+      const sz = libSizes[type] || { w: 200, h: 100 };
+      const id = uid();
+      const ns = { id, type, variant: opts.variant || 0, x: opts.x ?? 100, y: opts.y ?? 100, w: opts.w || sz.w, h: opts.h || sz.h, font: 0, fsize: 1, texts: {}, props: {} };
+      const prev = shapesRef.current;
+      setHist(h => [...h.slice(-39), prev]);
+      const next = [...prev, ns];
+      shapesRef.current = next;
+      setShapes(next);
+      setFuture([]);
+      return id;
+    },
+    remove: (id) => {
+      const prev = shapesRef.current;
+      setHist(h => [...h.slice(-39), prev]);
+      const next = prev.filter(s => s.id !== id);
+      shapesRef.current = next;
+      setShapes(next);
+      setFuture([]);
+    },
+    update: (id, ch) => {
+      const prev = shapesRef.current;
+      setHist(h => [...h.slice(-39), prev]);
+      const next = prev.map(s => s.id === id ? { ...s, ...ch } : s);
+      shapesRef.current = next;
+      setShapes(next);
+      setFuture([]);
+    },
+    clear: () => {
+      const prev = shapesRef.current;
+      setHist(h => [...h.slice(-39), prev]);
+      const next = prev.filter(s => s.type === 'code-block');
+      shapesRef.current = next;
+      setShapes(next);
+      setFuture([]);
+    },
+  }), [libSizes]);
+
   return (
+    <TpContext.Provider value={tp}>
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: p.bg, fontFamily: "'DM Sans',system-ui,sans-serif", color: p.tx, transition: "background .4s,color .4s" }}>
       <link href={FONT_URL} rel="stylesheet" />
 
@@ -454,5 +517,6 @@ export default function App() {
 
       <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.12);border-radius:2px}html,body{overscroll-behavior:none;-webkit-overflow-scrolling:touch}body{position:fixed;width:100%;height:100%}#root{width:100%;height:100%}`}</style>
     </div>
+    </TpContext.Provider>
   );
 }
