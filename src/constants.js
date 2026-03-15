@@ -89,7 +89,7 @@ export const VARIANTS = {
   chat:      ["Bubble","Thread","Terminal"],
   "media-player":["Minimal","Full","Terminal"],
   "profile-card":["Standard","Compact","Terminal"],
-  "code-block":["Dark","Light","Terminal","Live Execute","Typewriter","Diff"],
+  "code-block":["Dark","Light","Terminal","Live IDE","Typewriter","Diff","Notebook","Review","Minimap","ASCII Art","Benchmark"],
   notification:["List","Compact","Dot"],
   "tag-input":["Rounded","Square","Outlined"],
   kanban:    ["Cards","Compact","Terminal"],
