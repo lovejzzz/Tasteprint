@@ -17,7 +17,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
 
   return (
     <div style={{ position: "absolute", left: sx, top: sy, width: sw, zIndex: isDrg ? 100 : isSel ? 50 : 1 }}>
-      {isPrimary && !isDrg && (mx > 1 || HAS_TEXT.has(s.type)) && (
+      {isPrimary && !isDrg && s.type !== 'code-block' && (mx > 1 || HAS_TEXT.has(s.type)) && (
         <div style={{ position: "absolute", top: -44, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 1, zIndex: 200, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 999, padding: "2px 3px", boxShadow: `0 4px 16px ${p.tx}10`, whiteSpace: "nowrap", userSelect: "none" }}>
           {mx > 1 && <>
             <button aria-label="Previous variant" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, -1) }} style={{ width: 26, height: 26, borderRadius: 999, border: "none", background: p.su, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: p.tx, fontSize: 15, fontFamily: "system-ui", padding: 0 }}>{"‹"}</button>

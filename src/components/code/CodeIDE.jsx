@@ -225,6 +225,7 @@ const SHORTCUTS = [
   ['\u2318+H', 'Find & Replace'],
   ['\u2318+P', 'Command palette'],
   ['\u2318+L', 'Select line'],
+  ['\u2318+D', 'Select next occurrence'],
   ['\u2318+Shift+D', 'Duplicate line'],
   ['Ctrl+G', 'Go to line'],
   ['Ctrl+Shift+K', 'Delete line'],
@@ -363,6 +364,27 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Selected word occurrences ---- */
   const [selectedWord, setSelectedWord] = React.useState('');
+
+  /* ---- Toast notification ---- */
+  const [toast, setToast] = React.useState(null);
+  const toastTimer = React.useRef(null);
+  const showToast = (msg, type = 'info') => {
+    setToast({ msg, type });
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2000);
+  };
+
+  /* ---- Tab drag reorder ---- */
+  const [dragTab, setDragTab] = React.useState(null);
+  const [dragOverTab, setDragOverTab] = React.useState(null);
+
+  /* ---- Search options ---- */
+  const [searchCase, setSearchCase] = React.useState(false);
+  const [searchRegex, setSearchRegex] = React.useState(false);
+  const [searchIdx, setSearchIdx] = React.useState(0);
+
+  /* ---- Code folding ---- */
+  const [foldedLines, setFoldedLines] = React.useState(new Set());
 
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
@@ -550,29 +572,52 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const searchMatches = React.useMemo(() => {
     if (!searchTerm || !searchOpen) return [];
     const matches = [];
-    let idx = 0;
-    const lower = code.toLowerCase(), term = searchTerm.toLowerCase();
-    while (idx < lower.length) {
-      const found = lower.indexOf(term, idx);
-      if (found === -1) break;
-      matches.push(found);
-      idx = found + 1;
+    if (searchRegex) {
+      try {
+        const rx = new RegExp(searchTerm, searchCase ? 'g' : 'gi');
+        let m;
+        while ((m = rx.exec(code)) !== null) { matches.push({ pos: m.index, len: m[0].length }); if (!m[0].length) rx.lastIndex++; }
+      } catch (_) { /* invalid regex */ }
+    } else {
+      let idx = 0;
+      const haystack = searchCase ? code : code.toLowerCase();
+      const needle = searchCase ? searchTerm : searchTerm.toLowerCase();
+      while (idx < haystack.length) {
+        const found = haystack.indexOf(needle, idx);
+        if (found === -1) break;
+        matches.push({ pos: found, len: searchTerm.length });
+        idx = found + 1;
+      }
     }
     return matches;
-  }, [code, searchTerm, searchOpen]);
+  }, [code, searchTerm, searchOpen, searchCase, searchRegex]);
 
   const replaceNext = () => {
     if (!searchMatches.length || readonly) return;
     const el = taRef.current;
     const pos = el ? el.selectionStart : 0;
-    const match = searchMatches.find(m => m >= pos) ?? searchMatches[0];
-    const nc = code.substring(0, match) + replaceWith + code.substring(match + searchTerm.length);
+    const match = searchMatches.find(m => m.pos >= pos) ?? searchMatches[0];
+    const nc = code.substring(0, match.pos) + replaceWith + code.substring(match.pos + match.len);
     setCode(nc);
   };
 
   const replaceAll = () => {
-    if (!searchTerm || readonly) return;
-    setCode(code.split(searchTerm).join(replaceWith));
+    if (!searchMatches.length || readonly) return;
+    let nc = code, offset = 0;
+    for (const m of searchMatches) {
+      nc = nc.substring(0, m.pos + offset) + replaceWith + nc.substring(m.pos + offset + m.len);
+      offset += replaceWith.length - m.len;
+    }
+    setCode(nc);
+  };
+
+  const jumpToMatch = (dir) => {
+    if (!searchMatches.length) return;
+    const next = dir > 0 ? (searchIdx + 1) % searchMatches.length : (searchIdx - 1 + searchMatches.length) % searchMatches.length;
+    setSearchIdx(next);
+    const m = searchMatches[next];
+    const el = taRef.current;
+    if (el && m) { el.selectionStart = m.pos; el.selectionEnd = m.pos + m.len; el.focus(); }
   };
 
   /* ---- Command palette ---- */
@@ -673,8 +718,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       tp?.save();
-      setOutput({ logs: [{ t: 'log', v: 'State saved!' }], ms: null, err: null, errLn: null });
-      setTermOpen(true);
+      showToast('State saved!', 'success');
+      return;
+    }
+
+    /* Select next occurrence: Cmd+D */
+    if (e.key === 'd' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault();
+      if (s === en) {
+        // Select current word
+        const wordStart = code.lastIndexOf(' ', s - 1) + 1;
+        const wordEnd = code.indexOf(' ', s); const we = wordEnd === -1 ? code.length : wordEnd;
+        const lineEnd = code.indexOf('\n', s); const le = lineEnd === -1 ? code.length : lineEnd;
+        const end = Math.min(we, le);
+        const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+        const start = Math.max(wordStart, lineStart);
+        setTimeout(() => { el.selectionStart = start; el.selectionEnd = end; }, 0);
+      } else {
+        // Find next occurrence of selection
+        const sel = code.substring(s, en);
+        const after = code.indexOf(sel, en);
+        if (after !== -1) {
+          setTimeout(() => { el.selectionStart = after; el.selectionEnd = after + sel.length; }, 0);
+        }
+      }
       return;
     }
 
@@ -926,9 +993,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           style={{ fontSize: 9, color: cmdOpen ? '#cba6f7' : '#555', cursor: 'pointer', lineHeight: 1, padding: '1px 4px', borderRadius: 3, background: '#ffffff06' }} title="Command palette (Cmd+P)">{'\u2318P'}</span>
         <span onClick={() => setTermOpen(t => !t)} onMouseDown={stop}
           style={{ fontSize: 10, color: termOpen ? '#cba6f7' : '#555', cursor: 'pointer', lineHeight: 1 }} title="Toggle terminal">&gt;_</span>
-        <span onClick={() => { tp?.save(); setOutput({ logs: [{ t: 'log', v: 'State saved!' }], ms: null, err: null, errLn: null }); setTermOpen(true); }} onMouseDown={stop}
-          style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer', lineHeight: 1, opacity: .7 }} title="Save current state">Save</span>
-        <span onClick={() => { tp?.reset(); setOutput({ logs: [{ t: 'log', v: 'Reset to default!' }], ms: null, err: null, errLn: null }); setTermOpen(true); }} onMouseDown={stop}
+        <span onClick={() => { tp?.save(); showToast('State saved!', 'success'); }} onMouseDown={stop}
+          style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer', lineHeight: 1, opacity: .7 }} title="Save current state (⌘S)">Save</span>
+        <span onClick={() => { tp?.reset(); showToast('Reset to default!', 'warn'); }} onMouseDown={stop}
           style={{ fontSize: 8, color: '#f9e2af', cursor: 'pointer', lineHeight: 1, opacity: .7 }} title="Reset to defaults">Reset</span>
         <button onClick={runCode} disabled={busy || readonly} onMouseDown={stop}
           style={{
@@ -1078,13 +1145,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               const isRO = !editFiles.hasOwnProperty(path);
               const isModified = !isRO && editFiles[path] !== initFiles[path];
               return (
-                <div key={path} onClick={() => setActiveFile(path)} onMouseDown={e => { stop(e); if (e.button === 1) { e.preventDefault(); closeTab(path, e); } }}
+                <div key={path} onClick={() => setActiveFile(path)}
+                  onMouseDown={e => { stop(e); if (e.button === 1) { e.preventDefault(); closeTab(path, e); } }}
+                  draggable onDragStart={() => setDragTab(path)} onDragEnd={() => { setDragTab(null); setDragOverTab(null); }}
+                  onDragOver={e => { e.preventDefault(); setDragOverTab(path); }}
+                  onDrop={() => {
+                    if (dragTab && dragTab !== path) {
+                      setOpenTabs(prev => {
+                        const next = prev.filter(t => t !== dragTab);
+                        const idx = next.indexOf(path);
+                        next.splice(idx, 0, dragTab);
+                        return next;
+                      });
+                    }
+                    setDragTab(null); setDragOverTab(null);
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px',
                     fontSize: fs(9), color: isActive ? '#cdd6f4' : '#555',
                     background: isActive ? '#1e1e2e' : 'transparent',
                     cursor: 'pointer', borderRight: '1px solid #ffffff06',
                     position: 'relative', whiteSpace: 'nowrap',
+                    borderLeft: dragOverTab === path && dragTab !== path ? '2px solid #cba6f7' : '2px solid transparent',
+                    opacity: dragTab === path ? .4 : 1,
                   }}>
                   <span style={{ fontSize: 6, color: FCOLORS[name] || '#555' }}>{'\u25CF'}</span>
                   <span>{name}</span>
@@ -1121,11 +1204,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {/* Search bar */}
           {searchOpen && (
             <div onMouseDown={stop} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff08', flexShrink: 0, alignItems: 'center' }}>
-              <input ref={searchRef} value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              <input ref={searchRef} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSearchIdx(0); }}
                 placeholder="Find..." spellCheck={false}
-                onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setSearchOpen(false); taRef.current?.focus(); } if (e.key === 'Enter') { /* jump to next match */ const el = taRef.current; if (el && searchMatches.length) { const pos = el.selectionStart; const m = searchMatches.find(x => x > pos) ?? searchMatches[0]; el.selectionStart = m; el.selectionEnd = m + searchTerm.length; el.focus(); } } }}
-                style={{ flex: 1, minWidth: 80, maxWidth: 160, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
-              <span style={{ fontSize: 8, color: '#555' }}>{searchMatches.length} found</span>
+                onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setSearchOpen(false); taRef.current?.focus(); } if (e.key === 'Enter') { e.shiftKey ? jumpToMatch(-1) : jumpToMatch(1); } }}
+                style={{ flex: 1, minWidth: 80, maxWidth: 140, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+              <span onClick={() => setSearchCase(c => !c)} style={{ fontSize: 7, color: searchCase ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchCase ? '#cba6f718' : 'transparent', fontWeight: 600 }} title="Case sensitive">Aa</span>
+              <span onClick={() => setSearchRegex(r => !r)} style={{ fontSize: 7, color: searchRegex ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchRegex ? '#cba6f718' : 'transparent', fontWeight: 600 }} title="Regex">.*</span>
+              <span onClick={() => jumpToMatch(-1)} style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }} title="Previous match">{'\u2191'}</span>
+              <span onClick={() => jumpToMatch(1)} style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }} title="Next match">{'\u2193'}</span>
+              <span style={{ fontSize: 8, color: '#555' }}>{searchMatches.length ? `${searchIdx + 1}/${searchMatches.length}` : 'No results'}</span>
               <span onClick={() => setShowReplace(r => !r)} style={{ fontSize: 8, color: showReplace ? '#cba6f7' : '#555', cursor: 'pointer' }}>{showReplace ? '\u25BC' : '\u25B6'} Replace</span>
               <span onClick={() => { setSearchOpen(false); taRef.current?.focus(); }} style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</span>
               {showReplace && (
@@ -1133,7 +1220,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   <input value={replaceWith} onChange={e => setReplaceWith(e.target.value)}
                     placeholder="Replace..." spellCheck={false}
                     onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') setSearchOpen(false); }}
-                    style={{ flex: 1, minWidth: 80, maxWidth: 160, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                    style={{ flex: 1, minWidth: 80, maxWidth: 140, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
                   <span onClick={replaceNext} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }}>Replace</span>
                   <span onClick={replaceAll} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }}>All</span>
                 </div>
@@ -1277,18 +1364,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
                       /* Search match highlighting */
                       let searchHighlights = null;
-                      if (searchOpen && searchTerm && l.toLowerCase().includes(searchTerm.toLowerCase())) {
-                        const parts = [];
-                        let rest = l, idx = 0;
-                        const tl = searchTerm.length;
-                        while (true) {
-                          const fi = rest.toLowerCase().indexOf(searchTerm.toLowerCase());
-                          if (fi === -1) { parts.push(<span key={idx}><HighlightLine text={rest} /></span>); break; }
-                          if (fi > 0) parts.push(<span key={idx++}><HighlightLine text={rest.substring(0, fi)} /></span>);
-                          parts.push(<span key={idx++} style={{ background: '#f9e2af40', borderRadius: 2, outline: '1px solid #f9e2af60' }}><HighlightLine text={rest.substring(fi, fi + tl)} /></span>);
-                          rest = rest.substring(fi + tl);
+                      if (searchOpen && searchTerm) {
+                        // Find matches on this line
+                        const lineStart = i === 0 ? 0 : code.split('\n').slice(0, i).join('\n').length + 1;
+                        const lineMatches = searchMatches.filter(m => m.pos >= lineStart && m.pos < lineStart + l.length);
+                        if (lineMatches.length) {
+                          const parts = [];
+                          let cursor = 0, pidx = 0;
+                          for (const m of lineMatches) {
+                            const col = m.pos - lineStart;
+                            if (col > cursor) parts.push(<span key={pidx++}><HighlightLine text={l.substring(cursor, col)} /></span>);
+                            parts.push(<span key={pidx++} style={{ background: '#f9e2af40', borderRadius: 2, outline: '1px solid #f9e2af60' }}><HighlightLine text={l.substring(col, col + m.len)} /></span>);
+                            cursor = col + m.len;
+                          }
+                          if (cursor < l.length) parts.push(<span key={pidx}><HighlightLine text={l.substring(cursor)} /></span>);
+                          searchHighlights = parts;
                         }
-                        searchHighlights = parts;
                       }
 
                       /* Word occurrence highlight on this line */
@@ -1573,6 +1664,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           </div>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'absolute', top: 40, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 30, padding: '4px 14px', borderRadius: 6, fontSize: 9, fontWeight: 500,
+          background: toast.type === 'success' ? '#27c93f22' : toast.type === 'warn' ? '#f9e2af22' : toast.type === 'error' ? '#f38ba822' : '#89b4fa22',
+          color: toast.type === 'success' ? '#27c93f' : toast.type === 'warn' ? '#f9e2af' : toast.type === 'error' ? '#f38ba8' : '#89b4fa',
+          border: `1px solid ${toast.type === 'success' ? '#27c93f40' : toast.type === 'warn' ? '#f9e2af40' : toast.type === 'error' ? '#f38ba840' : '#89b4fa40'}`,
+          boxShadow: '0 4px 12px rgba(0,0,0,.3)', pointerEvents: 'none',
+          animation: 'none', fontFamily: MONO, whiteSpace: 'nowrap',
+        }}>{toast.msg}</div>
+      )}
 
       {/* Status bar */}
       {(() => {
