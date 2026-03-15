@@ -172,4 +172,29 @@ export const LIB = [
   ]},
 ];
 
+export const DEFAULT_PROPS = {
+  toggle:        { on: true },
+  checkbox:      { checked: [true, false, false] },
+  tabs:          { active: 0 },
+  navbar:        { active: 0 },
+  sidebar:       { active: 0 },
+  pagination:    { active: 2, total: 8 },
+  stepper:       { active: 1 },
+  timeline:      { active: 0 },
+  accordion:     { open: [true, false, false] },
+  dropdown:      { active: 0 },
+  "cmd-palette": { active: 0 },
+  progress:      { pct: 68 },
+  slider:        { pct: 65 },
+  "media-player":{ pct: 42 },
+  rating:        { stars: 4 },
+  "sub-toggle":  { active: 1 },
+  "dash-panel":  { bars: [65,42,78,35,55,88,48], ring: 72 },
+  chart:         { bars: [55,80,45,90,65,75], highlight: 3 },
+  notification:  { read: [false, false, true] },
+  "cart-item":   { qty: 1 },
+};
+
+export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
+
 export const HAS_TEXT = new Set(["button","card","card-sm","hero","navbar","tabs","heading","stat-card","dash-panel","input","search","badge","toast","modal","sidebar","footer","accordion","table","list-item","dropdown","select","checkbox","alert","pagination","pricing-card","product-card","cart-item","feature-table","promo-banner","order-summary","rating","receipt","sub-toggle","tooltip","breadcrumb","testimonial","cmd-palette","stepper","timeline","bento-grid","chart","chat","media-player","profile-card","code-block","notification","tag-input","kanban"]);

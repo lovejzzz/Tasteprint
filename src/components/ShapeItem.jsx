@@ -1,9 +1,10 @@
 import React, { memo } from "react";
 import C from "./ComponentRenderer";
-import { FONTS, HAS_TEXT } from "../constants";
+import PropsPanel from "./PropsPanel";
+import { FONTS, HAS_TEXT, HAS_PROPS } from "../constants";
 import { maxV, varName } from "../utils";
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, cycle, cycleFont, delShape, setRsz }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, onProp, cycle, cycleFont, delShape, setRsz }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -40,9 +41,10 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
       )}
       <div onMouseDown={e => onDown(e, s)}
         style={{ width: sw, height: sh, cursor: isDrg ? "grabbing" : "grab", transition: isDrg ? "none" : "transform .1s", transform: isDrg ? "scale(1.015)" : "scale(1)", filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : "none", outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : "none", outlineOffset: 4, borderRadius: 14, ...(device !== "free" ? { overflow: "hidden" } : {}) }}>
-        <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} font={s.font || 0} />
+        <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} />
         {isPrimary && <div onMouseDown={e => { e.stopPropagation(); setRsz(s.id) }} style={{ position: "absolute", right: -4, bottom: -4, width: 8, height: 8, background: p.ac, borderRadius: 2, cursor: "nwse-resize", zIndex: 11 }} />}
       </div>
+      {isPrimary && !isDrg && HAS_PROPS.has(s.type) && <PropsPanel type={s.type} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} p={p} />}
     </div>
   );
 });

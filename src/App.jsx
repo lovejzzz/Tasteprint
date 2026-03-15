@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
-import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT } from "./constants";
+import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT, HAS_PROPS } from "./constants";
 import { load, uid, maxV, varName, snap, validateImport } from "./utils";
 import { useKeyboard } from "./hooks/useKeyboard";
 import Header from "./components/Header";
@@ -46,6 +46,16 @@ export default function App() {
       if (value === null || value === undefined) delete texts[key];
       else texts[key] = value;
       return { ...s, texts };
+    }));
+  }, []);
+
+  const updateProp = useCallback((id, key, value) => {
+    setShapes(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      const props = { ...(s.props || {}) };
+      if (value === null || value === undefined) delete props[key];
+      else props[key] = value;
+      return { ...s, props };
     }));
   }, []);
 
@@ -243,7 +253,7 @@ export default function App() {
   const dupShape = useCallback(() => {
     if (selAll.size === 0) return;
     const newGroup = selAll.size > 1 ? uid() : null;
-    const duped = shapes.filter(s => selAll.has(s.id)).map(s => ({ ...s, id: uid(), x: s.x + 20, y: s.y + 20, texts: { ...(s.texts || {}) }, group: newGroup || s.group }));
+    const duped = shapes.filter(s => selAll.has(s.id)).map(s => ({ ...s, id: uid(), x: s.x + 20, y: s.y + 20, texts: { ...(s.texts || {}) }, props: { ...(s.props || {}) }, group: newGroup || s.group }));
     push([...shapes, ...duped]);
     setSelAll(new Set(duped.map(s => s.id))); setSel(duped[0]?.id || null);
   }, [selAll, shapes, push]);
@@ -327,7 +337,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : {}), width: device !== "free" ? "100%" : undefined, minHeight: deviceH || undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onText={updateText} cycle={cycle} cycleFont={cycleFont} delShape={delShape} setRsz={setRsz} />
+                  onDown={onDown} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} delShape={delShape} setRsz={setRsz} />
               ))}
             </div>
 
