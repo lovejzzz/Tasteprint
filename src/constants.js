@@ -86,6 +86,13 @@ export const VARIANTS = {
   "cmd-palette":["Full","Minimal","Grouped"],
   stepper:   ["Horizontal","Vertical","Dots"],
   timeline:  ["Left","Centered","Minimal"],
+  chat:      ["Bubble","Thread","Terminal"],
+  "media-player":["Minimal","Full","Terminal"],
+  "profile-card":["Standard","Compact","Terminal"],
+  "code-block":["Dark","Light","Terminal"],
+  notification:["List","Compact","Dot"],
+  "tag-input":["Rounded","Square","Outlined"],
+  kanban:    ["Cards","Compact","Terminal"],
 };
 
 export const LIB = [
@@ -143,6 +150,7 @@ export const LIB = [
     {type:"chart",label:"Chart",w:260,h:180},
     {type:"testimonial",label:"Testimonial",w:280,h:140},
     {type:"skeleton",label:"Skeleton",w:260,h:120},
+    {type:"kanban",label:"Kanban",w:360,h:220},
   ]},
   { cat:"Utility", items:[
     {type:"tooltip",label:"Tooltip",w:140,h:60},
@@ -150,10 +158,18 @@ export const LIB = [
     {type:"cmd-palette",label:"Cmd palette",w:300,h:200},
     {type:"stepper",label:"Stepper",w:280,h:44},
     {type:"timeline",label:"Timeline",w:240,h:200},
+    {type:"tag-input",label:"Tags",w:260,h:36},
+    {type:"code-block",label:"Code block",w:300,h:160},
   ]},
   { cat:"Overlay", items:[
     {type:"modal",label:"Modal",w:300,h:200},
+    {type:"notification",label:"Notification",w:300,h:180},
+  ]},
+  { cat:"Social", items:[
+    {type:"chat",label:"Chat",w:300,h:200},
+    {type:"media-player",label:"Media player",w:300,h:120},
+    {type:"profile-card",label:"Profile card",w:240,h:180},
   ]},
 ];
 
-export const HAS_TEXT = new Set(["button","card","card-sm","hero","navbar","tabs","heading","stat-card","dash-panel","input","search","badge","toast","modal","sidebar","footer","accordion","table","list-item","dropdown","select","checkbox","alert","pagination","pricing-card","product-card","cart-item","feature-table","promo-banner","order-summary","rating","receipt","sub-toggle","tooltip","breadcrumb","testimonial","cmd-palette","stepper","timeline","bento-grid","chart"]);
+export const HAS_TEXT = new Set(["button","card","card-sm","hero","navbar","tabs","heading","stat-card","dash-panel","input","search","badge","toast","modal","sidebar","footer","accordion","table","list-item","dropdown","select","checkbox","alert","pagination","pricing-card","product-card","cart-item","feature-table","promo-banner","order-summary","rating","receipt","sub-toggle","tooltip","breadcrumb","testimonial","cmd-palette","stepper","timeline","bento-grid","chart","chat","media-player","profile-card","code-block","notification","tag-input","kanban"]);
