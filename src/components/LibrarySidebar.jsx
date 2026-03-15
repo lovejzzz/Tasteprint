@@ -3,7 +3,7 @@ import C from "./ComponentRenderer";
 import { LIB } from "../constants";
 import { varName } from "../utils";
 
-export default function LibrarySidebar({ expCat, setExpCat, catItems, prefV, p, pDrag, setPDrag, dRef, reorderLib, lastReorder }) {
+const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, catItems, prefV, p, pDrag, setPDrag, dRef, reorderLib, lastReorder }) {
   const cardRefs = useRef(new Map());
   const prevRects = useRef(new Map());
 
@@ -81,4 +81,12 @@ export default function LibrarySidebar({ expCat, setExpCat, catItems, prefV, p, 
       </div>
     </aside>
   );
-}
+}, (prev, next) =>
+  prev.expCat === next.expCat &&
+  prev.catItems === next.catItems &&
+  prev.prefV === next.prefV &&
+  prev.p === next.p &&
+  prev.pDrag === next.pDrag
+);
+
+export default LibrarySidebar;
