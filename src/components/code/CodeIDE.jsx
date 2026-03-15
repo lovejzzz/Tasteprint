@@ -253,6 +253,7 @@ const SHORTCUTS = [
   ['\u2318+/', 'Toggle comment'],
   ['\u2318+F', 'Find'],
   ['\u2318+H', 'Find & Replace'],
+  ['\u2318+Shift+F', 'Search in files'],
   ['\u2318+P', 'Command palette'],
   ['\u2318+L', 'Select line'],
   ['\u2318+D', 'Select next occurrence'],
@@ -434,6 +435,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Terminal tabs ---- */
   const [termTab, setTermTab] = React.useState('output');
 
+  /* ---- Global search ---- */
+  const [globalSearchOpen, setGlobalSearchOpen] = React.useState(false);
+  const [globalSearchTerm, setGlobalSearchTerm] = React.useState('');
+  const globalSearchRef = React.useRef(null);
+
+  /* ---- Diff view ---- */
+  const [diffOpen, setDiffOpen] = React.useState(false);
+
+  /* ---- Tab hover close ---- */
+  const [hoverTab, setHoverTab] = React.useState(null);
+
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
     const known = new Set();
@@ -581,6 +593,54 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return null;
   }, [lines, activeLn]);
 
+  /* ---- Global search results ---- */
+  const globalSearchResults = React.useMemo(() => {
+    if (!globalSearchTerm || !globalSearchOpen) return [];
+    const term = globalSearchTerm.toLowerCase();
+    const results = [];
+    // Search editable files
+    for (const [path, content] of Object.entries(editFiles)) {
+      const lines = content.split('\n');
+      lines.forEach((line, i) => {
+        if (line.toLowerCase().includes(term)) {
+          results.push({ path, line: i + 1, text: line.trim(), col: line.toLowerCase().indexOf(term) });
+        }
+      });
+    }
+    // Search generated files
+    for (const [path, gen] of Object.entries(GEN_FILES)) {
+      const content = gen();
+      const lines = content.split('\n');
+      lines.forEach((line, i) => {
+        if (line.toLowerCase().includes(term)) {
+          results.push({ path, line: i + 1, text: line.trim(), col: line.toLowerCase().indexOf(term) });
+        }
+      });
+    }
+    return results.slice(0, 50);
+  }, [globalSearchTerm, globalSearchOpen, editFiles]);
+
+  /* ---- Diff computation ---- */
+  const diffLines = React.useMemo(() => {
+    if (!diffOpen) return null;
+    const original = initFiles[activeFile];
+    if (!original) return null;
+    const current = editFiles[activeFile];
+    if (!current || current === original) return null;
+    const origLines = original.split('\n');
+    const currLines = current.split('\n');
+    const result = [];
+    const maxLen = Math.max(origLines.length, currLines.length);
+    for (let i = 0; i < maxLen; i++) {
+      const o = origLines[i], c = currLines[i];
+      if (o === c) result.push({ type: 'same', text: c || '' });
+      else if (o === undefined) result.push({ type: 'added', text: c });
+      else if (c === undefined) result.push({ type: 'removed', text: o });
+      else result.push({ type: 'changed', oldText: o, text: c });
+    }
+    return result;
+  }, [diffOpen, activeFile, editFiles, initFiles]);
+
   const setCode = (c, skipHist) => {
     if (readonly) return;
     if (!skipHist) {
@@ -697,6 +757,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Reset to Default', key: 'reset', hint: '' },
       { label: wordWrap ? 'Disable Word Wrap' : 'Enable Word Wrap', key: 'wrap', hint: '' },
       { label: 'Format Document', key: 'format', hint: '' },
+      { label: 'Search in Files', key: 'gsearch', hint: '\u2318+Shift+F' },
+      { label: diffOpen ? 'Close Diff View' : 'Show Changes (Diff)', key: 'diff', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -716,6 +778,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'reset') { tp?.reset(); showToast('Reset to default!', 'warn'); }
     else if (key === 'wrap') setWordWrap(w => !w);
     else if (key === 'format') formatCode();
+    else if (key === 'gsearch') { setGlobalSearchOpen(o => !o); setGlobalSearchTerm(''); setTimeout(() => globalSearchRef.current?.focus(), 50); }
+    else if (key === 'diff') setDiffOpen(d => !d);
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
@@ -828,6 +892,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         }
       }
       return;
+    }
+
+    /* Global search: Cmd+Shift+F */
+    if (e.key === 'f' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault(); setGlobalSearchOpen(o => !o); setGlobalSearchTerm('');
+      setTimeout(() => globalSearchRef.current?.focus(), 50); return;
     }
 
     /* Search: Cmd+F */
@@ -1112,7 +1182,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
 
         {/* File tree sidebar */}
-        {showTree && <div onClick={() => setExplorerCtx(null)} style={{
+        {showTree && !globalSearchOpen && <div onClick={() => setExplorerCtx(null)} style={{
           width: explorerW, background: '#181825', borderRight: 'none',
           display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto', position: 'relative'
         }}>
@@ -1234,8 +1304,47 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           )}
         </div>}
 
+        {/* Global search panel (replaces explorer when open) */}
+        {globalSearchOpen && <div onMouseDown={stop} style={{
+          width: explorerW + 20, background: '#181825', borderRight: 'none',
+          display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden'
+        }}>
+          <div style={{ padding: '6px 8px', borderBottom: '1px solid #ffffff08' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <span style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', flex: 1 }}>Search</span>
+              <span onClick={() => setGlobalSearchOpen(false)} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+            </div>
+            <input ref={globalSearchRef} value={globalSearchTerm} onChange={e => setGlobalSearchTerm(e.target.value)}
+              placeholder="Search in files..." spellCheck={false} autoFocus
+              onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setGlobalSearchOpen(false); taRef.current?.focus(); } }}
+              style={{ width: '100%', background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '3px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO, boxSizing: 'border-box' }} />
+            {globalSearchTerm && <div style={{ fontSize: 8, color: '#555', marginTop: 3 }}>{globalSearchResults.length} results</div>}
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '2px 0' }}>
+            {globalSearchResults.map((r, i) => (
+              <div key={i} onClick={() => { openFile(r.path); setActiveLn(r.line); setCursor({ ln: r.line, col: 1 });
+                const pos = code.split('\n').slice(0, r.line - 1).join('\n').length + (r.line > 1 ? 1 : 0);
+                setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 50);
+              }}
+                style={{ padding: '2px 8px', cursor: 'pointer', borderLeft: '2px solid transparent' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#ffffff06'; e.currentTarget.style.borderLeftColor = '#cba6f7'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = 'transparent'; }}>
+                <div style={{ fontSize: 8, color: '#89b4fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.path.split('/').pop()} <span style={{ color: '#555' }}>:{r.line}</span>
+                </div>
+                <div style={{ fontSize: 8, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.text.substring(0, 60)}
+                </div>
+              </div>
+            ))}
+            {globalSearchTerm && !globalSearchResults.length && (
+              <div style={{ fontSize: 8, color: '#555', padding: '8px', textAlign: 'center' }}>No matches</div>
+            )}
+          </div>
+        </div>}
+
         {/* Explorer resize handle */}
-        {showTree && <div
+        {showTree && !globalSearchOpen && <div
           onMouseDown={e => {
             e.preventDefault(); e.stopPropagation();
             explorerDrag.current = { startX: e.clientX, startW: explorerW };
@@ -1288,13 +1397,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     opacity: dragTab === path ? .4 : 1,
                   }}>
                   <span style={{ fontSize: 6, color: FCOLORS[name] || '#555' }}>{'\u25CF'}</span>
-                  <span>{name}</span>
+                  <span style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
                   {isRO && <span style={{ fontSize: 7, color: '#555', opacity: .5 }}>ro</span>}
-                  {isModified && <span style={{ fontSize: 8, color: '#f9e2af', lineHeight: 1 }} title="Unsaved changes">{'\u25CF'}</span>}
-                  {openTabs.length > 1 && (
+                  {openTabs.length > 1 ? (
                     <span onClick={(e) => closeTab(path, e)}
-                      style={{ fontSize: 10, color: '#555', cursor: 'pointer', marginLeft: 2, lineHeight: 1 }}>{'\u00D7'}</span>
-                  )}
+                      onMouseEnter={() => setHoverTab(path)}
+                      onMouseLeave={() => setHoverTab(null)}
+                      style={{ fontSize: isModified && hoverTab !== path ? 8 : 10, color: isModified && hoverTab !== path ? '#f9e2af' : '#555', cursor: 'pointer', marginLeft: 2, lineHeight: 1, width: 10, textAlign: 'center' }}
+                      title={isModified ? 'Modified - click to close' : 'Close'}>{isModified && hoverTab !== path ? '\u25CF' : '\u00D7'}</span>
+                  ) : isModified ? (
+                    <span style={{ fontSize: 8, color: '#f9e2af', lineHeight: 1, marginLeft: 2 }} title="Modified">{'\u25CF'}</span>
+                  ) : null}
                   {isActive && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: '#cba6f7' }} />}
                 </div>
               );
@@ -1421,6 +1534,40 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
+          {/* Diff view */}
+          {diffOpen && diffLines && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 24, zIndex: 18, background: '#1e1e2e', overflow: 'auto', padding: '8px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 6px', borderBottom: '1px solid #ffffff08', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: '#cba6f7', fontWeight: 600 }}>Changes: {activeFile}</span>
+                <span style={{ fontSize: 8, color: '#555', marginLeft: 8 }}>
+                  +{diffLines.filter(d => d.type === 'added').length} -{diffLines.filter(d => d.type === 'removed').length} ~{diffLines.filter(d => d.type === 'changed').length}
+                </span>
+                <span onClick={() => setDiffOpen(false)} style={{ marginLeft: 'auto', fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+              </div>
+              {diffLines.map((d, i) => (
+                <div key={i} style={{
+                  fontSize: fs(9), lineHeight: lh, fontFamily: MONO, whiteSpace: 'pre',
+                  padding: '0 10px 0 28px', position: 'relative',
+                  background: d.type === 'added' ? '#27c93f08' : d.type === 'removed' ? '#f38ba808' : d.type === 'changed' ? '#f9e2af08' : 'transparent',
+                  color: d.type === 'removed' ? '#f38ba880' : '#a6adc8',
+                  textDecoration: d.type === 'removed' ? 'line-through' : 'none',
+                }}>
+                  <span style={{ position: 'absolute', left: 6, color: d.type === 'added' ? '#27c93f' : d.type === 'removed' ? '#f38ba8' : d.type === 'changed' ? '#f9e2af' : '#444', fontSize: 8, width: 16, textAlign: 'right' }}>
+                    {d.type === 'added' ? '+' : d.type === 'removed' ? '-' : d.type === 'changed' ? '~' : ''}{i + 1}
+                  </span>
+                  {d.type === 'changed' ? <><span style={{ color: '#f38ba860', textDecoration: 'line-through' }}>{d.oldText}</span>{'\n'}<span style={{ color: '#27c93f90' }}>{d.text}</span></> : (d.text || ' ')}
+                </div>
+              ))}
+            </div>
+          )}
+          {diffOpen && !diffLines && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 24, zIndex: 18, background: '#1e1e2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 9, color: '#27c93f' }}>{'\u2713'} No changes</span>
+              <span style={{ fontSize: 8, color: '#555' }}>File matches original</span>
+              <span onClick={() => setDiffOpen(false)} style={{ fontSize: 8, color: '#cba6f7', cursor: 'pointer', marginTop: 4 }}>Close</span>
+            </div>
+          )}
+
           {/* Editor + Terminal split */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
@@ -1441,12 +1588,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           code.substring(0, matchBracket[1]).split('\n').length === i + 1
                         );
                         return (
-                          <div key={i} style={{
-                            fontSize: fs(9), lineHeight: lh,
-                            color: i + 1 === activeLn ? '#cdd6f4' : isBracketLine ? '#cba6f7' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
-                            paddingRight: 6,
-                            background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
-                          }}>{i + 1}</div>
+                          <div key={i}
+                            onClick={() => {
+                              // Click line number to select entire line
+                              const lineStart = code.split('\n').slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
+                              const lineEnd = lineStart + lines[i].length;
+                              setActiveLn(i + 1); setCursor({ ln: i + 1, col: 1 });
+                              setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = lineStart; el.selectionEnd = lineEnd; el.focus(); } }, 0);
+                            }}
+                            style={{
+                              fontSize: fs(9), lineHeight: lh, cursor: 'pointer',
+                              color: i + 1 === activeLn ? '#cdd6f4' : isBracketLine ? '#cba6f7' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
+                              paddingRight: 6,
+                              background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
+                            }}>{i + 1}</div>
                         );
                       })}
                     </div>
@@ -1523,6 +1678,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               position: 'absolute', left: bracketCol * charW, top: 0,
                               width: charW, height: '100%',
                               background: '#cba6f718', borderBottom: '1px solid #cba6f740'
+                            }} />
+                          )}
+                          {output?.errLn === i + 1 && (
+                            <span style={{
+                              position: 'absolute', left: 0, right: 0, bottom: 0, height: 2,
+                              backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'4\' height=\'2\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M0 1 Q1 0 2 1 Q3 2 4 1\' stroke=\'%23f38ba8\' fill=\'none\' stroke-width=\'0.8\'/%3E%3C/svg%3E")',
+                              backgroundRepeat: 'repeat-x', backgroundPosition: 'bottom',
                             }} />
                           )}
                         </div>
