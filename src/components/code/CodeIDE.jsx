@@ -246,6 +246,41 @@ const TP_DOCS = {
   export: 'tp.export() → { shapes, pal, device }\nExport state as object',
 };
 
+/* Code snippets: trigger word → expansion */
+const SNIPPETS = {
+  'for': 'for (let i = 0; i < ${1:length}; i++) {\n  ${0}\n}',
+  'fore': '${1:arr}.forEach((${2:item}) => {\n  ${0}\n});',
+  'map': '${1:arr}.map((${2:item}) => {\n  ${0}\n});',
+  'fn': 'function ${1:name}(${2:params}) {\n  ${0}\n}',
+  'afn': 'const ${1:name} = (${2:params}) => {\n  ${0}\n};',
+  'if': 'if (${1:condition}) {\n  ${0}\n}',
+  'ife': 'if (${1:condition}) {\n  ${0}\n} else {\n  \n}',
+  'log': 'console.log(${0});',
+  'try': 'try {\n  ${0}\n} catch (e) {\n  console.error(e);\n}',
+  'imp': "import ${1:name} from '${0}';",
+  'tpa': "const id = tp.add('${1:type}', { x: ${2:50}, y: ${3:100}, w: ${4:200}, h: ${5:48} });",
+  'tpf': "const ids = tp.find('${0:type}');",
+};
+
+/* Parameter hints for tp methods */
+const PARAM_HINTS = {
+  'add': ['type: string', 'opts?: { x, y, w, h, variant, font, fsize, texts, props }'],
+  'remove': ['id: string'],
+  'update': ['id: string', 'changes: { x?, y?, w?, h?, variant?, font?, fsize?, texts?, props? }'],
+  'get': ['id: string'],
+  'find': ['type: string'],
+  'setText': ['id: string', 'key: string', 'value: string'],
+  'setProp': ['id: string', 'key: string', 'value: any'],
+  'setFont': ['id: string', 'fontIndex: number (0–16)'],
+  'setFsize': ['id: string', 'size: number (0.5–2.0)'],
+  'setPalette': ['name: string'],
+  'setDevice': ['mode: "free" | "desktop" | "phone"'],
+  'save': ['name?: string'],
+  'load': ['name?: string'],
+  'deleteSave': ['name?: string'],
+  'variants': ['type: string'],
+};
+
 /* Keyboard shortcuts */
 const SHORTCUTS = [
   ['\u2318+Enter', 'Run code'],
@@ -266,6 +301,9 @@ const SHORTCUTS = [
   ['\u2318+Z', 'Undo'],
   ['\u2318+Shift+Z', 'Redo'],
   ['\u2318+K', 'Shortcuts help'],
+  ['\u2318+=/\u2318+-', 'Zoom in/out'],
+  ['\u2318+0', 'Reset zoom'],
+  ['Tab (on trigger)', 'Expand snippet'],
   ['Esc', 'Close overlay'],
 ];
 
@@ -311,8 +349,9 @@ function genDevice(tp) {
 /* ========== Component ========== */
 export default function CodeIDE({ b, p, fsize = 1 }) {
   const tp = React.useContext(TpContext);
-  const fs = n => Math.round(n * fsize);
-  const lh = Math.round(16 * fsize) + 'px';
+  const zf = fsize * editorZoom;
+  const fs = n => Math.round(n * zf);
+  const lh = Math.round(16 * zf) + 'px';
 
   /* ---- File system ---- */
   const initFiles = React.useMemo(() => ({
@@ -453,6 +492,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Tab hover close ---- */
   const [hoverTab, setHoverTab] = React.useState(null);
+
+  /* ---- Parameter hints ---- */
+  const [paramHint, setParamHint] = React.useState(null);
+
+  /* ---- Editor zoom ---- */
+  const [editorZoom, setEditorZoom] = React.useState(1);
 
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
@@ -677,7 +722,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Sticky scroll: enclosing scope when scrolled past its declaration ---- */
   const stickyScope = React.useMemo(() => {
     if (scrollTop < 30) return null;
-    const lineH = Math.round(16 * fsize);
+    const lineH = Math.round(16 * zf);
     const topVisibleLine = Math.floor(scrollTop / lineH);
     // Find the nearest enclosing scope that started above the viewport
     for (let i = topVisibleLine; i >= 0; i--) {
@@ -1084,6 +1129,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       e.preventDefault(); setHelpOpen(h => !h); return;
     }
 
+    /* Editor zoom: Cmd+= / Cmd+- */
+    if ((e.key === '=' || e.key === '+') && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault(); setEditorZoom(z => Math.min(2, z + 0.1)); return;
+    }
+    if (e.key === '-' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault(); setEditorZoom(z => Math.max(0.6, z - 0.1)); return;
+    }
+    if (e.key === '0' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault(); setEditorZoom(1); return;
+    }
+
     /* Toggle comment: Cmd+/ */
     if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -1199,6 +1255,35 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           setTimeout(() => { el.selectionStart = el.selectionEnd = Math.max(lineStart, s - 2) }, 0);
         }
       } else {
+        // Check for snippet trigger before plain Tab
+        const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+        const beforeCursor = code.substring(lineStart, s);
+        const wordMatch = beforeCursor.match(/(\w+)$/);
+        if (wordMatch && SNIPPETS[wordMatch[1]]) {
+          const trigger = wordMatch[1];
+          const currentIndent = beforeCursor.match(/^(\s*)/)[0];
+          let snippet = SNIPPETS[trigger];
+          // Apply indent to each line
+          const snipLines = snippet.split('\n');
+          const expanded = snipLines.map((l, idx) => idx === 0 ? l : currentIndent + l).join('\n');
+          // Remove placeholder markers ${N:text} → text, ${0} → cursor position
+          let cursorOffset = -1;
+          let clean = expanded.replace(/\$\{0(?::([^}]*))?\}/g, (m, def, off) => {
+            cursorOffset = expanded.indexOf(m) - (expanded.substring(0, expanded.indexOf(m)).split('${').length - 1) * 0; // approximate
+            return def || '';
+          });
+          clean = clean.replace(/\$\{\d+:([^}]*)\}/g, '$1');
+          // Find cursor position (where ${0} was)
+          const zeroIdx = expanded.indexOf('${0');
+          const beforeZero = zeroIdx >= 0 ? expanded.substring(0, zeroIdx).replace(/\$\{\d+:([^}]*)\}/g, '$1') : clean;
+          const replaceStart = s - trigger.length;
+          const nc = code.substring(0, replaceStart) + clean + code.substring(s);
+          setCode(nc);
+          const newPos = replaceStart + beforeZero.length;
+          setTimeout(() => { el.selectionStart = el.selectionEnd = newPos; }, 0);
+          showToast(`Snippet: ${trigger}`, 'info');
+          return;
+        }
         setCode(code.substring(0, s) + '  ' + code.substring(en));
         setTimeout(() => { el.selectionStart = el.selectionEnd = s + 2 }, 0);
       }
@@ -1673,7 +1758,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             <div onClick={() => {
               setActiveLn(stickyScope.line + 1); setCursor({ ln: stickyScope.line + 1, col: 1 });
               const pos = code.split('\n').slice(0, stickyScope.line).join('\n').length + (stickyScope.line > 0 ? 1 : 0);
-              setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.scrollTop = stickyScope.line * Math.round(16 * fsize); el.focus(); } }, 0);
+              setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.scrollTop = stickyScope.line * Math.round(16 * zf); el.focus(); } }, 0);
             }} style={{
               padding: '1px 10px 1px 46px', background: '#181825ee', borderBottom: '1px solid #ffffff08',
               fontSize: fs(9), lineHeight: lh, fontFamily: MONO, color: '#a6adc860', whiteSpace: 'pre',
@@ -1801,7 +1886,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       return (
                         <div key={i} style={{
                           fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
-                          height: Math.round(16 * fsize), position: 'relative',
+                          height: Math.round(16 * zf), position: 'relative',
                           background: i + 1 === activeLn ? '#ffffff04' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : 'transparent',
                         }}>
                           {guides}
@@ -1871,6 +1956,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       setAcOpen(false);
                     }
                   }
+                  // Parameter hints: detect if cursor is inside tp.method(...)
+                  const beforePos = val.substring(0, pos);
+                  const phMatch = beforePos.match(/tp\.(\w+)\(([^)]*$)/);
+                  if (phMatch && PARAM_HINTS[phMatch[1]]) {
+                    const params = PARAM_HINTS[phMatch[1]];
+                    const argsSoFar = phMatch[2].split(',').length - 1;
+                    setParamHint({ method: phMatch[1], params, activeParam: Math.min(argsSoFar, params.length - 1) });
+                  } else {
+                    setParamHint(null);
+                  }
                 }}
                 onScroll={e => setScrollTop(e.target.scrollTop)}
                 onMouseDown={e => { stop(e); setCtxMenu(null); }}
@@ -1909,7 +2004,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   const gutterW = lines.length >= 1000 ? 44 : lines.length >= 100 ? 38 : 32;
                   const x = e.clientX - rect.left;
                   const y = e.clientY - rect.top + el.scrollTop;
-                  const lineH = Math.round(16 * fsize);
+                  const lineH = Math.round(16 * zf);
                   const lineIdx = Math.floor(y / lineH);
                   const charW = fs(6.1);
                   const colIdx = Math.floor(x / charW);
@@ -1974,7 +2069,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
               {/* Autocomplete dropdown */}
               {acOpen && acItems.length > 0 && (() => {
-                const lineH = Math.round(16 * fsize);
+                const lineH = Math.round(16 * zf);
                 const top = (activeLn * lineH) + 8 - scrollTop + lineH;
                 const lineStart = code.lastIndexOf('\n', (taRef.current?.selectionStart || 0) - 1) + 1;
                 const col = (taRef.current?.selectionStart || 0) - lineStart;
@@ -2014,6 +2109,33 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 );
               })()}
 
+              {/* Parameter hints */}
+              {paramHint && !acOpen && (() => {
+                const lineH = Math.round(16 * zf);
+                const top = (activeLn - 1) * lineH + 8 - scrollTop - 4;
+                const lineStart = code.lastIndexOf('\n', (taRef.current?.selectionStart || 0) - 1) + 1;
+                const col = (taRef.current?.selectionStart || 0) - lineStart;
+                const left = col * fs(6.1) + 8;
+                return (
+                  <div style={{
+                    position: 'absolute', top: Math.max(0, top), left: Math.min(Math.max(8, left - 40), 200),
+                    zIndex: 11, background: '#1e1e2e', border: '1px solid #ffffff15',
+                    borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,.5)',
+                    padding: '4px 8px', pointerEvents: 'none', maxWidth: 300,
+                  }}>
+                    <div style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, marginBottom: 2 }}>
+                      tp.{paramHint.method}(
+                      {paramHint.params.map((p, i) => (
+                        <span key={i} style={{ color: i === paramHint.activeParam ? '#f9e2af' : '#a6adc860', fontWeight: i === paramHint.activeParam ? 600 : 400 }}>
+                          {i > 0 ? ', ' : ''}{p}
+                        </span>
+                      ))}
+                      )
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Hover docs tooltip */}
               {hoverDoc && !acOpen && (
                 <div style={{
@@ -2039,7 +2161,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   onClick={e => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const pct = (e.clientY - rect.top) / rect.height;
-                    const totalH = lines.length * Math.round(16 * fsize);
+                    const totalH = lines.length * Math.round(16 * zf);
                     if (taRef.current) taRef.current.scrollTop = pct * totalH;
                   }}
                   style={{
@@ -2065,7 +2187,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   {/* Viewport indicator */}
                   <div style={{
                     position: 'absolute', left: 0, right: 0,
-                    top: `${(scrollTop / Math.max(1, lines.length * Math.round(16 * fsize))) * 100}%`,
+                    top: `${(scrollTop / Math.max(1, lines.length * Math.round(16 * zf))) * 100}%`,
                     height: `${Math.max(8, (100 / Math.max(1, lines.length)) * 20)}%`,
                     background: '#cba6f710', border: '1px solid #cba6f720',
                     borderRadius: 2, pointerEvents: 'none', minHeight: 8,
@@ -2174,7 +2296,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     {output ? (<>
                       {output.logs.map((l, i) => (
                         <div key={i} style={{
-                          fontSize: fs(9), lineHeight: Math.round(15 * fsize) + 'px',
+                          fontSize: fs(9), lineHeight: Math.round(15 * zf) + 'px',
                           color: l.t === 'err' ? '#f38ba8' : l.t === 'warn' ? '#f9e2af' : l.t === 'ret' ? '#89b4fa' : l.t === 'dbg' ? '#6c7086' : '#a6adc8',
                           whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0'
                         }}>
@@ -2280,6 +2402,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               style={{ fontSize: fs(8), color: wordWrap ? '#cba6f7' : '#555', marginLeft: 'auto', cursor: 'pointer' }}
               title="Toggle word wrap">{wordWrap ? 'Wrap: On' : 'Wrap: Off'}</span>
             <span style={{ fontSize: fs(8), color: '#555' }}>Spaces: 2</span>
+            {editorZoom !== 1 && <span onClick={() => setEditorZoom(1)} onMouseDown={stop}
+              style={{ fontSize: fs(8), color: '#89b4fa', cursor: 'pointer', opacity: .7 }}
+              title="Reset zoom (⌘0)">{Math.round(editorZoom * 100)}%</span>}
             <span style={{ fontSize: fs(8), color: '#555' }}>
               {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
             </span>
