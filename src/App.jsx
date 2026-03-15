@@ -301,6 +301,7 @@ export default function App() {
   useEffect(() => {
     const el = cRef.current; if (!el) return;
     const h = e => {
+      if (e.target.closest('[data-ide-scroll]')) return;
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         const r = el.getBoundingClientRect();
