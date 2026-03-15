@@ -496,6 +496,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Parameter hints ---- */
   const [paramHint, setParamHint] = React.useState(null);
 
+  /* ---- Outline panel ---- */
+  const [outlineOpen, setOutlineOpen] = React.useState(false);
+
   /* ---- Editor zoom ---- */
   const [editorZoom, setEditorZoom] = React.useState(1);
 
@@ -686,6 +689,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     return null;
   }, [lines, activeLn]);
+
+  /* ---- Outline: extract symbols from code ---- */
+  const outlineSymbols = React.useMemo(() => {
+    const syms = [];
+    lines.forEach((l, i) => {
+      const fnMatch = l.match(/^\s*(?:async\s+)?function\s+(\w+)/);
+      if (fnMatch) { syms.push({ name: fnMatch[1], kind: 'fn', line: i + 1 }); return; }
+      const constFn = l.match(/^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|async\s*\(|function|\(?\s*\w+\s*\)\s*=>)/);
+      if (constFn) { syms.push({ name: constFn[1], kind: 'fn', line: i + 1 }); return; }
+      const constVar = l.match(/^\s*(?:const|let|var)\s+(\w+)\s*=/);
+      if (constVar) { syms.push({ name: constVar[1], kind: 'var', line: i + 1 }); return; }
+      const classMatch = l.match(/^\s*class\s+(\w+)/);
+      if (classMatch) { syms.push({ name: classMatch[1], kind: 'class', line: i + 1 }); }
+    });
+    return syms;
+  }, [lines]);
+
+  /* ---- Bracket colorization: compute bracket depth per position ---- */
+  const BRACKET_COLORS = ['#f9e2af', '#89b4fa', '#a6e3a1', '#f38ba8', '#cba6f7', '#fab387'];
 
   /* ---- Foldable lines (lines that start a block with { ) ---- */
   const foldableRanges = React.useMemo(() => {
@@ -900,6 +922,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Format Document', key: 'format', hint: '' },
       { label: 'Search in Files', key: 'gsearch', hint: '\u2318+Shift+F' },
       { label: diffOpen ? 'Close Diff View' : 'Show Changes (Diff)', key: 'diff', hint: '' },
+      { label: outlineOpen ? 'Hide Outline' : 'Show Outline', key: 'outline', hint: '' },
       { label: 'Fold All', key: 'foldall', hint: '' },
       { label: 'Unfold All', key: 'unfoldall', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
@@ -923,6 +946,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'format') formatCode();
     else if (key === 'gsearch') { setGlobalSearchOpen(o => !o); setGlobalSearchTerm(''); setTimeout(() => globalSearchRef.current?.focus(), 50); }
     else if (key === 'diff') setDiffOpen(d => !d);
+    else if (key === 'outline') setOutlineOpen(o => !o);
     else if (key === 'foldall') { setFoldedLines(new Set(Object.keys(foldableRanges).map(Number))); showToast('All folded', 'info'); }
     else if (key === 'unfoldall') { setFoldedLines(new Set()); showToast('All unfolded', 'info'); }
     else if (key.startsWith('file:')) openFile(key.slice(5));
@@ -1840,6 +1864,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   bracketLines[ln1] = col1;
                   bracketLines[ln2] = col2;
                 }
+                // Precompute bracket colorization depths per line
+                const bracketColorMap = {}; // { lineIdx: [{ col, color }] }
+                let depth = 0;
+                for (let li = 0; li < lines.length; li++) {
+                  const entries = [];
+                  for (let ci = 0; ci < lines[li].length; ci++) {
+                    const ch = lines[li][ci];
+                    if (ch === '(' || ch === '[' || ch === '{') {
+                      entries.push({ col: ci, color: BRACKET_COLORS[depth % BRACKET_COLORS.length] });
+                      depth++;
+                    } else if (ch === ')' || ch === ']' || ch === '}') {
+                      depth = Math.max(0, depth - 1);
+                      entries.push({ col: ci, color: BRACKET_COLORS[depth % BRACKET_COLORS.length] });
+                    }
+                  }
+                  if (entries.length) bracketColorMap[li] = entries;
+                }
                 return (
                   <div ref={hlRef} style={{ position: 'absolute', left: gutterW + 1, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
                     <div style={{ transform: `translateY(-${scrollTop}px)` }}>
@@ -1848,12 +1889,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       const isFolded = foldedLines.has(i) && foldableRanges[i] !== undefined;
                       /* Indent guides */
                       const indent = l.match(/^(\s*)/)[0].length;
+                      const INDENT_COLORS = ['#cba6f718', '#89b4fa18', '#a6e3a118', '#f9e2af18', '#fab38718', '#f38ba818'];
                       const guides = [];
                       for (let g = 2; g <= indent; g += 2) {
+                        const depthIdx = Math.floor((g - 2) / 2);
                         guides.push(
                           <span key={`g${g}`} style={{
                             position: 'absolute', left: (g - 1) * charW, top: 0, bottom: 0, width: 1,
-                            background: g === indent ? '#ffffff0a' : '#ffffff06'
+                            background: g === indent ? INDENT_COLORS[depthIdx % INDENT_COLORS.length].replace('18', '30') : INDENT_COLORS[depthIdx % INDENT_COLORS.length]
                           }} />
                         );
                       }
@@ -1898,6 +1941,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               pointerEvents: 'auto', position: 'relative', zIndex: 3,
                             }}>{`... ${foldableRanges[i] - i} lines`}</span>
                           )}
+                          {/* Bracket pair colorization */}
+                          {bracketColorMap[i]?.map((b, bi) => (
+                            <span key={`bc${bi}`} style={{
+                              position: 'absolute', left: b.col * charW, top: 0,
+                              width: charW, height: '100%', color: b.color, fontWeight: 700,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: fs(10), lineHeight: lh, fontFamily: MONO,
+                              pointerEvents: 'none', zIndex: 2,
+                            }}>{l[b.col]}</span>
+                          ))}
                           {bracketCol !== undefined && (
                             <span style={{
                               position: 'absolute', left: bracketCol * charW, top: 0,
@@ -1905,13 +1958,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               background: '#cba6f718', borderBottom: '1px solid #cba6f740'
                             }} />
                           )}
-                          {output?.errLn === i + 1 && (
+                          {output?.errLn === i + 1 && (<>
                             <span style={{
                               position: 'absolute', left: 0, right: 0, bottom: 0, height: 2,
                               backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'4\' height=\'2\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M0 1 Q1 0 2 1 Q3 2 4 1\' stroke=\'%23f38ba8\' fill=\'none\' stroke-width=\'0.8\'/%3E%3C/svg%3E")',
                               backgroundRepeat: 'repeat-x', backgroundPosition: 'bottom',
                             }} />
-                          )}
+                            {/* Error lens: inline error message */}
+                            {output?.err && (
+                              <span style={{
+                                position: 'absolute', right: 8, top: 0, height: '100%',
+                                display: 'flex', alignItems: 'center',
+                                fontSize: 7, color: '#f38ba880', fontStyle: 'italic',
+                                maxWidth: '50%', overflow: 'hidden', textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap', pointerEvents: 'none',
+                              }}>{output.err}</span>
+                            )}
+                          </>)}
                         </div>
                       );
                     })}
@@ -2243,6 +2306,48 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               )}
             </div>
 
+            {/* Outline panel */}
+            {outlineOpen && (
+              <div onMouseDown={stop} style={{
+                width: 120, background: '#181825', borderLeft: '1px solid #ffffff08',
+                flexShrink: 0, overflow: 'auto', display: 'flex', flexDirection: 'column'
+              }}>
+                <div style={{ padding: '4px 8px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', borderBottom: '1px solid #ffffff06', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ flex: 1 }}>Outline</span>
+                  <span onClick={() => setOutlineOpen(false)} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+                </div>
+                <div style={{ flex: 1, overflow: 'auto', padding: '2px 0' }}>
+                  {outlineSymbols.length === 0 && (
+                    <div style={{ fontSize: 8, color: '#444', padding: '8px', textAlign: 'center' }}>No symbols</div>
+                  )}
+                  {outlineSymbols.map((sym, si) => (
+                    <div key={si}
+                      onClick={() => {
+                        setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
+                        const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
+                        setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
+                        cursor: 'pointer', fontSize: 8,
+                        color: sym.line === activeLn ? '#cdd6f4' : '#777',
+                        background: sym.line === activeLn ? '#ffffff08' : 'transparent',
+                        borderLeft: sym.line === activeLn ? '2px solid #cba6f7' : '2px solid transparent',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
+                      onMouseLeave={e => e.currentTarget.style.background = sym.line === activeLn ? '#ffffff08' : 'transparent'}>
+                      <span style={{
+                        fontSize: 7, fontWeight: 600, width: 12, textAlign: 'center', flexShrink: 0,
+                        color: sym.kind === 'fn' ? '#cba6f7' : sym.kind === 'class' ? '#f9e2af' : '#89b4fa',
+                      }}>{sym.kind === 'fn' ? 'f' : sym.kind === 'class' ? 'C' : 'v'}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sym.name}</span>
+                      <span style={{ fontSize: 7, color: '#444', marginLeft: 'auto', flexShrink: 0 }}>{sym.line}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Terminal */}
             {termOpen && (
               <div style={{
@@ -2354,6 +2459,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       if (e.key === 'Enter' && termInput.trim()) { runTermInput(termInput); }
                       if (e.key === 'ArrowUp') { e.preventDefault(); if (termHistory.length) { const idx = termHistIdx < 0 ? termHistory.length - 1 : Math.max(0, termHistIdx - 1); setTermHistIdx(idx); setTermInput(termHistory[idx]); } }
                       if (e.key === 'ArrowDown') { e.preventDefault(); if (termHistIdx >= 0) { const idx = termHistIdx + 1; if (idx >= termHistory.length) { setTermHistIdx(-1); setTermInput(''); } else { setTermHistIdx(idx); setTermInput(termHistory[idx]); } } }
+                      if (e.key === 'Tab') {
+                        e.preventDefault();
+                        // Tab completion for tp methods and built-in commands
+                        const val = termInput;
+                        const dotMatch = val.match(/tp\.(\w*)$/);
+                        if (dotMatch) {
+                          const partial = dotMatch[1].toLowerCase();
+                          const methods = TP_AC.map(a => a.label.replace(/\(.*/, ''));
+                          const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
+                          if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
+                        } else {
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run'];
+                          const partial = val.toLowerCase();
+                          const match = cmds.find(c => c.startsWith(partial) && c !== partial);
+                          if (match) setTermInput(match + (match === 'cat' || match === 'echo' ? ' ' : ''));
+                        }
+                      }
                       if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
                     }}
                     style={{
