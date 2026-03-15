@@ -36,7 +36,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           </>}
         </div>
       )}
-      {isPrimary && !isDrg && (
+      {isPrimary && !isDrg && s.type !== 'code-block' && (
         <button aria-label="Delete component" onPointerDown={e => { e.stopPropagation(); e.preventDefault(); delShape(s.id) }}
           style={{ position: "absolute", top: -12, right: -12, width: 28, height: 28, borderRadius: 999, background: p.mu + "88", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 201, transition: "background .15s" }}
           onMouseEnter={e => e.currentTarget.style.background = "#E0524D"}

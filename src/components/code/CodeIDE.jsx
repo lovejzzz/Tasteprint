@@ -849,7 +849,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       {/* Title bar */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', borderBottom: '1px solid #ffffff10', gap: 6, flexShrink: 0, background: '#181825' }}>
         <div style={{ display: 'flex', gap: 4 }}>
-          {['#ff5f56','#ffbd2e','#27c93f'].map((c, i) => <div key={i} style={{ width: 7, height: 7, borderRadius: 99, background: c, opacity: .6 }} />)}
+          {[
+            { c: '#ff5f56', title: 'Close IDE', action: () => { const ide = tp?.find('code-block'); if (ide.length) tp.remove(ide[0].id); } },
+            { c: '#ffbd2e', title: 'Toggle terminal', action: () => setTermOpen(t => !t) },
+            { c: '#27c93f', title: 'Run code', action: () => runCode() },
+          ].map((btn, i) => <div key={i} onClick={btn.action} onMouseDown={stop}
+            style={{ width: 7, height: 7, borderRadius: 99, background: btn.c, opacity: .6, cursor: 'pointer', transition: 'opacity .15s' }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '.6'}
+            title={btn.title} />)}
         </div>
         <span onClick={() => setShowTree(t => !t)} onMouseDown={stop}
           style={{ fontSize: 11, color: showTree ? '#cba6f7' : '#555', cursor: 'pointer', marginLeft: 4, lineHeight: 1 }}
