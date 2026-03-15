@@ -340,45 +340,6 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Context menu ---- */
   const [ctxMenu, setCtxMenu] = React.useState(null);
 
-  /* ---- Bracket matching ---- */
-  const matchBracket = React.useMemo(() => {
-    if (!taRef.current) return null;
-    const pos = taRef.current.selectionStart;
-    const ch = code[pos] || code[pos - 1];
-    const actualPos = code[pos] && '()[]{}' .includes(code[pos]) ? pos : (code[pos - 1] && '()[]{}' .includes(code[pos - 1]) ? pos - 1 : -1);
-    if (actualPos === -1) return null;
-    const c = code[actualPos];
-    const open = '([{'; const close = ')]}';
-    const oi = open.indexOf(c), ci = close.indexOf(c);
-    if (oi !== -1) {
-      let depth = 1, i = actualPos + 1;
-      while (i < code.length && depth > 0) { if (code[i] === open[oi]) depth++; if (code[i] === close[oi]) depth--; i++; }
-      if (depth === 0) return [actualPos, i - 1];
-    } else if (ci !== -1) {
-      let depth = 1, i = actualPos - 1;
-      while (i >= 0 && depth > 0) { if (code[i] === close[ci]) depth++; if (code[i] === open[ci]) depth--; i--; }
-      if (depth === 0) return [i + 1, actualPos];
-    }
-    return null;
-  }, [code, activeLn, cursor]);
-
-  /* ---- Selected word occurrences ---- */
-  const [selectedWord, setSelectedWord] = React.useState('');
-  const wordOccurrences = React.useMemo(() => {
-    if (!selectedWord || selectedWord.length < 2) return new Set();
-    const occ = new Set();
-    let idx = 0;
-    while (idx < code.length) {
-      const found = code.indexOf(selectedWord, idx);
-      if (found === -1) break;
-      // Which line is this on?
-      const ln = code.substring(0, found).split('\n').length;
-      occ.add(ln);
-      idx = found + 1;
-    }
-    return occ;
-  }, [code, selectedWord]);
-
   /* ---- Terminal resize ---- */
   const [termHeight, setTermHeight] = React.useState(120);
   const termDrag = React.useRef(null);
@@ -390,6 +351,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Explorer context menu ---- */
   const [explorerCtx, setExplorerCtx] = React.useState(null);
+
+  /* ---- Selected word occurrences ---- */
+  const [selectedWord, setSelectedWord] = React.useState('');
 
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
@@ -453,6 +417,41 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const code = file?.content || '';
   const readonly = file?.readonly || false;
   const lines = code.split('\n');
+
+  /* ---- Bracket matching (must be after code) ---- */
+  const matchBracket = React.useMemo(() => {
+    if (!taRef.current) return null;
+    const pos = taRef.current.selectionStart;
+    const actualPos = code[pos] && '()[]{}' .includes(code[pos]) ? pos : (code[pos - 1] && '()[]{}' .includes(code[pos - 1]) ? pos - 1 : -1);
+    if (actualPos === -1) return null;
+    const c = code[actualPos];
+    const open = '([{'; const close = ')]}';
+    const oi = open.indexOf(c), ci = close.indexOf(c);
+    if (oi !== -1) {
+      let depth = 1, i = actualPos + 1;
+      while (i < code.length && depth > 0) { if (code[i] === open[oi]) depth++; if (code[i] === close[oi]) depth--; i++; }
+      if (depth === 0) return [actualPos, i - 1];
+    } else if (ci !== -1) {
+      let depth = 1, i = actualPos - 1;
+      while (i >= 0 && depth > 0) { if (code[i] === close[ci]) depth++; if (code[i] === open[ci]) depth--; i--; }
+      if (depth === 0) return [i + 1, actualPos];
+    }
+    return null;
+  }, [code, activeLn, cursor]);
+
+  /* ---- Word occurrences (must be after code) ---- */
+  const wordOccurrences = React.useMemo(() => {
+    if (!selectedWord || selectedWord.length < 2) return new Set();
+    const occ = new Set();
+    let idx = 0;
+    while (idx < code.length) {
+      const found = code.indexOf(selectedWord, idx);
+      if (found === -1) break;
+      occ.add(code.substring(0, found).split('\n').length);
+      idx = found + 1;
+    }
+    return occ;
+  }, [code, selectedWord]);
 
   const setCode = (c, skipHist) => {
     if (readonly) return;
