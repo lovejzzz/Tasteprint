@@ -127,7 +127,7 @@ function CodeIDE({b,p}){
   };
   return <div style={{...b,background:'#1a1a2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
     {/* Title bar */}
-    <div style={{display:'flex',alignItems:'center',padding:'5px 10px',borderBottom:'1px solid #ffffff10',gap:6}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'5px 10px',borderBottom:'1px solid #ffffff10',gap:6}}>
       <div style={{display:'flex',gap:4}}>{['#ff5f56','#ffbd2e','#27c93f'].map((c,i)=><div key={i} style={{width:7,height:7,borderRadius:99,background:c,opacity:.6}}/>)}</div>
       <div style={{flex:1}}/>
       <button onClick={copyCode} onMouseDown={stop} style={{background:'transparent',color:copied?'#a6e3a1':'#555',border:'none',fontSize:8,cursor:'pointer',fontFamily:mono,padding:'1px 6px',borderRadius:4,transition:'all .2s'}}>{copied?'✓ Copied':'Copy'}</button>
@@ -136,8 +136,8 @@ function CodeIDE({b,p}){
       </button>
     </div>
     {/* File tabs */}
-    <div style={{display:'flex',borderBottom:'1px solid #ffffff08',background:'#16162a'}} onMouseDown={stop}>
-      {files.map((f,i)=><div key={i} onClick={()=>setTab(i)} style={{padding:'4px 12px',fontSize:9,color:i===tab?'#cdd6f4':'#555',background:i===tab?'#1a1a2e':'transparent',cursor:'pointer',borderRight:'1px solid #ffffff06',borderBottom:i===tab?'1px solid #1a1a2e':'1px solid transparent',marginBottom:-1,position:'relative'}}>{f.name}{i===tab&&<div style={{position:'absolute',top:0,left:0,right:0,height:1,background:'#cba6f7'}}/>}</div>)}
+    <div style={{display:'flex',borderBottom:'1px solid #ffffff08',background:'#16162a'}}>
+      {files.map((f,i)=><div key={i} onClick={()=>setTab(i)} onMouseDown={stop} style={{padding:'4px 12px',fontSize:9,color:i===tab?'#cdd6f4':'#555',background:i===tab?'#1a1a2e':'transparent',cursor:'pointer',borderRight:'1px solid #ffffff06',borderBottom:i===tab?'1px solid #1a1a2e':'1px solid transparent',marginBottom:-1,position:'relative'}}>{f.name}{i===tab&&<div style={{position:'absolute',top:0,left:0,right:0,height:1,background:'#cba6f7'}}/>}</div>)}
     </div>
     <div style={{flex:1,display:'flex',minHeight:0}}>
       {/* Editor pane */}
@@ -169,7 +169,7 @@ function CodeIDE({b,p}){
         </div>
       </div>}
     </div>
-    <div style={{display:'flex',alignItems:'center',padding:'3px 10px',borderTop:'1px solid #ffffff08',gap:8}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'3px 10px',borderTop:'1px solid #ffffff08',gap:8}}>
       <span style={{fontSize:8,color:out?.err?'#f38ba8':'#27c93f'}}>●</span>
       <span style={{fontSize:8,color:'#555'}}>Ln {cursor.ln}, Col {cursor.col}</span>
       <span style={{fontSize:8,color:'#555'}}>{lines.length} lines</span>
@@ -198,13 +198,13 @@ function CodeNotebook({b}){
   const delCell=(idx)=>{if(cells.length<=1)return;setCells(prev=>prev.filter((_,i)=>i!==idx));};
   const updateCell=(idx,code)=>setCells(prev=>prev.map((c,i)=>i===idx?{...c,code}:c));
   return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
-    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}}>
       <span style={{fontSize:9,color:'#cba6f7',fontWeight:600}}>⬡</span>
       <span style={{fontSize:10,color:'#cdd6f4',fontWeight:500}}>Notebook</span>
       <span style={{fontSize:8,color:'#555',marginLeft:'auto'}}>{cells.length} cells</span>
       <button onClick={()=>{cells.forEach((_,i)=>runCell(i))}} onMouseDown={stop} style={{background:'#27c93f22',color:'#27c93f',border:'none',borderRadius:4,padding:'2px 8px',fontSize:8,cursor:'pointer',fontFamily:mono}}>▶ All</button>
     </div>
-    <div style={{flex:1,overflow:'auto',padding:8,display:'flex',flexDirection:'column',gap:6}} onMouseDown={stop}>
+    <div style={{flex:1,overflow:'auto',padding:8,display:'flex',flexDirection:'column',gap:6}}>
       {cells.map((c,idx)=><div key={idx} style={{border:'1px solid #ffffff10',borderRadius:8,overflow:'hidden',borderLeft:c.out?c.out.err?'2px solid #f38ba8':'2px solid #27c93f':'2px solid #555'}}>
         <div style={{display:'flex',alignItems:'center',padding:'3px 8px',background:'#16162a',gap:4}}>
           <span style={{fontSize:8,color:'#cba6f7',fontWeight:600}}>In [{idx+1}]</span>
@@ -232,17 +232,17 @@ function CodeReview({b}){
   const [expanded,setExpanded]=React.useState({2:true,4:false});
   const stop=e=>e.stopPropagation();
   return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
-    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:8}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:8}}>
       <span style={{fontSize:10,color:'#cdd6f4',fontWeight:500}}>fetchUser.js</span>
       <span style={{fontSize:8,color:'#f9e2af',marginLeft:'auto'}}>2 comments</span>
       <div style={{display:'flex',gap:4}}>
-        <button style={{background:'#27c93f22',color:'#27c93f',border:'none',borderRadius:4,padding:'2px 8px',fontSize:8,cursor:'pointer',fontFamily:mono}}>Approve</button>
-        <button style={{background:'#f38ba822',color:'#f38ba8',border:'none',borderRadius:4,padding:'2px 8px',fontSize:8,cursor:'pointer',fontFamily:mono}}>Request</button>
+        <button onMouseDown={stop} style={{background:'#27c93f22',color:'#27c93f',border:'none',borderRadius:4,padding:'2px 8px',fontSize:8,cursor:'pointer',fontFamily:mono}}>Approve</button>
+        <button onMouseDown={stop} style={{background:'#f38ba822',color:'#f38ba8',border:'none',borderRadius:4,padding:'2px 8px',fontSize:8,cursor:'pointer',fontFamily:mono}}>Request</button>
       </div>
     </div>
     <div style={{flex:1,overflow:'auto',padding:'4px 0'}}>
       {code.map((l,i)=><React.Fragment key={i}>
-        <div style={{display:'flex',padding:'1px 12px',background:annotations[i]?'#f9e2af06':'transparent',cursor:annotations[i]?'pointer':'default'}} onMouseDown={stop} onClick={()=>{if(annotations[i])setExpanded(prev=>({...prev,[i]:!prev[i]}))}}>
+        <div style={{display:'flex',padding:'1px 12px',background:annotations[i]?'#f9e2af06':'transparent',cursor:annotations[i]?'pointer':'default'}} onMouseDown={annotations[i]?stop:undefined} onClick={()=>{if(annotations[i])setExpanded(prev=>({...prev,[i]:!prev[i]}))}}>
           <span style={{fontSize:9,color:annotations[i]?'#f9e2af':'#444',width:20,textAlign:'right',marginRight:8,userSelect:'none'}}>{i+1}</span>
           <span style={{fontSize:10,lineHeight:1.7,whiteSpace:'pre',flex:1}}><HighlightLine text={l}/></span>
           {annotations[i]&&<span style={{fontSize:8,color:'#f9e2af',opacity:.5}}>💬</span>}
@@ -265,14 +265,14 @@ function CodeMinimap({b}){
   const visible=12;const mmScale=0.18;
   const stop=e=>e.stopPropagation();
   return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
-    <div style={{display:'flex',alignItems:'center',padding:'5px 12px',borderBottom:'1px solid #ffffff10',gap:6}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'5px 12px',borderBottom:'1px solid #ffffff10',gap:6}}>
       <span style={{fontSize:9,color:'#555'}}>src ›</span>
       <span style={{fontSize:10,color:'#cdd6f4',fontWeight:500}}>server.js</span>
       <span style={{fontSize:8,color:'#555',marginLeft:'auto'}}>{lines.length} lines</span>
     </div>
     <div style={{flex:1,display:'flex',minHeight:0}}>
       {/* Code area */}
-      <div style={{flex:1,overflow:'auto',display:'flex',minWidth:0}} onScroll={e=>{setScroll(Math.round(e.target.scrollTop/16))}} onMouseDown={stop}>
+      <div style={{flex:1,overflow:'auto',display:'flex',minWidth:0}} onScroll={e=>{setScroll(Math.round(e.target.scrollTop/16))}}>
         <div style={{padding:'4px 0',width:28,textAlign:'right',userSelect:'none',borderRight:'1px solid #ffffff08',background:'#16162a',flexShrink:0}}>
           {lines.map((_,i)=><div key={i} style={{fontSize:9,lineHeight:'16px',color:i===9?'#f9e2af':'#444',paddingRight:6}}>{i+1}</div>)}
         </div>
@@ -281,7 +281,7 @@ function CodeMinimap({b}){
         </div>
       </div>
       {/* Minimap */}
-      <div style={{width:44,background:'#16162a',borderLeft:'1px solid #ffffff08',position:'relative',flexShrink:0,overflow:'hidden'}} onMouseDown={stop}>
+      <div style={{width:44,background:'#16162a',borderLeft:'1px solid #ffffff08',position:'relative',flexShrink:0,overflow:'hidden'}}>
         <div style={{position:'absolute',top:scroll*16*mmScale,left:0,right:0,height:visible*16*mmScale,background:'#cba6f720',borderRadius:1}}/>
         {lines.map((l,i)=><div key={i} style={{height:16*mmScale,padding:'0 3px',overflow:'hidden'}}>
           <div style={{height:'100%',display:'flex',gap:1}}>
@@ -290,7 +290,7 @@ function CodeMinimap({b}){
         </div>)}
       </div>
     </div>
-    <div style={{display:'flex',alignItems:'center',padding:'3px 10px',borderTop:'1px solid #ffffff08',gap:6}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'3px 10px',borderTop:'1px solid #ffffff08',gap:6}}>
       <span style={{fontSize:8,color:'#27c93f'}}>●</span>
       <span style={{fontSize:8,color:'#555'}}>Ln 10, Col 1</span>
       <span style={{fontSize:8,color:'#555',marginLeft:'auto'}}>JavaScript</span>
@@ -311,11 +311,11 @@ function AsciiArt({b}){
   };
   const art=render();
   return <div style={{...b,background:'#0c0c0e',borderRadius:10,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono,border:'1px solid #27c93f20'}}>
-    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}}>
       <span style={{fontSize:8,color:'#27c93f',letterSpacing:'.06em'}}>ASCII ART GENERATOR</span>
       <span style={{marginLeft:'auto',fontSize:8,color:'#555'}}>{text.length} chars</span>
     </div>
-    <div style={{padding:'8px 12px',borderBottom:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:8}} onMouseDown={stop}>
+    <div style={{padding:'8px 12px',borderBottom:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:8}}>
       <span style={{fontSize:8,color:'#555'}}>$</span>
       <input value={text} onChange={e=>setText(e.target.value.slice(0,12))} onMouseDown={stop} onKeyDown={e=>e.stopPropagation()} maxLength={12} placeholder="Type here..."
         style={{flex:1,background:'transparent',border:'none',outline:'none',color:'#cdd6f4',fontSize:11,fontFamily:mono,padding:0}}/>
@@ -323,7 +323,7 @@ function AsciiArt({b}){
     <div style={{flex:1,overflow:'auto',padding:'12px 16px',display:'flex',flexDirection:'column',justifyContent:'center'}}>
       {art.map((row,i)=><div key={i} style={{fontSize:8,lineHeight:'10px',color:'#27c93f',whiteSpace:'pre',letterSpacing:1}}>{row}</div>)}
     </div>
-    <div style={{padding:'4px 12px',borderTop:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:6}} onMouseDown={stop}>
+    <div style={{padding:'4px 12px',borderTop:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:6}}>
       <span style={{fontSize:8,color:'#27c93f',opacity:.3}}>●</span>
       <span style={{fontSize:8,color:'#555'}}>Block letters · {art[0].length}×4</span>
     </div>
@@ -350,7 +350,7 @@ function CodeBenchmark({b}){
     },100);
   };
   return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
-    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}} onMouseDown={stop}>
+    <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}}>
       <span style={{fontSize:9,color:'#f9e2af',fontWeight:600}}>⚡</span>
       <span style={{fontSize:10,color:'#cdd6f4',fontWeight:500}}>Benchmark</span>
       <button onClick={race} disabled={running} onMouseDown={stop} style={{marginLeft:'auto',background:running?'#f9e2af':'#f9e2af22',color:running?'#000':'#f9e2af',border:'none',borderRadius:6,padding:'2px 10px',fontSize:9,fontWeight:600,cursor:running?'default':'pointer',fontFamily:mono,transition:'all .2s'}}>
@@ -374,7 +374,7 @@ function CodeBenchmark({b}){
         </div>}
       </div>)}
     </div>
-    {results&&<div style={{padding:'4px 12px',borderTop:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:6}} onMouseDown={stop}>
+    {results&&<div style={{padding:'4px 12px',borderTop:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:6}}>
       <span style={{fontSize:8,color:'#27c93f'}}>●</span>
       <span style={{fontSize:8,color:'#555'}}>Winner: {snippets[results.findIndex(r=>r.winner)]?.name} ({Math.min(...results.map(r=>r.ms))}ms)</span>
       <span style={{fontSize:8,color:'#555',marginLeft:'auto'}}>{(Math.max(...results.map(r=>r.ms))/Math.min(...results.map(r=>r.ms))).toFixed(1)}x diff</span>
