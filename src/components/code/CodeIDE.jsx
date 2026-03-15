@@ -303,6 +303,7 @@ const SHORTCUTS = [
   ['\u2318+K', 'Shortcuts help'],
   ['\u2318+=/\u2318+-', 'Zoom in/out'],
   ['\u2318+0', 'Reset zoom'],
+  ['\u2318+E', 'Recent files'],
   ['Tab (on trigger)', 'Expand snippet'],
   ['Esc', 'Close overlay'],
 ];
@@ -441,6 +442,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const toastTimer = React.useRef(null);
   const showToast = (msg, type = 'info') => {
     setToast({ msg, type });
+    setNotifHistory(prev => [...prev.slice(-20), { msg, type, time: Date.now() }]);
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2000);
   };
@@ -510,6 +512,21 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Editor zoom ---- */
   const [editorZoom, setEditorZoom] = React.useState(1);
+
+  /* ---- Notification history ---- */
+  const [notifHistory, setNotifHistory] = React.useState([]);
+  const [notifOpen, setNotifOpen] = React.useState(false);
+
+  /* ---- Recent files ---- */
+  const [recentFiles, setRecentFiles] = React.useState(['src/main.js']);
+  const [recentOpen, setRecentOpen] = React.useState(false);
+  const recentRef = React.useRef(null);
+
+  /* ---- Collapsed terminal objects ---- */
+  const [expandedLogs, setExpandedLogs] = React.useState(new Set());
+
+  /* ---- Color decorators setting ---- */
+  const [showColorDecorators, setShowColorDecorators] = React.useState(true);
 
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
@@ -843,6 +860,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (!openTabs.includes(path)) setOpenTabs(prev => [...prev, path]);
     setActiveLn(1);
     setCursor({ ln: 1, col: 1 });
+    setRecentFiles(prev => [path, ...prev.filter(p => p !== path)].slice(0, 10));
   };
 
   const closeTab = (path, e) => {
@@ -1079,6 +1097,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTimeout(() => globalSearchRef.current?.focus(), 50); return;
     }
 
+    /* Recent files: Cmd+E */
+    if (e.key === 'e' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault(); setRecentOpen(o => !o);
+      setTimeout(() => recentRef.current?.focus(), 50); return;
+    }
+
     /* Search: Cmd+F */
     if (e.key === 'f' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
       e.preventDefault(); setSearchOpen(true); setShowReplace(false);
@@ -1104,6 +1128,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (cmdOpen) { setCmdOpen(false); return; }
       if (gotoOpen) { setGotoOpen(false); return; }
       if (helpOpen) { setHelpOpen(false); return; }
+      if (recentOpen) { setRecentOpen(false); return; }
+      if (notifOpen) { setNotifOpen(false); return; }
     }
 
     /* Autocomplete navigation */
@@ -1643,6 +1669,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 { label: 'Minimap', val: showMinimap, set: setShowMinimap },
                 { label: 'Bracket Colors', val: showBracketColors, set: setShowBracketColors },
                 { label: 'Indent Rainbow', val: showIndentRainbow, set: setShowIndentRainbow },
+                { label: 'Color Decorators', val: showColorDecorators, set: setShowColorDecorators },
                 { label: 'Auto Save on Run', val: autoSave, set: setAutoSave },
               ].map(opt => (
                 <div key={opt.label}
@@ -1849,6 +1876,37 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   }
                 }}
                 style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+            </div>
+          )}
+
+          {/* Recent files quick open (Cmd+E) */}
+          {recentOpen && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 200 }}>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderBottom: '1px solid #ffffff08' }}>
+                <span style={{ fontSize: 9, color: '#cba6f7', fontWeight: 600 }}>Recent Files</span>
+                <span style={{ fontSize: 8, color: '#555', marginLeft: 8 }}>{'\u2318E'}</span>
+                <span onClick={() => setRecentOpen(false)} style={{ marginLeft: 'auto', fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+              </div>
+              <div style={{ maxHeight: 150, overflow: 'auto' }}>
+                {recentFiles.map((path, i) => (
+                  <div key={path} onClick={() => { openFile(path); setRecentOpen(false); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+                      fontSize: 9, cursor: 'pointer',
+                      color: path === activeFile ? '#cdd6f4' : '#a6adc8',
+                      background: path === activeFile ? '#ffffff08' : 'transparent',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                    onMouseLeave={e => e.currentTarget.style.background = path === activeFile ? '#ffffff08' : 'transparent'}>
+                    <span style={{ fontSize: 6, color: FCOLORS[path.split('/').pop()] || '#555' }}>{'\u25CF'}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{path}</span>
+                    {i === 0 && <span style={{ fontSize: 7, color: '#cba6f7', opacity: .5 }}>current</span>}
+                  </div>
+                ))}
+                {recentFiles.length === 0 && (
+                  <div style={{ fontSize: 8, color: '#555', padding: '8px', textAlign: 'center' }}>No recent files</div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2080,6 +2138,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               pointerEvents: 'none', zIndex: 2,
                             }}>{l[b.col]}</span>
                           ))}
+                          {/* Inline color decorators */}
+                          {showColorDecorators && (() => {
+                            const hexMatches = [];
+                            const rx = /#([0-9a-fA-F]{3,8})\b/g;
+                            let hm;
+                            while ((hm = rx.exec(l)) !== null) hexMatches.push({ col: hm.index, color: hm[0] });
+                            return hexMatches.map((h, hi) => (
+                              <span key={`cd${hi}`} style={{
+                                position: 'absolute', left: (h.col - 1) * charW, top: '50%', transform: 'translateY(-50%)',
+                                width: 6, height: 6, borderRadius: 2, border: '1px solid #ffffff30',
+                                background: h.color, pointerEvents: 'none', zIndex: 2,
+                              }} />
+                            ));
+                          })()}
                           {bracketCol !== undefined && (
                             <span style={{
                               position: 'absolute', left: bracketCol * charW, top: 0,
@@ -2497,15 +2569,31 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 <div ref={termRef} style={{ flex: 1, overflow: 'auto', padding: '4px 10px' }}>
                   {termTab === 'output' ? (<>
                     {output ? (<>
-                      {output.logs.map((l, i) => (
-                        <div key={i} style={{
-                          fontSize: fs(9), lineHeight: Math.round(15 * zf) + 'px',
-                          color: l.t === 'err' ? '#f38ba8' : l.t === 'warn' ? '#f9e2af' : l.t === 'ret' ? '#89b4fa' : l.t === 'dbg' ? '#6c7086' : '#a6adc8',
-                          whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0'
-                        }}>
-                          {l.t === 'err' ? '\u2717 ' : l.t === 'warn' ? '\u26A0 ' : l.t === 'ret' ? '  ' : l.t === 'dbg' ? '\u25E6 ' : '\u276F '}{l.v}
-                        </div>
-                      ))}
+                      {output.logs.map((l, i) => {
+                        // Detect if output is a JSON object/array that can be collapsed
+                        const isExpandable = l.v && (l.v.trim().startsWith('{') || l.v.trim().startsWith('[')) && l.v.length > 60;
+                        const isExpanded = expandedLogs.has(i);
+                        const collapsed = isExpandable && !isExpanded;
+                        const preview = collapsed ? l.v.trim().substring(0, 50) + '...' : l.v;
+                        return (
+                          <div key={i} style={{
+                            fontSize: fs(9), lineHeight: Math.round(15 * zf) + 'px',
+                            color: l.t === 'err' ? '#f38ba8' : l.t === 'warn' ? '#f9e2af' : l.t === 'ret' ? '#89b4fa' : l.t === 'dbg' ? '#6c7086' : '#a6adc8',
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0'
+                          }}>
+                            {isExpandable && (
+                              <span onClick={() => setExpandedLogs(prev => {
+                                const next = new Set(prev);
+                                if (next.has(i)) next.delete(i); else next.add(i);
+                                return next;
+                              })} style={{ cursor: 'pointer', color: '#cba6f7', fontSize: 7, marginRight: 2, userSelect: 'none' }}>
+                                {isExpanded ? '\u25BE' : '\u25B8'}
+                              </span>
+                            )}
+                            {l.t === 'err' ? '\u2717 ' : l.t === 'warn' ? '\u26A0 ' : l.t === 'ret' ? '  ' : l.t === 'dbg' ? '\u25E6 ' : !isExpandable ? '\u276F ' : ''}{preview}
+                          </div>
+                        );
+                      })}
                     </>) : (
                       <div style={{ fontSize: fs(9), color: '#444', padding: '4px 0' }}>
                         {'\u276F'} Run code with <span style={{ color: '#cba6f7' }}>{'\u25B6 Run'}</span> or <span style={{ color: '#cba6f7' }}>{'\u2318+Enter'}</span>
@@ -2629,6 +2717,33 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
             </span>
             <span style={{ fontSize: fs(8), color: '#555' }}>UTF-8</span>
+            <span onClick={() => setNotifOpen(n => !n)} onMouseDown={stop} style={{ position: 'relative' }}>
+              <span style={{ fontSize: fs(8), color: notifHistory.length ? '#cba6f7' : '#555', cursor: 'pointer', opacity: .6 }}
+                title="Notifications">{'\u2709'}{notifHistory.length > 0 ? ` ${notifHistory.length}` : ''}</span>
+              {notifOpen && (
+                <div onMouseDown={stop} style={{
+                  position: 'absolute', bottom: 18, right: 0, width: 200, maxHeight: 150,
+                  background: '#181825', border: '1px solid #ffffff15', borderRadius: 6,
+                  boxShadow: '0 -4px 16px rgba(0,0,0,.5)', overflow: 'auto', zIndex: 25,
+                }}>
+                  <div style={{ padding: '4px 8px', fontSize: 8, color: '#555', fontWeight: 600, borderBottom: '1px solid #ffffff08', display: 'flex', alignItems: 'center' }}>
+                    <span style={{ flex: 1 }}>Notifications</span>
+                    <span onClick={e => { e.stopPropagation(); setNotifHistory([]); }} style={{ color: '#cba6f7', cursor: 'pointer' }}>Clear</span>
+                  </div>
+                  {notifHistory.length === 0 ? (
+                    <div style={{ fontSize: 8, color: '#444', padding: '8px', textAlign: 'center' }}>No notifications</div>
+                  ) : [...notifHistory].reverse().map((n, i) => (
+                    <div key={i} style={{ padding: '2px 8px', fontSize: 8, display: 'flex', alignItems: 'center', gap: 4,
+                      color: n.type === 'success' ? '#27c93f' : n.type === 'warn' ? '#f9e2af' : n.type === 'error' ? '#f38ba8' : '#89b4fa',
+                    }}>
+                      <span style={{ fontSize: 6 }}>{'\u25CF'}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.msg}</span>
+                      <span style={{ fontSize: 7, color: '#444', flexShrink: 0 }}>{new Date(n.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </span>
           </div>
         );
       })()}
