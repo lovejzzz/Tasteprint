@@ -219,6 +219,7 @@ const TP_AC = [
 /* Keyboard shortcuts */
 const SHORTCUTS = [
   ['\u2318+Enter', 'Run code'],
+  ['\u2318+S', 'Save state'],
   ['\u2318+/', 'Toggle comment'],
   ['\u2318+F', 'Find'],
   ['\u2318+H', 'Find & Replace'],
@@ -307,6 +308,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [output, setOutput] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const termRef = React.useRef(null);
+  const [termInput, setTermInput] = React.useState('');
+  const [termHistory, setTermHistory] = React.useState([]);
+  const [termHistIdx, setTermHistIdx] = React.useState(-1);
+  const termInputRef = React.useRef(null);
 
   /* ---- Search state ---- */
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -318,6 +323,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Command palette ---- */
   const [cmdOpen, setCmdOpen] = React.useState(false);
   const [cmdQuery, setCmdQuery] = React.useState('');
+  const [cmdIdx, setCmdIdx] = React.useState(0);
   const cmdRef = React.useRef(null);
 
   /* ---- Autocomplete ---- */
@@ -351,6 +357,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Explorer context menu ---- */
   const [explorerCtx, setExplorerCtx] = React.useState(null);
+  const [renameFile, setRenameFile] = React.useState(null);
+  const [renameName, setRenameName] = React.useState('');
+  const renameRef = React.useRef(null);
 
   /* ---- Selected word occurrences ---- */
   const [selectedWord, setSelectedWord] = React.useState('');
@@ -411,6 +420,45 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       else if (!next.length) { setActiveFile('src/main.js'); return ['src/main.js']; }
       return next;
     });
+  };
+
+  const renameFileFn = (oldPath, newName) => {
+    if (!newName || !editFiles.hasOwnProperty(oldPath) || initFiles[oldPath]) return;
+    const folder = oldPath.substring(0, oldPath.lastIndexOf('/') + 1);
+    const newPath = folder + newName;
+    if (editFiles[newPath] !== undefined) return;
+    setEditFiles(prev => {
+      const next = { ...prev };
+      next[newPath] = next[oldPath];
+      delete next[oldPath];
+      return next;
+    });
+    setOpenTabs(prev => prev.map(t => t === oldPath ? newPath : t));
+    if (activeFile === oldPath) setActiveFile(newPath);
+  };
+
+  const runTermInput = (input) => {
+    if (!input.trim()) return;
+    setTermHistory(prev => [...prev.slice(-50), input]);
+    setTermHistIdx(-1);
+    const logs = [];
+    const fc = {
+      log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
+      error: (...a) => logs.push({ t: 'err', v: a.map(String).join(' ') }),
+      warn: (...a) => logs.push({ t: 'warn', v: a.map(String).join(' ') }),
+      info: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ') }),
+      debug: (...a) => logs.push({ t: 'dbg', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
+      clear: () => { logs.length = 0 },
+      table: (...a) => logs.push({ t: 'log', v: a.map(x => JSON.stringify(x, null, 2)).join(' ') }),
+    };
+    try {
+      const r = new Function('console', 'tp', input)(fc, tp || {});
+      if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ' + input }, ...logs], ms: null, err: null, errLn: null }));
+    } catch (e) {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ' + input }, { t: 'err', v: e.message }], ms: null, err: null, errLn: null }));
+    }
+    setTermInput('');
   };
 
   const file = getFile(activeFile);
@@ -620,6 +668,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     /* Run: Cmd+Enter */
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runCode(); return; }
+
+    /* Save: Cmd+S */
+    if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      tp?.save();
+      setOutput({ logs: [{ t: 'log', v: 'State saved!' }], ms: null, err: null, errLn: null });
+      setTermOpen(true);
+      return;
+    }
 
     /* Search: Cmd+F */
     if (e.key === 'f' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
@@ -850,7 +907,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       <div style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', borderBottom: '1px solid #ffffff10', gap: 6, flexShrink: 0, background: '#181825' }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {[
-            { c: '#ff5f56', title: 'Close IDE', action: () => { const ide = tp?.find('code-block'); if (ide.length) tp.remove(ide[0].id); } },
+            { c: '#ff5f56', title: 'Close IDE', action: () => { const ids = tp?.find('code-block'); if (ids?.length) tp.remove(ids[0]); } },
             { c: '#ffbd2e', title: 'Toggle terminal', action: () => setTermOpen(t => !t) },
             { c: '#27c93f', title: 'Run code', action: () => runCode() },
           ].map((btn, i) => <div key={i} onClick={btn.action} onMouseDown={stop}
@@ -930,7 +987,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       borderLeft: isActive ? '2px solid #cba6f7' : '2px solid transparent',
                     }}>
                     <span style={{ fontSize: 6, color: FCOLORS[f.name] || (f.path.startsWith('user/') ? '#cba6f7' : '#555') }}>{'\u25CF'}</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name}</span>
+                    {renameFile === f.path ? (
+                      <input ref={renameRef} value={renameName} onChange={e => setRenameName(e.target.value)}
+                        spellCheck={false} autoFocus
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => {
+                          e.stopPropagation();
+                          if (e.key === 'Enter' && renameName.trim()) { renameFileFn(f.path, renameName.trim()); setRenameFile(null); }
+                          if (e.key === 'Escape') setRenameFile(null);
+                        }}
+                        onBlur={() => { if (renameName.trim()) renameFileFn(f.path, renameName.trim()); setRenameFile(null); }}
+                        style={{ flex: 1, background: '#1e1e2e', border: '1px solid #cba6f740', borderRadius: 2, padding: '0 3px', fontSize: 8, color: '#cdd6f4', outline: 'none', fontFamily: MONO, minWidth: 0 }} />
+                    ) : (
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name}</span>
+                    )}
                     {isReadonly && <span style={{ fontSize: 7, color: '#555', flexShrink: 0 }}>{'\uD83D\uDD12'}</span>}
                   </div>
                 );
@@ -951,6 +1021,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 Open
               </div>
               {explorerCtx.deletable && <>
+                <div style={{ height: 1, background: '#ffffff08' }} />
+                <div onClick={() => {
+                  const name = explorerCtx.path.split('/').pop();
+                  setRenameFile(explorerCtx.path); setRenameName(name); setExplorerCtx(null);
+                  setTimeout(() => renameRef.current?.focus(), 50);
+                }}
+                  style={{ padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  Rename
+                </div>
                 <div style={{ height: 1, background: '#ffffff08' }} />
                 <div onClick={() => { deleteFile(explorerCtx.path); setExplorerCtx(null); }}
                   style={{ padding: '4px 10px', fontSize: 9, color: '#f38ba8', cursor: 'pointer' }}
@@ -997,7 +1078,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               const isRO = !editFiles.hasOwnProperty(path);
               const isModified = !isRO && editFiles[path] !== initFiles[path];
               return (
-                <div key={path} onClick={() => setActiveFile(path)} onMouseDown={stop}
+                <div key={path} onClick={() => setActiveFile(path)} onMouseDown={e => { stop(e); if (e.button === 1) { e.preventDefault(); closeTab(path, e); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px',
                     fontSize: fs(9), color: isActive ? '#cdd6f4' : '#555',
@@ -1063,20 +1144,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {/* Command palette */}
           {cmdOpen && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 200 }}>
-              <input ref={cmdRef} value={cmdQuery} onChange={e => setCmdQuery(e.target.value)}
+              <input ref={cmdRef} value={cmdQuery} onChange={e => { setCmdQuery(e.target.value); setCmdIdx(0); }}
                 placeholder="Type a command or file..." spellCheck={false}
                 onKeyDown={e => {
                   e.stopPropagation();
                   if (e.key === 'Escape') { setCmdOpen(false); taRef.current?.focus(); }
-                  if (e.key === 'Enter' && commands.length) { runCommand(commands[0].key); }
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setCmdIdx(i => Math.min(i + 1, Math.min(commands.length, 8) - 1)); }
+                  if (e.key === 'ArrowUp') { e.preventDefault(); setCmdIdx(i => Math.max(i - 1, 0)); }
+                  if (e.key === 'Enter' && commands.length) { runCommand(commands[Math.min(cmdIdx, commands.length - 1)].key); }
                 }}
                 style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid #ffffff08', padding: '6px 10px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
               <div style={{ maxHeight: 150, overflow: 'auto' }}>
-                {commands.slice(0, 8).map(c => (
+                {commands.slice(0, 8).map((c, ci) => (
                   <div key={c.key} onClick={() => runCommand(c.key)}
-                    style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer', gap: 6 }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    onMouseEnter={() => setCmdIdx(ci)}
+                    style={{
+                      display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9,
+                      color: ci === cmdIdx ? '#cdd6f4' : '#a6adc8', cursor: 'pointer', gap: 6,
+                      background: ci === cmdIdx ? '#ffffff10' : 'transparent',
+                    }}>
                     <span style={{ flex: 1 }}>{c.label}</span>
                     {c.hint && <span style={{ fontSize: 8, color: '#555' }}>{c.hint}</span>}
                   </div>
@@ -1328,14 +1414,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
               {/* Minimap scrollbar */}
               {lines.length > 20 && (
-                <div style={{
-                  position: 'absolute', top: 0, right: 0, width: 8, bottom: 0,
-                  background: '#ffffff04', zIndex: 2
-                }}>
+                <div
+                  onClick={e => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const pct = (e.clientY - rect.top) / rect.height;
+                    const totalH = lines.length * Math.round(16 * fsize);
+                    if (taRef.current) taRef.current.scrollTop = pct * totalH;
+                  }}
+                  style={{
+                    position: 'absolute', top: 0, right: 0, width: 8, bottom: 0,
+                    background: '#ffffff04', zIndex: 2, cursor: 'pointer'
+                  }}>
                   <div style={{
                     position: 'absolute', top: `${(scrollTop / (lines.length * Math.round(16 * fsize))) * 100}%`,
                     width: '100%', height: `${Math.max(10, (100 / lines.length) * 20)}%`,
-                    background: '#cba6f720', borderRadius: 4, minHeight: 8
+                    background: '#cba6f720', borderRadius: 4, minHeight: 8,
+                    pointerEvents: 'none'
                   }} />
                 </div>
               )}
@@ -1452,6 +1546,27 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       {'\u276F'} Run code with <span style={{ color: '#cba6f7' }}>{'\u25B6 Run'}</span> or <span style={{ color: '#cba6f7' }}>{'\u2318+Enter'}</span>
                     </div>
                   )}
+                </div>
+                {/* REPL input */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px 4px', borderTop: '1px solid #ffffff06', gap: 4, flexShrink: 0 }}>
+                  <span style={{ fontSize: fs(9), color: '#cba6f7', flexShrink: 0 }}>{'\u276F'}</span>
+                  <input ref={termInputRef} value={termInput}
+                    onChange={e => setTermInput(e.target.value)}
+                    placeholder="tp.shapes()..."
+                    spellCheck={false}
+                    onMouseDown={stop}
+                    onKeyDown={e => {
+                      e.stopPropagation();
+                      if (e.key === 'Enter' && termInput.trim()) { runTermInput(termInput); }
+                      if (e.key === 'ArrowUp') { e.preventDefault(); if (termHistory.length) { const idx = termHistIdx < 0 ? termHistory.length - 1 : Math.max(0, termHistIdx - 1); setTermHistIdx(idx); setTermInput(termHistory[idx]); } }
+                      if (e.key === 'ArrowDown') { e.preventDefault(); if (termHistIdx >= 0) { const idx = termHistIdx + 1; if (idx >= termHistory.length) { setTermHistIdx(-1); setTermInput(''); } else { setTermHistIdx(idx); setTermInput(termHistory[idx]); } } }
+                      if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
+                    }}
+                    style={{
+                      flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                      fontSize: fs(9), color: '#cdd6f4', fontFamily: MONO, padding: '2px 0',
+                      caretColor: '#cba6f7'
+                    }} />
                 </div>
               </div>
             )}
