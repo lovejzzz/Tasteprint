@@ -50,8 +50,10 @@ const FILES_DEFAULT=[
   {name:'test.js',code:"// Quick test\nconst assert = (v, msg) => {\n  if (!v) throw new Error('FAIL: ' + msg);\n  console.log('✓ ' + msg);\n};\n\nassert(1 + 1 === 2, 'math works');\nassert(typeof '' === 'string', 'string type');\nassert([1,2,3].length === 3, 'array length');\nconsole.log('All tests passed!');"},
 ];
 const PAIRS={'(':')','[':']','{':'}','"':'"',"'":"'",'`':'`'};
-function CodeIDE({b,p}){
+function CodeIDE({b,p,fsize=1}){
   const mono="'JetBrains Mono',monospace";
+  const fs=n=>Math.round(n*fsize);
+  const lh=Math.round(16*fsize)+'px';
   const [files,setFiles]=React.useState(()=>FILES_DEFAULT.map(f=>({...f})));
   const [tab,setTab]=React.useState(0);
   const [out,setOut]=React.useState(null);
@@ -137,22 +139,22 @@ function CodeIDE({b,p}){
     </div>
     {/* File tabs */}
     <div style={{display:'flex',borderBottom:'1px solid #ffffff08',background:'#16162a'}}>
-      {files.map((f,i)=><div key={i} onClick={()=>setTab(i)} onMouseDown={stop} style={{padding:'4px 12px',fontSize:9,color:i===tab?'#cdd6f4':'#555',background:i===tab?'#1a1a2e':'transparent',cursor:'pointer',borderRight:'1px solid #ffffff06',borderBottom:i===tab?'1px solid #1a1a2e':'1px solid transparent',marginBottom:-1,position:'relative'}}>{f.name}{i===tab&&<div style={{position:'absolute',top:0,left:0,right:0,height:1,background:'#cba6f7'}}/>}</div>)}
+      {files.map((f,i)=><div key={i} onClick={()=>setTab(i)} onMouseDown={stop} style={{padding:'4px 12px',fontSize:fs(9),color:i===tab?'#cdd6f4':'#555',background:i===tab?'#1a1a2e':'transparent',cursor:'pointer',borderRight:'1px solid #ffffff06',borderBottom:i===tab?'1px solid #1a1a2e':'1px solid transparent',marginBottom:-1,position:'relative'}}>{f.name}{i===tab&&<div style={{position:'absolute',top:0,left:0,right:0,height:1,background:'#cba6f7'}}/>}</div>)}
     </div>
     <div style={{flex:1,display:'flex',minHeight:0}}>
       {/* Editor pane */}
       <div style={{flex:1,display:'flex',minWidth:0,overflow:'hidden',borderRight:out?'1px solid #ffffff10':'none',position:'relative'}}>
         <div style={{padding:'8px 0',width:32,textAlign:'right',userSelect:'none',borderRight:'1px solid #ffffff08',background:'#16162a',flexShrink:0,overflow:'hidden'}}>
-          {lines.map((_,i)=><div key={i} style={{fontSize:9,lineHeight:'16px',color:i+1===activeLn?'#cdd6f4':out?.errLn===i+1?'#f38ba8':'#444',paddingRight:6,background:i+1===activeLn?'#ffffff06':out?.errLn===i+1?'#f38ba810':'transparent'}}>{i+1}</div>)}
+          {lines.map((_,i)=><div key={i} style={{fontSize:fs(9),lineHeight:lh,color:i+1===activeLn?'#cdd6f4':out?.errLn===i+1?'#f38ba8':'#444',paddingRight:6,background:i+1===activeLn?'#ffffff06':out?.errLn===i+1?'#f38ba810':'transparent'}}>{i+1}</div>)}
         </div>
         {/* Syntax highlight overlay */}
         <div style={{position:'absolute',left:33,top:0,right:0,bottom:0,padding:8,pointerEvents:'none',overflow:'hidden'}}>
-          {lines.map((l,i)=><div key={i} style={{fontSize:10,lineHeight:'16px',whiteSpace:'pre',height:16,background:i+1===activeLn?'#ffffff04':out?.errLn===i+1?'#f38ba808':'transparent',marginLeft:0}}><HighlightLine text={l}/></div>)}
+          {lines.map((l,i)=><div key={i} style={{fontSize:fs(10),lineHeight:lh,whiteSpace:'pre',height:Math.round(16*fsize),background:i+1===activeLn?'#ffffff04':out?.errLn===i+1?'#f38ba808':'transparent',marginLeft:0}}><HighlightLine text={l}/></div>)}
         </div>
         <textarea ref={taRef} value={code} onChange={e=>{setCode(e.target.value);updateCursor(e.target)}}
           onMouseDown={stop} onClick={e=>updateCursor(e.target)} onKeyUp={e=>updateCursor(e.target)}
           onKeyDown={handleKey}
-          spellCheck={false} style={{flex:1,background:'transparent',color:'transparent',caretColor:'#cba6f7',border:'none',outline:'none',resize:'none',padding:8,fontSize:10,lineHeight:'16px',fontFamily:mono,tabSize:2,whiteSpace:'pre',overflowX:'auto',minWidth:0,position:'relative',zIndex:1}}/>
+          spellCheck={false} style={{flex:1,background:'transparent',color:'transparent',caretColor:'#cba6f7',border:'none',outline:'none',resize:'none',padding:8,fontSize:fs(10),lineHeight:lh,fontFamily:mono,tabSize:2,whiteSpace:'pre',overflowX:'auto',minWidth:0,position:'relative',zIndex:1}}/>
       </div>
       {/* Output pane */}
       {out&&<div style={{flex:1,background:'#12122a',overflow:'auto',padding:8,display:'flex',flexDirection:'column',minWidth:0}}>
@@ -163,26 +165,26 @@ function CodeIDE({b,p}){
           <span onClick={()=>setOut(null)} onMouseDown={stop} style={{marginLeft:'auto',fontSize:8,color:'#555',cursor:'pointer'}}>✕</span>
         </div>
         <div style={{flex:1,overflow:'auto'}}>
-          {out.logs.map((l,i)=><div key={i} style={{fontSize:9,lineHeight:'15px',color:l.t==='err'?'#f38ba8':l.t==='warn'?'#f9e2af':l.t==='ret'?'#89b4fa':'#a6adc8',whiteSpace:'pre-wrap',wordBreak:'break-all',padding:'1px 0'}}>{l.t==='err'?'✗ ':l.t==='warn'?'⚠ ':l.t==='ret'?'  ':' '}{l.v}</div>)}
-          {out.err&&<div style={{fontSize:9,color:'#f38ba8',marginTop:4,padding:'4px 6px',background:'#f38ba810',borderRadius:4,borderLeft:'2px solid #f38ba8'}}>
+          {out.logs.map((l,i)=><div key={i} style={{fontSize:fs(9),lineHeight:Math.round(15*fsize)+'px',color:l.t==='err'?'#f38ba8':l.t==='warn'?'#f9e2af':l.t==='ret'?'#89b4fa':'#a6adc8',whiteSpace:'pre-wrap',wordBreak:'break-all',padding:'1px 0'}}>{l.t==='err'?'✗ ':l.t==='warn'?'⚠ ':l.t==='ret'?'  ':' '}{l.v}</div>)}
+          {out.err&&<div style={{fontSize:fs(9),color:'#f38ba8',marginTop:4,padding:'4px 6px',background:'#f38ba810',borderRadius:4,borderLeft:'2px solid #f38ba8'}}>
             {out.errLn&&<span style={{opacity:.5,marginRight:4}}>Ln {out.errLn}:</span>}{out.err}
           </div>}
         </div>
       </div>}
     </div>
     <div style={{display:'flex',alignItems:'center',padding:'3px 10px',borderTop:'1px solid #ffffff08',gap:8}}>
-      <span style={{fontSize:8,color:out?.err?'#f38ba8':'#27c93f'}}>●</span>
-      <span style={{fontSize:8,color:'#555'}}>Ln {cursor.ln}, Col {cursor.col}</span>
-      <span style={{fontSize:8,color:'#555'}}>{lines.length} lines</span>
-      <span style={{fontSize:8,color:'#555',marginLeft:'auto'}}>JavaScript</span>
-      <span style={{fontSize:8,color:'#555'}}>UTF-8</span>
+      <span style={{fontSize:fs(8),color:out?.err?'#f38ba8':'#27c93f'}}>●</span>
+      <span style={{fontSize:fs(8),color:'#555'}}>Ln {cursor.ln}, Col {cursor.col}</span>
+      <span style={{fontSize:fs(8),color:'#555'}}>{lines.length} lines</span>
+      <span style={{fontSize:fs(8),color:'#555',marginLeft:'auto'}}>JavaScript</span>
+      <span style={{fontSize:fs(8),color:'#555'}}>UTF-8</span>
     </div>
   </div>;
 }
 
 /* ---- REPL / NOTEBOOK (Jupyter-style cells) ---- */
-function CodeNotebook({b}){
-  const mono="'JetBrains Mono',monospace";
+function CodeNotebook({b,fsize=1}){
+  const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const [cells,setCells]=React.useState([
     {code:'const greet = name => `Hello, ${name}!`;\ngreet("World");',out:null},
     {code:'// Math operations\nconst nums = [1,2,3,4,5];\nnums.reduce((a,b) => a+b, 0);',out:null},
@@ -213,11 +215,11 @@ function CodeNotebook({b}){
           {cells.length>1&&<button onClick={()=>delCell(idx)} onMouseDown={stop} style={{background:'transparent',color:'#555',border:'none',fontSize:9,cursor:'pointer',fontFamily:mono}}>✕</button>}
         </div>
         <textarea value={c.code} onChange={e=>updateCell(idx,e.target.value)} onMouseDown={stop} onKeyDown={e=>{e.stopPropagation();if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();runCell(idx);}if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart;updateCell(idx,c.code.substring(0,s)+'  '+c.code.substring(e.target.selectionEnd));setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2},0);}}}
-          spellCheck={false} style={{width:'100%',background:'#1a1a2e',color:'#cdd6f4',border:'none',outline:'none',resize:'none',padding:'6px 10px',fontSize:9,lineHeight:'15px',fontFamily:mono,whiteSpace:'pre',minHeight:36}}/>
+          spellCheck={false} style={{width:'100%',background:'#1a1a2e',color:'#cdd6f4',border:'none',outline:'none',resize:'none',padding:'6px 10px',fontSize:cfs(9),lineHeight:Math.round(15*fsize)+'px',fontFamily:mono,whiteSpace:'pre',minHeight:36}}/>
         {c.out&&<div style={{padding:'4px 10px',background:'#12122a',borderTop:'1px solid #ffffff06'}}>
           <span style={{fontSize:8,color:'#555'}}>Out [{idx+1}]:</span>
-          {c.out.logs.map((l,i)=><div key={i} style={{fontSize:9,lineHeight:'14px',color:l.startsWith('✗')?'#f38ba8':l.startsWith('←')?'#89b4fa':'#a6adc8',whiteSpace:'pre-wrap'}}>{l}</div>)}
-          {c.out.err&&<div style={{fontSize:9,color:'#f38ba8'}}>Error: {c.out.err}</div>}
+          {c.out.logs.map((l,i)=><div key={i} style={{fontSize:cfs(9),lineHeight:Math.round(14*fsize)+'px',color:l.startsWith('✗')?'#f38ba8':l.startsWith('←')?'#89b4fa':'#a6adc8',whiteSpace:'pre-wrap'}}>{l}</div>)}
+          {c.out.err&&<div style={{fontSize:cfs(9),color:'#f38ba8'}}>Error: {c.out.err}</div>}
         </div>}
       </div>)}
       <button onClick={addCell} onMouseDown={stop} style={{alignSelf:'center',background:'#ffffff08',color:'#555',border:'1px dashed #ffffff15',borderRadius:6,padding:'4px 16px',fontSize:9,cursor:'pointer',fontFamily:mono}}>+ Add Cell</button>
@@ -226,8 +228,8 @@ function CodeNotebook({b}){
 }
 
 /* ---- CODE REVIEW (annotations) ---- */
-function CodeReview({b}){
-  const mono="'JetBrains Mono',monospace";
+function CodeReview({b,fsize=1}){
+  const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const code=["async function fetchUser(id) {","  const res = await fetch(`/api/users/${id}`);","  const data = await res.json();","  return data;","}","","export default fetchUser;"];
   const annotations={2:{user:'A',color:'#f9e2af',text:'Should we handle non-200 status codes here?'},4:{user:'B',color:'#89b4fa',text:'Consider adding TypeScript return type'},};
   const [expanded,setExpanded]=React.useState({2:true,4:false});
@@ -244,8 +246,8 @@ function CodeReview({b}){
     <div style={{flex:1,overflow:'auto',padding:'4px 0'}}>
       {code.map((l,i)=><React.Fragment key={i}>
         <div style={{display:'flex',padding:'1px 12px',background:annotations[i]?'#f9e2af06':'transparent',cursor:annotations[i]?'pointer':'default'}} onMouseDown={annotations[i]?stop:undefined} onClick={()=>{if(annotations[i])setExpanded(prev=>({...prev,[i]:!prev[i]}))}}>
-          <span style={{fontSize:9,color:annotations[i]?'#f9e2af':'#444',width:20,textAlign:'right',marginRight:8,userSelect:'none'}}>{i+1}</span>
-          <span style={{fontSize:10,lineHeight:1.7,whiteSpace:'pre',flex:1}}><HighlightLine text={l}/></span>
+          <span style={{fontSize:cfs(9),color:annotations[i]?'#f9e2af':'#444',width:20,textAlign:'right',marginRight:8,userSelect:'none'}}>{i+1}</span>
+          <span style={{fontSize:cfs(10),lineHeight:1.7,whiteSpace:'pre',flex:1}}><HighlightLine text={l}/></span>
           {annotations[i]&&<span style={{fontSize:8,color:'#f9e2af',opacity:.5}}>💬</span>}
         </div>
         {annotations[i]&&expanded[i]&&<div style={{margin:'2px 12px 4px 40px',padding:'6px 10px',background:'#16162a',borderRadius:6,border:'1px solid #ffffff10',display:'flex',gap:8,alignItems:'flex-start'}}>
@@ -258,8 +260,8 @@ function CodeReview({b}){
 }
 
 /* ---- MINIMAP (VS Code style) ---- */
-function CodeMinimap({b}){
-  const mono="'JetBrains Mono',monospace";
+function CodeMinimap({b,fsize=1}){
+  const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const code="import express from 'express';\nimport cors from 'cors';\nimport { db } from './database';\n\nconst app = express();\napp.use(cors());\napp.use(express.json());\n\n// Routes\napp.get('/api/users', async (req, res) => {\n  const users = await db.query('SELECT * FROM users');\n  res.json({ data: users, count: users.length });\n});\n\napp.post('/api/users', async (req, res) => {\n  const { name, email } = req.body;\n  const user = await db.insert('users', { name, email });\n  res.status(201).json(user);\n});\n\napp.delete('/api/users/:id', async (req, res) => {\n  await db.delete('users', req.params.id);\n  res.status(204).end();\n});\n\n// Error handler\napp.use((err, req, res, next) => {\n  console.error(err.stack);\n  res.status(500).json({ error: 'Internal server error' });\n});\n\napp.listen(3000, () => {\n  console.log('Server running on :3000');\n});";
   const lines=code.split('\n');
   const [scroll,setScroll]=React.useState(0);
@@ -275,10 +277,10 @@ function CodeMinimap({b}){
       {/* Code area */}
       <div style={{flex:1,overflow:'auto',display:'flex',minWidth:0}} onScroll={e=>{setScroll(Math.round(e.target.scrollTop/16))}}>
         <div style={{padding:'4px 0',width:28,textAlign:'right',userSelect:'none',borderRight:'1px solid #ffffff08',background:'#16162a',flexShrink:0}}>
-          {lines.map((_,i)=><div key={i} style={{fontSize:9,lineHeight:'16px',color:i===9?'#f9e2af':'#444',paddingRight:6}}>{i+1}</div>)}
+          {lines.map((_,i)=><div key={i} style={{fontSize:cfs(9),lineHeight:Math.round(16*fsize)+'px',color:i===9?'#f9e2af':'#444',paddingRight:6}}>{i+1}</div>)}
         </div>
         <div style={{padding:'4px 8px',minWidth:0}}>
-          {lines.map((l,i)=><div key={i} style={{fontSize:10,lineHeight:'16px',whiteSpace:'pre',background:i===9?'#f9e2af08':'transparent'}}><HighlightLine text={l}/></div>)}
+          {lines.map((l,i)=><div key={i} style={{fontSize:cfs(10),lineHeight:Math.round(16*fsize)+'px',whiteSpace:'pre',background:i===9?'#f9e2af08':'transparent'}}><HighlightLine text={l}/></div>)}
         </div>
       </div>
       {/* Minimap */}
@@ -300,8 +302,8 @@ function CodeMinimap({b}){
 }
 
 /* ---- ASCII ART GENERATOR ---- */
-function AsciiArt({b}){
-  const mono="'JetBrains Mono',monospace";
+function AsciiArt({b,fsize=1}){
+  const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const [text,setText]=React.useState('CODE');
   const stop=e=>e.stopPropagation();
   const CHARS={A:['  ▄▄  ','▐▌ ▐▌','▐▀▀▀▌','▐▌ ▐▌'],B:['▐▀▀▄ ','▐▀▀▄ ','▐▄▄▀ ','     '],C:['▄▀▀▀ ','▐▌   ','▀▀▀▀ ','     '],D:['▐▀▀▄ ','▐▌ ▐▌','▐▄▄▀ ','     '],E:['▐▀▀▀ ','▐▀▀  ','▐▄▄▄ ','     '],F:['▐▀▀▀ ','▐▀▀  ','▐▌   ','     '],G:['▄▀▀▀ ','▐▌ ▀▄','▀▀▀▀ ','     '],H:['▐▌ ▐▌','▐▀▀▀▌','▐▌ ▐▌','     '],I:['▐▀▀▌','  █ ','▐▄▄▌','    '],J:['  ▐▌','  ▐▌','▀▀▀ ','    '],K:['▐▌▄▀ ','▐▀▄  ','▐▌ ▀▄','     '],L:['▐▌   ','▐▌   ','▐▄▄▄ ','     '],M:['▐▀▄▀▌','▐▌▀▐▌','▐▌ ▐▌','     '],N:['▐▀▄ ▌','▐▌▀▄▌','▐▌ ▀▌','     '],O:['▄▀▀▄ ','▐▌ ▐▌','▀▄▄▀ ','     '],P:['▐▀▀▄ ','▐▀▀  ','▐▌   ','     '],Q:['▄▀▀▄ ','▐▌ ▐▌','▀▄▄▀▄','     '],R:['▐▀▀▄ ','▐▀▀▄ ','▐▌ ▐▌','     '],S:['▄▀▀▀ ',' ▀▀▄ ','▄▄▄▀ ','     '],T:['▀▀█▀▀','  █  ','  █  ','     '],U:['▐▌ ▐▌','▐▌ ▐▌','▀▄▄▀ ','     '],V:['▐▌ ▐▌','▐▌ ▐▌',' ▀▀  ','     '],W:['▐▌ ▐▌','▐▌▄▐▌','▐▀ ▀▌','     '],X:['▐▌ ▐▌',' ▀▄▀ ','▐▌ ▐▌','     '],Y:['▐▌ ▐▌',' ▀▄▀ ','  █  ','     '],Z:['▀▀▀▐▌',' ▄▀  ','▐▌▄▄▄','     '],' ':['   ','   ','   ','   '],'!':['█','█','▄','  ']};
@@ -322,7 +324,7 @@ function AsciiArt({b}){
         style={{flex:1,background:'transparent',border:'none',outline:'none',color:'#cdd6f4',fontSize:11,fontFamily:mono,padding:0}}/>
     </div>
     <div style={{flex:1,overflow:'auto',padding:'12px 16px',display:'flex',flexDirection:'column',justifyContent:'center'}}>
-      {art.map((row,i)=><div key={i} style={{fontSize:8,lineHeight:'10px',color:'#27c93f',whiteSpace:'pre',letterSpacing:1}}>{row}</div>)}
+      {art.map((row,i)=><div key={i} style={{fontSize:cfs(8),lineHeight:Math.round(10*fsize)+'px',color:'#27c93f',whiteSpace:'pre',letterSpacing:1}}>{row}</div>)}
     </div>
     <div style={{padding:'4px 12px',borderTop:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:6}}>
       <span style={{fontSize:8,color:'#27c93f',opacity:.3}}>●</span>
@@ -332,8 +334,8 @@ function AsciiArt({b}){
 }
 
 /* ---- BENCHMARK RACER ---- */
-function CodeBenchmark({b}){
-  const mono="'JetBrains Mono',monospace";
+function CodeBenchmark({b,fsize=1}){
+  const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const [running,setRunning]=React.useState(false);
   const [results,setResults]=React.useState(null);
   const snippets=[
@@ -366,7 +368,7 @@ function CodeBenchmark({b}){
           {results&&results[i].winner&&<span style={{marginLeft:'auto',fontSize:8,color:'#27c93f',fontWeight:600}}>🏆 WINNER</span>}
           {results&&!results[i].winner&&<span style={{marginLeft:'auto',fontSize:8,color:'#f38ba8',opacity:.6}}>slower</span>}
         </div>
-        <div style={{padding:'6px 10px',fontSize:9,color:'#a6adc8',whiteSpace:'pre',lineHeight:1.6}}><HighlightLine text={s.code}/></div>
+        <div style={{padding:'6px 10px',fontSize:cfs(9),color:'#a6adc8',whiteSpace:'pre',lineHeight:1.6}}><HighlightLine text={s.code}/></div>
         {results&&<div style={{padding:'4px 10px 8px',display:'flex',alignItems:'center',gap:8}}>
           <div style={{flex:1,height:6,background:'#ffffff08',borderRadius:3,overflow:'hidden'}}>
             <div style={{width:`${results[i].pct}%`,height:'100%',background:results[i].winner?'#27c93f':'#f38ba8',borderRadius:3,transition:'width .8s cubic-bezier(0.22,1,0.36,1)'}}/>
@@ -384,8 +386,8 @@ function CodeBenchmark({b}){
 }
 
 /* ---- TYPEWRITER (auto-typing code) ---- */
-function CodeTypewriter({b}){
-  const mono="'JetBrains Mono',monospace";
+function CodeTypewriter({b,fsize=1}){
+  const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const full="import { useState } from 'react';\n\nfunction Counter() {\n  const [n, set] = useState(0);\n  return (\n    <button onClick={() => set(n+1)}>\n      Clicked {n} times\n    </button>\n  );\n}";
   const [pos,setPos]=React.useState(0);
   React.useEffect(()=>{
@@ -401,9 +403,9 @@ function CodeTypewriter({b}){
       <span style={{marginLeft:'auto',fontSize:8,color:'#555'}}>{done?'✓ done':'typing...'}</span>
     </div>
     <div style={{flex:1,overflow:'hidden'}}>
-      {vLines.map((l,i)=><div key={i} style={{display:'flex',gap:12,height:16}}>
-        <span style={{fontSize:10,color:'#555',width:16,textAlign:'right',userSelect:'none'}}>{i+1}</span>
-        <span style={{fontSize:10,color:hi(l),lineHeight:1.7,whiteSpace:'pre'}}>{l}{i===vLines.length-1&&!done?'▌':''}</span>
+      {vLines.map((l,i)=><div key={i} style={{display:'flex',gap:12,height:Math.round(16*fsize)}}>
+        <span style={{fontSize:cfs(10),color:'#555',width:16,textAlign:'right',userSelect:'none'}}>{i+1}</span>
+        <span style={{fontSize:cfs(10),color:hi(l),lineHeight:1.7,whiteSpace:'pre'}}>{l}{i===vLines.length-1&&!done?'▌':''}</span>
       </div>)}
     </div>
     {done&&<div style={{marginTop:8,padding:'4px 8px',background:'#27c93f15',borderRadius:6,display:'flex',alignItems:'center',gap:6,animation:'tp-slidein .3s ease-out'}}>
@@ -890,35 +892,36 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
   if(type==="code-block"){
     const lines=["const app = express();","app.get('/api', (req, res) => {","  res.json({ status: 'ok' });","});"];
     const mono="'JetBrains Mono',monospace";
+    const cfs=n=>Math.round(n*fsize);
     /* v0 Dark — real syntax highlighting */
-    if(v===0)return <div style={{...b,background:"#1e1e2e",borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",gap:6,marginBottom:10}}>{["#ff5f56","#ffbd2e","#27c93f"].map((c,i)=><div key={i} style={{width:8,height:8,borderRadius:999,background:c,opacity:.7}}/>)}</div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:12}}><span style={{fontSize:10,color:"#555",width:16,textAlign:"right",userSelect:"none"}}>{i+1}</span><span style={{fontSize:10,lineHeight:1.7,whiteSpace:"pre"}}><HighlightLine text={l}/></span></div>)}</div>;
+    if(v===0)return <div style={{...b,background:"#1e1e2e",borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",gap:6,marginBottom:10}}>{["#ff5f56","#ffbd2e","#27c93f"].map((c,i)=><div key={i} style={{width:8,height:8,borderRadius:999,background:c,opacity:.7}}/>)}</div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:12}}><span style={{fontSize:cfs(10),color:"#555",width:16,textAlign:"right",userSelect:"none"}}>{i+1}</span><span style={{fontSize:cfs(10),lineHeight:1.7,whiteSpace:"pre"}}><HighlightLine text={l}/></span></div>)}</div>;
     /* v1 Light — real syntax highlighting */
     if(v===1){const LTC={kw:'#7c3aed',bi:'#b45309',st:'#059669',nu:'#c2410c',cm:'#9ca3af',op:'#6b7280',id:'#1f2937',tx:'#1f2937'};
-    return <div style={{...b,background:p.card,borderRadius:10,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"6px 12px",borderBottom:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:8}}><T k="file" s={{fontSize:10,fontWeight:500,color:p.tx}}>server.js</T><span style={{marginLeft:"auto",fontSize:9,color:p.mu,opacity:.4}}>JavaScript</span></div><div style={{padding:12,fontFamily:mono}}>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:12}}><span style={{fontSize:10,color:p.mu,opacity:.3,width:16,textAlign:"right"}}>{i+1}</span><span style={{fontSize:10,lineHeight:1.7,whiteSpace:"pre"}}>{tokenize(l).map((t,j)=><span key={j} style={{color:LTC[t.c]||p.tx}}>{t.v}</span>)}</span></div>)}</div></div>;}
+    return <div style={{...b,background:p.card,borderRadius:10,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"6px 12px",borderBottom:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:8}}><T k="file" s={{fontSize:cfs(10),fontWeight:500,color:p.tx}}>server.js</T><span style={{marginLeft:"auto",fontSize:cfs(9),color:p.mu,opacity:.4}}>JavaScript</span></div><div style={{padding:12,fontFamily:mono}}>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:12}}><span style={{fontSize:cfs(10),color:p.mu,opacity:.3,width:16,textAlign:"right"}}>{i+1}</span><span style={{fontSize:cfs(10),lineHeight:1.7,whiteSpace:"pre"}}>{tokenize(l).map((t,j)=><span key={j} style={{color:LTC[t.c]||p.tx}}>{t.v}</span>)}</span></div>)}</div></div>;}
     /* v2 Terminal — real syntax highlighting */
     if(v===2){const TTC={kw:p.ac,bi:p.ac,st:'#4CAF50',nu:'#fab387',cm:'#555',op:'#666',id:'#888',tx:'#888'};
-    return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><T k="file" s={{fontSize:9,color:p.ac,letterSpacing:"0.06em"}}>SERVER.JS</T><span style={{fontSize:8,color:"#555"}}>UTF-8 · LF</span></div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:10}}><span style={{fontSize:9,color:p.ac,opacity:.2,width:14,textAlign:"right"}}>{i+1}</span><span style={{fontSize:9,lineHeight:1.8,whiteSpace:"pre"}}>{tokenize(l).map((t,j)=><span key={j} style={{color:TTC[t.c]||'#888'}}>{t.v}</span>)}</span></div>)}<div style={{marginTop:6,display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:8,color:p.ac,opacity:.4}}>$</span><span style={{borderRight:`2px solid ${p.ac}`,animation:"tp-blink 1s step-end infinite"}}>&nbsp;</span></div></div>;}
+    return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><T k="file" s={{fontSize:cfs(9),color:p.ac,letterSpacing:"0.06em"}}>SERVER.JS</T><span style={{fontSize:cfs(8),color:"#555"}}>UTF-8 · LF</span></div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:10}}><span style={{fontSize:cfs(9),color:p.ac,opacity:.2,width:14,textAlign:"right"}}>{i+1}</span><span style={{fontSize:cfs(9),lineHeight:1.8,whiteSpace:"pre"}}>{tokenize(l).map((t,j)=><span key={j} style={{color:TTC[t.c]||'#888'}}>{t.v}</span>)}</span></div>)}<div style={{marginTop:6,display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:cfs(8),color:p.ac,opacity:.4}}>$</span><span style={{borderRight:`2px solid ${p.ac}`,animation:"tp-blink 1s step-end infinite"}}>&nbsp;</span></div></div>;}
     /* v3 Live IDE */
-    if(v===3)return <CodeIDE b={b} p={p}/>;
+    if(v===3)return <CodeIDE b={b} p={p} fsize={fsize}/>;
     /* v4 Typewriter */
-    if(v===4)return <CodeTypewriter b={b}/>;
+    if(v===4)return <CodeTypewriter b={b} fsize={fsize}/>;
     /* v5 Diff */
-    if(v===6)return <CodeNotebook b={b}/>;
-    if(v===7)return <CodeReview b={b}/>;
-    if(v===8)return <CodeMinimap b={b}/>;
-    if(v===9)return <AsciiArt b={b}/>;
-    if(v===10)return <CodeBenchmark b={b}/>;
+    if(v===6)return <CodeNotebook b={b} fsize={fsize}/>;
+    if(v===7)return <CodeReview b={b} fsize={fsize}/>;
+    if(v===8)return <CodeMinimap b={b} fsize={fsize}/>;
+    if(v===9)return <AsciiArt b={b} fsize={fsize}/>;
+    if(v===10)return <CodeBenchmark b={b} fsize={fsize}/>;
     const diff=[{m:'ctx',n:1,t:'  const config = {'},{m:'del',n:2,t:'-   timeout: 3000,'},{m:'del',n:3,t:'-   debug: false,'},{m:'add',n:0,t:'+   timeout: 5000,'},{m:'add',n:0,t:'+   retries: 3,'},{m:'add',n:0,t:'+   debug: true,'},{m:'ctx',n:4,t:'    verbose: true'},{m:'ctx',n:5,t:'  };'}];
     return <div style={{...b,background:'#1e1e2e',borderRadius:12,overflow:'hidden',display:'flex',flexDirection:'column',fontFamily:mono}}>
       <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:8}}>
-        <span style={{fontSize:10,color:'#f38ba8',fontWeight:500}}>config.js</span>
-        <span style={{marginLeft:'auto',fontSize:8,color:'#a6e3a1'}}>+3</span>
-        <span style={{fontSize:8,color:'#f38ba8'}}>−2</span>
+        <span style={{fontSize:cfs(10),color:'#f38ba8',fontWeight:500}}>config.js</span>
+        <span style={{marginLeft:'auto',fontSize:cfs(8),color:'#a6e3a1'}}>+3</span>
+        <span style={{fontSize:cfs(8),color:'#f38ba8'}}>−2</span>
       </div>
       <div style={{flex:1,overflow:'auto',padding:'4px 0'}}>
         {diff.map((d,i)=><div key={i} style={{display:'flex',padding:'1px 12px',background:d.m==='add'?'#a6e3a108':d.m==='del'?'#f38ba808':'transparent',borderLeft:d.m==='add'?'2px solid #a6e3a1':d.m==='del'?'2px solid #f38ba8':'2px solid transparent',animation:`tp-fadein .2s ease-out ${i*0.06}s both`}}>
-          <span style={{fontSize:9,color:'#555',width:20,textAlign:'right',userSelect:'none',marginRight:8}}>{d.n||''}</span>
-          <span style={{fontSize:10,lineHeight:1.7,color:d.m==='add'?'#a6e3a1':d.m==='del'?'#f38ba8':'#888',whiteSpace:'pre'}}>{d.t}</span>
+          <span style={{fontSize:cfs(9),color:'#555',width:20,textAlign:'right',userSelect:'none',marginRight:8}}>{d.n||''}</span>
+          <span style={{fontSize:cfs(10),lineHeight:1.7,color:d.m==='add'?'#a6e3a1':d.m==='del'?'#f38ba8':'#888',whiteSpace:'pre'}}>{d.t}</span>
         </div>)}
       </div>
       <div style={{display:'flex',alignItems:'center',padding:'4px 12px',borderTop:'1px solid #ffffff10',gap:6}}>
