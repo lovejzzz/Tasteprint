@@ -36,35 +36,51 @@ const API_DOCS = `/**
  * tp.palette()    \u2192 palette name ("warm","neon",...)
  * tp.palettes()   \u2192 all palette names
  * tp.colors()     \u2192 { bg, card, ac, ac2, tx, mu, bd, su }
- * tp.shapes()     \u2192 [{ id, type, x, y, w, h, variant }]
+ * tp.shapes()     \u2192 [{ id, type, x, y, w, h, variant, font, fsize, texts, props }]
+ * tp.get(id)      \u2192 full shape object or null
+ * tp.find(type)   \u2192 [id, id, ...] matching type
  * tp.device()     \u2192 "free" | "desktop" | "phone"
  * tp.fonts()      \u2192 ["DM Sans", "Inter", ...]
+ * tp.types()      \u2192 all component type names
+ * tp.variants(type) \u2192 ["Filled","Outline","Ghost",...]
  *
  * \u2500\u2500 WRITE \u2500\u2500
  * tp.setPalette(name)
  * tp.setDevice(mode)
- * tp.add(type, opts?)      \u2192 id
- *   opts: { x, y, w, h, variant }
- *   types: "button","card","hero","navbar","stat-card",
- *          "badge","toast","toggle","input","modal",...
+ * tp.add(type, opts?)        \u2192 id
+ *   opts: { x, y, w, h, variant, font, fsize, texts, props }
  * tp.remove(id)
  * tp.update(id, changes)
- *   changes: { x, y, w, h, variant }
- * tp.clear()               \u2192 removes all (keeps IDE)
+ *   changes: { x, y, w, h, variant, font, fsize, texts, props }
+ * tp.setText(id, key, value)  \u2192 set text field
+ * tp.setProp(id, key, value)  \u2192 set prop field
+ * tp.setFont(id, fontIndex)   \u2192 set font (0\u201316)
+ * tp.setFsize(id, size)       \u2192 set font size (0.5\u20132.0)
+ * tp.clear()                  \u2192 removes all (keeps IDE)
+ *
+ * \u2500\u2500 SAVE / LOAD \u2500\u2500
+ * tp.save(name?)     \u2192 save current state
+ * tp.load(name?)     \u2192 restore saved state
+ * tp.saves()         \u2192 list saved state names
+ * tp.deleteSave(name?) \u2192 delete a save
+ * tp.reset()         \u2192 clear everything, reset palette & device
+ * tp.export()        \u2192 { shapes, pal, device } object
  *
  * \u2500\u2500 EXAMPLES \u2500\u2500
- * // Add a row of buttons
- * for (let i = 0; i < 3; i++) {
- *   tp.add('button', { x: 50 + i * 220, y: 100 });
- * }
+ * // Add buttons with custom text
+ * const id = tp.add('button', { x: 50, y: 100 });
+ * tp.setText(id, 'label', 'Click me!');
  *
- * // Random palette
- * const pals = tp.palettes();
- * tp.setPalette(pals[Math.floor(Math.random() * pals.length)]);
+ * // Change a card's content
+ * const cards = tp.find('card');
+ * tp.setText(cards[0], 'title', 'New Title');
  *
- * // Remove first shape
- * const first = tp.shapes()[0];
- * if (first) tp.remove(first.id);
+ * // Save & restore
+ * tp.save('my-layout');
+ * tp.load('my-layout');
+ *
+ * // Get all variant styles for buttons
+ * console.log(tp.variants('button'));
  */
 `;
 
@@ -129,6 +145,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [termOpen, setTermOpen] = React.useState(false);
   const [output, setOutput] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
+  const termRef = React.useRef(null);
+
+  /* ---- Search state ---- */
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [replaceWith, setReplaceWith] = React.useState('');
+  const [showReplace, setShowReplace] = React.useState(false);
+  const searchRef = React.useRef(null);
+
+  /* ---- Command palette ---- */
+  const [cmdOpen, setCmdOpen] = React.useState(false);
+  const [cmdQuery, setCmdQuery] = React.useState('');
+  const cmdRef = React.useRef(null);
 
   /* ---- File helpers ---- */
   const getFile = (path) => {
@@ -162,6 +191,75 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (next.length === 0) return;
     setOpenTabs(next);
     if (activeFile === path) setActiveFile(next[next.length - 1]);
+  };
+
+  /* ---- Terminal auto-scroll ---- */
+  React.useEffect(() => {
+    if (termRef.current && output) termRef.current.scrollTop = termRef.current.scrollHeight;
+  }, [output]);
+
+  /* ---- Search helpers ---- */
+  const searchMatches = React.useMemo(() => {
+    if (!searchTerm || !searchOpen) return [];
+    const matches = [];
+    let idx = 0;
+    const lower = code.toLowerCase(), term = searchTerm.toLowerCase();
+    while (idx < lower.length) {
+      const found = lower.indexOf(term, idx);
+      if (found === -1) break;
+      matches.push(found);
+      idx = found + 1;
+    }
+    return matches;
+  }, [code, searchTerm, searchOpen]);
+
+  const replaceNext = () => {
+    if (!searchMatches.length || readonly) return;
+    const el = taRef.current;
+    const pos = el ? el.selectionStart : 0;
+    const match = searchMatches.find(m => m >= pos) ?? searchMatches[0];
+    const nc = code.substring(0, match) + replaceWith + code.substring(match + searchTerm.length);
+    setCode(nc);
+  };
+
+  const replaceAll = () => {
+    if (!searchTerm || readonly) return;
+    setCode(code.split(searchTerm).join(replaceWith));
+  };
+
+  /* ---- Command palette ---- */
+  const ALL_FILES = React.useMemo(() => {
+    const files = [];
+    TREE.forEach(f => f.children.forEach(c => files.push(c.path)));
+    return files;
+  }, []);
+
+  const commands = React.useMemo(() => {
+    const cmds = [
+      { label: 'Run Code', key: 'run', hint: '\u2318+Enter' },
+      { label: 'Toggle Terminal', key: 'term', hint: '' },
+      { label: 'Toggle Explorer', key: 'tree', hint: '' },
+      { label: 'Find', key: 'find', hint: '\u2318+F' },
+      { label: 'Find & Replace', key: 'replace', hint: '\u2318+H' },
+      { label: 'Save State', key: 'save', hint: '' },
+      { label: 'Reset to Default', key: 'reset', hint: '' },
+      ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
+    ];
+    if (!cmdQuery) return cmds;
+    const q = cmdQuery.toLowerCase();
+    return cmds.filter(c => c.label.toLowerCase().includes(q));
+  }, [cmdQuery, ALL_FILES]);
+
+  const runCommand = (key) => {
+    setCmdOpen(false); setCmdQuery('');
+    if (key === 'run') runCode();
+    else if (key === 'term') setTermOpen(t => !t);
+    else if (key === 'tree') setShowTree(t => !t);
+    else if (key === 'find') { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }
+    else if (key === 'replace') { setSearchOpen(true); setShowReplace(true); setTimeout(() => searchRef.current?.focus(), 50); }
+    else if (key === 'save') tp?.save();
+    else if (key === 'reset') tp?.reset();
+    else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
   /* ---- Code execution ---- */
@@ -220,6 +318,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     /* Run: Cmd+Enter */
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runCode(); return; }
+
+    /* Search: Cmd+F */
+    if (e.key === 'f' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault(); setSearchOpen(true); setShowReplace(false);
+      setTimeout(() => searchRef.current?.focus(), 50); return;
+    }
+
+    /* Replace: Cmd+H */
+    if (e.key === 'h' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault(); setSearchOpen(true); setShowReplace(true);
+      setTimeout(() => searchRef.current?.focus(), 50); return;
+    }
+
+    /* Command palette: Cmd+P */
+    if (e.key === 'p' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault(); setCmdOpen(o => !o); setCmdQuery('');
+      setTimeout(() => cmdRef.current?.focus(), 50); return;
+    }
+
+    /* Escape: close overlays */
+    if (e.key === 'Escape') {
+      if (searchOpen) { setSearchOpen(false); return; }
+      if (cmdOpen) { setCmdOpen(false); return; }
+    }
 
     /* Toggle comment: Cmd+/ */
     if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
@@ -306,7 +428,41 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     if (readonly) return;
 
-    if (e.key === 'Tab') { e.preventDefault(); setCode(code.substring(0, s) + '  ' + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 2 }, 0); return; }
+    /* Tab / Shift+Tab: indent/outdent */
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (s !== en) {
+        // Multi-line indent/outdent
+        const all = code.split('\n');
+        const startLn = code.substring(0, s).split('\n').length - 1;
+        const endLn = code.substring(0, en).split('\n').length - 1;
+        const newLines = [...all];
+        let diff = 0;
+        for (let i = startLn; i <= endLn; i++) {
+          if (e.shiftKey) {
+            if (newLines[i].startsWith('  ')) { newLines[i] = newLines[i].slice(2); diff -= 2; }
+            else if (newLines[i].startsWith(' ')) { newLines[i] = newLines[i].slice(1); diff -= 1; }
+          } else {
+            newLines[i] = '  ' + newLines[i]; diff += 2;
+          }
+        }
+        const nc = newLines.join('\n');
+        setCode(nc);
+        setTimeout(() => { el.selectionStart = s; el.selectionEnd = en + diff }, 0);
+      } else if (e.shiftKey) {
+        // Single line outdent
+        const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+        const line = code.substring(lineStart);
+        if (line.startsWith('  ')) {
+          setCode(code.substring(0, lineStart) + line.slice(2));
+          setTimeout(() => { el.selectionStart = el.selectionEnd = Math.max(lineStart, s - 2) }, 0);
+        }
+      } else {
+        setCode(code.substring(0, s) + '  ' + code.substring(en));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + 2 }, 0);
+      }
+      return;
+    }
     if (PAIRS[e.key]) { e.preventDefault(); const close = PAIRS[e.key]; setCode(code.substring(0, s) + e.key + close + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return; }
     if (e.key === 'Enter') {
       const lineStart = code.lastIndexOf('\n', s - 1) + 1;
@@ -352,8 +508,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         <span style={{ fontSize: fs(9), color: '#666', flex: 1, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           tasteprint <span style={{ color: '#444' }}>/</span> {activeFile}
         </span>
+        <span onClick={() => { setCmdOpen(o => !o); setCmdQuery(''); setTimeout(() => cmdRef.current?.focus(), 50); }} onMouseDown={stop}
+          style={{ fontSize: 9, color: cmdOpen ? '#cba6f7' : '#555', cursor: 'pointer', lineHeight: 1, padding: '1px 4px', borderRadius: 3, background: '#ffffff06' }} title="Command palette (Cmd+P)">{'\u2318P'}</span>
         <span onClick={() => setTermOpen(t => !t)} onMouseDown={stop}
           style={{ fontSize: 10, color: termOpen ? '#cba6f7' : '#555', cursor: 'pointer', lineHeight: 1 }} title="Toggle terminal">&gt;_</span>
+        <span onClick={() => { tp?.save(); setOutput({ logs: [{ t: 'log', v: 'State saved!' }], ms: null, err: null, errLn: null }); setTermOpen(true); }} onMouseDown={stop}
+          style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer', lineHeight: 1, opacity: .7 }} title="Save current state">Save</span>
+        <span onClick={() => { tp?.reset(); setOutput({ logs: [{ t: 'log', v: 'Reset to default!' }], ms: null, err: null, errLn: null }); setTermOpen(true); }} onMouseDown={stop}
+          style={{ fontSize: 8, color: '#f9e2af', cursor: 'pointer', lineHeight: 1, opacity: .7 }} title="Reset to defaults">Reset</span>
         <button onClick={runCode} disabled={busy || readonly} onMouseDown={stop}
           style={{
             background: busy ? '#27c93f' : '#27c93f22', color: busy ? '#000' : '#27c93f',
@@ -414,7 +576,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         </div>}
 
         {/* Editor area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
 
           {/* Tabs */}
           <div style={{ display: 'flex', borderBottom: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'auto' }}>
@@ -446,6 +608,54 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             })}
           </div>
 
+          {/* Search bar */}
+          {searchOpen && (
+            <div onMouseDown={stop} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff08', flexShrink: 0, alignItems: 'center' }}>
+              <input ref={searchRef} value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Find..." spellCheck={false}
+                onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setSearchOpen(false); taRef.current?.focus(); } if (e.key === 'Enter') { /* jump to next match */ const el = taRef.current; if (el && searchMatches.length) { const pos = el.selectionStart; const m = searchMatches.find(x => x > pos) ?? searchMatches[0]; el.selectionStart = m; el.selectionEnd = m + searchTerm.length; el.focus(); } } }}
+                style={{ flex: 1, minWidth: 80, maxWidth: 160, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+              <span style={{ fontSize: 8, color: '#555' }}>{searchMatches.length} found</span>
+              <span onClick={() => setShowReplace(r => !r)} style={{ fontSize: 8, color: showReplace ? '#cba6f7' : '#555', cursor: 'pointer' }}>{showReplace ? '\u25BC' : '\u25B6'} Replace</span>
+              <span onClick={() => { setSearchOpen(false); taRef.current?.focus(); }} style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</span>
+              {showReplace && (
+                <div style={{ width: '100%', display: 'flex', gap: 4, alignItems: 'center', marginTop: 2 }}>
+                  <input value={replaceWith} onChange={e => setReplaceWith(e.target.value)}
+                    placeholder="Replace..." spellCheck={false}
+                    onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') setSearchOpen(false); }}
+                    style={{ flex: 1, minWidth: 80, maxWidth: 160, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                  <span onClick={replaceNext} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }}>Replace</span>
+                  <span onClick={replaceAll} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }}>All</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Command palette */}
+          {cmdOpen && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 200 }}>
+              <input ref={cmdRef} value={cmdQuery} onChange={e => setCmdQuery(e.target.value)}
+                placeholder="Type a command or file..." spellCheck={false}
+                onKeyDown={e => {
+                  e.stopPropagation();
+                  if (e.key === 'Escape') { setCmdOpen(false); taRef.current?.focus(); }
+                  if (e.key === 'Enter' && commands.length) { runCommand(commands[0].key); }
+                }}
+                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid #ffffff08', padding: '6px 10px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+              <div style={{ maxHeight: 150, overflow: 'auto' }}>
+                {commands.slice(0, 8).map(c => (
+                  <div key={c.key} onClick={() => runCommand(c.key)}
+                    style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer', gap: 6 }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <span style={{ flex: 1 }}>{c.label}</span>
+                    {c.hint && <span style={{ fontSize: 8, color: '#555' }}>{c.hint}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Editor + Terminal split */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
@@ -468,15 +678,32 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
               {/* Syntax highlight overlay */}
               <div style={{ position: 'absolute', left: 33, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
-                {lines.map((l, i) => (
-                  <div key={i} style={{
-                    fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
-                    height: Math.round(16 * fsize),
-                    background: i + 1 === activeLn ? '#ffffff04' : output?.errLn === i + 1 ? '#f38ba808' : 'transparent',
-                  }}>
-                    <HighlightLine text={l} />
-                  </div>
-                ))}
+                {lines.map((l, i) => {
+                  /* Search match highlighting for this line */
+                  let searchHighlights = null;
+                  if (searchOpen && searchTerm && l.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    const parts = [];
+                    let rest = l, idx = 0;
+                    const tl = searchTerm.length;
+                    while (true) {
+                      const fi = rest.toLowerCase().indexOf(searchTerm.toLowerCase());
+                      if (fi === -1) { parts.push(<span key={idx}><HighlightLine text={rest} /></span>); break; }
+                      if (fi > 0) parts.push(<span key={idx++}><HighlightLine text={rest.substring(0, fi)} /></span>);
+                      parts.push(<span key={idx++} style={{ background: '#f9e2af40', borderRadius: 2, outline: '1px solid #f9e2af60' }}><HighlightLine text={rest.substring(fi, fi + tl)} /></span>);
+                      rest = rest.substring(fi + tl);
+                    }
+                    searchHighlights = parts;
+                  }
+                  return (
+                    <div key={i} style={{
+                      fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
+                      height: Math.round(16 * fsize),
+                      background: i + 1 === activeLn ? '#ffffff04' : output?.errLn === i + 1 ? '#f38ba808' : 'transparent',
+                    }}>
+                      {searchHighlights || <HighlightLine text={l} />}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Textarea */}
@@ -529,7 +756,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   <span onClick={() => setTermOpen(false)} onMouseDown={stop}
                     style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u2500'}</span>
                 </div>
-                <div style={{ flex: 1, overflow: 'auto', padding: '4px 10px' }}>
+                <div ref={termRef} style={{ flex: 1, overflow: 'auto', padding: '4px 10px' }}>
                   {output ? (<>
                     {output.logs.map((l, i) => (
                       <div key={i} style={{
