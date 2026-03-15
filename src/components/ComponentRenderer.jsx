@@ -17,7 +17,95 @@ const ANIM_STYLE = `
 @keyframes tp-gradient-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes tp-typing{from{width:0}to{width:100%}}
 @keyframes tp-cursor{0%,100%{border-color:currentColor}50%{border-color:transparent}}
+@keyframes tp-fadein{from{opacity:0}to{opacity:1}}
 `;
+
+/* ---- MINI IDE (real JS execution) ---- */
+function CodeIDE({b,p}){
+  const mono="'JetBrains Mono',monospace";
+  const [code,setCode]=React.useState("// Edit me & hit Run ▶\nconsole.log('Hello from Tasteprint!');\n\nconst fib = n => n <= 1 ? n : fib(n-1) + fib(n-2);\nconsole.log('Fibonacci:', Array.from({length:8}, (_,i) => fib(i)));\n\nMath.PI * 42");
+  const [out,setOut]=React.useState(null);
+  const [busy,setBusy]=React.useState(false);
+  const stop=e=>e.stopPropagation();
+  const exec=()=>{
+    setBusy(true);
+    const logs=[];
+    const fc={
+      log:(...a)=>logs.push({t:'log',v:a.map(x=>typeof x==='object'?JSON.stringify(x,null,2):String(x)).join(' ')}),
+      error:(...a)=>logs.push({t:'err',v:a.map(String).join(' ')}),
+      warn:(...a)=>logs.push({t:'warn',v:a.map(String).join(' ')}),
+      info:(...a)=>logs.push({t:'log',v:a.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join(' ')}),
+      clear:()=>logs.length=0,table:(...a)=>logs.push({t:'log',v:a.map(x=>JSON.stringify(x,null,2)).join(' ')}),
+    };
+    const t0=performance.now();
+    try{const r=new Function('console',code)(fc);const ms=(performance.now()-t0).toFixed(1);if(r!==undefined)logs.push({t:'ret',v:'← '+JSON.stringify(r)});setOut({logs,ms,err:null});}
+    catch(e){setOut({logs,ms:null,err:e.message});}
+    setTimeout(()=>setBusy(false),350);
+  };
+  const lines=code.split('\n').length;
+  return <div style={{...b,background:'#1a1a2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
+    <div style={{display:'flex',alignItems:'center',padding:'6px 10px',borderBottom:'1px solid #ffffff10',gap:6}} onMouseDown={stop}>
+      <div style={{display:'flex',gap:4}}>{['#ff5f56','#ffbd2e','#27c93f'].map((c,i)=><div key={i} style={{width:7,height:7,borderRadius:99,background:c,opacity:.6}}/>)}</div>
+      <span style={{fontSize:9,color:'#555',flex:1,textAlign:'center'}}>playground.js</span>
+      <button onClick={exec} onMouseDown={stop} style={{background:busy?'#27c93f':'#27c93f22',color:busy?'#000':'#27c93f',border:'none',borderRadius:6,padding:'2px 10px',fontSize:9,fontWeight:600,cursor:'pointer',fontFamily:mono,transition:'all .2s'}}>
+        {busy?'● RUN':'▶ Run'}
+      </button>
+    </div>
+    <div style={{flex:out?0:1,minHeight:0,display:'flex',overflow:'hidden'}}>
+      <div style={{padding:'8px 0',width:28,textAlign:'right',userSelect:'none',borderRight:'1px solid #ffffff08',background:'#16162a'}}>
+        {Array.from({length:lines},(_,i)=><div key={i} style={{fontSize:9,lineHeight:'16px',color:'#444',paddingRight:6}}>{i+1}</div>)}
+      </div>
+      <textarea value={code} onChange={e=>setCode(e.target.value)} onMouseDown={stop}
+        onKeyDown={e=>{e.stopPropagation();if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart,en=e.target.selectionEnd;setCode(code.substring(0,s)+'  '+code.substring(en));setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2},0);}}}
+        spellCheck={false} style={{flex:1,background:'transparent',color:'#cdd6f4',border:'none',outline:'none',resize:'none',padding:8,fontSize:10,lineHeight:'16px',fontFamily:mono,tabSize:2,whiteSpace:'pre',overflowX:'auto'}}/>
+    </div>
+    {out&&<div style={{borderTop:'1px solid #ffffff10',background:'#12122a',flex:1,minHeight:0,overflow:'auto',padding:8}}>
+      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+        <span style={{fontSize:8,color:'#555',textTransform:'uppercase',letterSpacing:'.06em'}}>Output</span>
+        {out.ms&&<span style={{fontSize:8,color:'#27c93f',opacity:.5}}>{out.ms}ms</span>}
+        <span onClick={()=>setOut(null)} onMouseDown={stop} style={{marginLeft:'auto',fontSize:8,color:'#555',cursor:'pointer'}}>✕</span>
+      </div>
+      {out.logs.map((l,i)=><div key={i} style={{fontSize:9,lineHeight:'15px',color:l.t==='err'?'#f38ba8':l.t==='warn'?'#f9e2af':l.t==='ret'?'#89b4fa':'#a6adc8',animation:`tp-fadein .15s ease-out ${i*0.05}s both`,whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{l.v}</div>)}
+      {out.err&&<div style={{fontSize:9,color:'#f38ba8',marginTop:2,animation:'tp-slidein .2s ease-out'}}>✗ {out.err}</div>}
+    </div>}
+    <div style={{display:'flex',alignItems:'center',padding:'3px 10px',borderTop:'1px solid #ffffff08',gap:8}} onMouseDown={stop}>
+      <span style={{fontSize:8,color:out?.err?'#f38ba8':'#27c93f'}}>●</span>
+      <span style={{fontSize:8,color:'#555'}}>{lines} lines</span>
+      <span style={{fontSize:8,color:'#555',marginLeft:'auto'}}>JavaScript</span>
+    </div>
+  </div>;
+}
+
+/* ---- TYPEWRITER (auto-typing code) ---- */
+function CodeTypewriter({b}){
+  const mono="'JetBrains Mono',monospace";
+  const full="import { useState } from 'react';\n\nfunction Counter() {\n  const [n, set] = useState(0);\n  return (\n    <button onClick={() => set(n+1)}>\n      Clicked {n} times\n    </button>\n  );\n}";
+  const [pos,setPos]=React.useState(0);
+  React.useEffect(()=>{
+    if(pos<full.length){const t=setTimeout(()=>setPos(p=>p+1),full[pos]==='\n'?200:35+Math.random()*25);return()=>clearTimeout(t);}
+  },[pos,full]);
+  const visible=full.slice(0,pos);
+  const vLines=visible.split('\n');
+  const done=pos>=full.length;
+  const hi=(s)=>s.startsWith('import')||s.startsWith('function')?'#cba6f7':s.includes("'")?'#a6e3a1':s.includes('//')?'#585b70':s.trim().startsWith('<')?'#89b4fa':s.includes('const')?'#89b4fa':'#cdd6f4';
+  return <div style={{...b,background:'#1e1e2e',borderRadius:12,padding:14,fontFamily:mono,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+    <div style={{display:'flex',gap:6,marginBottom:10}}>
+      {['#ff5f56','#ffbd2e','#27c93f'].map((c,i)=><div key={i} style={{width:8,height:8,borderRadius:99,background:c,opacity:.7}}/>)}
+      <span style={{marginLeft:'auto',fontSize:8,color:'#555'}}>{done?'✓ done':'typing...'}</span>
+    </div>
+    <div style={{flex:1,overflow:'hidden'}}>
+      {vLines.map((l,i)=><div key={i} style={{display:'flex',gap:12,height:16}}>
+        <span style={{fontSize:10,color:'#555',width:16,textAlign:'right',userSelect:'none'}}>{i+1}</span>
+        <span style={{fontSize:10,color:hi(l),lineHeight:1.7,whiteSpace:'pre'}}>{l}{i===vLines.length-1&&!done?'▌':''}</span>
+      </div>)}
+    </div>
+    {done&&<div style={{marginTop:8,padding:'4px 8px',background:'#27c93f15',borderRadius:6,display:'flex',alignItems:'center',gap:6,animation:'tp-slidein .3s ease-out'}}>
+      <span style={{fontSize:8,color:'#27c93f'}}>●</span>
+      <span style={{fontSize:9,color:'#27c93f',opacity:.7}}>Ready — {full.split('\n').length} lines</span>
+      <span onClick={()=>setPos(0)} style={{marginLeft:'auto',fontSize:8,color:'#555',cursor:'pointer',userSelect:'none'}} onMouseDown={e=>e.stopPropagation()}>↻ replay</span>
+    </div>}
+  </div>;
+}
 
 function C({type,v=0,p,editable,texts={},onText,font=0}){
   const f=FONTS[font]?.family||FONTS[0].family;
@@ -466,9 +554,35 @@ function C({type,v=0,p,editable,texts={},onText,font=0}){
   if(type==="code-block"){
     const lines=["const app = express();","app.get('/api', (req, res) => {","  res.json({ status: 'ok' });","});"];
     const mono="'JetBrains Mono',monospace";
+    /* v0 Dark */
     if(v===0)return <div style={{...b,background:"#1e1e2e",borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",gap:6,marginBottom:10}}>{["#ff5f56","#ffbd2e","#27c93f"].map((c,i)=><div key={i} style={{width:8,height:8,borderRadius:999,background:c,opacity:.7}}/>)}</div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:12,animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}><span style={{fontSize:10,color:"#555",width:16,textAlign:"right",userSelect:"none"}}>{i+1}</span><T k={`l${i}`} s={{fontSize:10,color:l.includes("const")?"#89b4fa":l.includes("'")?"#a6e3a1":l.includes("//")?"#585b70":"#cdd6f4",lineHeight:1.7}}>{l}</T></div>)}</div>;
+    /* v1 Light */
     if(v===1)return <div style={{...b,background:p.card,borderRadius:10,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"6px 12px",borderBottom:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:8}}><T k="file" s={{fontSize:10,fontWeight:500,color:p.tx}}>server.js</T><span style={{marginLeft:"auto",fontSize:9,color:p.mu,opacity:.4}}>JavaScript</span></div><div style={{padding:12,fontFamily:mono}}>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:12,animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}><span style={{fontSize:10,color:p.mu,opacity:.3,width:16,textAlign:"right"}}>{i+1}</span><T k={`l${i}`} s={{fontSize:10,color:p.tx,lineHeight:1.7}}>{l}</T></div>)}</div></div>;
-    return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><T k="file" s={{fontSize:9,color:p.ac,letterSpacing:"0.06em"}}>SERVER.JS</T><span style={{fontSize:8,color:"#555"}}>UTF-8 · LF</span></div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:10,animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}><span style={{fontSize:9,color:p.ac,opacity:.2,width:14,textAlign:"right"}}>{i+1}</span><T k={`l${i}`} s={{fontSize:9,color:l.includes("const")?p.ac:l.includes("'")?"#4CAF50":"#888",lineHeight:1.8}}>{l}</T></div>)}<div style={{marginTop:6,display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:8,color:p.ac,opacity:.4}}>$</span><span style={{borderRight:`2px solid ${p.ac}`,animation:"tp-blink 1s step-end infinite"}}>&nbsp;</span></div></div>;
+    /* v2 Terminal */
+    if(v===2)return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><T k="file" s={{fontSize:9,color:p.ac,letterSpacing:"0.06em"}}>SERVER.JS</T><span style={{fontSize:8,color:"#555"}}>UTF-8 · LF</span></div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:10,animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}><span style={{fontSize:9,color:p.ac,opacity:.2,width:14,textAlign:"right"}}>{i+1}</span><T k={`l${i}`} s={{fontSize:9,color:l.includes("const")?p.ac:l.includes("'")?"#4CAF50":"#888",lineHeight:1.8}}>{l}</T></div>)}<div style={{marginTop:6,display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:8,color:p.ac,opacity:.4}}>$</span><span style={{borderRight:`2px solid ${p.ac}`,animation:"tp-blink 1s step-end infinite"}}>&nbsp;</span></div></div>;
+    /* v3 Live Execute — real IDE */
+    if(v===3)return <CodeIDE b={b} p={p}/>;
+    /* v4 Typewriter — auto-typing animation */
+    if(v===4)return <CodeTypewriter b={b}/>;
+    /* v5 Diff */
+    const diff=[{m:'ctx',n:1,t:'  const config = {'},{m:'del',n:2,t:'-   timeout: 3000,'},{m:'del',n:3,t:'-   debug: false,'},{m:'add',n:0,t:'+   timeout: 5000,'},{m:'add',n:0,t:'+   retries: 3,'},{m:'add',n:0,t:'+   debug: true,'},{m:'ctx',n:4,t:'    verbose: true'},{m:'ctx',n:5,t:'  };'}];
+    return <div style={{...b,background:'#1e1e2e',borderRadius:12,overflow:'hidden',display:'flex',flexDirection:'column',fontFamily:mono}}>
+      <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:8}}>
+        <span style={{fontSize:10,color:'#f38ba8',fontWeight:500}}>config.js</span>
+        <span style={{marginLeft:'auto',fontSize:8,color:'#a6e3a1'}}>+3</span>
+        <span style={{fontSize:8,color:'#f38ba8'}}>−2</span>
+      </div>
+      <div style={{flex:1,overflow:'auto',padding:'4px 0'}}>
+        {diff.map((d,i)=><div key={i} style={{display:'flex',padding:'1px 12px',background:d.m==='add'?'#a6e3a108':d.m==='del'?'#f38ba808':'transparent',borderLeft:d.m==='add'?'2px solid #a6e3a1':d.m==='del'?'2px solid #f38ba8':'2px solid transparent',animation:`tp-fadein .2s ease-out ${i*0.06}s both`}}>
+          <span style={{fontSize:9,color:'#555',width:20,textAlign:'right',userSelect:'none',marginRight:8}}>{d.n||''}</span>
+          <span style={{fontSize:10,lineHeight:1.7,color:d.m==='add'?'#a6e3a1':d.m==='del'?'#f38ba8':'#888',whiteSpace:'pre'}}>{d.t}</span>
+        </div>)}
+      </div>
+      <div style={{display:'flex',alignItems:'center',padding:'4px 12px',borderTop:'1px solid #ffffff10',gap:6}}>
+        <span style={{fontSize:8,color:'#555'}}>@@ -1,5 +1,7 @@</span>
+        <span style={{marginLeft:'auto',fontSize:8,color:'#555'}}>2 files changed</span>
+      </div>
+    </div>;
   }
 
   /* ---- NOTIFICATION ---- */

@@ -89,7 +89,7 @@ export const VARIANTS = {
   chat:      ["Bubble","Thread","Terminal"],
   "media-player":["Minimal","Full","Terminal"],
   "profile-card":["Standard","Compact","Terminal"],
-  "code-block":["Dark","Light","Terminal"],
+  "code-block":["Dark","Light","Terminal","Live Execute","Typewriter","Diff"],
   notification:["List","Compact","Dot"],
   "tag-input":["Rounded","Square","Outlined"],
   kanban:    ["Cards","Compact","Terminal"],
@@ -159,7 +159,7 @@ export const LIB = [
     {type:"stepper",label:"Stepper",w:280,h:44},
     {type:"timeline",label:"Timeline",w:240,h:200},
     {type:"tag-input",label:"Tags",w:260,h:36},
-    {type:"code-block",label:"Code block",w:300,h:160},
+    {type:"code-block",label:"Code block",w:340,h:260},
   ]},
   { cat:"Overlay", items:[
     {type:"modal",label:"Modal",w:300,h:200},
