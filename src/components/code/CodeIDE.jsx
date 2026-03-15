@@ -303,6 +303,9 @@ const SHORTCUTS = [
   ['\u2318+K', 'Shortcuts help'],
   ['\u2318+=/\u2318+-', 'Zoom in/out'],
   ['\u2318+0', 'Reset zoom'],
+  ['\u2318+B', 'Toggle bookmark'],
+  ['F2/Shift+F2', 'Next/prev bookmark'],
+  ['\u2318+R', 'Rename symbol'],
   ['\u2318+E', 'Recent files'],
   ['Tab (on trigger)', 'Expand snippet'],
   ['Esc', 'Close overlay'],
@@ -527,6 +530,32 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Color decorators setting ---- */
   const [showColorDecorators, setShowColorDecorators] = React.useState(true);
+
+  /* ---- Bookmarks ---- */
+  const [bookmarks, setBookmarks] = React.useState(new Set());
+  const toggleBookmark = (ln) => setBookmarks(prev => { const n = new Set(prev); if (n.has(ln)) n.delete(ln); else n.add(ln); return n; });
+  const jumpBookmark = (dir) => {
+    const sorted = [...bookmarks].sort((a, b) => a - b);
+    if (!sorted.length) return;
+    if (dir > 0) {
+      const next = sorted.find(b => b > activeLn) || sorted[0];
+      setActiveLn(next); setCursor({ ln: next, col: 1 });
+      const pos = code.split('\n').slice(0, next - 1).join('\n').length + (next > 1 ? 1 : 0);
+      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+    } else {
+      const prev = [...sorted].reverse().find(b => b < activeLn) || sorted[sorted.length - 1];
+      setActiveLn(prev); setCursor({ ln: prev, col: 1 });
+      const pos = code.split('\n').slice(0, prev - 1).join('\n').length + (prev > 1 ? 1 : 0);
+      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+    }
+  };
+
+  /* ---- Tab context menu ---- */
+  const [tabCtx, setTabCtx] = React.useState(null);
+
+  /* ---- Rename symbol ---- */
+  const [renameSymbol, setRenameSymbol] = React.useState(null);
+  const renameSymbolRef = React.useRef(null);
 
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
@@ -1200,6 +1229,37 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       e.preventDefault(); setEditorZoom(1); return;
     }
 
+    /* Toggle bookmark: Cmd+B */
+    if (e.key === 'b' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault(); toggleBookmark(activeLn);
+      showToast(bookmarks.has(activeLn) ? 'Bookmark removed' : 'Bookmark added', 'info');
+      return;
+    }
+
+    /* Next bookmark: F2, Previous: Shift+F2 */
+    if (e.key === 'F2' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault(); jumpBookmark(e.shiftKey ? -1 : 1); return;
+    }
+
+    /* Rename symbol: Cmd+R */
+    if (e.key === 'r' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault();
+      if (readonly) return;
+      // Get word under cursor
+      const before = code.substring(0, s);
+      const after = code.substring(s);
+      const wBefore = before.match(/(\w+)$/);
+      const wAfter = after.match(/^(\w*)/);
+      if (wBefore || wAfter) {
+        const word = (wBefore ? wBefore[1] : '') + (wAfter ? wAfter[1] : '');
+        if (word.length >= 2) {
+          setRenameSymbol({ word, newName: word });
+          setTimeout(() => renameSymbolRef.current?.focus(), 50);
+        }
+      }
+      return;
+    }
+
     /* Toggle comment: Cmd+/ */
     if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -1735,8 +1795,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               const isRO = !editFiles.hasOwnProperty(path);
               const isModified = !isRO && editFiles[path] !== initFiles[path];
               return (
-                <div key={path} onClick={() => setActiveFile(path)}
+                <div key={path} onClick={() => { setActiveFile(path); setTabCtx(null); }}
                   onMouseDown={e => { stop(e); if (e.button === 1) { e.preventDefault(); closeTab(path, e); } }}
+                  onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setTabCtx({ path, x: e.clientX, y: e.clientY }); }}
                   draggable onDragStart={() => setDragTab(path)} onDragEnd={() => { setDragTab(null); setDragOverTab(null); }}
                   onDragOver={e => { e.preventDefault(); setDragOverTab(path); }}
                   onDrop={() => {
@@ -1776,6 +1837,38 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               );
             })}
           </div>
+
+          {/* Tab context menu */}
+          {tabCtx && (
+            <div onMouseDown={stop} onClick={() => setTabCtx(null)} style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 25,
+            }}>
+              <div style={{
+                position: 'absolute', left: tabCtx.x, top: tabCtx.y,
+                background: '#181825', border: '1px solid #ffffff15', borderRadius: 6,
+                boxShadow: '0 4px 16px rgba(0,0,0,.5)', minWidth: 140, overflow: 'hidden', zIndex: 26,
+              }}>
+                {[
+                  { label: 'Close', action: () => closeTab(tabCtx.path) },
+                  { label: 'Close Others', action: () => { setOpenTabs([tabCtx.path]); setActiveFile(tabCtx.path); } },
+                  { label: 'Close to the Right', action: () => { const idx = openTabs.indexOf(tabCtx.path); setOpenTabs(openTabs.slice(0, idx + 1)); if (!openTabs.slice(0, idx + 1).includes(activeFile)) setActiveFile(tabCtx.path); } },
+                  { label: 'Close All', action: () => { setOpenTabs(['src/main.js']); setActiveFile('src/main.js'); } },
+                  null,
+                  { label: 'Copy Path', action: () => { navigator.clipboard?.writeText(tabCtx.path); showToast('Path copied!', 'info'); } },
+                  { label: 'Copy Name', action: () => { navigator.clipboard?.writeText(tabCtx.path.split('/').pop()); showToast('Name copied!', 'info'); } },
+                ].map((item, i) => item === null ? (
+                  <div key={`sep${i}`} style={{ height: 1, background: '#ffffff08', margin: '2px 0' }} />
+                ) : (
+                  <div key={item.label} onClick={e => { e.stopPropagation(); item.action(); setTabCtx(null); }}
+                    style={{ padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px', background: '#1a1a2e', borderBottom: '1px solid #ffffff06', flexShrink: 0, gap: 4 }}>
@@ -1928,6 +2021,37 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
+          {/* Rename symbol dialog */}
+          {renameSymbol && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '15%', right: '15%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', padding: '6px 10px' }}>
+              <div style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, marginBottom: 4 }}>
+                Rename "{renameSymbol.word}" ({code.split(renameSymbol.word).length - 1} occurrences)
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input ref={renameSymbolRef} value={renameSymbol.newName}
+                  onChange={e => setRenameSymbol(prev => ({ ...prev, newName: e.target.value }))}
+                  spellCheck={false} autoFocus
+                  onKeyDown={e => {
+                    e.stopPropagation();
+                    if (e.key === 'Escape') { setRenameSymbol(null); taRef.current?.focus(); }
+                    if (e.key === 'Enter' && renameSymbol.newName.trim() && renameSymbol.newName !== renameSymbol.word) {
+                      // Replace all occurrences as whole words
+                      const rx = new RegExp('\\b' + renameSymbol.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g');
+                      const nc = code.replace(rx, renameSymbol.newName);
+                      if (nc !== code) {
+                        setCode(nc);
+                        const count = code.split(renameSymbol.word).length - 1;
+                        showToast(`Renamed ${count} occurrences`, 'success');
+                      }
+                      setRenameSymbol(null); taRef.current?.focus();
+                    }
+                  }}
+                  style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '3px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                <span onClick={() => setRenameSymbol(null)} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+              </div>
+            </div>
+          )}
+
           {/* Diff view */}
           {diffOpen && diffLines && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 24, zIndex: 18, background: '#1e1e2e', overflow: 'auto', padding: '8px 0' }}>
@@ -2027,6 +2151,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                                 background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
                               }}>{i + 1}</span>
                             {isFolded && <span style={{ position: 'absolute', right: -2, fontSize: 6, color: '#cba6f760' }}>...</span>}
+                            {bookmarks.has(i + 1) && <span style={{ position: 'absolute', left: 0, top: 0, fontSize: 7, color: '#89b4fa', lineHeight: lh }}>{'\u25CF'}</span>}
                           </div>
                         );
                       })}
@@ -2459,14 +2584,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       });
                     })()}
                   </div>
-                  {/* Viewport indicator */}
-                  <div style={{
-                    position: 'absolute', left: 0, right: 0,
-                    top: `${(scrollTop / Math.max(1, lines.length * Math.round(16 * zf))) * 100}%`,
-                    height: `${Math.max(8, (100 / Math.max(1, lines.length)) * 20)}%`,
-                    background: '#cba6f710', border: '1px solid #cba6f720',
-                    borderRadius: 2, pointerEvents: 'none', minHeight: 8,
-                  }} />
+                  {/* Viewport indicator (draggable) */}
+                  <div
+                    onMouseDown={e => {
+                      e.preventDefault(); e.stopPropagation();
+                      const rect = e.currentTarget.parentElement.getBoundingClientRect();
+                      const totalH = lines.length * Math.round(16 * zf);
+                      const onMove = ev => {
+                        const pct = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
+                        if (taRef.current) taRef.current.scrollTop = pct * totalH;
+                      };
+                      const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+                      document.addEventListener('mousemove', onMove);
+                      document.addEventListener('mouseup', onUp);
+                    }}
+                    style={{
+                      position: 'absolute', left: 0, right: 0,
+                      top: `${(scrollTop / Math.max(1, lines.length * Math.round(16 * zf))) * 100}%`,
+                      height: `${Math.max(8, (100 / Math.max(1, lines.length)) * 20)}%`,
+                      background: '#cba6f710', border: '1px solid #cba6f720',
+                      borderRadius: 2, cursor: 'grab', minHeight: 8,
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#cba6f720'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#cba6f710'}
+                  />
                 </div>
               )}
 
