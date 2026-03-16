@@ -9556,6 +9556,105 @@ function applyRetroactiveInsight(response, currentTopics) {
   return prefix ? prefix + response : response;
 }
 
+/* ── Shared Understanding & Collaborative Reasoning (Round 56) ──
+ * Tracks points of agreement/alignment between user and AI, building a
+ * "common ground" that makes the conversation feel cumulative rather than
+ * turn-by-turn. When the user agrees, the AI doesn't just say "great!" —
+ * it builds on the shared understanding. Periodically synthesizes what
+ * "we" have established together, creating a sense of collaborative thinking.
+ */
+
+let sharedGround = [];       // [{ point, topic, turn }] — things we agree on
+let lastSynthesisTurn = 0;
+
+function trackSharedGround(text, parsed) {
+  if (parsed.act !== "agreement" && !/\b(exactly|true|good point|i agree|same|right|fair|makes sense)\b/i.test(text)) return;
+
+  // What did we agree about? Look at the AI's last message
+  const lastAI = mem.lastAI();
+  if (!lastAI) return;
+
+  // Extract the core claim/point from the AI's last response (first meaningful sentence)
+  const aiSentences = lastAI.text.match(/[^.!?]+[.!?]+/g) || [lastAI.text];
+  // Skip greetings/fillers, take the substantive sentence
+  const substantive = aiSentences.find(s => s.length > 20 && !/^(oh|hey|hmm|well|so|yeah|awesome|cool|great|nice)/i.test(s.trim()));
+  if (!substantive) return;
+
+  // Trim to a compact point
+  let point = substantive.trim();
+  if (point.length > 80) point = point.slice(0, 77) + "...";
+
+  const topics = lastAI.topics || mem.recentTopics(1);
+  sharedGround.push({ point, topic: topics[0] || "general", turn: mem.turn });
+
+  // Keep max 6 shared points
+  if (sharedGround.length > 6) sharedGround.shift();
+}
+
+// Synthesize shared understanding — "here's what we've built together"
+function trySynthesis(response) {
+  if (mem.turn - lastSynthesisTurn < 10 || mem.turn < 10) return response;
+  if (sharedGround.length < 2) return response;
+  if (Math.random() > 0.2) return response;
+
+  // Find two shared points to weave together
+  const recent = sharedGround.slice(-3);
+  if (recent.length < 2) return response;
+
+  const a = recent[recent.length - 2];
+  const b = recent[recent.length - 1];
+
+  // Only synthesize if the points are from different topics (cross-pollination)
+  // or if they're from the same topic (deepening)
+  let prefix;
+  if (a.topic !== b.topic) {
+    const crossSynths = [
+      `You know what's interesting? We've been building toward something — between ${a.topic} and ${b.topic}, there's a through-line in how you think about things.`,
+      `I'm starting to see a pattern in our conversation — your take on ${a.topic} and ${b.topic} share the same underlying logic.`,
+      `Something cool is happening here — our ${a.topic} and ${b.topic} threads are converging.`,
+    ];
+    prefix = crossSynths[Math.floor(Math.random() * crossSynths.length)];
+  } else {
+    const deepSynths = [
+      `We've been steadily building our understanding of ${a.topic} together — I feel like we're getting somewhere real.`,
+      `I like where this ${a.topic} discussion is going. We've established some solid common ground.`,
+      `We're really deepening on ${a.topic} here — each point builds on the last.`,
+    ];
+    prefix = deepSynths[Math.floor(Math.random() * deepSynths.length)];
+  }
+
+  lastSynthesisTurn = mem.turn;
+  return prefix + " " + response;
+}
+
+// Enhanced agreement response that builds on shared ground
+function buildOnAgreement(response, text) {
+  // Only enhance when there's actual shared ground to reference
+  if (sharedGround.length < 1) return response;
+
+  const lastPoint = sharedGround[sharedGround.length - 1];
+  if (!lastPoint || mem.turn - lastPoint.turn > 3) return response;
+
+  // Only sometimes — don't overdo it
+  if (Math.random() > 0.35) return response;
+
+  const builders = [
+    `And building on that — `,
+    `Since we're aligned on that — `,
+    `With that as a foundation — `,
+    `Okay so if that's true, then — `,
+  ];
+
+  const builder = builders[Math.floor(Math.random() * builders.length)];
+
+  // Prepend the builder to create continuity
+  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+  if (sentences.length >= 2) {
+    return builder + sentences.slice(1).join(" ").trim();
+  }
+  return builder + response;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -9575,6 +9674,9 @@ export function getAIResponse(input) {
 
   // ═══ Emotional trajectory tracking: record sentiment curve ═══
   trackEmotionalTrajectory(sent, emo?.type || "neutral");
+
+  // ═══ Shared understanding: track points of agreement ═══
+  trackSharedGround(text, parsed);
 
   // ═══ Subtext detection: read between the lines ═══
   const subtext = detectSubtext(text, sent);
@@ -9736,6 +9838,10 @@ export function getAIResponse(input) {
   // ═══ Conversational hooks & open loops: create forward pull and curiosity ═══
   response = addConversationalHooks(response, currentTopics, inputEnergy);
 
+  // ═══ Shared understanding: synthesize common ground & build on agreement ═══
+  response = trySynthesis(response);
+  response = buildOnAgreement(response, text);
+
   // ═══ Nuanced stance: occasionally push back, play devil's advocate, take positions ═══
   response = addStance(response, text, currentTopics);
 
@@ -9779,6 +9885,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
