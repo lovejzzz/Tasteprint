@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 82: Conversational digression & self-correction
+   Round 83: Conversational humor callback & running jokes
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -13513,6 +13513,155 @@ function applyDigression(response, text, topics) {
   return before + " " + digression + after;
 }
 
+/* ── Conversational Humor Callback & Running Jokes (Round 83) ──
+ * The standup comedy technique: something funny happens early in the
+ * conversation, and the AI calls back to it at an unexpected moment
+ * turns later. This creates the "oh my god it remembered the joke"
+ * feeling that's deeply human and delightful.
+ *
+ * How it works:
+ * 1. Track "comedy moments" — when the user laughs (haha/lol/😂), when
+ *    humor lands, or when a funny topic surfaces (pineapple on pizza,
+ *    deploying on Friday, etc.)
+ * 2. Store the comedy moment with enough context to reference later
+ * 3. When a related topic comes up 5-15 turns later, drop a callback
+ *    that connects the current moment to the earlier joke
+ *
+ * "Wait, is this another deploying-on-Friday situation?"
+ * "Not to bring back the pineapple discourse, but..."
+ *
+ * 8% fire rate, 10-turn cooldown, max 3 callbacks per conversation.
+ */
+
+let comedyMoments = []; // { turn, topic, phrase, type }
+let lastComedyCallbackTurn = 0;
+let comedyCallbackCount = 0;
+
+// Detect and store comedy moments from user + AI interaction
+function trackComedyMoment(userText, aiResponse, topics, turn) {
+  const lower = userText.toLowerCase();
+
+  // User laughed at our response — whatever we said was funny
+  const laughed = /\b(haha|lol|lmao|rofl|😂|🤣|dead|dying|i can't|that's hilarious|so funny)\b/i.test(lower);
+  if (laughed && comedyMoments.length < 8) {
+    // Extract what was funny from the PREVIOUS AI response
+    const lastAI = mem.history?.filter(h => h.role === "ai").slice(-1)[0];
+    if (lastAI) {
+      const aiText = lastAI.text || "";
+      // Find the punchline — last sentence or a short distinctive phrase
+      const sentences = aiText.match(/[^.!?]+[.!?]+/g) || [aiText];
+      const punchline = sentences.length > 1 ? sentences[sentences.length - 1].trim() : sentences[0]?.trim() || "";
+      if (punchline.length > 10 && punchline.length < 80) {
+        comedyMoments.push({ turn, topic: topics[0] || "misc", phrase: punchline, type: "landed_joke" });
+      }
+    }
+    return;
+  }
+
+  // Funny topic discussion — contentious/amusing topics
+  const funnyTopics = [
+    { pat: /pineapple.+pizza|pizza.+pineapple/i, tag: "pineapple pizza" },
+    { pat: /deploy.+friday|friday.+deploy/i, tag: "Friday deploys" },
+    { pat: /tabs?.+spaces?|spaces?.+tabs?/i, tag: "tabs vs spaces" },
+    { pat: /dark.+mode|light.+mode/i, tag: "dark vs light mode" },
+    { pat: /css.+hard|hard.+css|centering.+div/i, tag: "CSS struggles" },
+    { pat: /coffee.+code|code.+coffee|caffeine/i, tag: "coffee and code" },
+    { pat: /monday|meetings/i, tag: "meetings" },
+    { pat: /bugs?.+feature|feature.+bug/i, tag: "bug-or-feature" },
+    { pat: /stack.?overflow|copy.?paste/i, tag: "Stack Overflow" },
+    { pat: /naming.+things|naming.+hard/i, tag: "naming things" },
+  ];
+
+  for (const ft of funnyTopics) {
+    if (ft.pat.test(lower) && !comedyMoments.some(m => m.topic === ft.tag)) {
+      comedyMoments.push({ turn, topic: ft.tag, phrase: userText.substring(0, 60), type: "funny_topic" });
+      return;
+    }
+  }
+
+  // User made a joke or memorable quip (short + exclamation or quoted phrase)
+  if (lower.length < 60 && lower.length > 15 && (/!$/.test(userText) || /".+?"/.test(userText))) {
+    const hasHumorSignal = /worst|best|honestly|literally|technically|classic|typical/i.test(lower);
+    if (hasHumorSignal && comedyMoments.length < 8) {
+      comedyMoments.push({ turn, topic: topics[0] || "misc", phrase: userText.trim(), type: "user_quip" });
+    }
+  }
+}
+
+function applyHumorCallback(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 8) return response; // need history for callbacks to work
+  if (turn - lastComedyCallbackTurn < 10) return response; // 10-turn cooldown
+  if (comedyCallbackCount >= 3) return response; // max 3 per conversation
+  if (comedyMoments.length === 0) return response;
+  if (response.length > 220) return response; // don't bloat
+  if (Math.random() > 0.08) return response; // 8% fire rate
+
+  // Don't callback during emotional/repair/farewell moments
+  if (/^(sorry|I hear|that sounds|bye|see you|take care)/i.test(response)) return response;
+
+  // Find a callback candidate: 5+ turns ago, topic overlap with current context
+  const lower = text.toLowerCase();
+  let bestMoment = null;
+
+  for (const moment of comedyMoments) {
+    const turnsAgo = turn - moment.turn;
+    if (turnsAgo < 5) continue; // too recent
+    if (turnsAgo > 20) continue; // too old
+
+    // Check topic relevance
+    const topicMatch = topics.some(t => {
+      const ts = stem(t);
+      return moment.topic.toLowerCase().includes(ts) || ts.includes(stem(moment.topic.split(" ")[0]));
+    });
+    const textMatch = moment.topic.split(" ").some(w => lower.includes(w.toLowerCase()));
+
+    if (topicMatch || textMatch) {
+      bestMoment = moment;
+      break;
+    }
+  }
+
+  if (!bestMoment) return response;
+
+  lastComedyCallbackTurn = turn;
+  comedyCallbackCount++;
+
+  // Generate the callback based on moment type
+  let callback;
+  if (bestMoment.type === "landed_joke") {
+    const callbacks = [
+      `(okay, this is giving me ${bestMoment.topic} vibes again and I'm here for it)`,
+      `Wait, didn't we already establish this back when we were talking about ${bestMoment.topic}? 😄`,
+      `This is the ${bestMoment.topic} conversation all over again, isn't it?`,
+    ];
+    callback = callbacks[Math.floor(Math.random() * callbacks.length)];
+  } else if (bestMoment.type === "funny_topic") {
+    const callbacks = [
+      `Not to bring up the ${bestMoment.topic} discourse again, but... 😄`,
+      `This feels like the ${bestMoment.topic} debate part 2.`,
+      `Getting ${bestMoment.topic} flashbacks here.`,
+      `The ${bestMoment.topic} thing is haunting this conversation and I love it.`,
+    ];
+    callback = callbacks[Math.floor(Math.random() * callbacks.length)];
+  } else {
+    // user_quip
+    const callbacks = [
+      `Okay this is giving the same energy as when you said "${bestMoment.phrase.substring(0, 40)}..."`,
+      `Wait — "${bestMoment.phrase.substring(0, 35)}..." is making a comeback 😄`,
+      `Full circle moment from "${bestMoment.phrase.substring(0, 35)}..."`,
+    ];
+    callback = callbacks[Math.floor(Math.random() * callbacks.length)];
+  }
+
+  // Place callback: prepend or append depending on response length
+  if (response.length < 80) {
+    return response + " " + callback;
+  }
+  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+  return sentences[0].trim() + " " + callback + " " + sentences.slice(1).join("").trim();
+}
+
 function applySurpriseInsight(response, topics) {
   const turn = mem.turn;
   if (turn < 4) return response; // let conversation warm up
@@ -14014,6 +14163,9 @@ export function getAIResponse(input) {
   // ═══ Digression & self-correction: brief tangent then catch-self for natural wandering mind ═══
   response = applyDigression(response, text, currentTopics);
 
+  // ═══ Humor callback: reference earlier funny moments for running-joke callbacks ═══
+  response = applyHumorCallback(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -14058,6 +14210,9 @@ export function getAIResponse(input) {
   // Track response shape for pattern-break detection
   trackResponseShape(response);
 
+  // Track comedy moments for humor callbacks
+  trackComedyMoment(text, response, currentTopics, mem.turn);
+
   // Calculate realistic typing speed (adjusted for conversation pace)
   const rawTypingMs = calcTypingMs(response, sent, parsed);
   const typingMs = adjustTypingForPace(rawTypingMs);
@@ -14066,6 +14221,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
