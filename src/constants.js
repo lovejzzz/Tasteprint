@@ -55,7 +55,7 @@ export const VARIANTS = {
   search:    ["Bordered","Pill kbd","Underline","Glass","AI"],
   toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass"],
   badge:     ["Tinted","Solid","Outline","Glass","Brutal"],
-  toast:     ["Card","Dark snack","Accent bar","Glass"],
+  toast:     ["Card","Dark snack","Accent bar","Glass","Brutal","Gradient"],
   progress:  ["Round","Flat","Thin","Striped","Glow"],
   modal:     ["Card","Minimal","Sheet","Glass","Destructive"],
   sidebar:   ["Full","Minimal","Grouped","Glass"],
