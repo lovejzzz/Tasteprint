@@ -209,6 +209,7 @@ export const DEFAULT_PROPS = {
   table:         { highlight: 0 },
   "stat-card":   { trend: 0 },
   "list-item":   { on: true },
+  "avatar-row":  { active: 0 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
