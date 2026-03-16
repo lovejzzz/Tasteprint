@@ -4,7 +4,9 @@ import { uid } from "../utils";
 export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes }) {
   useEffect(() => {
     const h = e => {
-      if ((e.key === "Backspace" || e.key === "Delete") && !e.target.isContentEditable && !e.target.closest?.("[contenteditable]")) {
+      const ae = document.activeElement;
+      const isEditing = ae && (ae.isContentEditable || ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.closest?.("[contenteditable]"));
+      if ((e.key === "Backspace" || e.key === "Delete") && !isEditing) {
         e.preventDefault(); onDel();
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "z") { e.preventDefault(); redo(); return; }
@@ -23,7 +25,7 @@ export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes }) 
         }
         return;
       }
-      if (selAll.size > 0 && !e.target.isContentEditable && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      if (selAll.size > 0 && !isEditing && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault();
         const d = e.shiftKey ? 10 : 1;
         const dx = e.key === "ArrowLeft" ? -d : e.key === "ArrowRight" ? d : 0;
