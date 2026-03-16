@@ -686,6 +686,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Color decorators setting ---- */
   const [showColorDecorators, setShowColorDecorators] = React.useState(true);
   const [colorPicker, setColorPicker] = React.useState(null); // { line, col, color, original }
+
+  /* ---- Selection toolbar ---- */
+  const [selToolbar, setSelToolbar] = React.useState(null); // { x, y }
   const [showLineNumbers, setShowLineNumbers] = React.useState(true);
   const [tabSize, setTabSize] = React.useState(2);
 
@@ -1998,12 +2001,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (el) {
         const s = el.selectionStart, en = el.selectionEnd;
         const sel = code.substring(s, en);
-        if (sel.startsWith('/*') && sel.endsWith('*/')) {
+        // Detect JSX context
+        const before = code.substring(Math.max(0, s - 200), s);
+        const isJSX = (activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx')) && /(?:<\w|return\s*\(|>\s*$)/.test(before);
+        if (sel.startsWith('{/*') && sel.endsWith('*/}')) {
+          const inner = sel.slice(3, -3).replace(/^\s/, '').replace(/\s$/, '');
+          setCode(code.substring(0, s) + inner + code.substring(en));
+          setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + inner.length }, 0);
+        } else if (sel.startsWith('/*') && sel.endsWith('*/')) {
           const inner = sel.slice(2, -2).replace(/^\s/, '').replace(/\s$/, '');
           setCode(code.substring(0, s) + inner + code.substring(en));
           setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + inner.length }, 0);
         } else if (s !== en) {
-          const wrapped = `/* ${sel} */`;
+          const wrapped = isJSX ? `{/* ${sel} */}` : `/* ${sel} */`;
           setCode(code.substring(0, s) + wrapped + code.substring(en));
           setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + wrapped.length }, 0);
         } else {
@@ -4765,7 +4775,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   }
                 }}
                 onScroll={e => setScrollTop(e.target.scrollTop)}
-                onMouseDown={e => { stop(e); setCtxMenu(null); setColorPicker(null); }}
+                onMouseDown={e => { stop(e); setCtxMenu(null); setColorPicker(null); setSelToolbar(null); }}
                 onMouseUp={e => {
                   updateCursor(e.target);
                   const el = e.target;
@@ -4774,7 +4784,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     const sel = code.substring(s, en).trim();
                     if (sel && /^\w+$/.test(sel)) setSelectedWord(sel);
                     else setSelectedWord('');
-                  } else setSelectedWord('');
+                    // Show selection toolbar
+                    const rect = el.getBoundingClientRect();
+                    const endLn = code.substring(0, en).split('\n').length;
+                    const lineH = Math.round(16 * zf);
+                    const ty = endLn * lineH - el.scrollTop + 8 + lineH;
+                    const endCol = en - code.lastIndexOf('\n', en - 1) - 1;
+                    const tx = Math.min(endCol * fs(6.1) + 8, rect.width - 180);
+                    setSelToolbar({ x: Math.max(8, tx), y: Math.min(ty, rect.height - 30) });
+                  } else { setSelectedWord(''); setSelToolbar(null); }
                 }
                 }
                 onDoubleClick={e => {
@@ -5088,6 +5106,58 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 </div>
               )}
 
+              {/* Selection floating toolbar */}
+              {selToolbar && !readonly && !acOpen && (() => {
+                const el = taRef.current;
+                if (!el || el.selectionStart === el.selectionEnd) return null;
+                const s = el.selectionStart, en = el.selectionEnd;
+                const sel = code.substring(s, en);
+                const isWord = /^\w+$/.test(sel.trim());
+                const isMultiLine = sel.includes('\n');
+                const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
+                const actions = [
+                  { icon: '\uD83D\uDD0D', tip: 'Search for this', action: () => { setSearchTerm(sel.split('\n')[0]); setSearchOpen(true); setSelToolbar(null); setTimeout(() => searchRef.current?.focus(), 50); } },
+                  isWord && { icon: 'R', tip: 'Rename', action: () => { setRenameSymbol({ word: sel.trim(), newName: sel.trim() }); setSelToolbar(null); setTimeout(() => renameSymbolRef.current?.focus(), 50); } },
+                  { icon: '{  }', tip: 'Surround with', action: () => { setSurroundMenu({ s, en }); setSelToolbar(null); } },
+                  !isMultiLine && { icon: 'V', tip: 'Extract variable', action: () => {
+                    const expr = sel.trim();
+                    const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+                    const indent = code.substring(lineStart).match(/^(\s*)/)[0];
+                    const varLine = `${indent}const extracted = ${expr};\n`;
+                    const nc = code.substring(0, lineStart) + varLine + code.substring(lineStart, s) + 'extracted' + code.substring(en);
+                    setCode(nc);
+                    const nameStart = lineStart + indent.length + 6;
+                    setTimeout(() => { el.selectionStart = nameStart; el.selectionEnd = nameStart + 9; el.focus(); }, 0);
+                    setSelToolbar(null);
+                    showToast('Extracted to variable', 'info');
+                  }},
+                  { icon: '\u2191', tip: 'To uppercase', action: () => { setCode(code.substring(0, s) + sel.toUpperCase() + code.substring(en)); setSelToolbar(null); } },
+                  { icon: '\u2193', tip: 'To lowercase', action: () => { setCode(code.substring(0, s) + sel.toLowerCase() + code.substring(en)); setSelToolbar(null); } },
+                ].filter(Boolean);
+                return (
+                  <div onMouseDown={stop} style={{
+                    position: 'absolute', top: selToolbar.y, left: gutterW + selToolbar.x,
+                    zIndex: 12, display: 'flex', gap: 1, background: '#181825', border: '1px solid #ffffff15',
+                    borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,.5)', padding: 2,
+                    animation: 'slideIn .1s ease-out',
+                  }}>
+                    {actions.map((a, i) => (
+                      <span key={i} onClick={a.action} title={a.tip}
+                        style={{
+                          fontSize: 8, padding: '3px 6px', borderRadius: 4, cursor: 'pointer',
+                          color: '#a6adc8', fontFamily: MONO, fontWeight: 600, lineHeight: 1,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          minWidth: 20, height: 18,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#cba6f720'; e.currentTarget.style.color = '#cba6f7'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#a6adc8'; }}>
+                        {a.icon}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {/* Minimap */}
               {showMinimap && lines.length > 10 && (
                 <div
@@ -5194,7 +5264,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     }}
                     onMouseEnter={e => e.currentTarget.style.background = '#cba6f720'}
                     onMouseLeave={e => e.currentTarget.style.background = '#cba6f710'}
-                  />
+                  >
+                    {/* Current line marker within viewport */}
+                    {(() => {
+                      const vpTop = scrollTop / Math.max(1, lines.length * Math.round(16 * zf));
+                      const vpH = Math.max(0.04, 20 / Math.max(1, lines.length));
+                      const lineInVp = (activeLn - 1) / Math.max(1, lines.length);
+                      const relPos = vpH > 0 ? (lineInVp - vpTop) / vpH : 0;
+                      if (relPos >= 0 && relPos <= 1) return (
+                        <div style={{
+                          position: 'absolute', left: 0, right: 0, height: 1,
+                          top: `${relPos * 100}%`, background: '#cba6f7',
+                        }} />
+                      );
+                      return null;
+                    })()}
+                  </div>
                   {/* Minimap hover preview tooltip */}
                   {minimapHover && (() => {
                     const li = minimapHover.line;
