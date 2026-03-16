@@ -685,6 +685,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Color decorators setting ---- */
   const [showColorDecorators, setShowColorDecorators] = React.useState(true);
+  const [colorPicker, setColorPicker] = React.useState(null); // { line, col, color, original }
   const [showLineNumbers, setShowLineNumbers] = React.useState(true);
   const [tabSize, setTabSize] = React.useState(2);
 
@@ -1223,6 +1224,45 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setOutput(prev => ({ logs: [...(prev?.logs || []),
           { t: 'err', v: `No docs for "${method}". ${suggestions.length ? 'Did you mean: ' + suggestions.join(', ') + '?' : 'Use: man <tp-method>'}` },
         ], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('sort ') || cmd === 'sort') {
+      const path = cmd.slice(5).trim();
+      if (!path) {
+        // Sort lines of current file
+        const sorted = code.split('\n').sort((a, b) => a.localeCompare(b));
+        setCode(sorted.join('\n'));
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F sort (${sorted.length} lines sorted)` }], ms: null, err: null, errLn: null }));
+      } else {
+        const f = getFile(path);
+        if (f) {
+          const sorted = f.content.split('\n').sort((a, b) => a.localeCompare(b));
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F sort ${path}` },
+            ...sorted.map(l => ({ t: 'log', v: l })),
+          ], ms: null, err: null, errLn: null }));
+        } else {
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `sort: ${path}: No such file` }], ms: null, err: null, errLn: null }));
+        }
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('uniq ') || cmd === 'uniq') {
+      const path = cmd.slice(5).trim();
+      const content = path ? getFile(path)?.content : code;
+      if (content !== undefined) {
+        const uniqLines = content.split('\n').filter((l, i, arr) => i === 0 || l !== arr[i - 1]);
+        if (!path) {
+          setCode(uniqLines.join('\n'));
+          const removed = content.split('\n').length - uniqLines.length;
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F uniq (removed ${removed} duplicate adjacent lines)` }], ms: null, err: null, errLn: null }));
+        } else {
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F uniq ${path}` },
+            ...uniqLines.map(l => ({ t: 'log', v: l })),
+          ], ms: null, err: null, errLn: null }));
+        }
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `uniq: ${path}: No such file` }], ms: null, err: null, errLn: null }));
       }
       setTermInput(''); return;
     }
@@ -3982,10 +4022,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           })()}
 
           {/* Rename symbol dialog */}
-          {renameSymbol && (
-            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '15%', right: '15%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', padding: '6px 10px' }}>
-              <div style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, marginBottom: 4 }}>
-                Rename "{renameSymbol.word}" ({code.split(renameSymbol.word).length - 1} occurrences)
+          {renameSymbol && (() => {
+            const rx = new RegExp('\\b' + renameSymbol.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g');
+            const matches = code.match(rx) || [];
+            const count = matches.length;
+            const isValid = renameSymbol.newName.trim() && renameSymbol.newName !== renameSymbol.word && /^\w+$/.test(renameSymbol.newName);
+            return (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '15%', right: '15%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', padding: '6px 10px', animation: 'slideIn .15s ease-out' }}>
+              <div style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>Rename "{renameSymbol.word}"</span>
+                <span style={{ background: '#cba6f715', padding: '1px 5px', borderRadius: 3, fontSize: 7 }}>{count} occurrence{count !== 1 ? 's' : ''}</span>
+                {isValid && <span style={{ fontSize: 7, color: '#a6e3a1', opacity: .6 }}>{'\u2192'} "{renameSymbol.newName}"</span>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input ref={renameSymbolRef} value={renameSymbol.newName}
@@ -3994,23 +4041,31 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   onKeyDown={e => {
                     e.stopPropagation();
                     if (e.key === 'Escape') { setRenameSymbol(null); taRef.current?.focus(); }
-                    if (e.key === 'Enter' && renameSymbol.newName.trim() && renameSymbol.newName !== renameSymbol.word) {
-                      // Replace all occurrences as whole words
-                      const rx = new RegExp('\\b' + renameSymbol.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g');
+                    if (e.key === 'Enter' && isValid) {
                       const nc = code.replace(rx, renameSymbol.newName);
                       if (nc !== code) {
                         setCode(nc);
-                        const count = code.split(renameSymbol.word).length - 1;
-                        showToast(`Renamed ${count} occurrences`, 'success');
+                        showToast(`Renamed ${count} occurrence${count !== 1 ? 's' : ''}`, 'success');
                       }
                       setRenameSymbol(null); taRef.current?.focus();
                     }
                   }}
-                  style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '3px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                  style={{ flex: 1, background: '#1e1e2e', border: `1px solid ${isValid ? '#a6e3a140' : renameSymbol.newName && !isValid ? '#f38ba840' : '#ffffff10'}`, borderRadius: 4, padding: '3px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO, transition: 'border-color .15s' }} />
+                <button onClick={() => {
+                  if (isValid) {
+                    const nc = code.replace(rx, renameSymbol.newName);
+                    if (nc !== code) { setCode(nc); showToast(`Renamed ${count} occurrence${count !== 1 ? 's' : ''}`, 'success'); }
+                    setRenameSymbol(null); taRef.current?.focus();
+                  }
+                }} style={{ fontSize: 8, padding: '2px 8px', borderRadius: 4, border: 'none', background: isValid ? '#cba6f720' : '#ffffff06', color: isValid ? '#cba6f7' : '#555', cursor: isValid ? 'pointer' : 'default', fontFamily: MONO }}>Rename</button>
                 <span onClick={() => setRenameSymbol(null)} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
               </div>
+              {renameSymbol.newName && !(/^\w+$/.test(renameSymbol.newName)) && (
+                <div style={{ fontSize: 7, color: '#f38ba8', marginTop: 3, opacity: .7 }}>Name must contain only letters, digits, and underscores</div>
+              )}
             </div>
-          )}
+            );
+          })()}
 
           {/* Go to Symbol */}
           {symbolOpen && (() => {
@@ -4172,6 +4227,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         setActiveLn(s.line + 1); setCursor({ ln: s.line + 1, col: 1 });
                         const pos = lineOffsets[s.line] || 0;
                         if (taRef.current) { taRef.current.scrollTop = s.line * lineH; taRef.current.selectionStart = taRef.current.selectionEnd = pos; }
+                      }} onDoubleClick={e => {
+                        e.stopPropagation();
+                        if (foldableRanges[s.line] !== undefined) toggleFold(s.line);
                       }} style={{
                         padding: '1px 8px', fontSize: fs(9), lineHeight: lh,
                         fontFamily: MONO, cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
@@ -4487,12 +4545,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             const hexMatches = [];
                             const rx = /#([0-9a-fA-F]{3,8})\b/g;
                             let hm;
-                            while ((hm = rx.exec(l)) !== null) hexMatches.push({ col: hm.index, color: hm[0] });
+                            while ((hm = rx.exec(l)) !== null) hexMatches.push({ col: hm.index, color: hm[0], len: hm[0].length });
                             return hexMatches.map((h, hi) => (
-                              <span key={`cd${hi}`} style={{
+                              <span key={`cd${hi}`} onClick={!readonly ? (e) => {
+                                e.stopPropagation();
+                                setColorPicker(colorPicker && colorPicker.line === i && colorPicker.col === h.col ? null : { line: i, col: h.col, color: h.color, len: h.len });
+                              } : undefined} style={{
                                 position: 'absolute', left: (h.col - 1) * charW, top: '50%', transform: 'translateY(-50%)',
                                 width: 6, height: 6, borderRadius: 2, border: '1px solid #ffffff30',
-                                background: h.color, pointerEvents: 'none', zIndex: 2,
+                                background: h.color, pointerEvents: readonly ? 'none' : 'auto', zIndex: 2,
+                                cursor: readonly ? 'default' : 'pointer',
+                                boxShadow: colorPicker && colorPicker.line === i && colorPicker.col === h.col ? '0 0 0 2px #cba6f7' : 'none',
                               }} />
                             ));
                           })()}
@@ -4555,6 +4618,72 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     })}
                     {/* Spacer for lines below viewport */}
                     {viewportEnd < visibleLines.length - 1 && <div style={{ height: (visibleLines.length - viewportEnd - 1) * lineH }} />}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Inline color picker */}
+              {colorPicker && (() => {
+                const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
+                const lineH = Math.round(16 * zf);
+                const charW = fs(6.1);
+                const top = colorPicker.line * lineH - scrollTop + 8 + lineH;
+                const left = gutterW + 1 + (colorPicker.col - 1) * charW + 8;
+                const PRESET_COLORS = [
+                  '#f38ba8', '#fab387', '#f9e2af', '#a6e3a1', '#94e2d5', '#89b4fa', '#cba6f7', '#f5c2e7',
+                  '#eba0ac', '#e8a87c', '#c9d1d9', '#7f849c', '#585b70', '#45475a', '#313244', '#1e1e2e',
+                  '#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0088ff', '#8800ff', '#ff00ff',
+                  '#ffffff', '#cccccc', '#999999', '#666666', '#333333', '#000000', '#27c93f', '#61dafb',
+                ];
+                return (
+                  <div onMouseDown={stop} style={{
+                    position: 'absolute', top, left: Math.min(left, 280), zIndex: 20,
+                    background: '#181825', border: '1px solid #ffffff15', borderRadius: 8,
+                    boxShadow: '0 8px 24px rgba(0,0,0,.5)', padding: 8, width: 180,
+                    animation: 'slideIn .15s ease-out',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <span style={{ width: 20, height: 20, borderRadius: 4, background: colorPicker.color, border: '1px solid #ffffff20', flexShrink: 0 }} />
+                      <input value={colorPicker.color} spellCheck={false}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setColorPicker(p => ({ ...p, color: v }));
+                          if (/^#[0-9a-fA-F]{3,8}$/.test(v)) {
+                            const all = code.split('\n');
+                            const line = all[colorPicker.line];
+                            const before = line.substring(0, colorPicker.col);
+                            const after = line.substring(colorPicker.col + colorPicker.len);
+                            all[colorPicker.line] = before + v + after;
+                            setCode(all.join('\n'));
+                            setColorPicker(p => ({ ...p, len: v.length }));
+                          }
+                        }}
+                        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape' || e.key === 'Enter') setColorPicker(null); }}
+                        style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2 }}>
+                      {PRESET_COLORS.map(c => (
+                        <span key={c} onClick={() => {
+                          const all = code.split('\n');
+                          const line = all[colorPicker.line];
+                          const before = line.substring(0, colorPicker.col);
+                          const after = line.substring(colorPicker.col + colorPicker.len);
+                          all[colorPicker.line] = before + c + after;
+                          setCode(all.join('\n'));
+                          setColorPicker(p => ({ ...p, color: c, len: c.length }));
+                        }} style={{
+                          width: 16, height: 16, borderRadius: 3, background: c,
+                          border: colorPicker.color === c ? '2px solid #cba6f7' : '1px solid #ffffff15',
+                          cursor: 'pointer', transition: 'transform .1s',
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                          title={c} />
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                      <span onClick={() => setColorPicker(null)} style={{ fontSize: 7, color: '#555', cursor: 'pointer' }}>Done</span>
                     </div>
                   </div>
                 );
@@ -4636,7 +4765,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   }
                 }}
                 onScroll={e => setScrollTop(e.target.scrollTop)}
-                onMouseDown={e => { stop(e); setCtxMenu(null); }}
+                onMouseDown={e => { stop(e); setCtxMenu(null); setColorPicker(null); }}
                 onMouseUp={e => {
                   updateCursor(e.target);
                   const el = e.target;
@@ -5514,7 +5643,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       if (spaceIdx > 0) {
                         const cmd = val.substring(0, spaceIdx);
                         const argPartial = val.substring(spaceIdx + 1).toLowerCase();
-                        const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find'];
+                        const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find', 'sort', 'uniq'];
                         if (fileCmds.includes(cmd) && argPartial) {
                           const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
                           const match = allPaths.find(p => p.toLowerCase().startsWith(argPartial) && p.toLowerCase() !== argPartial)
@@ -5522,7 +5651,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           if (match) ghost = match.substring(argPartial.length);
                         }
                       } else {
-                        const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias'];
+                        const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq'];
                         const partial = val.toLowerCase();
                         const match = cmds.find(c => c.startsWith(partial) && c !== partial);
                         if (match) ghost = match.substring(val.length);
@@ -5568,7 +5697,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           if (spaceIdx > 0) {
                             const cmd = val.substring(0, spaceIdx);
                             const argPartial = val.substring(spaceIdx + 1).toLowerCase();
-                            const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find'];
+                            const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find', 'sort', 'uniq'];
                             if (fileCmds.includes(cmd) && argPartial) {
                               const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
                               const match = allPaths.find(p => p.toLowerCase().startsWith(argPartial) && p.toLowerCase() !== argPartial)
@@ -5576,10 +5705,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               if (match) { setTermInput(cmd + ' ' + match); return; }
                             }
                           }
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp', 'man', 'which'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp', 'man', 'which', 'sort', 'uniq'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'l' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setOutput(null); }
