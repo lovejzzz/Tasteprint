@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 23: Semantic memory connections
+   Round 24: Knowledge synthesis engine
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1927,6 +1927,150 @@ function handleRememberCommand(text) {
   return null;
 }
 
+/* ── Knowledge Synthesis Engine ──
+ * When no direct EXPLAIN entry or KB answer exists, this engine:
+ * 1. Extracts the subject from the question
+ * 2. Finds ASSOC entries that match or relate to the subject
+ * 3. Follows "related" links to gather 2nd-order knowledge
+ * 4. Combines facts, opinions, and hooks into a coherent synthesized answer
+ *
+ * The result sounds knowledgeable because it weaves together multiple
+ * real knowledge fragments, not because it's making things up.
+ */
+
+function synthesizeAnswer(text, topics, qType) {
+  // Only fire for actual questions or explicit knowledge-seeking
+  if (!qType && !/\b(what|how|why|explain|tell me|can you|do you know)\b/i.test(text)) return null;
+
+  // Extract the subject the user is asking about
+  const lower = text.toLowerCase().replace(/[?!.,]/g, "").trim();
+  let subject = null;
+  const patterns = [
+    /(?:what (?:is|are|does)|explain|tell me about|how does|how do|what's|what about)\s+(.+)/,
+    /(?:do you know (?:about |anything about )?|can you (?:explain |tell me about )?)(.+)/,
+    /(?:how (?:does |do |can |would |should )?(?:i |you |we )?(?:use |learn |start |get into )?)(.+)/,
+    /(?:why (?:is |are |does |do |should )?)(.+)/,
+  ];
+  for (const pat of patterns) {
+    const m = lower.match(pat);
+    if (m) { subject = m[1].replace(/\b(a|an|the|work|mean|do|really|actually|even)\b/g, "").trim(); break; }
+  }
+  if (!subject || subject.length < 2 || subject.length > 50) return null;
+
+  // Tokenize subject and find matching ASSOC entries
+  const subjectWords = tokenize(subject).map(stem);
+  const subjectSet = new Set(subjectWords);
+
+  // 1. Direct ASSOC match
+  const directMatches = [];
+  for (const [key, data] of Object.entries(ASSOC)) {
+    if (subjectSet.has(stem(key)) || subject.includes(key)) {
+      directMatches.push({ key, data, score: 3 });
+    }
+  }
+
+  // 2. Partial match — subject word appears in ASSOC key or related list
+  if (directMatches.length === 0) {
+    for (const [key, data] of Object.entries(ASSOC)) {
+      // Check if any subject word matches a related topic
+      if (data.related) {
+        for (const rel of data.related) {
+          if (subjectSet.has(stem(rel)) || subject.includes(rel)) {
+            directMatches.push({ key, data, score: 2 });
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Also include topics detected from the full message
+  for (const topic of topics) {
+    if (ASSOC[topic] && !directMatches.some(m => m.key === topic)) {
+      directMatches.push({ key: topic, data: ASSOC[topic], score: 1.5 });
+    }
+  }
+
+  if (directMatches.length === 0) return null;
+
+  // Sort by relevance score
+  directMatches.sort((a, b) => b.score - a.score);
+  const primary = directMatches[0];
+
+  // 3. Follow related links for 2nd-order knowledge
+  const secondaryEntries = [];
+  if (primary.data.related) {
+    for (const rel of primary.data.related.slice(0, 3)) {
+      if (ASSOC[rel] && !directMatches.some(m => m.key === rel)) {
+        secondaryEntries.push({ key: rel, data: ASSOC[rel] });
+      }
+    }
+  }
+
+  // 4. Synthesize the answer from gathered knowledge
+  const parts = [];
+
+  // Opening: acknowledge the question type
+  const openings = {
+    what: [`So ${primary.key} — `, `Great question! ${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — `, `Ah, ${primary.key}! `],
+    how: [`When it comes to ${primary.key}, `, `Good question about ${primary.key}! `, `So for ${primary.key} — `],
+    why: [`The thing about ${primary.key} is, `, `That's a great question about ${primary.key}. `, `${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} is interesting because `],
+    default: [`${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — `, `So about ${primary.key} — `, `Alright, ${primary.key}! `],
+  };
+  const openType = /^what\b/i.test(lower) ? "what" : /^how\b/i.test(lower) ? "how" : /^why\b/i.test(lower) ? "why" : "default";
+  parts.push(pick(openings[openType]));
+
+  // Core: primary fact
+  if (primary.data.facts && primary.data.facts.length > 0) {
+    parts.push(pick(primary.data.facts) + ".");
+  }
+
+  // Depth: opinion that adds perspective
+  if (primary.data.opinions && Math.random() > 0.3) {
+    const opStarters = ["Honestly, I think ", "In my view, ", "What I find interesting is that ", "The cool thing is, "];
+    parts.push(pick(opStarters) + pick(primary.data.opinions) + ".");
+  }
+
+  // Connection: bridge to related topic with its fact
+  if (secondaryEntries.length > 0 && Math.random() > 0.35) {
+    const sec = pick(secondaryEntries);
+    const bridges = [
+      `It's also worth knowing that ${sec.key}`,
+      `And ${sec.key} connects here because`,
+      `This ties into ${sec.key}, which`,
+    ];
+    const secFact = sec.data.facts ? pick(sec.data.facts) : sec.data.opinions ? pick(sec.data.opinions) : null;
+    if (secFact) {
+      parts.push(pick(bridges) + " — " + secFact + ".");
+    }
+  }
+
+  // If we have a 2nd direct match, mention it briefly
+  if (directMatches.length > 1 && Math.random() > 0.5) {
+    const other = directMatches[1];
+    if (other.data.opinions) {
+      parts.push(`And regarding ${other.key} — ` + pick(other.data.opinions) + ".");
+    }
+  }
+
+  // Closing: relevant hook or follow-up
+  if (primary.data.hooks) {
+    parts.push(pick(primary.data.hooks));
+  } else {
+    parts.push(pick(COMP.deepeners));
+  }
+
+  const result = parts.join(" ").replace(/\s{2,}/g, " ").trim();
+
+  // Length guard: if too long, trim to first 3 sentences
+  const sentences = result.split(/(?<=[.!?])\s+/);
+  if (sentences.length > 4) {
+    return sentences.slice(0, 4).join(" ");
+  }
+
+  return result;
+}
+
 /* ── Question Answering Engine ── */
 
 function answerQuestion(text, parsed, intents, topics) {
@@ -2008,10 +2152,25 @@ function answerQuestion(text, parsed, intents, topics) {
     return explanation + " " + explainer.hook;
   }
 
+  // ═══ Knowledge synthesis — combine related ASSOC entries when no direct answer exists ═══
+  const synthesized = synthesizeAnswer(text, topics, parsed.qType);
+  if (synthesized) return synthesized;
+
   // General "what is" / "what does" questions (no explainer match)
   if (/^what (is|are|does|do)\b/i.test(lower)) {
     const subject = lower.replace(/^what (is|are|does|do)\s+/i, "").replace(/\?$/, "").trim();
     if (subject.length > 0 && subject.length < 30) {
+      // Last resort: try to find ANY ASSOC match via stemmed keywords
+      const subjectKW = extractKW(subject).keywords;
+      for (const kw of subjectKW) {
+        if (ASSOC[kw]) {
+          const a = ASSOC[kw];
+          const fact = a.facts ? pick(a.facts) : null;
+          const opinion = a.opinions ? pick(a.opinions) : null;
+          const hook = a.hooks ? pick(a.hooks) : pick(COMP.deepeners);
+          return (fact || `${kw} is a really interesting topic!`) + " " + (opinion ? `Personally, I think ${opinion}.` : "") + " " + hook;
+        }
+      }
       return `Hmm, ${subject} is a big topic! I know a bit but I'm a tiny model. What specifically about ${subject} are you curious about?`;
     }
   }
@@ -2639,6 +2798,13 @@ function generateResponse(text) {
   }
   if (nonMod.length > 0) {
     return respondToTopic(nonMod, topics, primaryTopic, parsed);
+  }
+
+  // ═══ 16.5. Knowledge synthesis — combine related knowledge fragments ═══
+  if (keywords.length > 0) {
+    const synthTopics = extractTopics(tokens); // re-check with fresh extraction
+    const synth = synthesizeAnswer(text, synthTopics, parsed.qType);
+    if (synth) return synth;
   }
 
   // ═══ 17. Fallback — graceful degradation, mirror, momentum, rescue ═══
