@@ -6302,6 +6302,119 @@ function seedDetails(response, topics) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   RHYTHM VARIATION & BREATH — Dramatic Structural Variance
+   After many pipeline layers, responses converge to a samey
+   "statement + question" cadence. Real humans vary wildly:
+   sometimes a single punchy word, sometimes a thought that
+   trails off, sometimes pure reaction before substance.
+   This system occasionally restructures responses to break
+   the monotony — creating "breaths" in the conversation.
+   Fire rate: ~18% of eligible responses, 3-turn cooldown.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastBreathTurn = 0;
+
+function addBreath(response, text, energy) {
+  if (response.length < 35 || response.length > 300) return response;
+  if (mem.turn - lastBreathTurn < 3) return response;
+  if (/^(hi|hey|hello|bye|goodbye|thanks|thank|sorry)/i.test(response)) return response;
+  if (Math.random() > 0.18) return response;
+
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 1) return response;
+
+  const roll = Math.random();
+  let r = response;
+
+  // ── Strategy 1: Punchy lead (~25%) — extract the core and make it hit harder ──
+  if (roll < 0.25 && sentences.length >= 2) {
+    // Pull the most interesting sentence to front, make it standalone
+    const best = sentences.reduce((a, b) => {
+      // Prefer sentences with specifics, opinions, or emotion
+      const scoreA = (a.match(/[!?]/g)||[]).length + (a.length > 40 ? 1 : 0) + (/I think|honestly|actually|the thing is/i.test(a) ? 2 : 0);
+      const scoreB = (b.match(/[!?]/g)||[]).length + (b.length > 40 ? 1 : 0) + (/I think|honestly|actually|the thing is/i.test(b) ? 2 : 0);
+      return scoreB > scoreA ? b : a;
+    });
+    const rest = sentences.filter(s => s !== best).join(" ").trim();
+    if (rest.length > 15) {
+      r = best.trim() + " " + rest;
+      lastBreathTurn = mem.turn;
+    }
+  }
+
+  // ── Strategy 2: Trailing thought (~20%) — end with "..." instead of clean period ──
+  else if (roll < 0.45 && energy < 0.5) {
+    // Low-energy conversations benefit from trailing, thoughtful endings
+    const trailingPhrases = [
+      "but I don't know, maybe that's just me...",
+      "or something like that, anyway...",
+      "but yeah, you know what I mean...",
+      "but it's hard to say for sure...",
+      "which is interesting when you think about it...",
+    ];
+    // Replace the last sentence's ending with a trailing thought
+    const lastPeriod = r.lastIndexOf(".");
+    if (lastPeriod > 30 && r.slice(lastPeriod).length < 40) {
+      r = r.slice(0, lastPeriod) + " — " + pick(trailingPhrases);
+      lastBreathTurn = mem.turn;
+    }
+  }
+
+  // ── Strategy 3: Split with breath (~20%) — add a pause between thoughts ──
+  else if (roll < 0.65 && sentences.length >= 2) {
+    // Insert a "thinking pause" between sentences
+    const pauses = [
+      "\n\n",
+      " ...\n\n",
+      "\n\nActually — ",
+      "\n\nHmm. ",
+      "\n\nWait, ",
+    ];
+    const splitIdx = Math.min(1, sentences.length - 1);
+    const before = sentences.slice(0, splitIdx + 1).join(" ").trim();
+    const after = sentences.slice(splitIdx + 1).join(" ").trim();
+    if (before.length > 15 && after.length > 15) {
+      r = before + pick(pauses) + after;
+      lastBreathTurn = mem.turn;
+    }
+  }
+
+  // ── Strategy 4: Reaction-first (~20%) — lead with a pure emotional beat ──
+  else if (roll < 0.85 && !(/^(oh|hmm|wow|ha|ooh|yeah|yes|no|right|okay|wait)/i.test(r))) {
+    const reactions = [
+      "Oh. ",
+      "Hmm. ",
+      "Huh. ",
+      "Yeah — ",
+      "Right. ",
+      "Okay so — ",
+      "Ha — ",
+      "Wait. ",
+    ];
+    // Pick a contextually appropriate reaction
+    const sent = sentiment(text);
+    let pool = reactions;
+    if (sent >= 2) pool = ["Oh! ", "Yes! ", "Ha! ", "Nice — "];
+    else if (sent <= -1) pool = ["Hmm. ", "Yeah. ", "Right. ", "Okay — "];
+
+    r = pick(pool) + r.charAt(0).toLowerCase() + r.slice(1);
+    lastBreathTurn = mem.turn;
+  }
+
+  // ── Strategy 5: Emphatic compression (~15%) — boil long response to one strong line ──
+  else if (sentences.length >= 3 && energy > 0.6) {
+    // High energy + long response → compress to the punchiest sentence
+    const shortest = sentences.reduce((a, b) => a.trim().length < b.trim().length ? a : b).trim();
+    if (shortest.length > 12 && shortest.length < 80) {
+      r = shortest;
+      lastBreathTurn = mem.turn;
+    }
+  }
+
+  return r;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CONVERSATIONAL DISFLUENCY — Natural Speech Patterns
    Real humans don't produce perfect prose. They self-correct,
    restart mid-thought, hedge, and think out loud. This engine
@@ -6691,6 +6804,9 @@ export function getAIResponse(input) {
   // ═══ Detail seeding & specificity: replace vague fillers, inject vivid details ═══
   response = seedDetails(response, currentTopics);
 
+  // ═══ Rhythm variation & breath: structural variance to break monotony ═══
+  response = addBreath(response, text, inputEnergy);
+
   // ═══ Conversational disfluency: natural speech patterns (self-correction, false starts) ═══
   response = addDisfluency(response);
 
@@ -6730,6 +6846,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
