@@ -10112,6 +10112,121 @@ function polishOutput(response) {
   return r.trim();
 }
 
+/* ── Conversational Memory Weaving (Round 61) ──
+ * Before the response hits the post-processing pipeline, this system scans
+ * conversation memory for relevant context and weaves it into the response.
+ * Unlike post-processors that decorate responses, this rewrites the opening
+ * to feel like a natural continuation of what's been discussed — referencing
+ * facts the user shared, callbacks to earlier moments, and threading the
+ * conversational narrative.
+ */
+
+let lastWeaveTurn = 0;
+
+function buildContextFrame(topics) {
+  const frame = { facts: [], callbacks: [], userPrefs: [], recentThread: null };
+
+  // Pull relevant facts the user has shared (from extractFacts/mem)
+  const history = mem.history || [];
+  const userMessages = history.filter(h => h.role === "user").slice(-8);
+
+  // Find user-stated facts about themselves (I work at, I love, I'm building, etc.)
+  for (const msg of userMessages) {
+    const text = msg.text || "";
+    const factMatch = text.match(/\b(?:I (?:work|worked) (?:at|for|on|with|in)\s+\w[\w\s]{1,20}|I(?:'m| am) (?:a |an |building |learning |studying |working on )\w[\w\s]{1,20}|I (?:love|hate|prefer|enjoy|use|play|study)\s+\w[\w\s]{1,15})/i);
+    if (factMatch) {
+      const fact = factMatch[0].trim();
+      if (fact.length > 8 && fact.length < 60 && !frame.facts.includes(fact)) {
+        frame.facts.push(fact);
+      }
+    }
+  }
+
+  // Find callback opportunities — topics discussed 3+ turns ago that relate to current
+  if (topics.length > 0) {
+    const older = (topicHistory || []).filter(e => mem.turn - e.turn >= 3 && mem.turn - e.turn <= 15);
+    for (const entry of older) {
+      if (topics.some(t => t === entry.topic || (ASSOC[t]?.related || []).includes(entry.topic))) {
+        if (!frame.callbacks.includes(entry.topic)) {
+          frame.callbacks.push(entry.topic);
+        }
+      }
+    }
+  }
+
+  // User preferences from belief store
+  for (const [key, belief] of Object.entries(beliefStore)) {
+    if (belief.stance === "positive" && topics.some(t => key.includes(t))) {
+      frame.userPrefs.push({ topic: key, stance: belief.text });
+    }
+  }
+
+  // Active thread context
+  for (const t of topics) {
+    const thread = threadManager.threads[t];
+    if (thread && thread.depth >= 2) {
+      frame.recentThread = { topic: t, depth: thread.depth, messages: thread.messages || 0 };
+      break;
+    }
+  }
+
+  return frame;
+}
+
+function weaveContext(response, topics, text) {
+  const turn = mem.turn;
+  if (turn < 4 || turn - lastWeaveTurn < 3) return response;
+  if (Math.random() > 0.30) return response; // 30% fire rate
+
+  const frame = buildContextFrame(topics);
+
+  // Priority 1: Reference a user fact that relates to current topic
+  if (frame.facts.length > 0 && topics.length > 0) {
+    const relevantFact = frame.facts.find(f => {
+      const fLower = f.toLowerCase();
+      return topics.some(t => fLower.includes(t) || fLower.includes(t.slice(0, 4)));
+    });
+    if (relevantFact) {
+      lastWeaveTurn = turn;
+      const factRef = relevantFact.replace(/^I /i, "you ").replace(/^I'm /i, "you're ").replace(/^I am /i, "you're ");
+      const weavePrefixes = [
+        `Since ${factRef}, `,
+        `Given that ${factRef} — `,
+        `You mentioned ${factRef}, and `,
+        `Knowing that ${factRef}, `,
+      ];
+      const prefix = weavePrefixes[Math.floor(Math.random() * weavePrefixes.length)];
+      return prefix + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+  }
+
+  // Priority 2: Callback to related earlier topic
+  if (frame.callbacks.length > 0) {
+    const cb = frame.callbacks[0];
+    lastWeaveTurn = turn;
+    const callbackPrefixes = [
+      `This connects to what we were saying about ${cb} earlier — `,
+      `Actually this reminds me of our ${cb} discussion — `,
+      `Building on our ${cb} thread, `,
+    ];
+    const prefix = callbackPrefixes[Math.floor(Math.random() * callbackPrefixes.length)];
+    return prefix + response.charAt(0).toLowerCase() + response.slice(1);
+  }
+
+  // Priority 3: Deep thread acknowledgment
+  if (frame.recentThread && frame.recentThread.depth >= 3) {
+    lastWeaveTurn = turn;
+    const depth = frame.recentThread.depth;
+    const threadAcks = [
+      `We're getting really deep into ${frame.recentThread.topic} and I love it. `,
+      `The more we talk about ${frame.recentThread.topic}, the more layers I see. `,
+    ];
+    return threadAcks[Math.floor(Math.random() * threadAcks.length)] + response;
+  }
+
+  return response;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -10197,6 +10312,9 @@ export function getAIResponse(input) {
     const degraded = gracefulDegradation(text, keywords);
     if (degraded) response = degraded;
   }
+
+  // ═══ Conversational memory weaving: connect response to conversation history ═══
+  response = weaveContext(response, currentTopics, text);
 
   // Apply conversational rhythm
   const targetMove = pickNextMove();
@@ -10357,6 +10475,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
