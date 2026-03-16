@@ -9751,6 +9751,189 @@ function addSpontaneousGift(response, topics, text) {
   return response + " " + gift;
 }
 
+/* ── Rapport Calibration & Relational Depth (Round 59) ──
+ * Tracks how the relationship is evolving — not just what's said, but how
+ * open, personal, and trusting the conversation feels. A real conversational
+ * partner notices when someone starts sharing more, gets playful, or opens
+ * up emotionally. This system measures rapport signals per turn and computes
+ * a rapport level (0-4) that calibrates the AI's warmth, pronoun usage,
+ * callback intimacy, and conversational boldness.
+ */
+
+let rapportSignals = [];  // [{ turn, disclosure, humor, vulnerability, depth, warmth }]
+let lastRapportTurn = 0;
+let rapportLevel = 0;     // 0=stranger, 1=acquaintance, 2=friendly, 3=close, 4=intimate
+
+// Personal topic indicators (signal self-disclosure)
+const PERSONAL_MARKERS = /\b(my (?:life|family|mom|dad|brother|sister|wife|husband|partner|friend|dog|cat|kid|job|boss|work|team|project|apartment|house)|I (?:feel|felt|love|hate|miss|wish|hope|fear|worry|struggle|dream|believe|grew up|used to|remember|can't stop)|honestly|between us|don't tell|I've never told|the truth is|confession|vulnerable|scared|anxious|lonely|embarrassed)\b/i;
+
+// Humor attempt indicators
+const HUMOR_MARKERS = /\b(lol|lmao|haha|😂|🤣|just kidding|jk|no but seriously|plot twist|imagine if|what if.*absurd|rofl)\b/i;
+
+// Vulnerability indicators (going beyond surface)
+const VULNERABILITY_MARKERS = /\b(I'm afraid|I struggle|I don't know if|it's hard to admit|I've been thinking|keeps me up|I'm not sure I|can I be honest|I feel like I'm|I'm worried|I sometimes|I never really|to be vulnerable)\b/i;
+
+// Emotional openness (sharing feelings, not just facts)
+const EMOTIONAL_OPENNESS = /\b(I feel|makes me feel|that makes me|I get so|it hurts|it means a lot|I really care|means everything|I'm passionate|I'm excited about|I'm frustrated|I'm grateful|I appreciate)\b/i;
+
+function measureRapportSignals(text) {
+  const turn = mem.turn;
+  const signals = { turn, disclosure: 0, humor: 0, vulnerability: 0, depth: 0, warmth: 0 };
+
+  // Self-disclosure: personal pronouns + personal topics
+  const iCount = (text.match(/\bI\b/g) || []).length;
+  const myCount = (text.match(/\bmy\b/gi) || []).length;
+  if (PERSONAL_MARKERS.test(text)) signals.disclosure += 2;
+  if (iCount >= 2 && myCount >= 1) signals.disclosure += 1;
+  if (text.length > 80 && iCount >= 3) signals.disclosure += 1; // long personal message
+
+  // Humor attempts (showing comfort)
+  if (HUMOR_MARKERS.test(text)) signals.humor += 2;
+  if (/[😄😊🙈😅🤷]/.test(text)) signals.humor += 1;
+
+  // Vulnerability (trust signal)
+  if (VULNERABILITY_MARKERS.test(text)) signals.vulnerability += 3;
+  if (EMOTIONAL_OPENNESS.test(text)) signals.vulnerability += 1;
+
+  // Depth: message length + question complexity as proxy
+  if (text.length > 120) signals.depth += 1;
+  if (text.length > 200) signals.depth += 1;
+  if (/\bwhy\b.*\bdo you think\b/i.test(text) || /\bwhat's your.*(?:take|opinion|view)\b/i.test(text)) signals.depth += 2;
+  if (/\bhow do you feel about\b/i.test(text)) signals.depth += 2;
+
+  // Warmth: greetings, terms of endearment, positive acknowledgment of AI
+  if (/\b(thanks|thank you|you're (?:great|awesome|funny|smart|helpful)|I like (?:talking|chatting) (?:to|with) you|this is fun|you get me)\b/i.test(text)) signals.warmth += 2;
+  if (/\b(haha you|you're funny|good one|nice one|love that)\b/i.test(text)) signals.warmth += 1;
+
+  rapportSignals.push(signals);
+  if (rapportSignals.length > 15) rapportSignals.shift();
+  return signals;
+}
+
+function computeRapportLevel() {
+  if (rapportSignals.length < 2) return 0;
+
+  // Weight recent signals more heavily
+  let totalScore = 0;
+  const len = rapportSignals.length;
+  for (let i = 0; i < len; i++) {
+    const s = rapportSignals[i];
+    const recency = 0.5 + 0.5 * (i / (len - 1)); // 0.5→1.0 weight
+    const turnScore = (s.disclosure + s.humor + s.vulnerability + s.depth + s.warmth) * recency;
+    totalScore += turnScore;
+  }
+
+  // Normalize by number of signals
+  const avg = totalScore / len;
+
+  // Map to 0-4 rapport levels
+  if (avg >= 4) return 4;       // intimate: lots of personal sharing + vulnerability
+  if (avg >= 2.5) return 3;     // close: regular disclosure + humor + depth
+  if (avg >= 1.5) return 2;     // friendly: some personal sharing, humor emerging
+  if (avg >= 0.5) return 1;     // acquaintance: surface but engaged
+  return 0;                      // stranger: just started or purely transactional
+}
+
+// Rapport-aware response adjustment
+function applyRapportCalibration(response, text) {
+  const turn = mem.turn;
+  if (turn - lastRapportTurn < 3) return response;
+
+  const signals = rapportSignals[rapportSignals.length - 1];
+  if (!signals) return response;
+
+  const prevLevel = rapportLevel;
+  rapportLevel = computeRapportLevel();
+
+  let r = response;
+
+  // ── Level transition acknowledgment (rapport deepening moment) ──
+  if (rapportLevel > prevLevel && rapportLevel >= 2 && Math.random() < 0.4) {
+    lastRapportTurn = turn;
+    const transitions = {
+      2: [
+        "I feel like we're really getting somewhere here.",
+        "This is the kind of conversation I was hoping for.",
+        "I'm really enjoying where this is going.",
+      ],
+      3: [
+        "You know, I really appreciate you sharing that.",
+        "I love that you trust me enough to go there.",
+        "This conversation keeps getting better.",
+      ],
+      4: [
+        "Honestly, this is one of those rare conversations that just clicks.",
+        "I feel like we could talk about anything at this point.",
+      ],
+    };
+    const pool = transitions[rapportLevel] || transitions[2];
+    const ack = pool[Math.floor(Math.random() * pool.length)];
+    // Prepend acknowledgment naturally
+    r = ack + " " + r.charAt(0).toLowerCase() + r.slice(1);
+    return r;
+  }
+
+  // ── Rapport-calibrated pronoun shifting ──
+  // At higher rapport, shift from "you/I" to "we" framing
+  if (rapportLevel >= 3 && Math.random() < 0.25) {
+    r = r.replace(/\bI think (that |we |it )/i, (_, rest) => "I think we can agree " + rest.trim() + " ");
+    r = r.replace(/\byou and I\b/i, "we");
+  }
+
+  // ── Vulnerability reciprocity ──
+  // If user is being vulnerable, match their openness level
+  if (signals.vulnerability >= 2 && Math.random() < 0.35) {
+    lastRapportTurn = turn;
+    const reciprocals = [
+      "That takes courage to say.",
+      "I really hear you on that.",
+      "Thank you for being so honest about that.",
+      "That's the kind of thing most people wouldn't say out loud.",
+    ];
+    const recip = reciprocals[Math.floor(Math.random() * reciprocals.length)];
+    // Insert after first sentence
+    const firstDot = r.search(/[.!?]\s/);
+    if (firstDot > 0) {
+      r = r.slice(0, firstDot + 1) + " " + recip + r.slice(firstDot + 1);
+    } else {
+      r = recip + " " + r;
+    }
+    return r;
+  }
+
+  // ── Warmth escalation ──
+  // At high rapport + warmth signals, add warmer closings
+  if (rapportLevel >= 2 && signals.warmth >= 1 && Math.random() < 0.3) {
+    lastRapportTurn = turn;
+    const warmClosings = [
+      "I'm genuinely glad we're having this conversation.",
+      "Conversations like this are why I love doing this.",
+      "You're a really thoughtful person, you know that?",
+    ];
+    const closing = warmClosings[Math.floor(Math.random() * warmClosings.length)];
+    // Only add if response doesn't already end with a question
+    if (!/\?\s*$/.test(r)) {
+      r = r + " " + closing;
+    }
+  }
+
+  // ── Humor matching at high rapport ──
+  if (rapportLevel >= 2 && signals.humor >= 1 && Math.random() < 0.3) {
+    lastRapportTurn = turn;
+    // At higher rapport, feel comfortable being playful back
+    const playful = [
+      "😄 ",
+      "Ha! ",
+      "Okay that got me — ",
+      "I love the energy — ",
+    ];
+    const prefix = playful[Math.floor(Math.random() * playful.length)];
+    r = prefix + r.charAt(0).toLowerCase() + r.slice(1);
+  }
+
+  return r;
+}
+
 /* ── Output Polish & Deduplication (Round 58) ──
  * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
  * Runs just before output to ensure the response reads naturally regardless
@@ -9845,6 +10028,9 @@ export function getAIResponse(input) {
   // ═══ Shared understanding: track points of agreement ═══
   trackSharedGround(text, parsed);
 
+  // ═══ Rapport calibration: measure relational depth signals ═══
+  measureRapportSignals(text);
+
   // ═══ Subtext detection: read between the lines ═══
   const subtext = detectSubtext(text, sent);
   trackSubtext(subtext);
@@ -9930,6 +10116,9 @@ export function getAIResponse(input) {
 
   // ═══ Conversational grounding: show active listening before responding ═══
   response = addGrounding(response, text, parsed, sent, currentTopics);
+
+  // ═══ Rapport calibration: adjust warmth/openness based on relational depth ═══
+  response = applyRapportCalibration(response, text);
 
   // ═══ Topic bridging: natural connective tissue on topic shifts/callbacks ═══
   response = addTopicBridge(response, currentTopics);
@@ -10058,6 +10247,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
