@@ -10278,7 +10278,7 @@ export function getAIResponse(input) {
   response = seedDetails(response, currentTopics);
 
   // ═══ Precision echoing: replace generic questions/acks with content-specific ones ═══
-  response = precisionEcho(response, text, tokens);
+  response = precisionEcho(response, text, tokenize(text));
 
   // ═══ Progressive question depth: replace flat deepeners with depth-aware follow-ups ═══
   response = deepenQuestions(response, currentTopics);

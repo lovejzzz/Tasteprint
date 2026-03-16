@@ -187,11 +187,16 @@ export const DEFAULT_PROPS = {
   progress:      { pct: 68 },
   slider:        { pct: 65 },
   "media-player":{ pct: 42 },
+  testimonial:   { stars: 4 },
   rating:        { stars: 4 },
   "sub-toggle":  { active: 1 },
   "dash-panel":  { bars: [65,42,78,35,55,88,48], ring: 72 },
   chart:         { bars: [55,80,45,90,65,75], highlight: 3 },
   notification:  { read: [false, false, true] },
+  alert:         { level: 0 },
+  toast:         { level: 0 },
+  "pricing-card":{ featured: false },
+  "product-card":{ wishlisted: false },
   "cart-item":   { qty: 1 },
 };
 

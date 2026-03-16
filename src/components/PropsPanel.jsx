@@ -86,11 +86,71 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Bar heights (chart) — mini draggable bars for adjusting chart data */
+  if ("bars" in defaults) {
+    const bars = G("bars") || defaults.bars;
+    controls.push(<React.Fragment key="bars"><span style={label}>Bars</span>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 28, padding: "0 2px" }}>
+        {bars.map((h, i) => (
+          <div key={i} style={{ position: "relative", width: 10, height: 28, display: "flex", flexDirection: "column", justifyContent: "flex-end", cursor: "ns-resize" }}
+            onMouseDown={(e) => {
+              stop(e);
+              const startY = e.clientY;
+              const startH = h;
+              const onMove = (ev) => {
+                const delta = startY - ev.clientY;
+                const next = [...bars];
+                next[i] = Math.max(5, Math.min(100, startH + delta * 2));
+                onProp("bars", next);
+              };
+              const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+              window.addEventListener("mousemove", onMove);
+              window.addEventListener("mouseup", onUp);
+            }}>
+            <div style={{ width: "100%", height: `${h * 0.28}px`, minHeight: 2, background: p.ac, borderRadius: 2, transition: "height .1s" }} />
+          </div>
+        ))}
+      </div>
+    </React.Fragment>);
+  }
+
   /* Notification read state */
   if ("read" in defaults) {
     const read = G("read");
     controls.push(<React.Fragment key="read"><span style={label}>Read</span>
       {read.map((r, i) => <button key={i} style={btn(r)} onMouseDown={stop} onClick={() => { const next = [...read]; next[i] = !next[i]; onProp("read", next); }}>{r ? "✓" : i + 1}</button>)}
+    </React.Fragment>);
+  }
+
+  /* Alert/toast severity level */
+  if ("level" in defaults) {
+    const level = G("level");
+    const levels = [
+      { emoji: "ℹ", name: "Info" },
+      { emoji: "⚠", name: "Warn" },
+      { emoji: "✓", name: "OK" },
+      { emoji: "✕", name: "Err" },
+    ];
+    controls.push(<React.Fragment key="level"><span style={label}>Level</span>
+      {levels.map((l, i) => <button key={i} style={{ ...btn(level === i), fontSize: 9, width: 24, height: 20 }} onMouseDown={stop} onClick={() => onProp("level", i)} title={l.name}>{l.emoji}</button>)}
+    </React.Fragment>);
+  }
+
+  /* Featured toggle (pricing-card) */
+  if ("featured" in defaults) {
+    const on = G("featured");
+    controls.push(<React.Fragment key="feat"><span style={label}>Featured</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("featured", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
+  /* Wishlisted toggle (product-card) */
+  if ("wishlisted" in defaults) {
+    const on = G("wishlisted");
+    controls.push(<React.Fragment key="wish"><span style={label}>♥</span>
+      <button style={{ ...btn(on), width: 22, height: 22, fontSize: 12, border: "none", background: "transparent", color: on ? "#EF4444" : p.mu + "40" }} onMouseDown={stop} onClick={() => onProp("wishlisted", !on)}>{on ? "♥" : "♡"}</button>
     </React.Fragment>);
   }
 
