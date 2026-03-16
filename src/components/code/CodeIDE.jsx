@@ -318,12 +318,15 @@ const SHORTCUTS = [
     ['\u2318+Shift+S', 'Surround with...'],
     ['Tab (on trigger)', 'Expand snippet'],
     ['\u2318+Shift+\\', 'Jump to matching bracket'],
+    ['\u2318+Shift+[', 'Fold at cursor'],
+    ['\u2318+Shift+]', 'Unfold at cursor'],
+    ['\u2318+Shift+Space', 'Expand selection to brackets'],
   ]},
   { cat: 'Search', items: [
     ['\u2318+F', 'Find'],
     ['\u2318+H', 'Find & Replace'],
     ['\u2318+Shift+F', 'Search in files'],
-    ['Ctrl+G', 'Go to line'],
+    ['\u2318+G / Ctrl+G', 'Go to line'],
     ['\u2318+Click', 'Go to definition'],
   ]},
   { cat: 'Navigation', items: [
@@ -1756,6 +1759,59 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTimeout(() => helpSearchRef.current?.focus(), 50); return;
     }
 
+    /* Fold/Unfold at cursor: Cmd+Shift+[ / ] */
+    if (e.key === '[' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      const lineIdx = activeLn - 1;
+      if (foldableRanges[lineIdx] !== undefined && !foldedLines.has(lineIdx)) {
+        toggleFold(lineIdx);
+        showToast('Folded', 'info');
+      }
+      return;
+    }
+    if (e.key === ']' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      const lineIdx = activeLn - 1;
+      if (foldedLines.has(lineIdx)) {
+        toggleFold(lineIdx);
+        showToast('Unfolded', 'info');
+      }
+      return;
+    }
+
+    /* Expand selection to enclosing brackets: Cmd+Shift+Space */
+    if (e.key === ' ' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      // Find enclosing bracket pair
+      const pos = s;
+      const opens = '([{', closes = ')]}';
+      let depth = {};
+      for (let ci = 0; ci < opens.length; ci++) depth[opens[ci]] = 0;
+      for (let i = pos - 1; i >= 0; i--) {
+        const ch = code[i];
+        const oi = opens.indexOf(ch), cci = closes.indexOf(ch);
+        if (cci !== -1) depth[opens[cci]]++;
+        if (oi !== -1) {
+          if (depth[ch] > 0) depth[ch]--;
+          else {
+            // Found unmatched open bracket — find its close
+            let d = 1, j = i + 1;
+            while (j < code.length && d > 0) {
+              if (code[j] === opens[oi]) d++;
+              if (code[j] === closes[oi]) d--;
+              j++;
+            }
+            if (d === 0) {
+              setTimeout(() => { el.selectionStart = i + 1; el.selectionEnd = j - 1; el.focus(); }, 0);
+              updateCursor(el);
+            }
+            break;
+          }
+        }
+      }
+      return;
+    }
+
     /* Editor zoom: Cmd+= / Cmd+- */
     if ((e.key === '=' || e.key === '+') && (e.metaKey || e.ctrlKey)) {
       e.preventDefault(); setEditorZoom(z => Math.min(2, z + 0.1)); return;
@@ -2100,6 +2156,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         [data-ide-scroll] *::-webkit-scrollbar-corner { background: transparent; }
         [data-ide-scroll] textarea::selection { background: #cba6f730; }
         @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
       `}</style>
 
       {/* Title bar — drag handle for moving IDE on canvas */}
@@ -2716,8 +2773,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 { label: 'while (...) { }', key: 'while', wrap: (sel, ind) => `${ind}while (condition) {\n${sel}\n${ind}}` },
                 { label: 'try { } catch { }', key: 'try', wrap: (sel, ind) => `${ind}try {\n${sel}\n${ind}} catch (e) {\n${ind}  console.error(e);\n${ind}}` },
                 { label: 'function (...) { }', key: 'fn', wrap: (sel, ind) => `${ind}function name() {\n${sel}\n${ind}}` },
+                { label: 'console.log( )', key: 'log', wrap: (sel) => `console.log(${sel.trim()})` },
+                { label: '( ) => { }', key: 'arrow', wrap: (sel, ind) => `${ind}() => {\n${sel}\n${ind}}` },
+                { label: 'async ( ) => { }', key: 'async', wrap: (sel, ind) => `${ind}async () => {\n${sel}\n${ind}}` },
                 { label: '( )', key: 'paren', wrap: (sel) => `(${sel.trim()})` },
                 { label: '[ ]', key: 'bracket', wrap: (sel) => `[${sel.trim()}]` },
+                { label: '` ` (template)', key: 'template', wrap: (sel) => `\`${sel.trim()}\`` },
               ].map(item => (
                 <div key={item.key} onClick={() => {
                   const { s: ss, en: se } = surroundMenu;
@@ -2728,7 +2789,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   // Re-indent selected code by adding one level
                   const tab = ' '.repeat(tabSize);
                   const reindented = selected.split('\n').map(l => tab + l).join('\n');
-                  const wrapped = item.key === 'paren' || item.key === 'bracket' ? item.wrap(selected) : item.wrap(reindented, indent);
+                  const inlineKeys = ['paren', 'bracket', 'log', 'template'];
+                  const wrapped = inlineKeys.includes(item.key) ? item.wrap(selected) : item.wrap(reindented, indent);
                   const nc = code.substring(0, ss) + wrapped + code.substring(se);
                   setCode(nc);
                   setSurroundMenu(null);
@@ -3841,21 +3903,54 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       lines.forEach((l, i) => {
                         const trimmed = l.trim();
                         if (/^\s*\/\//.test(l)) return; // skip comments
-                        if (/\bvar\b/.test(l)) hints.push({ ln: i + 1, msg: 'Prefer const/let over var', sev: 'warn' });
-                        if (/console\.log/.test(l) && !activeFile.includes('playground')) hints.push({ ln: i + 1, msg: 'console.log left in code', sev: 'info' });
-                        if (/==(?!=)/.test(l) && !/===/.test(l)) hints.push({ ln: i + 1, msg: 'Use === instead of ==', sev: 'warn' });
-                        if (/!=(?!=)/.test(l) && !/!==/.test(l)) hints.push({ ln: i + 1, msg: 'Use !== instead of !=', sev: 'warn' });
-                        if (/\balert\s*\(/.test(l)) hints.push({ ln: i + 1, msg: 'Avoid using alert()', sev: 'warn' });
+                        if (/\bvar\b/.test(l)) hints.push({ ln: i + 1, msg: 'Prefer const/let over var', sev: 'warn', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/\bvar\b/, 'const'); setCode(all.join('\n')); showToast('Fixed: var → const', 'success');
+                        }});
+                        if (/console\.log/.test(l) && !activeFile.includes('playground')) hints.push({ ln: i + 1, msg: 'console.log left in code', sev: 'info', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/console\.log\([^)]*\);?\s*/, ''); if (!all[i].trim()) all.splice(i, 1); setCode(all.join('\n')); showToast('Removed console.log', 'success');
+                        }});
+                        if (/==(?!=)/.test(l) && !/===/.test(l)) hints.push({ ln: i + 1, msg: 'Use === instead of ==', sev: 'warn', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/==(?!=)/g, '==='); setCode(all.join('\n')); showToast('Fixed: == → ===', 'success');
+                        }});
+                        if (/!=(?!=)/.test(l) && !/!==/.test(l)) hints.push({ ln: i + 1, msg: 'Use !== instead of !=', sev: 'warn', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/!=(?!=)/g, '!=='); setCode(all.join('\n')); showToast('Fixed: != → !==', 'success');
+                        }});
+                        if (/\balert\s*\(/.test(l)) hints.push({ ln: i + 1, msg: 'Avoid using alert()', sev: 'warn', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/\balert\s*\(/, 'console.log('); setCode(all.join('\n')); showToast('Fixed: alert → console.log', 'success');
+                        }});
                         if (l.length > 120 && !l.trim().startsWith('//')) hints.push({ ln: i + 1, msg: `Line too long (${l.length} chars)`, sev: 'info' });
-                        if (/;\s*;/.test(l)) hints.push({ ln: i + 1, msg: 'Double semicolon', sev: 'warn' });
+                        if (/;\s*;/.test(l)) hints.push({ ln: i + 1, msg: 'Double semicolon', sev: 'warn', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/;\s*;/g, ';'); setCode(all.join('\n')); showToast('Fixed: removed double semicolon', 'success');
+                        }});
                         if (/\{\}/.test(l) && !/\(\)/.test(l)) hints.push({ ln: i + 1, msg: 'Empty block statement', sev: 'info' });
                         if (/\beval\s*\(/.test(l)) hints.push({ ln: i + 1, msg: 'Avoid eval() — security risk', sev: 'warn' });
-                        if (/\bdebugger\b/.test(trimmed)) hints.push({ ln: i + 1, msg: 'Debugger statement left in code', sev: 'warn' });
+                        if (/\bdebugger\b/.test(trimmed)) hints.push({ ln: i + 1, msg: 'Debugger statement left in code', sev: 'warn', fix: () => {
+                          const all = code.split('\n'); all.splice(i, 1); setCode(all.join('\n')); showToast('Removed debugger', 'success');
+                        }});
                         if (/,\s*[}\]]/.test(l) && !/\/\//.test(l.substring(0, l.indexOf(',')))) { /* trailing comma OK */ }
-                        if (/\bnew\s+Array\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use [] instead of new Array()', sev: 'info' });
-                        if (/\bnew\s+Object\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use {} instead of new Object()', sev: 'info' });
+                        if (/\bnew\s+Array\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use [] instead of new Array()', sev: 'info', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/new\s+Array\(\)/g, '[]'); setCode(all.join('\n')); showToast('Fixed: new Array() → []', 'success');
+                        }});
+                        if (/\bnew\s+Object\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use {} instead of new Object()', sev: 'info', fix: () => {
+                          const all = code.split('\n'); all[i] = all[i].replace(/new\s+Object\(\)/g, '{}'); setCode(all.join('\n')); showToast('Fixed: new Object() → {}', 'success');
+                        }});
                       });
+                      const fixable = hints.filter(h => h.fix);
                       return hints.length > 0 || output?.err ? (<>
+                        {fixable.length > 1 && (
+                          <div onClick={() => {
+                            // Apply fixes in reverse order to preserve line numbers
+                            [...fixable].reverse().forEach(h => h.fix());
+                            showToast(`Fixed ${fixable.length} issues`, 'success');
+                          }}
+                            style={{ padding: '3px 8px', fontSize: 8, color: '#89b4fa', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}
+                            onMouseDown={stop}
+                            onMouseEnter={e => e.currentTarget.style.background = '#89b4fa08'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <span style={{ fontSize: 10 }}>{'\u2728'}</span>
+                            <span>Fix all {fixable.length} auto-fixable issues</span>
+                          </div>
+                        )}
                         {output?.err && (
                       <div style={{
                         fontSize: fs(9), color: '#f38ba8', marginTop: 4,
@@ -3900,8 +3995,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       </div>
                     )}
                     {hints.map((h, i) => (
-                      <div key={`h${i}`} onClick={() => { goToLine(h.ln);
-                      }} style={{
+                      <div key={`h${i}`} onClick={() => goToLine(h.ln)} style={{
                         fontSize: fs(9), padding: '2px 6px', marginTop: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                         color: h.sev === 'warn' ? '#f9e2af' : '#89b4fa',
                       }}
@@ -3909,6 +4003,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <span>{h.sev === 'warn' ? '\u26A0' : '\u24D8'}</span>
                         <span style={{ flex: 1 }}>{h.msg}</span>
+                        {h.fix && <span onClick={e => { e.stopPropagation(); h.fix(); }}
+                          style={{ fontSize: 7, color: '#89b4fa', background: '#89b4fa10', padding: '1px 4px', borderRadius: 2, cursor: 'pointer', flexShrink: 0 }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#89b4fa20'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#89b4fa10'}>Fix</span>}
                         <span style={{ fontSize: 7, color: '#555' }}>:{h.ln}</span>
                       </div>
                     ))}
