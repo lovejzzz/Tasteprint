@@ -6139,6 +6139,169 @@ function adjustResponseEnergy(response, energy) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   DETAIL SEEDING & SPECIFICITY ENGINE
+   Vague responses ("that's interesting") feel robotic. Specific
+   responses ("like when you're debugging at 2am and the fix is one
+   semicolon") feel human. This engine:
+   1. Replaces generic fillers with topic-aware vivid details
+   2. Seeds "hooks" — tangent-worthy micro-details that invite follow-up
+   3. Adds grounding specifics (numbers, scenarios, comparisons)
+   Fire rate: ~25% of eligible responses (>50 chars, has topic context).
+   ══════════════════════════════════════════════════════════════════ */
+
+// Vivid detail pools keyed by broad domain
+const VIVID_DETAILS = {
+  tech: [
+    "like when you're staring at a bug for an hour and the fix is one missing character",
+    "like that feeling when your tests finally all pass green",
+    "you know that moment where the docs say one thing but the API does another",
+    "kind of like when you refactor something and it accidentally fixes three other bugs",
+    "like when you open a PR and realize you forgot to remove the console.logs",
+    "it's that 3am energy where suddenly everything makes sense",
+    "sort of like when Stack Overflow has your exact error from 2014",
+  ],
+  design: [
+    "like when you nail the spacing and everything just clicks into place",
+    "you know that feeling when a color palette suddenly harmonizes",
+    "kind of like when you zoom to 200% and the pixels are perfect",
+    "like when the client says 'I'll know it when I see it' — classic",
+    "sort of like when you discover a font pairing that just works",
+    "that moment when your layout works on every breakpoint first try",
+    "like when you remove one element and the whole design improves",
+  ],
+  general: [
+    "like when you explain something and it clicks for the other person",
+    "you know that feeling when everything lines up perfectly",
+    "kind of like finding a shortcut you wish you'd known years ago",
+    "it's that satisfying feeling when a plan actually works",
+    "like discovering a great song because it was on in the background somewhere",
+    "sort of like when you organize a messy drawer and feel weirdly accomplished",
+    "like when you're in the zone and time just disappears",
+  ],
+  learning: [
+    "like when something confusing suddenly snaps into clarity",
+    "you know that 'aha' moment when the pieces connect",
+    "kind of like learning to ride a bike — impossible until it's not",
+    "like when you explain a concept and realize you finally understand it yourself",
+    "that feeling when you read something and it changes how you see everything",
+  ],
+  work: [
+    "like when your whole team is in sync and shipping fast",
+    "you know when a meeting actually ends early — rare but magical",
+    "kind of like when you automate a task that used to take hours",
+    "like when someone reviews your code and says 'nice approach'",
+    "that feeling when you finally close a ticket that's been open for weeks",
+  ],
+};
+
+// Hook seeds — small tangent-worthy details to append
+const HOOK_SEEDS = {
+  tech: [
+    "I read somewhere that most bugs are found within 10 lines of a recent change.",
+    "Apparently the average developer spends more time reading code than writing it.",
+    "There's a theory that the best code is the code you delete.",
+    "Someone once said 'make it work, make it right, make it fast' — in that order.",
+  ],
+  design: [
+    "There's this idea that white space is the most powerful design element.",
+    "Dieter Rams said 'less, but better' — still holds up.",
+    "Apparently users form an opinion about a design in about 50 milliseconds.",
+    "The best interfaces feel invisible — you don't notice the design at all.",
+  ],
+  general: [
+    "I think about that more than I probably should.",
+    "There's definitely a rabbit hole there if you want to go down it.",
+    "It's one of those things that sounds simple but gets deep fast.",
+    "I feel like there's a whole conversation in that.",
+  ],
+};
+
+// Generic phrases to replace with specifics
+const GENERIC_REPLACEMENTS = [
+  { pattern: /\bthat's (really )?interesting\b/i, domain: null,
+    replacements: [
+      "that's one of those things I could go back and forth on",
+      "now that's something I've been curious about",
+      "oh I love that kind of thing",
+      "okay now you've got me thinking",
+    ]},
+  { pattern: /\bthat's (really )?(cool|awesome|great|nice)\b/i, domain: null,
+    replacements: [
+      "oh I'm into that",
+      "now that's solid",
+      "okay I respect that",
+      "nice — that actually matters more than people realize",
+    ]},
+  { pattern: /\btell me more\b/i, domain: null,
+    replacements: [
+      "I want the full picture on this",
+      "okay unpack that for me",
+      "wait — go deeper on that",
+      "I feel like there's a story here",
+    ]},
+];
+
+let lastDetailTurn = 0;
+
+function getDomainForTopics(topics) {
+  const techWords = new Set(["javascript","react","css","html","code","coding","programming","api","git","typescript","python","rust","node","web","frontend","backend","database","sql","devops","docker","testing","debug","deploy","framework","library","algorithm","data","server","app","software","developer","engineer"]);
+  const designWords = new Set(["design","ui","ux","color","font","layout","typography","spacing","animation","figma","sketch","prototype","wireframe","pixel","responsive","grid","component","palette","theme","brand","visual","style","aesthetic"]);
+  const learnWords = new Set(["learn","study","tutorial","course","practice","beginner","teach","understand","concept","theory","skill","knowledge","education","school","book"]);
+  const workWords = new Set(["work","job","team","project","meeting","deadline","client","manager","sprint","agile","startup","company","career","hire","interview","remote"]);
+
+  for (const t of topics) {
+    const low = t.toLowerCase();
+    if (techWords.has(low)) return "tech";
+    if (designWords.has(low)) return "design";
+    if (learnWords.has(low)) return "learning";
+    if (workWords.has(low)) return "work";
+  }
+  return "general";
+}
+
+function seedDetails(response, topics) {
+  if (response.length < 45 || response.length > 250) return response;
+  if (mem.turn - lastDetailTurn < 3) return response; // cooldown
+  if (/^(hi|hey|hello|bye|goodbye|thanks|thank)/i.test(response)) return response;
+
+  let r = response;
+  const domain = getDomainForTopics(topics);
+
+  // ── Step 1: Replace generic fillers with specifics (~40% chance) ──
+  if (Math.random() < 0.4) {
+    for (const { pattern, replacements } of GENERIC_REPLACEMENTS) {
+      if (pattern.test(r)) {
+        r = r.replace(pattern, pick(replacements));
+        lastDetailTurn = mem.turn;
+        break;
+      }
+    }
+  }
+
+  // ── Step 2: Inject vivid simile/detail (~20% chance, if response has room) ──
+  if (Math.random() < 0.2 && r.length < 140 && r.length > 50) {
+    const pool = VIVID_DETAILS[domain] || VIVID_DETAILS.general;
+    const detail = pick(pool);
+    // Find a clean insertion point — after first sentence
+    const firstEnd = r.search(/[.!]\s/);
+    if (firstEnd > 15 && firstEnd < 100) {
+      r = r.slice(0, firstEnd + 1) + " " + detail.charAt(0).toUpperCase() + detail.slice(1) + "." + r.slice(firstEnd + 1);
+      lastDetailTurn = mem.turn;
+    }
+  }
+
+  // ── Step 3: Append a hook seed (~15% chance, end of response) ──
+  if (Math.random() < 0.15 && r.length < 180 && !r.endsWith("?")) {
+    const pool = HOOK_SEEDS[domain] || HOOK_SEEDS.general;
+    const hook = pick(pool);
+    r = r.replace(/[.!]?\s*$/, ". " + hook);
+    lastDetailTurn = mem.turn;
+  }
+
+  return r;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CONVERSATIONAL DISFLUENCY — Natural Speech Patterns
    Real humans don't produce perfect prose. They self-correct,
    restart mid-thought, hedge, and think out loud. This engine
@@ -6525,6 +6688,9 @@ export function getAIResponse(input) {
   response = calibrateResponseLength(response, text, inputEnergy);
   response = adjustResponseEnergy(response, inputEnergy);
 
+  // ═══ Detail seeding & specificity: replace vague fillers, inject vivid details ═══
+  response = seedDetails(response, currentTopics);
+
   // ═══ Conversational disfluency: natural speech patterns (self-correction, false starts) ═══
   response = addDisfluency(response);
 
@@ -6564,6 +6730,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
