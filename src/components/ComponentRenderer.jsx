@@ -382,14 +382,21 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- ALERT ---- */
   if(type==="alert"){
-    const configs=[
-      {bg:"#EBF5FF",bc:"#3B82F6",ic:"ℹ",tx:"#1E40AF",label:"Info: Check the docs for details."},
-      {bg:"#FFF8E1",bc:"#F59E0B",ic:"⚠",tx:"#92400E",label:"Warning: This action cannot be undone."},
-      {bg:"#ECFDF5",bc:"#10B981",ic:"✓",tx:"#065F46",label:"Success: Your changes have been saved."},
-      {bg:"#FEF2F2",bc:"#EF4444",ic:"✕",tx:"#991B1B",label:"Error: Something went wrong."},
+    const sev=[
+      {ic:(<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke={p.ac} strokeWidth="1.5"/><circle cx="8" cy="5" r="1" fill={p.ac}/><rect x="7.25" y="7" width="1.5" height="4" rx=".75" fill={p.ac}/></svg>),label:"Info: Check the docs for details.",accent:p.ac},
+      {ic:(<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 13.5H1.5L8 1.5Z" stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round"/><rect x="7.25" y="6" width="1.5" height="3.5" rx=".75" fill="#F59E0B"/><circle cx="8" cy="11.25" r=".85" fill="#F59E0B"/></svg>),label:"Warning: This action cannot be undone.",accent:"#F59E0B"},
+      {ic:(<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#10B981" strokeWidth="1.5"/><path d="M5.5 8.5L7 10L10.5 6" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),label:"Success: Your changes have been saved.",accent:"#10B981"},
+      {ic:(<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#EF4444" strokeWidth="1.5"/><path d="M5.75 5.75L10.25 10.25M10.25 5.75L5.75 10.25" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round"/></svg>),label:"Error: Something went wrong.",accent:"#EF4444"},
     ];
-    const c=configs[v]||configs[0];
-    return <div style={{...b,background:c.bg,borderRadius:10,borderLeft:`3px solid ${c.bc}`,padding:"0 14px",display:"flex",alignItems:"center",gap:10,animation:"tp-slidein .3s ease-out"}}><span style={{fontSize:14,color:c.bc}}>{c.ic}</span><T k="label" s={{fontSize:12,color:c.tx,fontWeight:500}}>{c.label}</T></div>;
+    const si=Math.min(v,3);const s=sev[si]||sev[0];
+    /* v0 — Tinted: soft tinted background with left accent bar */
+    if(v===0)return <div style={{...b,background:s.accent+"10",borderRadius:10,borderLeft:`3px solid ${s.accent}`,padding:"0 14px",display:"flex",alignItems:"center",gap:10,animation:"tp-slidein .3s ease-out"}}>{s.ic}<T k="label" s={{fontSize:12,color:p.tx,fontWeight:500}}>{s.label}</T></div>;
+    /* v1 — Card: elevated card with icon badge, title + description */
+    if(v===1)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,boxShadow:`0 2px 8px ${p.tx}08`,padding:"12px 14px",display:"flex",gap:12,alignItems:"flex-start",animation:"tp-slidein .3s ease-out"}}><div style={{width:32,height:32,borderRadius:8,background:s.accent+"15",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{s.ic}</div><div style={{flex:1,minWidth:0}}><T k="title" s={{fontSize:12,fontWeight:600,color:p.tx,display:"block",marginBottom:2}}>Attention needed</T><T k="label" s={{fontSize:11,color:p.mu,lineHeight:"1.4"}}>{s.label}</T></div><svg width="14" height="14" viewBox="0 0 14 14" style={{flexShrink:0,marginTop:2,cursor:"pointer",opacity:.4}}><path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" stroke={p.mu} strokeWidth="1.5" strokeLinecap="round"/></svg></div>;
+    /* v2 — Banner: full-width gradient banner with bold styling */
+    if(v===2)return <div style={{...b,background:`linear-gradient(135deg, ${s.accent}18 0%, ${s.accent}08 100%)`,borderRadius:10,padding:"0 16px",display:"flex",alignItems:"center",gap:10,borderBottom:`2px solid ${s.accent}30`,animation:"tp-slidein .3s ease-out"}}><div style={{width:28,height:28,borderRadius:999,background:s.accent,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,filter:"saturate(1.2)"}}><span style={{filter:"brightness(10)"}}>{s.ic}</span></div><div style={{flex:1,minWidth:0}}><T k="label" s={{fontSize:12,fontWeight:600,color:p.tx}}>{s.label}</T></div><span style={{fontSize:10,color:s.accent,fontWeight:600,cursor:"pointer",flexShrink:0,textDecoration:"underline",textUnderlineOffset:2}}>View →</span></div>;
+    /* v3 — Glass: glassmorphism frosted panel */
+    return <div style={{...b,background:p.card+"cc",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderRadius:12,border:`1px solid ${s.accent}25`,padding:"0 14px",display:"flex",alignItems:"center",gap:10,boxShadow:`0 4px 16px ${s.accent}10, inset 0 1px 0 ${p.card}80`,animation:"tp-slidein .3s ease-out"}}><div style={{width:6,height:6,borderRadius:999,background:s.accent,boxShadow:`0 0 8px ${s.accent}60`,flexShrink:0}}/><T k="label" s={{fontSize:12,color:p.tx,fontWeight:500}}>{s.label}</T><div style={{marginLeft:"auto",flexShrink:0,display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:9,color:s.accent,fontWeight:600,textTransform:"uppercase",letterSpacing:".5px"}}>Dismiss</span></div></div>;
   }
 
   /* ---- PAGINATION ---- */
