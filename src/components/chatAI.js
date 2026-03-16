@@ -6415,6 +6415,103 @@ function addBreath(response, text, energy) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   CROSS-DOMAIN ANALOGY & UNEXPECTED CONNECTIONS
+   Great conversationalists make surprising connections between
+   unrelated fields. "Debugging is like detective work" or "CSS
+   is jazz — you improvise within structure." This engine maps
+   topics to analogies from distant domains, occasionally injecting
+   "wait, that's actually like..." connections that make the user
+   go "huh, I never thought of it that way."
+   Fire rate: ~12% of eligible responses, 5-turn cooldown.
+   ══════════════════════════════════════════════════════════════════ */
+
+// Cross-domain analogy pairs: [source domain keywords, analogy text]
+// Each analogy bridges two unrelated domains
+const CROSS_DOMAIN_ANALOGIES = {
+  code: [
+    "It's kind of like cooking — you follow a recipe, but the best dishes come when you improvise a little.",
+    "That's weirdly similar to how jazz musicians play — there's structure, but the magic is in the riffs between the notes.",
+    "It reminds me of gardening, actually. You plant seeds, water them, prune what doesn't work, and eventually something grows.",
+    "It's like architecture — the foundation matters more than the decoration, but nobody sees the foundation.",
+    "Debugging is basically detective work. You have clues, suspects, and red herrings. And the culprit is always the one you least expect.",
+    "Writing code is a lot like writing prose — both are about communicating clearly, just to different audiences.",
+  ],
+  design: [
+    "Design is like cooking a great meal — it's not about having the most ingredients, it's about balance and knowing when to stop adding.",
+    "There's a musical thing here — good design has rhythm. Your eye flows like a melody, and the important bits hit like a beat drop.",
+    "It's like fashion, honestly. Trends come and go, but the fundamentals — fit, proportion, comfort — are timeless.",
+    "That reminds me of how filmmakers use negative space. What you leave out tells a story just as much as what you include.",
+    "It's like arranging furniture — every piece needs room to breathe, or the whole room feels cramped.",
+  ],
+  learning: [
+    "Learning is honestly like working out. The first few sessions are painful, then one day you realize you're stronger without even noticing the change.",
+    "It's the same as learning a language — you fumble and feel stupid, then suddenly you're thinking in it without trying.",
+    "Reminds me of how babies learn to walk. They fall hundreds of times and never once consider quitting. We could learn from that.",
+    "It's like compound interest — tiny daily improvements don't feel like much, but after a year you're in a completely different place.",
+  ],
+  work: [
+    "Working in a team is kind of like being in a band. Everyone has their instrument, and the magic happens when you listen to each other.",
+    "Deadlines are like running water — they always find a way through the cracks in your schedule.",
+    "Managing a project is basically herding cats, except the cats all have strong opinions about which direction to go.",
+    "It's like a relay race — you can be the fastest runner, but if the handoff is fumbled, none of it matters.",
+  ],
+  general: [
+    "There's a chess analogy here — sometimes the best move is the one that doesn't look like a move at all.",
+    "It's like navigating by stars — you can't reach them, but they show you which way to go.",
+    "That's the iceberg thing — what people see is 10%, and the other 90% is the work nobody talks about.",
+    "Reminds me of how rivers carve canyons — not by force, but by persistence over time.",
+    "It's like the difference between a map and the actual territory. The model is useful, but it's never the whole picture.",
+    "There's a music thing here — a rest is as important as a note. The pause is what gives everything else meaning.",
+  ],
+};
+
+// Connector phrases that introduce an analogy naturally
+const ANALOGY_CONNECTORS = [
+  "Wait, you know what this reminds me of? ",
+  "Okay this might sound random but — ",
+  "There's actually a perfect analogy for this. ",
+  "You know what it's like? ",
+  "This is going to sound weird, but — ",
+  "I keep coming back to this analogy: ",
+  "Okay bear with me here — ",
+];
+
+let lastAnalogyTurn = 0;
+
+function injectAnalogy(response, topics) {
+  if (response.length < 40 || response.length > 220) return response;
+  if (mem.turn - lastAnalogyTurn < 5) return response; // 5-turn cooldown
+  if (Math.random() > 0.12) return response; // ~12% fire rate
+  if (/^(hi|hey|hello|bye|goodbye|thanks|thank|sorry)/i.test(response)) return response;
+  // Don't inject into responses that already have analogies
+  if (/like\s+(cooking|jazz|gardening|architecture|detective|chess|music|river)/i.test(response)) return response;
+  if (/reminds me of/i.test(response)) return response;
+
+  // Find the best domain match for current topics
+  const domain = getDomainForTopics(topics); // reuse from detail seeding engine
+  const pool = CROSS_DOMAIN_ANALOGIES[domain] || CROSS_DOMAIN_ANALOGIES.general;
+  const analogy = pick(pool);
+
+  // Decide where to inject: end of response (most natural)
+  // Find the last sentence boundary
+  const lastEnd = Math.max(response.lastIndexOf(". "), response.lastIndexOf("! "), response.lastIndexOf("? "));
+
+  let r;
+  if (lastEnd > 30 && lastEnd < response.length - 10) {
+    // Insert before the last sentence
+    const connector = pick(ANALOGY_CONNECTORS);
+    r = response.slice(0, lastEnd + 2) + connector + analogy;
+  } else {
+    // Append after the response
+    const connector = pick(ANALOGY_CONNECTORS);
+    r = response.replace(/[.!]?\s*$/, ". " + connector + analogy);
+  }
+
+  lastAnalogyTurn = mem.turn;
+  return r;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    VOCABULARY ENRICHMENT & EXPRESSIVE WORD CHOICE
    Overused words ("good", "really", "very", "nice", "interesting")
    make responses feel flat and generic. This engine swaps bland
@@ -6921,6 +7018,9 @@ export function getAIResponse(input) {
   // ═══ Detail seeding & specificity: replace vague fillers, inject vivid details ═══
   response = seedDetails(response, currentTopics);
 
+  // ═══ Cross-domain analogy: unexpected connections between fields ═══
+  response = injectAnalogy(response, currentTopics);
+
   // ═══ Rhythm variation & breath: structural variance to break monotony ═══
   response = addBreath(response, text, inputEnergy);
 
@@ -6966,6 +7066,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
