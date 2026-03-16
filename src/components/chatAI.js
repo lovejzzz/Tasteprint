@@ -6939,6 +6939,154 @@ function addDisfluency(response) {
   return response;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   PATTERN BREAKING & CONVERSATIONAL SURPRISE (Round 41)
+   After many rounds of post-processing, responses risk feeling
+   "over-polished" — like they came off an assembly line. Real
+   humans occasionally surprise: they give a one-word answer when
+   you expected a paragraph, ask a completely left-field question,
+   or suddenly get introspective. This engine tracks recent response
+   *shapes* and occasionally breaks the pattern.
+   Fire rate: ~8% of eligible turns, 6-turn cooldown.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastPatternBreakTurn = 0;
+let recentResponseShapes = []; // tracks structural patterns: "long_question", "medium_statement", etc.
+
+function classifyResponseShape(response) {
+  const len = response.length;
+  const hasQ = response.includes("?");
+  const sentences = response.split(/(?<=[.!?])\s+/).length;
+  const size = len < 60 ? "short" : len < 150 ? "medium" : "long";
+  const type = hasQ ? "question" : "statement";
+  return `${size}_${type}_${sentences > 2 ? "multi" : "single"}`;
+}
+
+function trackResponseShape(response) {
+  recentResponseShapes.push(classifyResponseShape(response));
+  if (recentResponseShapes.length > 8) recentResponseShapes.shift();
+}
+
+function detectPatternRut() {
+  if (recentResponseShapes.length < 4) return null;
+  const last4 = recentResponseShapes.slice(-4);
+  // All same shape? Rut.
+  if (new Set(last4).size === 1) return "identical";
+  // All end with questions? Rut.
+  if (last4.every(s => s.includes("question"))) return "always_questions";
+  // All long? Rut.
+  if (last4.every(s => s.startsWith("long"))) return "always_long";
+  // All multi-sentence? Rut.
+  if (last4.every(s => s.includes("multi"))) return "always_multi";
+  return null;
+}
+
+function breakPattern(response, text, topics, energy) {
+  // Guards
+  if (response.length < 30) return response;
+  if (/^(hey|hi|hello|bye|see you|take care|nice to meet)/i.test(response)) return response;
+  if (mem.turn - lastPatternBreakTurn < 6) return response;
+
+  const rut = detectPatternRut();
+  // Fire rate: 8% normally, 25% if in a detected rut
+  const threshold = rut ? 0.75 : 0.92;
+  if (Math.random() > threshold) return response;
+
+  lastPatternBreakTurn = mem.turn;
+  const strategy = Math.random();
+
+  // Strategy 1: Radical compression (~25%)
+  // Replace entire response with a punchy 1-2 word reaction + redirect
+  if (strategy < 0.25 && rut === "always_long" || (strategy < 0.15 && response.length > 120)) {
+    const compressions = [
+      "Honestly? Yes.",
+      "Wait. Say more about that.",
+      "Huh.",
+      "...okay I love that.",
+      "That's the one.",
+      "Respect.",
+    ];
+    const topicPart = topics.length > 0 ? ` (${topics[0]} specifically)` : "";
+    const compressed = pick(compressions);
+    // Sometimes add a micro follow-up after the compressed hit
+    if (Math.random() > 0.5) {
+      return compressed + " What made you think of that" + topicPart + "?";
+    }
+    return compressed;
+  }
+
+  // Strategy 2: Parenthetical aside (~25%)
+  // Inject an introspective aside mid-response
+  if (strategy < 0.50) {
+    const sentences = response.split(/(?<=[.!?])\s+/);
+    if (sentences.length >= 2) {
+      const asides = [
+        "(I realize I keep asking you questions — you can totally just talk AT me too)",
+        "(this is the part where a real person would make a hand gesture, but alas)",
+        "(genuinely curious, not just saying that)",
+        "(I'm a tiny AI but I swear I'm thinking hard about this)",
+        "(sorry if that came out of nowhere)",
+      ];
+      const insertAt = Math.min(1, sentences.length - 1);
+      return sentences.slice(0, insertAt).join(" ") + " " + pick(asides) + " " + sentences.slice(insertAt).join(" ");
+    }
+  }
+
+  // Strategy 3: Confession of limitation (~20%)
+  // Suddenly honest about not knowing instead of sounding authoritative
+  if (strategy < 0.70) {
+    const confessions = [
+      "I'll be real — I'm working with a pretty tiny brain here. But my gut says: ",
+      "Okay full disclosure, I'm basically just pattern-matching at light speed. But here's what clicks: ",
+      "I don't have the full picture, and I know that. But from what you've told me: ",
+    ];
+    // Only apply to statement-heavy responses (not questions)
+    if (!response.endsWith("?")) {
+      const firstSentence = response.split(/(?<=[.!])\s+/)[0] || response;
+      if (firstSentence.length > 40) {
+        return pick(confessions) + firstSentence.charAt(0).toLowerCase() + firstSentence.slice(1);
+      }
+    }
+  }
+
+  // Strategy 4: Left-field pivot (~15%)
+  // Ask something unexpected but thematically adjacent
+  if (strategy < 0.85 && rut === "always_questions") {
+    // Break the question pattern — make a definitive statement instead
+    const stripped = response.replace(/\s*[^.!]*\?$/g, "").trim();
+    if (stripped.length > 20) {
+      const closers = [
+        " I don't even need to ask — I can tell you've thought about this.",
+        " And honestly, I think you already know the answer.",
+        " Full stop. No question mark needed.",
+      ];
+      return stripped + pick(closers);
+    }
+  }
+
+  // Strategy 5: Meta-pattern acknowledgment (~15%)
+  // Acknowledge the AI's own predictability
+  if (strategy <= 1.0 && rut) {
+    const metas = {
+      identical: "I just realized I've been giving you the same kind of answer over and over. Let me switch it up — ",
+      always_questions: "Okay I've been asking you a LOT of questions. Let me just say something for once: ",
+      always_long: "I've been kinda verbose lately. Let me try the short version: ",
+      always_multi: "I keep giving you these multi-part answers. Here's the simple take: ",
+    };
+    const prefix = metas[rut];
+    if (prefix) {
+      // For "always_long"/"always_multi", try to compress to first sentence
+      if (rut === "always_long" || rut === "always_multi") {
+        const first = response.split(/(?<=[.!?])\s+/)[0] || response;
+        return prefix + first.charAt(0).toLowerCase() + first.slice(1);
+      }
+      return prefix + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+  }
+
+  return response;
+}
+
 /* ── Conversation Arc Awareness ──
  * Tracks the NARRATIVE of the conversation — not just individual messages,
  * but the progression of topics, mood, and depth. At key moments,
@@ -7228,6 +7376,9 @@ export function getAIResponse(input) {
   // ═══ Conversational disfluency: natural speech patterns (self-correction, false starts) ═══
   response = addDisfluency(response);
 
+  // ═══ Pattern breaking: detect structural ruts and inject surprise ═══
+  response = breakPattern(response, text, currentTopics, inputEnergy);
+
   // ═══ Subtext-aware tone adjustment: soften/adjust based on what user actually means ═══
   response = adjustForSubtext(response, subtext);
 
@@ -7257,6 +7408,9 @@ export function getAIResponse(input) {
   // Record in memory
   mem.add("ai", response);
 
+  // Track response shape for pattern-break detection
+  trackResponseShape(response);
+
   // Calculate realistic typing speed
   const typingMs = calcTypingMs(response, sent, parsed);
   const pause = calcTypingPause(typingMs);
@@ -7264,6 +7418,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
