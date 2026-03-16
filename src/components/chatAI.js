@@ -2979,6 +2979,279 @@ const HYPOTHETICALS = [
   "Scenario: you're in charge of naming a new color that's never been seen before. What do you call it?",
 ];
 
+/* ══════════════════════════════════════════════════════════════════
+   HYPOTHETICAL REASONING ENGINE — Think through "what if" scenarios
+   instead of serving static strings. Parses premises, chains
+   consequences, analyzes trade-offs, and forms opinions.
+   ══════════════════════════════════════════════════════════════════ */
+
+// Consequence templates keyed by domain keywords found in the premise
+const CONSEQUENCE_SEEDS = {
+  // Physical / human body
+  fly:        { first:"the entire concept of traffic would just vanish", second:"architecture would go vertical — rooftop everything", twist:"umbrella sales would skyrocket though" },
+  invisible:  { first:"trust would become the most valuable currency", second:"privacy as a concept would need total reinvention", twist:"but you'd still leave footprints in the snow" },
+  teleport:   { first:"commuting would be a thing of the past overnight", second:"real estate prices would equalize globally — why live near work?", twist:"border security would have an existential crisis" },
+  immortal:   { first:"you'd eventually know everyone and outlive them all", second:"the value of time would completely shift", twist:"boredom might become humanity's biggest challenge" },
+  time:       { first:"every mistake becomes fixable, but that's also terrifying", second:"the butterfly effect would make you very cautious very fast", twist:"you'd probably spend most of the time trying NOT to change things" },
+  read:       { first:"poker would become pointless immediately", second:"relationships would either get way more honest or way more awkward", twist:"you'd probably want to turn it off more than on" },
+  strong:     { first:"everyday tasks would need total recalibration", second:"you'd accidentally break a lot of things at first", twist:"arm wrestling would lose its charm" },
+  fast:       { first:"the concept of 'running late' would cease to exist for you", second:"you'd need specially designed shoes", twist:"bugs hitting your face would actually hurt" },
+  breathe:    { first:"ocean exploration would leap forward", second:"real estate developers would eye the ocean floor", twist:"you'd still need sunscreen down there" },
+  small:      { first:"you could explore places no human has ever seen", second:"house cats would become apex predators from your perspective", twist:"stepping on a Lego would be like climbing a mountain" },
+
+  // Knowledge / mental
+  language:   { first:"you'd instantly understand every culture's humor and poetry", second:"diplomatic careers would change overnight", twist:"you'd overhear every conversation on the subway though" },
+  memory:     { first:"learning would be fundamentally different", second:"nostalgia would hit different when you remember everything perfectly", twist:"you'd also perfectly remember every embarrassment" },
+  future:     { first:"you'd face an impossible choice about what to share", second:"the stock market would be very tempting", twist:"knowing the ending ruins every movie" },
+  smart:      { first:"you'd solve problems nobody else could see yet", second:"conversations might get lonely when nobody keeps up", twist:"you'd still lose your keys sometimes — that's not an intelligence problem" },
+
+  // Society / world
+  money:      { first:"the economy would need a complete redesign", second:"motivation and purpose would need new sources", twist:"people would still argue about who pays for dinner" },
+  war:        { first:"energy currently spent on conflict could go to science and art", second:"political structures would fundamentally change", twist:"people would find new things to disagree about — that's human nature" },
+  internet:   { first:"libraries would become the most important buildings again", second:"attention spans might actually recover", twist:"people would have to remember phone numbers again" },
+  gravity:    { first:"every sport would be completely reinvented", second:"architecture would go wild without structural constraints", twist:"spilling your coffee would become a much bigger problem" },
+  sleep:      { first:"you'd gain roughly 25 extra years of life", second:"the entire service industry would shift — no more overnight anything", twist:"netflix would lose 30% of their use case" },
+  age:        { first:"the pressure of 'life stages' would dissolve", second:"career changes would become truly limitless", twist:"birthday parties would get really complicated" },
+  die:        { first:"risk-taking would become completely different", second:"the meaning of bravery would need redefining", twist:"horror movies would lose their edge" },
+  animal:     { first:"factory farming would end overnight — awkward conversations", second:"pet ownership would become a negotiated relationship", twist:"your dog would definitely guilt-trip you about that one time" },
+  space:      { first:"humanity's self-image would change forever", second:"every sci-fi movie would need a disclaimer", twist:"the first cultural exchange would be incredibly awkward" },
+};
+
+// Extract the premise from various hypothetical structures
+function parseHypothetical(text) {
+  const lower = text.toLowerCase().replace(/[.!]+$/, "");
+
+  // "Would you rather X or Y?"
+  const wyrMatch = lower.match(/would you rather\s+(.+?)\s+or\s+(.+?)(?:\?|$)/);
+  if (wyrMatch) return { type: "wyr", optionA: wyrMatch[1].trim(), optionB: wyrMatch[2].trim(), raw: text };
+
+  // "What if X" / "What would happen if X"
+  const whatIfMatch = lower.match(/what (?:would happen |if |would (?:it be like |the world be like )?if )(.+?)(?:\?|$)/);
+  if (whatIfMatch) return { type: "whatif", premise: whatIfMatch[1].trim(), raw: text };
+
+  // "Imagine X" / "Imagine if X"
+  const imagineMatch = lower.match(/imagine\s+(?:if\s+)?(.+?)(?:\?|$)/);
+  if (imagineMatch) return { type: "whatif", premise: imagineMatch[1].trim(), raw: text };
+
+  // "Suppose X" / "Let's say X"
+  const supposeMatch = lower.match(/(?:suppose|let'?s say|say|assuming|hypothetically)\s+(?:that\s+)?(.+?)(?:\?|$)/);
+  if (supposeMatch) return { type: "whatif", premise: supposeMatch[1].trim(), raw: text };
+
+  // "If X, what would Y" / "If you could X"
+  const ifMatch = lower.match(/if\s+(?:you could |we could |humans could |everyone could |people could )?(.+?)(?:,\s*what|\?|$)/);
+  if (ifMatch && ifMatch[1].length > 5) return { type: "whatif", premise: ifMatch[1].trim(), raw: text };
+
+  // "How would X change if Y"
+  const howWouldMatch = lower.match(/how would (.+?) (?:change|be different|work|look) if (.+?)(?:\?|$)/);
+  if (howWouldMatch) return { type: "whatif", premise: howWouldMatch[2].trim(), context: howWouldMatch[1].trim(), raw: text };
+
+  return null;
+}
+
+// Find consequence seeds by scanning premise for domain keywords
+function findConsequenceSeeds(premise) {
+  const words = premise.toLowerCase().split(/\s+/);
+  const matches = [];
+  for (const [key, seed] of Object.entries(CONSEQUENCE_SEEDS)) {
+    // Check both exact word match and substring match for compound words
+    if (words.some(w => w === key || w.includes(key)) || premise.toLowerCase().includes(key)) {
+      matches.push({ key, ...seed });
+    }
+  }
+  return matches;
+}
+
+// Build a consequence chain from seeds + ASSOC knowledge
+function buildConsequenceChain(premise, seeds) {
+  const parts = [];
+
+  if (seeds.length > 0) {
+    const seed = seeds[0]; // Use best match
+    // First consequence
+    parts.push(seed.first);
+    // Sometimes add second consequence (~60%)
+    if (Math.random() > 0.4 && seed.second) parts.push(seed.second);
+    // Twist/counterpoint (~50%)
+    if (Math.random() > 0.5 && seed.twist) parts.push(seed.twist);
+  }
+
+  // Try ASSOC for additional color
+  const premiseWords = premise.split(/\s+/).map(w => w.toLowerCase());
+  for (const w of premiseWords) {
+    if (ASSOC[w] && parts.length < 3) {
+      const opinion = pick(ASSOC[w].opinions || []);
+      if (opinion && !parts.some(p => p.includes(opinion.slice(0, 15)))) {
+        parts.push(`and from a ${w} perspective — ${opinion}`);
+        break;
+      }
+    }
+  }
+
+  return parts;
+}
+
+// Format a "what if" response with reasoning
+function reasonThroughWhatIf(hyp) {
+  const premise = hyp.premise;
+  const seeds = findConsequenceSeeds(premise);
+  const chain = buildConsequenceChain(premise, seeds);
+
+  // Build openers
+  const openers = [
+    "Ooh that's a fun one to think through.",
+    "Oh I love this kind of question.",
+    "Now THAT'S a thought experiment.",
+    "Okay let me actually think about this...",
+    "This is the kind of question I was made for.",
+  ];
+
+  // Build the reasoning
+  let response = pick(openers);
+
+  if (chain.length > 0) {
+    response += " First off, " + chain[0] + ".";
+    if (chain.length > 1) {
+      const connectors = [" And then ", " Plus, ", " On top of that, ", " But also — "];
+      response += pick(connectors) + chain[1] + ".";
+    }
+    if (chain.length > 2) {
+      const twists = [" Although, ", " The twist is: ", " But here's the thing — ", " Plot twist: "];
+      response += pick(twists) + chain[2] + ".";
+    }
+  } else {
+    // No seeds found — generate from the premise structure itself
+    const abstract = [
+      `The ripple effects would be wild — it would change not just the obvious stuff but all the second-order things nobody thinks about.`,
+      `The first-order effect is obvious, but the interesting part is how it would reshape everything around it.`,
+      `People always think about the direct impact, but the social and cultural shifts would be even bigger.`,
+    ];
+    response += " " + pick(abstract);
+  }
+
+  // Add a follow-up question
+  const followups = [
+    " What made you think about this?",
+    " Would you want this to actually happen?",
+    " Have you thought about the downsides?",
+    " Where did this thought experiment come from?",
+    " Would you opt in or stay out?",
+    " What's the first thing YOU would do?",
+  ];
+  if (Math.random() > 0.3) response += pick(followups);
+
+  return response;
+}
+
+// Analyze "would you rather" trade-offs
+function reasonThroughWYR(hyp) {
+  const a = hyp.optionA;
+  const b = hyp.optionB;
+
+  // Build analysis framework
+  const aSeeds = findConsequenceSeeds(a);
+  const bSeeds = findConsequenceSeeds(b);
+
+  // Pick a side (consistently via simple heuristic, not random)
+  // Prefer the option with more consequence seeds (more "thinkable")
+  // If tied, prefer the first option mentioned
+  const choice = aSeeds.length >= bSeeds.length ? "A" : "B";
+  const chosen = choice === "A" ? a : b;
+  const rejected = choice === "A" ? b : a;
+  const chosenSeeds = choice === "A" ? aSeeds : bSeeds;
+
+  const openers = [
+    `Okay, I've thought about it and I'm going with "${chosen}."`,
+    `This is tough but I'd pick "${chosen}" — hear me out.`,
+    `Hmm... I think I'd go "${chosen}."`,
+    `After thinking it through: "${chosen}", no question.`,
+  ];
+
+  let response = pick(openers);
+
+  // Reason about the choice
+  if (chosenSeeds.length > 0) {
+    const reason = chosenSeeds[0].first;
+    response += ` Because ${reason}.`;
+    if (chosenSeeds[0].twist && Math.random() > 0.5) {
+      response += ` Even though ${chosenSeeds[0].twist}.`;
+    }
+  } else {
+    const genericReasons = [
+      " It just feels like it would lead to a more interesting life.",
+      " The practical upside seems way bigger day-to-day.",
+      " I think you'd get more joy out of it long-term.",
+      " It's the one I'd be least likely to regret.",
+    ];
+    response += pick(genericReasons);
+  }
+
+  // Acknowledge the other option
+  const acks = [
+    ` But I can see the case for "${rejected}" too.`,
+    ` "${rejected}" was tempting though.`,
+    ` Not gonna lie, "${rejected}" almost won.`,
+  ];
+  if (Math.random() > 0.4) response += pick(acks);
+
+  // Follow up
+  response += " What about you?";
+
+  return response;
+}
+
+// Main handler: detects and reasons through hypotheticals
+function handleHypothetical(text, topics) {
+  const hyp = parseHypothetical(text);
+  if (!hyp) return null;
+
+  if (hyp.type === "wyr") return reasonThroughWYR(hyp);
+  if (hyp.type === "whatif") return reasonThroughWhatIf(hyp);
+
+  return null;
+}
+
+// Track if user is answering a hypothetical we posed
+let lastHypothetical = null;
+
+function handleHypotheticalAnswer(text, lower) {
+  if (!lastHypothetical) return null;
+  const hyp = lastHypothetical;
+  lastHypothetical = null; // consume it
+
+  // User is answering our hypothetical
+  const answer = text.replace(/^(i('d| would) ?(say |pick |choose |go with )?|probably |definitely |hmm,? )/i, "").trim();
+
+  const reactions = [
+    `"${answer}" — solid choice! `,
+    `Ooh, ${answer}! I didn't expect that but I love it. `,
+    `${answer}! Interesting pick. `,
+    `Great answer! "${answer}" says a lot. `,
+    `Ha, I had a feeling you'd say something like that! `,
+  ];
+
+  let response = pick(reactions);
+
+  // Try to add substance about their choice
+  const answerWords = answer.toLowerCase().split(/\s+/);
+  for (const w of answerWords) {
+    if (ASSOC[w]) {
+      const opinion = pick(ASSOC[w].opinions || []);
+      if (opinion) { response += opinion.charAt(0).toUpperCase() + opinion.slice(1) + ". "; break; }
+    }
+  }
+
+  // Follow up
+  const followups = [
+    "Want another hypothetical?",
+    "I've got more where that came from if you want!",
+    "That was fun — want to go deeper or switch topics?",
+    "Should we keep going with these?",
+  ];
+  response += pick(followups);
+
+  return response;
+}
+
 let lastJokeTurn = 0;
 let pendingRiddle = null;
 
@@ -3015,8 +3288,10 @@ function handleJokeRequest(text, topics) {
     return getTopicFact(topics.length > 0 ? topics : mem.recentTopics());
   }
 
-  // Hypothetical/scenario request
+  // Hypothetical/scenario request — try reasoning first, fall back to static
   if (/hypothetical|what if|would you rather|scenario/i.test(lower)) {
+    const reasoned = handleHypothetical(text, topics);
+    if (reasoned) return reasoned;
     return pickNew(HYPOTHETICALS);
   }
 
@@ -3400,6 +3675,22 @@ function generateResponse(text) {
   // ═══ 8.7. Opinion & recommendation engine ═══
   const opinionResponse = handleOpinionRequest(text, topics);
   if (opinionResponse) return opinionResponse;
+
+  // ═══ 8.8. Hypothetical reasoning — "what if X", "would you rather X or Y" ═══
+  const hypothetical = handleHypothetical(text, topics);
+  if (hypothetical) {
+    // Track that we might get an answer to a hypothetical we just posed
+    if (hypothetical.includes("?") && /what|which|where|would you/i.test(hypothetical)) {
+      lastHypothetical = text;
+    }
+    return hypothetical;
+  }
+
+  // ═══ 8.85. Hypothetical answer — user responding to our hypothetical ═══
+  if (lastHypothetical && mem.turn > 2) {
+    const hypAnswer = handleHypotheticalAnswer(text, parsed.lower || text.toLowerCase());
+    if (hypAnswer) return hypAnswer;
+  }
 
   // ═══ 9. Questions — use Q&A engine ═══
   if (parsed.qType) {
@@ -5625,6 +5916,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
