@@ -10240,6 +10240,168 @@ function applySelfModel(response, topics, text) {
   return response;
 }
 
+/* ── Conversational Initiative & Floor Management (Round 63) ──
+ * Tracks who's "driving" the conversation and adapts the AI's assertiveness.
+ * Detects 4 floor states: user-leading (user asks/shares, AI responds),
+ * shared-floor (balanced exchange), AI-leading (AI drives with questions/
+ * topics), stalled (both passive). Adjusts response shape: when user leads,
+ * AI gives substantive answers + yields floor. When stalled, AI takes charge
+ * with bold openers and specific topics. When shared, AI matches energy.
+ * The goal: make conversation *flow* feel natural by managing turn dynamics.
+ */
+
+const floorHistory = []; // [{ turn, userInitiative, aiInitiative, floorState }]
+let currentFloor = "shared"; // "user-leading" | "shared" | "ai-leading" | "stalled"
+let floorStreak = 0; // how many turns in same floor state
+let lastInitiativeTurn = 0;
+
+function measureInitiative(text, parsed, sent) {
+  // Score how much the user is "driving" (0–1)
+  let score = 0.5;
+  const lower = (text || "").toLowerCase();
+  const len = text.length;
+
+  // Questions = user is leading
+  const questionCount = (text.match(/\?/g) || []).length;
+  if (questionCount > 0) score += 0.2;
+  if (parsed?.qType) score += 0.1;
+
+  // Long messages = user is invested/leading
+  if (len > 100) score += 0.15;
+  else if (len > 60) score += 0.08;
+  else if (len < 10) score -= 0.2;
+  else if (len < 20) score -= 0.1;
+
+  // Sharing personal info = user leading
+  if (/\bi (?:am|work|like|love|hate|think|feel|believe|want|need|just|started|finished)\b/i.test(lower)) score += 0.12;
+
+  // Commands/requests = user leading
+  if (/^(?:tell|show|explain|describe|help|give|what|how|why|can you|could you)/i.test(lower)) score += 0.15;
+
+  // Minimal responses = user yielding floor
+  if (/^(?:ok|okay|sure|yeah|yep|yea|nah|nope|mhm|hmm|hm|lol|haha|nice|cool|right|true|fair|same|agreed)\.?$/i.test(lower)) score -= 0.3;
+
+  // User bringing new topics = leading
+  if (/(?:speaking of|oh also|btw|by the way|random but|have you|do you know)/i.test(lower)) score += 0.15;
+
+  // Agreement/acknowledgment = yielding
+  if (/^(?:that makes sense|good point|i see|i get it|ah|oh|interesting)\.?$/i.test(lower)) score -= 0.15;
+
+  return Math.max(0, Math.min(1, score));
+}
+
+function measureAIInitiative(response) {
+  // Score how much the AI is "driving" in its response (0–1)
+  let score = 0.5;
+  const lower = response.toLowerCase();
+
+  // Questions = AI is pulling
+  const questionCount = (response.match(/\?/g) || []).length;
+  if (questionCount > 0) score += 0.15 * Math.min(questionCount, 2);
+
+  // Offering new topics = AI leading
+  if (/have you (?:ever |tried |thought |seen )|what about |speaking of |fun fact|did you know/i.test(lower)) score += 0.15;
+
+  // Longer, substantive = AI taking space
+  if (response.length > 120) score += 0.1;
+  else if (response.length < 40) score -= 0.1;
+
+  // Hedging/yielding = AI deferring
+  if (/what do you think|how about you|your take|your thoughts/i.test(lower)) score -= 0.1;
+
+  return Math.max(0, Math.min(1, score));
+}
+
+function updateFloorState(userInit, aiInit) {
+  const turn = mem.turn;
+  const prev = currentFloor;
+
+  // Classify floor state from initiative balance
+  if (userInit >= 0.65) currentFloor = "user-leading";
+  else if (userInit <= 0.3 && aiInit >= 0.55) currentFloor = "ai-leading";
+  else if (userInit <= 0.3 && aiInit <= 0.4) currentFloor = "stalled";
+  else currentFloor = "shared";
+
+  // Track streak
+  if (currentFloor === prev) floorStreak++;
+  else floorStreak = 1;
+
+  floorHistory.push({ turn, userInitiative: userInit, aiInitiative: aiInit, floorState: currentFloor });
+  if (floorHistory.length > 12) floorHistory.shift();
+}
+
+function applyInitiativeManagement(response, text, parsed, sent, topics) {
+  const turn = mem.turn;
+  if (turn < 3) return response; // let early turns flow naturally
+
+  const userInit = measureInitiative(text, parsed, sent);
+  const aiInit = measureAIInitiative(response);
+  updateFloorState(userInit, aiInit);
+
+  // Rate limit: don't reshape every turn (40% fire rate, 3-turn cooldown)
+  if (turn - lastInitiativeTurn < 3 || Math.random() > 0.4) return response;
+
+  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+
+  // ── STALLED: both passive → AI takes charge with bold openers ──
+  if (currentFloor === "stalled" && floorStreak >= 2) {
+    lastInitiativeTurn = turn;
+    const topicSeed = topics[0] || "";
+    const reactivators = [
+      `Okay let me throw something out there —`,
+      `You know what I've been thinking about?`,
+      `Alright, conversation challenge:`,
+      `Here's a random thing I find fascinating —`,
+      `So I have a question that might be interesting:`,
+    ];
+    const topicStarters = topicSeed ? [
+      `What's the most controversial opinion you have about ${topicSeed}?`,
+      `If you could change one thing about ${topicSeed}, what would it be?`,
+      `What got you into ${topicSeed} in the first place?`,
+    ] : [
+      `What's the last thing that genuinely surprised you?`,
+      `If you could master any skill overnight, what would it be?`,
+      `What's something you've changed your mind about recently?`,
+    ];
+    const opener = reactivators[Math.floor(Math.random() * reactivators.length)];
+    const question = topicStarters[Math.floor(Math.random() * topicStarters.length)];
+    return `${opener} ${question}`;
+  }
+
+  // ── USER-LEADING: user is driving → AI gives substantive answers, yields floor ──
+  if (currentFloor === "user-leading" && floorStreak >= 2) {
+    lastInitiativeTurn = turn;
+    // Strip trailing questions if user is clearly driving — don't fight for control
+    const hasTrailingQ = /\?\s*$/.test(response);
+    const questionCount = (response.match(/\?/g) || []).length;
+    if (hasTrailingQ && questionCount > 1 && sentences.length >= 2) {
+      // Keep the content, drop the last question to yield floor
+      return sentences.slice(0, -1).join(" ").trim();
+    }
+    return response;
+  }
+
+  // ── AI-LEADING too long: if AI has been driving 3+ turns, yield ──
+  if (currentFloor === "ai-leading" && floorStreak >= 3) {
+    lastInitiativeTurn = turn;
+    // Add a floor-yield: explicit invitation for user to take over
+    const yields = [
+      " But I've been doing a lot of the talking — what's on your mind?",
+      " Anyway, I'm curious what you're thinking about all this.",
+      " Your turn though — what are you most interested in exploring?",
+      " I realize I've been running with this. What catches your eye?",
+    ];
+    const yield_ = yields[Math.floor(Math.random() * yields.length)];
+    // Trim response if it's long, then add yield
+    if (sentences.length > 2) {
+      return sentences.slice(0, 2).join(" ").trim() + yield_;
+    }
+    return response.replace(/\?[^?]*$/, ".") + yield_;
+  }
+
+  return response;
+}
+
 /* ── Output Polish & Deduplication (Round 58) ──
  * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
  * Runs just before output to ensure the response reads naturally regardless
@@ -10628,6 +10790,9 @@ export function getAIResponse(input) {
   // ═══ AI self-model: track own opinions, enforce consistency, add self-references ═══
   response = applySelfModel(response, currentTopics, text);
 
+  // ═══ Conversational initiative: manage floor dynamics, prevent stalling ═══
+  response = applyInitiativeManagement(response, text, parsed, sent, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -10677,6 +10842,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
