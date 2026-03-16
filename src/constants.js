@@ -74,7 +74,7 @@ export const VARIANTS = {
   "cart-item":["Standard","Compact","Detailed","Swipe","Brutal"],
   "feature-table":["Checkmark","Highlighted","Minimal","Gradient","Glass","Brutal","Gradient glow"],
   "promo-banner":["Gradient","Pill","Countdown","Glass","Social Proof","Brutal","Gradient glow"],
-  "order-summary":["Card","Compact","Discount","Itemized","Glass"],
+  "order-summary":["Card","Compact","Discount","Itemized","Glass","Brutal","Gradient glow"],
   rating:["Stars","Compact","Review","Sentiment","Breakdown","Brutal","Gradient"],
   receipt:["Dashed","Clean","Digital","Thermal","Glass"],
   "sub-toggle":["Cards","Switch","Pill","Glass","Brutal","Gradient"],
