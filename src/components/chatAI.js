@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 29: Temporal awareness & session context
+   Round 30: Epistemic modulation & self-awareness
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -4783,6 +4783,122 @@ function getBestStrategy() {
 }
 
 // Adjust a response based on adaptive strategy learning
+/* ── Epistemic Modulation & Self-Awareness ──
+ * Calibrates the AI's confidence level based on how well it actually knows
+ * the topic, and applies natural hedging/confidence language accordingly.
+ * Real people say "I'm pretty sure..." differently from "Oh definitely!"
+ * This makes the AI feel honest rather than always authoritative.
+ */
+
+// Score how confident the AI should be about current topics
+function assessConfidence(topics, parsed) {
+  let score = 0.5; // baseline: moderate confidence
+  let reason = "general";
+
+  for (const topic of topics) {
+    // Strong knowledge: ASSOC entry with facts AND opinions AND related
+    if (ASSOC[topic]) {
+      const a = ASSOC[topic];
+      const depth = (a.facts ? 1 : 0) + (a.opinions ? 1 : 0) + (a.related ? 0.5 : 0) + (a.hooks ? 0.5 : 0);
+      if (depth >= 2.5) { score = Math.max(score, 0.9); reason = "deep_knowledge"; }
+      else if (depth >= 1.5) { score = Math.max(score, 0.7); reason = "moderate_knowledge"; }
+      else { score = Math.max(score, 0.55); reason = "shallow_knowledge"; }
+    }
+
+    // KB explainer entries = very confident
+    if (typeof EXPLAIN !== "undefined" && EXPLAIN[topic]) {
+      score = Math.max(score, 0.95);
+      reason = "expert";
+    }
+  }
+
+  // If no topics matched anything, we're guessing
+  if (topics.length > 0 && score <= 0.5) {
+    score = 0.3;
+    reason = "unfamiliar";
+  }
+
+  // If it's a factual question, be more careful about certainty
+  if (parsed?.qType && /^(what|when|where|who|which|how many|how much)/i.test(parsed.lower || "")) {
+    score = Math.min(score, score - 0.1);
+    reason = score < 0.5 ? "factual_uncertain" : reason;
+  }
+
+  // If it's an opinion question, we can be more confident (opinions are always valid)
+  if (parsed?.qType && /^(what do you think|should|which is better|do you prefer|recommend)/i.test(parsed.lower || "")) {
+    score = Math.max(score, 0.65);
+    if (reason === "unfamiliar") reason = "opinion_ok";
+  }
+
+  return { score, reason };
+}
+
+// Last epistemic turn tracker to prevent every response having qualifiers
+let lastEpistemicTurn = 0;
+
+function modulateEpistemics(response, topics, parsed) {
+  // Only modulate ~25% of responses to keep it natural
+  if (mem.turn - lastEpistemicTurn < 3) return response;
+  if (Math.random() > 0.25) return response;
+
+  // Don't modify very short responses
+  if (response.length < 30) return response;
+  // Don't modify responses that already have epistemic markers
+  if (/\b(I think|probably|maybe|might|I'm (pretty |not |)sure|if I'm not mistaken|from what I|honestly not sure|take this with)\b/i.test(response)) return response;
+  // Don't modify greetings, farewells, emotional responses
+  if (/^(hey|hi|bye|see you|sorry|I hear|that sounds|ouch)/i.test(response)) return response;
+
+  const conf = assessConfidence(topics, parsed);
+  lastEpistemicTurn = mem.turn;
+
+  // HIGH confidence (0.8+): occasionally add confident framing
+  if (conf.score >= 0.8) {
+    if (Math.random() > 0.6) return response; // Often just let it be confident naturally
+    const confidentPrefixes = [
+      "Oh this I know well — ",
+      "So this is something I can actually speak to: ",
+      "Okay this one I'm pretty solid on — ",
+    ];
+    // Only prefix if response doesn't already start with a strong opener
+    if (!/^(Oh|So|Okay|Actually|Yeah|Right|Well)/i.test(response)) {
+      return pick(confidentPrefixes) + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+    return response;
+  }
+
+  // MODERATE confidence (0.5-0.8): subtle hedging
+  if (conf.score >= 0.5) {
+    const moderateHedges = [
+      ["I think ", "I think "],
+      ["From what I know, ", "From what I know, "],
+      ["If I remember right, ", "If I remember right, "],
+    ];
+    const [prefix] = pick(moderateHedges);
+    if (!/^(I |From|If )/i.test(response)) {
+      return prefix + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+    return response;
+  }
+
+  // LOW confidence (0.3-0.5): honest hedging
+  if (conf.score >= 0.3) {
+    const lowHedges = [
+      "I might be off on this, but " + response.charAt(0).toLowerCase() + response.slice(1),
+      response + " (Though honestly, I might be fuzzy on some details!)",
+      "Hmm, I'm not 100% on this, but " + response.charAt(0).toLowerCase() + response.slice(1),
+    ];
+    return pick(lowHedges);
+  }
+
+  // VERY LOW confidence (<0.3): self-aware about limits
+  const honestPrefixes = [
+    "I'm a tiny model so take this with a grain of salt, but ",
+    "Okay full honesty — I'm not super confident here, but ",
+    "This might not be perfectly accurate, but from what I understand: ",
+  ];
+  return pick(honestPrefixes) + response.charAt(0).toLowerCase() + response.slice(1);
+}
+
 function adaptiveAdjust(response) {
   const strategy = getBestStrategy();
 
@@ -5470,6 +5586,9 @@ export function getAIResponse(input) {
   // ═══ Adaptive strategy: adjust based on what's working ═══
   response = adaptiveAdjust(response);
 
+  // ═══ Epistemic modulation: calibrate certainty based on knowledge depth ═══
+  response = modulateEpistemics(response, currentTopics, parsed);
+
   // ═══ Subtext-aware tone adjustment: soften/adjust based on what user actually means ═══
   response = adjustForSubtext(response, subtext);
 
@@ -5506,6 +5625,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
