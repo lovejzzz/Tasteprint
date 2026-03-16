@@ -208,6 +208,7 @@ export const DEFAULT_PROPS = {
   "promo-banner":{ dismissed: false },
   table:         { highlight: 0 },
   "stat-card":   { trend: 0 },
+  "list-item":   { on: true },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
