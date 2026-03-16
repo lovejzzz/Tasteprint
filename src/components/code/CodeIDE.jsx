@@ -301,7 +301,7 @@ const SHORTCUTS = [
   { cat: 'Editing', items: [
     ['\u2318+/', 'Toggle comment'],
     ['\u2318+D', 'Select next occurrence'],
-    ['\u2318+L', 'Select line'],
+    ['\u2318+L', 'Select line (expandable)'],
     ['\u2318+A', 'Select all'],
     ['\u2318+Shift+D', 'Duplicate line'],
     ['Ctrl+Shift+K', 'Delete line'],
@@ -332,6 +332,7 @@ const SHORTCUTS = [
   { cat: 'Navigation', items: [
     ['\u2318+E', 'Recent files'],
     ['\u2318+B', 'Toggle bookmark'],
+    ['F3/Shift+F3', 'Next/prev search match'],
     ['F2/Shift+F2', 'Next/prev bookmark'],
     ['Ctrl+Tab', 'Next tab'],
     ['Ctrl+Shift+Tab', 'Previous tab'],
@@ -344,6 +345,7 @@ const SHORTCUTS = [
   ]},
   { cat: 'Terminal', items: [
     ['\u2318+J', 'Toggle terminal'],
+    ['\u2318+L (in REPL)', 'Clear terminal output'],
     ['Shift+Enter (REPL)', 'Multi-line input'],
   ]},
 ];
@@ -1599,6 +1601,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Select current line: Cmd+L */
+    if (e.key === 'l' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault();
+      const [ls, le] = getLineRange(s);
+      const lineEnd = le < code.length ? le + 1 : le;
+      setTimeout(() => { el.selectionStart = ls; el.selectionEnd = lineEnd; el.focus(); }, 0);
+      return;
+    }
+
     /* Select all occurrences: Cmd+Shift+L */
     if (e.key === 'l' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
       e.preventDefault();
@@ -1821,6 +1832,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     if (e.key === '0' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault(); setEditorZoom(1); return;
+    }
+
+    /* F3/Shift+F3: jump to next/prev search match */
+    if (e.key === 'F3' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      if (searchOpen && searchMatches.length) {
+        jumpToMatch(e.shiftKey ? -1 : 1);
+      }
+      return;
     }
 
     /* Toggle bookmark: Cmd+B */
@@ -2436,8 +2456,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           <div onMouseDown={stop} style={{
             width: explorerW, background: '#181825', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden'
           }}>
-            <div style={{ padding: '6px 10px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', borderBottom: '1px solid #ffffff06' }}>
-              Outline
+            <div style={{ padding: '6px 10px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', borderBottom: '1px solid #ffffff06', display: 'flex', alignItems: 'center' }}>
+              <span style={{ flex: 1 }}>Outline</span>
+              <span style={{ fontSize: 7, color: '#555', marginRight: 2 }}>{outlineSymbols.length}</span>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '2px 0' }}>
               {outlineSymbols.length === 0 ? (
@@ -3102,6 +3123,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               {/* Line numbers with fold arrows */}
               {showLineNumbers && (() => {
                 const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
+                // Compute line change indicators (modified/added vs original)
+                const lineChanges = {};
+                const origContent = initFiles[activeFile];
+                if (origContent !== undefined && origContent !== code) {
+                  const origLines = origContent.split('\n');
+                  for (let li = 0; li < lines.length; li++) {
+                    if (li >= origLines.length) lineChanges[li] = 'added';
+                    else if (lines[li] !== origLines[li]) lineChanges[li] = 'modified';
+                  }
+                }
                 return (
                   <div ref={lnRef} style={{
                     padding: '8px 0', width: gutterW, textAlign: 'right', userSelect: 'none',
@@ -3164,6 +3195,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               }}>{i + 1}</span>
                             {isFolded && <span style={{ position: 'absolute', right: -2, fontSize: 6, color: '#cba6f760' }}>...</span>}
                             {bookmarks.has(i + 1) && <span style={{ position: 'absolute', left: 0, top: 0, fontSize: 7, color: '#89b4fa', lineHeight: lh }}>{'\u25CF'}</span>}
+                            {lineChanges[i] && <span style={{ position: 'absolute', right: -1, top: 2, bottom: 2, width: 2, borderRadius: 1, background: lineChanges[i] === 'added' ? '#27c93f' : '#89b4fa' }} />}
                           </div>
                         );
                       })}
@@ -3758,6 +3790,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   {[
                     { label: 'Cut', action: () => { document.execCommand('cut'); }, disabled: readonly },
                     { label: 'Copy', action: () => { document.execCommand('copy'); } },
+                    { label: 'Copy as Markdown', action: () => {
+                      const el = taRef.current; if (el) {
+                        const s = el.selectionStart, en = el.selectionEnd;
+                        const sel = s !== en ? code.substring(s, en) : code;
+                        navigator.clipboard?.writeText('```js\n' + sel + '\n```');
+                        showToast('Copied as markdown', 'info');
+                      }
+                    }},
                     { label: 'Paste', action: () => { navigator.clipboard?.readText().then(t => { const el = taRef.current; if (el && t) { const s = el.selectionStart, en = el.selectionEnd; setCode(code.substring(0, s) + t + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + t.length }, 0); } }); }, disabled: readonly },
                     { label: 'Select All', action: () => { const el = taRef.current; if (el) { el.selectionStart = 0; el.selectionEnd = code.length; el.focus(); } }, hint: '\u2318A' },
                     null,
@@ -3840,6 +3880,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   {output?.logs?.length > 0 && <span onClick={() => {
                     const text = output.logs.map(l => l.v).join('\n');
                     navigator.clipboard?.writeText(text);
+                    showToast('Output copied!', 'info');
                   }} onMouseDown={stop}
                     style={{ marginLeft: 'auto', fontSize: 8, color: '#555', cursor: 'pointer' }} title="Copy output">⎘</span>}
                   <span onClick={() => setOutput(null)} onMouseDown={stop}
@@ -4049,6 +4090,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'rm', 'find'].includes(match) ? ' ' : ''));
                         }
                       }
+                      if (e.key === 'l' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setOutput(null); }
                       if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
                     }}
                     style={{
