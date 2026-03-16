@@ -447,6 +447,8 @@ const SHORTCUTS = [
     ['Ctrl+U', 'Uppercase selection'],
     ['Ctrl+Shift+U', 'Lowercase selection'],
     ['Tab (on trigger)', 'Expand snippet / Emmet'],
+    ['Type ( [ { on sel', 'Wrap selection'],
+    ['</ after <tag>', 'Auto-close tag'],
     ['\u2318+Shift+\\', 'Jump to matching bracket'],
     ['\u2318+Shift+[', 'Fold at cursor'],
     ['\u2318+Shift+]', 'Unfold at cursor'],
@@ -3218,7 +3220,21 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTimeout(() => { el.selectionStart = s + 1; el.selectionEnd = s + 1 + selected.length }, 0);
       return;
     }
-    if (PAIRS[e.key]) { e.preventDefault(); const close = PAIRS[e.key]; setCode(code.substring(0, s) + e.key + close + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return; }
+    if (PAIRS[e.key]) {
+      // Don't auto-pair quotes inside strings
+      const isQuote = '"\'`'.includes(e.key);
+      if (isQuote) {
+        const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+        const before = code.substring(lineStart, s);
+        // Count unescaped quotes of this type before cursor on this line
+        let inStr = false;
+        for (let qi = 0; qi < before.length; qi++) {
+          if (before[qi] === e.key && (qi === 0 || before[qi - 1] !== '\\')) inStr = !inStr;
+        }
+        if (inStr) return; // inside a string, don't auto-pair — let native input handle it
+      }
+      e.preventDefault(); const close = PAIRS[e.key]; setCode(code.substring(0, s) + e.key + close + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return;
+    }
     if (e.key === 'Enter') {
       const lineStart = code.lastIndexOf('\n', s - 1) + 1;
       const currentLine = code.substring(lineStart, s);
@@ -3245,6 +3261,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
         return;
       }
+      /* Smart enter between JSX opening and closing tags: <div>|</div> → indent */
+      if (code[s - 1] === '>' && code.substring(s).startsWith('</')) {
+        const tagCloseM = code.substring(s).match(/^<\/([A-Za-z][A-Za-z0-9.-]*)>/);
+        if (tagCloseM) {
+          e.preventDefault();
+          const tab = ' '.repeat(tabSize);
+          const nc = code.substring(0, s) + '\n' + indent + tab + '\n' + indent + code.substring(s);
+          setCode(nc);
+          setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
+          return;
+        }
+      }
       /* Auto-continue line comments */
       const commentMatch = currentLine.match(/^(\s*\/\/\s?)/);
       if (commentMatch && trimmedLine !== '//' && trimmedLine !== '// ') {
@@ -3253,6 +3281,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setCode(code.substring(0, s) + '\n' + prefix + code.substring(en));
         setTimeout(() => { el.selectionStart = el.selectionEnd = s + prefix.length + 1 }, 0);
         return;
+      }
+      /* Auto-continue JSX block comments */
+      const jsxCmtMatch = currentLine.match(/^(\s*)\*\s?/);
+      if (jsxCmtMatch && /\/\*/.test(code.substring(0, s))) {
+        const closingCheck = code.substring(s);
+        if (!/^\s*\*\//.test(closingCheck)) {
+          e.preventDefault();
+          const prefix = jsxCmtMatch[1] + '* ';
+          setCode(code.substring(0, s) + '\n' + prefix + code.substring(en));
+          setTimeout(() => { el.selectionStart = el.selectionEnd = s + prefix.length + 1 }, 0);
+          return;
+        }
       }
       if (indent) { e.preventDefault(); setCode(code.substring(0, s) + '\n' + indent + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + 1 }, 0); return; }
     }
@@ -3354,9 +3394,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         [data-ide-scroll] *::-webkit-scrollbar-thumb:hover { background: #ffffff25; }
         [data-ide-scroll] *::-webkit-scrollbar-corner { background: transparent; }
         [data-ide-scroll] textarea::selection { background: #cba6f730; }
+        [data-ide-scroll] textarea { caret-color: #cba6f7; }
         [data-ide-scroll] [data-ide-tabs]::-webkit-scrollbar { display: none; }
         @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+        @keyframes smoothBlink { 0% { opacity: 1; } 40% { opacity: 1; } 50% { opacity: 0; } 90% { opacity: 0; } 100% { opacity: 1; } }
         @keyframes fadeInLine { from { background: #cba6f718; } to { background: transparent; } }
         @keyframes navPulse { 0% { background: #cba6f730; } 100% { background: transparent; } }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
@@ -4757,15 +4799,21 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         }
                       }
 
-                      /* Bracket match indicator */
+                      /* Bracket match scope range highlight */
                       const bracketCol = bracketLines[i + 1];
+                      const inBracketRange = matchBracket && (() => {
+                        const ln1 = code.substring(0, matchBracket[0]).split('\n').length;
+                        const ln2 = code.substring(0, matchBracket[1]).split('\n').length;
+                        const minLn = Math.min(ln1, ln2), maxLn = Math.max(ln1, ln2);
+                        return i + 1 > minLn && i + 1 < maxLn;
+                      })();
 
                       return (
                         <div key={i} style={{
                           fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
                           height: Math.round(16 * zf), position: 'relative',
-                          background: i + 1 === activeLn ? '#ffffff08' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : 'transparent',
-                          borderLeft: i + 1 === activeLn ? '2px solid #cba6f730' : '2px solid transparent',
+                          background: i + 1 === activeLn ? '#ffffff08' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : inBracketRange ? '#cba6f704' : 'transparent',
+                          borderLeft: i + 1 === activeLn ? '2px solid #cba6f730' : bracketCol !== undefined ? '2px solid #cba6f740' : inBracketRange ? '2px solid #cba6f712' : '2px solid transparent',
                           animation: navPulseLn === i + 1 ? 'navPulse .8s ease-out' : 'none',
                         }}>
                           {guides}
@@ -5222,6 +5270,44 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             return;
                           }
                         }
+                      }
+                    }
+                    // Hover on local identifier: show definition/assignment
+                    if (lineIdx >= 0 && lineIdx < lines.length) {
+                      const hovLine = lines[lineIdx];
+                      // Find word at column
+                      let ws = colIdx, we = colIdx;
+                      while (ws > 0 && /\w/.test(hovLine[ws - 1])) ws--;
+                      while (we < hovLine.length && /\w/.test(hovLine[we])) we++;
+                      const hovWord = hovLine.substring(ws, we);
+                      if (hovWord.length >= 2 && !/^(const|let|var|function|return|if|else|for|while|class|import|export|from|new|typeof|instanceof|async|await|try|catch|throw|switch|case|break|continue|default|true|false|null|undefined|console|Math|JSON|Array|Object|String|Number|Promise)$/.test(hovWord)) {
+                        // Search upwards for definition
+                        const defRx = new RegExp(`(?:const|let|var|function)\\s+${hovWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+                        for (let di = lineIdx; di >= 0; di--) {
+                          const dm = defRx.exec(lines[di]);
+                          if (dm) {
+                            const defText = lines[di].trim();
+                            if (di !== lineIdx) {
+                              hoverTimer.current = setTimeout(() => {
+                                setHoverDoc({ text: `(line ${di + 1}) ${defText.substring(0, 80)}${defText.length > 80 ? '...' : ''}`, x: Math.min(x, 220), y: (lineIdx + 1) * lineH - el.scrollTop });
+                              }, 500);
+                            }
+                            break;
+                          }
+                        }
+                        // Check function params
+                        if (!hoverTimer.current) {
+                          for (let di = lineIdx; di >= 0; di--) {
+                            const fnM = lines[di].match(/(?:function\s+\w+|=>|const\s+\w+\s*=\s*)\s*\(([^)]*)\)/);
+                            if (fnM && fnM[1].split(',').some(p => p.trim().split(/\s+/).pop() === hovWord)) {
+                              hoverTimer.current = setTimeout(() => {
+                                setHoverDoc({ text: `(parameter) ${hovWord}`, x: Math.min(x, 220), y: (lineIdx + 1) * lineH - el.scrollTop });
+                              }, 500);
+                              break;
+                            }
+                          }
+                        }
+                        if (hoverTimer.current) return;
                       }
                     }
                   setHoverDoc(null);
