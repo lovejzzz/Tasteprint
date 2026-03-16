@@ -13238,6 +13238,139 @@ function applyContrastiveFraming(response, text, topics) {
   return response + sep + frame;
 }
 
+/* ── Conversational Temporal Callback (Round 81) ──
+ * The "oh wow it remembered" moment. The AI occasionally circles back
+ * to something the user said several turns ago, making it feel like
+ * it's been processing in the background:
+ *
+ * "Wait — going back to what you said about caching earlier, I just
+ *  realized that connects to this..."
+ * "You know what's funny? That React thing you mentioned is basically
+ *  the same problem in a different hat."
+ *
+ * Unlike memory weaving (which embeds context in openings) or topic
+ * bridging (which connects consecutive topics), this creates a deliberate
+ * temporal gap callback — the AI references a SPECIFIC earlier statement
+ * with time-aware framing.
+ *
+ * Scans user message history for notable claims/facts from 4-12 turns ago
+ * that relate to the current topic. 12% fire rate, 7-turn cooldown.
+ */
+
+let lastTemporalCBTurn = 0;
+let usedTemporalCBs = new Set(); // track which messages we've already called back to
+
+// Extract memorable claims from a user message (things worth referencing later)
+function extractMemorableClaim(text) {
+  const lower = text.toLowerCase();
+  if (lower.split(/\s+/).length < 5) return null; // too short
+
+  // Strong opinion patterns
+  const opinionMatch = text.match(/\b(?:I think|I believe|honestly|the thing is|my take is|I've found that|in my experience)\s+(.{10,60}?)(?:\.|!|,\s+(?:but|and|so)|$)/i);
+  if (opinionMatch) return opinionMatch[1].trim();
+
+  // Personal fact patterns
+  const factMatch = text.match(/\b(?:I(?:'m| am) (?:building|working on|learning|studying|into)|I (?:just|recently|finally) (?:started|finished|discovered|found))\s+(.{6,50}?)(?:\.|!|,|$)/i);
+  if (factMatch) return factMatch[1].trim();
+
+  // Strong claim
+  const claimMatch = text.match(/\b(?:the (?:real|actual|biggest) (?:problem|issue|thing)|what most people (?:don't|miss)|the key is)\s+(.{8,50}?)(?:\.|!|$)/i);
+  if (claimMatch) return claimMatch[1].trim();
+
+  return null;
+}
+
+// Check if earlier claim relates to current topics
+function claimRelatesToTopics(claim, topics) {
+  const claimWords = claim.toLowerCase().split(/\s+/).map(w => stem(w));
+  for (const topic of topics) {
+    const topicStem = stem(topic);
+    if (claimWords.includes(topicStem)) return true;
+    // Check ASSOC related topics
+    const assoc = typeof ASSOC !== "undefined" && ASSOC[topic];
+    if (assoc?.related) {
+      for (const rel of assoc.related) {
+        if (claimWords.includes(stem(rel))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function applyTemporalCallback(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 6) return response; // need history
+  if (turn - lastTemporalCBTurn < 7) return response; // 7-turn cooldown
+  if (response.length > 200) return response; // don't bloat
+  if (Math.random() > 0.12) return response; // 12% fire rate
+
+  const history = mem.history || [];
+  const userMsgs = history.filter(h => h.role === "user");
+
+  // Look for claims from 4-12 turns ago
+  let bestCallback = null;
+  let bestTurnAgo = 0;
+
+  for (let i = Math.max(0, userMsgs.length - 12); i < userMsgs.length - 3; i++) {
+    const msg = userMsgs[i];
+    const msgText = msg.text || "";
+    const msgKey = msgText.substring(0, 40);
+
+    if (usedTemporalCBs.has(msgKey)) continue;
+
+    const claim = extractMemorableClaim(msgText);
+    if (!claim) continue;
+
+    if (claimRelatesToTopics(claim, topics)) {
+      bestCallback = { claim, msgKey, text: msgText };
+      bestTurnAgo = userMsgs.length - i;
+      break; // take the oldest relevant match for maximum "wow"
+    }
+  }
+
+  if (!bestCallback) return response;
+
+  lastTemporalCBTurn = turn;
+  usedTemporalCBs.add(bestCallback.msgKey);
+  if (usedTemporalCBs.size > 20) {
+    const first = usedTemporalCBs.values().next().value;
+    usedTemporalCBs.delete(first);
+  }
+
+  const { claim } = bestCallback;
+
+  // Time-relative framing based on how far back the claim was
+  let timeFrame;
+  if (bestTurnAgo <= 5) {
+    const nearFrames = [
+      `Oh wait — you said something a minute ago about ${claim}. That actually connects here.`,
+      `Hold on, this ties back to ${claim} that you just mentioned.`,
+      `Going back to the ${claim} thing — I think that's relevant here.`,
+    ];
+    timeFrame = nearFrames[Math.floor(Math.random() * nearFrames.length)];
+  } else if (bestTurnAgo <= 9) {
+    const midFrames = [
+      `You know what I keep thinking about? Earlier you said something about ${claim} — and I think it ties into this.`,
+      `Wait, remember when you mentioned ${claim}? I just realized that connects to what we're talking about now.`,
+      `This is going to sound random, but — ${claim}? From earlier? It's basically the same thread.`,
+    ];
+    timeFrame = midFrames[Math.floor(Math.random() * midFrames.length)];
+  } else {
+    const farFrames = [
+      `OK this has been bugging me — way back you said something about ${claim}. I think there's a connection here I didn't see at first.`,
+      `Full circle moment — remember ${claim} from a while back? It's coming back around.`,
+      `Something you said a while ago about ${claim} just clicked for me in the context of this.`,
+    ];
+    timeFrame = farFrames[Math.floor(Math.random() * farFrames.length)];
+  }
+
+  // Place the callback: either prepend or append depending on feel
+  if (Math.random() > 0.5) {
+    return timeFrame + " " + response;
+  }
+  return response + " " + timeFrame;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -13753,6 +13886,9 @@ export function getAIResponse(input) {
   // ═══ Contrastive framing: offer counter-angles on strong claims for intellectual depth ═══
   response = applyContrastiveFraming(response, text, currentTopics);
 
+  // ═══ Temporal callback: circle back to earlier user claims with "I just realized..." moments ═══
+  response = applyTemporalCallback(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -13805,6 +13941,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
