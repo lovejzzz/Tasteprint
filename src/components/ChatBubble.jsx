@@ -15,7 +15,7 @@ function EmojiPicker({ onPick, p }) {
     <div
       onMouseDown={e => e.stopPropagation()}
       style={{
-        position: "absolute", bottom: "100%", right: 0, marginBottom: 6,
+        position: "absolute", bottom: 0, left: "100%", marginLeft: 6,
         background: p.card, borderRadius: 12, border: `1px solid ${p.bd}`,
         boxShadow: `0 8px 24px ${p.tx}10`, padding: 8, width: 210,
         animation: "tp-tooltip-in .15s ease-out both", zIndex: 100,
