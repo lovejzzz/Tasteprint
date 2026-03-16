@@ -220,6 +220,7 @@ export const DEFAULT_PROPS = {
   toggle:        { on: true },
   button:        { loading: false },
   navbar:        { active: 0 },
+  breadcrumb:    { active: 2 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
