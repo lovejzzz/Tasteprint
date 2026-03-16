@@ -3036,6 +3036,155 @@ function offerTopicRescue() {
   return pickNew(rescues);
 }
 
+/* ── Discourse Coherence & Response Planning ──
+ * The pipeline has many independent post-processing stages (personality,
+ * humor, style, phase, proactive callbacks) that can clash. This system:
+ *
+ * 1. Plans a response "intent" BEFORE generation (acknowledge/inform/engage)
+ * 2. Tags responses with discourse markers for natural sentence flow
+ * 3. Guards coherence — prevents empathetic + humor clash, double-question, etc.
+ */
+
+// Track the last AI message's discourse "flavor" to vary transitions
+let lastDiscourseMove = "neutral"; // neutral, empathetic, playful, informative, curious
+
+function planResponseIntent(text, parsed, sent, emo) {
+  // Decide the high-level intent: what should this response DO?
+  // Returns { acknowledge, body, engage } flags + discourse flavor
+  const plan = { acknowledge: false, body: "inform", engage: "question", flavor: "neutral" };
+
+  // Strong emotion → acknowledge first, engage gently
+  if (emo && emo.confidence >= 0.5 && emo.emotion !== "neutral") {
+    plan.acknowledge = true;
+    plan.flavor = "empathetic";
+    plan.engage = (emo.emotion === "frustrated" || emo.emotion === "venting") ? "validate" : "gentle-q";
+    return plan;
+  }
+
+  // Question → inform body, optional reciprocal question
+  if (parsed.qType) {
+    plan.body = "answer";
+    plan.engage = Math.random() > 0.4 ? "reciprocal" : "none";
+    plan.flavor = "informative";
+    return plan;
+  }
+
+  // Sharing/preference → acknowledge + curiosity
+  if (parsed.preferences?.length > 0) {
+    plan.acknowledge = true;
+    plan.body = "react";
+    plan.engage = "deepen";
+    plan.flavor = "curious";
+    return plan;
+  }
+
+  // Short input → pivot to engagement
+  if (text.length < 20) {
+    plan.acknowledge = false;
+    plan.body = "bridge";
+    plan.engage = "question";
+    plan.flavor = "playful";
+    return plan;
+  }
+
+  // Positive sentiment → match energy
+  if (sent >= 2) {
+    plan.acknowledge = true;
+    plan.flavor = "playful";
+    plan.engage = "question";
+    return plan;
+  }
+
+  // Default: acknowledge briefly, inform, then ask
+  plan.acknowledge = text.length > 40;
+  plan.flavor = "neutral";
+  plan.engage = Math.random() > 0.5 ? "question" : "none";
+  return plan;
+}
+
+// Discourse markers — natural transitions based on what the LAST AI message was
+const DISCOURSE_MARKERS = {
+  // After the AI was empathetic, transition gently
+  empathetic: ["Anyway,","On a lighter note —","But hey,","That said,","Moving forward though,"],
+  // After the AI was playful, can shift easily
+  playful:    ["Oh also —","But real talk,","Haha but seriously,","Okay but —","On another note,"],
+  // After the AI was informative, vary the next opening
+  informative:["So yeah,","Anyway,","All that to say,","Point being,","TL;DR —"],
+  // After the AI was curious (asked questions), acknowledge return
+  curious:    ["Oh cool!","Ahh,","Okay okay,","I see!","Right right,"],
+  // Neutral / first message
+  neutral:    ["","","","",""], // no marker needed
+};
+
+function addDiscourseMarker(response, currentFlavor) {
+  // Only add markers ~25% of the time when flavor shifted
+  if (currentFlavor === lastDiscourseMove) return response;
+  if (Math.random() > 0.25) return response;
+
+  const markers = DISCOURSE_MARKERS[lastDiscourseMove] || DISCOURSE_MARKERS.neutral;
+  const marker = pick(markers);
+  if (!marker) return response;
+
+  // Don't stack markers — if response already starts with a discourse marker, skip
+  if (/^(so |anyway|oh |hmm|okay|but |right |haha|ahh|hey)/i.test(response)) return response;
+
+  // Lowercase the first letter of response when prepending a marker
+  const adjusted = response.charAt(0).toLowerCase() + response.slice(1);
+  return marker + " " + adjusted;
+}
+
+// Coherence guard — detect and fix tonal clashes from the post-processing pipeline
+function guardCoherence(response, plan) {
+  // Rule 1: Don't inject humor after empathetic intent
+  if (plan.flavor === "empathetic") {
+    // Strip appended fun facts/jokes from empathetic responses
+    response = response.replace(/\s*(?:Fun fact:|Did you know|Here's a fun one)[^.!?]*[.!?]?\s*$/i, "");
+  }
+
+  // Rule 2: Don't end with two questions in a row
+  const questions = response.match(/\?/g);
+  if (questions && questions.length >= 3) {
+    // Remove the last question to avoid interrogation feeling
+    const lastQ = response.lastIndexOf("?");
+    const secondLastQ = response.lastIndexOf("?", lastQ - 1);
+    if (lastQ - secondLastQ < 60) {
+      response = response.substring(0, secondLastQ + 1);
+    }
+  }
+
+  // Rule 3: Don't start with excitement markers on negative sentiment responses
+  if (plan.flavor === "empathetic" && /^(Ooh!|Oh nice|Yesss|Amazing!|Love it)/i.test(response)) {
+    response = response.replace(/^(Ooh!|Oh nice —?|Yesss,?|Amazing!|Love it!?)\s*/i, "");
+  }
+
+  // Rule 4: Response shouldn't contradict itself (agreeing then disagreeing)
+  if (/I totally agree.*but I disagree|you're right.*you're wrong/i.test(response)) {
+    response = response.replace(/but I disagree[^.]*\./i, "");
+  }
+
+  // Rule 5: Don't repeat the user's name more than once
+  if (mem.userName) {
+    const nameRx = new RegExp(mem.userName, "gi");
+    const nameMatches = response.match(nameRx);
+    if (nameMatches && nameMatches.length > 1) {
+      // Keep only the first occurrence
+      let count = 0;
+      response = response.replace(nameRx, (m) => ++count === 1 ? m : "");
+    }
+  }
+
+  // Rule 6: Trim excessive length — if post-processing bloated the response
+  if (response.length > 280) {
+    // Find a natural breakpoint (sentence end) near 220 chars
+    const cutPoint = response.indexOf(". ", 180);
+    if (cutPoint > 0 && cutPoint < 260) {
+      response = response.substring(0, cutPoint + 1);
+    }
+  }
+
+  return response.trim();
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -3045,6 +3194,10 @@ export function getAIResponse(input) {
   // Parse for personality application
   const parsed = parseSentence(text);
   const sent = sentiment(text);
+  const emo = detectEmotion(text, sent, parsed);
+
+  // ═══ Plan response intent BEFORE generating ═══
+  const plan = planResponseIntent(text, parsed, sent, emo);
 
   // ═══ Conversation repair: detect confusion BEFORE generating response ═══
   const confusion = detectConfusion(text);
@@ -3054,6 +3207,7 @@ export function getAIResponse(input) {
       mem.add("user", text, [], [], sent);
       mem.add("ai", repair);
       trackAIQuestion(repair);
+      lastDiscourseMove = "curious";
       const typingMs = calcTypingMs(repair, sent, parsed);
       return { text: repair, typingMs, pause: calcTypingPause(typingMs) };
     }
@@ -3067,7 +3221,7 @@ export function getAIResponse(input) {
   const currentTopics = extractTopics(tokenize(text));
   const ambiguous = handleAmbiguity(text, intents.filter(i=>!i.modifier), currentTopics);
   if (ambiguous && Math.random() > 0.6) {
-    response = ambiguous; // occasionally ask for clarification instead of guessing
+    response = ambiguous;
   }
 
   // ═══ Conversation repair: repetition guard ═══
@@ -3077,37 +3231,45 @@ export function getAIResponse(input) {
   }
 
   // ═══ Conversation repair: graceful degradation ═══
-  // If response looks like a generic fallback, try to do better
   if (/^(that's interesting|hmm.*tell me more|cool.*what else)/i.test(response) && mem.turn > 3) {
     const { keywords } = extractKW(text);
     const degraded = gracefulDegradation(text, keywords);
     if (degraded) response = degraded;
   }
 
-  // Apply conversational rhythm — shape response to follow natural patterns
+  // Apply conversational rhythm
   const targetMove = pickNextMove();
   response = shapeToRhythm(response, targetMove);
   recordMove(response);
 
-  // Try proactive callbacks — naturally reference earlier conversation
+  // Try proactive callbacks
   response = tryProactiveCallback(response, currentTopics);
 
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
 
-  // Contextual humor injection — occasionally add fun facts/humor
+  // Contextual humor injection (coherence guard will strip if inappropriate)
   response = injectHumor(response, currentTopics);
 
-  // Style matching — mirror the user's communication style
+  // Style matching
   const userStyle = analyzeUserStyle();
   response = adaptToStyle(response, userStyle);
 
-  // Conversation phase — adjust for where we are in the conversation
+  // Conversation phase adjustment
   const phase = getConversationPhase();
   response = phaseAwareAdjust(response, phase);
 
-  // World model — personalize based on accumulated facts about the user
+  // World model personalization
   response = personalizeResponse(response);
+
+  // ═══ Discourse coherence: add natural transition markers ═══
+  response = addDiscourseMarker(response, plan.flavor);
+
+  // ═══ Discourse coherence: guard against tonal clashes from pipeline ═══
+  response = guardCoherence(response, plan);
+
+  // Update discourse state for next turn
+  lastDiscourseMove = plan.flavor;
 
   // Track questions the AI asks for answer-linking
   trackAIQuestion(response);
@@ -3122,6 +3284,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
