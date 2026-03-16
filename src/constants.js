@@ -71,7 +71,7 @@ export const VARIANTS = {
   pagination:["Numbered","Dots","Minimal"],
   "pricing-card":["Clean","Featured","Minimal"],
   "product-card":["Standard","Sale badge","Horizontal"],
-  "cart-item":["Standard","Compact"],
+  "cart-item":["Standard","Compact","Detailed","Swipe","Brutal"],
   "feature-table":["Checkmark","Highlighted","Minimal"],
   "promo-banner":["Gradient","Pill"],
   "order-summary":["Card","Compact"],
