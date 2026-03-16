@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 45: Conversational momentum & topic bridging
+   Round 46: Lexical mirroring & register adaptation
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -7753,6 +7753,205 @@ function addTopicBridge(response, topics) {
   return response;
 }
 
+/* ── Round 46: Lexical Mirroring & Register Adaptation ──
+ * Real humans unconsciously mirror each other's vocabulary, punctuation,
+ * and formality. This system tracks the user's distinctive phrases and
+ * word choices, then adapts the AI's output to match their register.
+ */
+
+// Track user's distinctive phrases for echoing
+let userPhraseBank = [];  // rolling window of notable user phrases
+let lastMirrorTurn = 0;
+
+// Vocabulary swap tables: casual ↔ formal register
+const REGISTER_SWAPS = {
+  toFormal: [
+    [/\bcool\b/gi, () => pick(["impressive", "notable", "commendable"])],
+    [/\bawesome\b/gi, () => pick(["excellent", "remarkable", "outstanding"])],
+    [/\bgonna\b/gi, "going to"],
+    [/\bwanna\b/gi, "want to"],
+    [/\bgotta\b/gi, "have to"],
+    [/\bkinda\b/gi, "somewhat"],
+    [/\bsorta\b/gi, "somewhat"],
+    [/\ba lot\b/gi, () => pick(["considerably", "significantly", "substantially"])],
+    [/\bsuper\b(?!\w)/gi, () => pick(["exceptionally", "remarkably", "particularly"])],
+    [/\bstuff\b/gi, () => pick(["aspects", "elements", "details"])],
+    [/\bthing\b(?!s)/gi, () => pick(["aspect", "element", "factor"])],
+    [/\bbig\b/gi, () => pick(["significant", "substantial", "considerable"])],
+  ],
+  toCasual: [
+    [/\bimpressive\b/gi, "cool"],
+    [/\bexcellent\b/gi, "awesome"],
+    [/\bsubstantially\b/gi, "a lot"],
+    [/\bsignificant(?:ly)?\b/gi, () => pick(["big", "major", "huge"])],
+    [/\bfurthermore\b/gi, "also"],
+    [/\badditionally\b/gi, "plus"],
+    [/\bhowever\b/gi, "but"],
+    [/\btherefore\b/gi, "so"],
+    [/\bregarding\b/gi, "about"],
+    [/\butilize\b/gi, "use"],
+    [/\bdemonstrate\b/gi, "show"],
+    [/\bpurchase\b/gi, "buy"],
+    [/\bcommence\b/gi, "start"],
+    [/\brequire\b/gi, "need"],
+  ],
+};
+
+// Contraction tables
+const EXPAND_CONTRACTIONS = [
+  [/\bI'm\b/g, "I am"], [/\bdon't\b/g, "do not"], [/\bcan't\b/g, "cannot"],
+  [/\bwon't\b/g, "will not"], [/\bisn't\b/g, "is not"], [/\baren't\b/g, "are not"],
+  [/\bdidn't\b/g, "did not"], [/\bwouldn't\b/g, "would not"], [/\bcouldn't\b/g, "could not"],
+  [/\bshouldn't\b/g, "should not"], [/\bthey're\b/g, "they are"], [/\bwe're\b/g, "we are"],
+  [/\bit's\b/g, "it is"], [/\bthat's\b/g, "that is"], [/\bwhat's\b/g, "what is"],
+  [/\bhere's\b/g, "here is"], [/\bthere's\b/g, "there is"],
+];
+const CONTRACT = [
+  [/\bI am\b/g, "I'm"], [/\bdo not\b/g, "don't"], [/\bcannot\b/g, "can't"],
+  [/\bwill not\b/g, "won't"], [/\bis not\b/g, "isn't"], [/\bare not\b/g, "aren't"],
+  [/\bdid not\b/g, "didn't"], [/\bwould not\b/g, "wouldn't"], [/\bcould not\b/g, "couldn't"],
+  [/\bshould not\b/g, "shouldn't"], [/\bthey are\b/g, "they're"], [/\bwe are\b/g, "we're"],
+  [/\bit is\b/g, "it's"], [/\bthat is\b/g, "that's"], [/\bwhat is\b/g, "what's"],
+];
+
+// Extract notable phrases from user input (2-4 word sequences that aren't stop words)
+function extractUserPhrases(text) {
+  const words = text.split(/\s+/).filter(w => w.length > 1);
+  const phrases = [];
+  // Extract 2-3 word chunks that contain at least one non-stop word
+  for (let i = 0; i < words.length - 1; i++) {
+    const two = words.slice(i, i + 2).join(" ");
+    const three = i < words.length - 2 ? words.slice(i, i + 3).join(" ") : null;
+    const hasContent = words.slice(i, i + 2).some(w => !STOP.has(w.toLowerCase()) && w.length > 2);
+    if (hasContent && two.length > 5 && two.length < 30) {
+      // Skip if it's just common filler
+      if (!/^(I think|you know|I mean|it is|that is|this is|I am|you are)$/i.test(two)) {
+        phrases.push(two);
+      }
+    }
+    if (three && hasContent && three.length > 8 && three.length < 35) {
+      phrases.push(three);
+    }
+  }
+  return phrases;
+}
+
+// Detect user's punctuation style
+function detectPunctuationStyle(text) {
+  const usesEllipsis = /\.{2,3}/.test(text);
+  const usesExclamations = (text.match(/!/g) || []).length;
+  const usesDashes = /\s[—–-]\s/.test(text);
+  const endsClean = /[.?!]$/.test(text.trim());
+  const noPunctEnd = !/[.?!]$/.test(text.trim()) && text.length > 10;
+  return { usesEllipsis, exclamationDensity: usesExclamations / Math.max(1, text.length / 50), usesDashes, endsClean, noPunctEnd };
+}
+
+// Track user's phrase style for mirroring
+function trackUserPhrases(text) {
+  const phrases = extractUserPhrases(text);
+  for (const ph of phrases) {
+    userPhraseBank.push({ phrase: ph, turn: mem.history.length });
+  }
+  // Keep rolling window of 20
+  if (userPhraseBank.length > 20) userPhraseBank = userPhraseBank.slice(-20);
+}
+
+// Pipeline step: adapt response register and mirror user's language patterns
+function mirrorRegister(response, text) {
+  const turn = mem.history.length;
+  trackUserPhrases(text);
+
+  // Analyze current user style
+  const style = analyzeUserStyle();
+  let r = response;
+
+  // 1. Vocabulary register adaptation (30% rate, but always for strong formal/casual signals)
+  if (style.formality === "formal" && Math.random() < 0.35) {
+    for (const [pattern, replacement] of REGISTER_SWAPS.toFormal) {
+      const rep = typeof replacement === "function" ? replacement() : replacement;
+      r = r.replace(pattern, rep);
+    }
+    // Expand contractions for formal users
+    for (const [pattern, expanded] of EXPAND_CONTRACTIONS) {
+      if (Math.random() < 0.4) r = r.replace(pattern, expanded);
+    }
+  } else if (style.formality === "very-casual" && Math.random() < 0.35) {
+    for (const [pattern, replacement] of REGISTER_SWAPS.toCasual) {
+      const rep = typeof replacement === "function" ? replacement() : replacement;
+      r = r.replace(pattern, rep);
+    }
+    // Contract for casual users
+    for (const [pattern, contracted] of CONTRACT) {
+      if (Math.random() < 0.5) r = r.replace(pattern, contracted);
+    }
+  }
+
+  // 2. Punctuation style matching
+  const puncStyle = detectPunctuationStyle(text);
+
+  // Mirror ellipsis usage
+  if (puncStyle.usesEllipsis && Math.random() < 0.25) {
+    // Replace a period mid-response with ellipsis
+    const dotIdx = r.indexOf(". ");
+    if (dotIdx > 10 && dotIdx < r.length - 15) {
+      r = r.slice(0, dotIdx) + "... " + r.slice(dotIdx + 2);
+    }
+  }
+
+  // Mirror dash usage
+  if (puncStyle.usesDashes && !r.includes("—") && Math.random() < 0.2) {
+    const commaIdx = r.indexOf(", ");
+    if (commaIdx > 8 && commaIdx < r.length - 10) {
+      r = r.slice(0, commaIdx) + " — " + r.slice(commaIdx + 2);
+    }
+  }
+
+  // Mirror no-punctuation endings (casual texting style)
+  if (puncStyle.noPunctEnd && Math.random() < 0.3) {
+    r = r.replace(/[.!]$/, "");
+  }
+
+  // 3. Phrase echoing — occasionally use a phrase the user used recently
+  if (turn - lastMirrorTurn >= 4 && userPhraseBank.length > 0 && Math.random() < 0.15) {
+    // Pick a recent phrase (within last 6 turns)
+    const recent = userPhraseBank.filter(p => turn - p.turn <= 6);
+    if (recent.length > 0) {
+      const echo = pick(recent);
+      // Only echo if the phrase isn't already in the response
+      if (!r.toLowerCase().includes(echo.phrase.toLowerCase())) {
+        const echoTemplates = [
+          `Like you said, "${echo.phrase}" —`,
+          `And going back to "${echo.phrase}" —`,
+          `Your point about "${echo.phrase}" is spot on.`,
+        ];
+        // Prepend or append based on response structure
+        if (r.endsWith("?")) {
+          r = pick(echoTemplates) + " " + r;
+        } else {
+          r = r + " " + pick(echoTemplates);
+        }
+        lastMirrorTurn = turn;
+      }
+    }
+  }
+
+  // 4. Exclamation density matching
+  const userExcl = puncStyle.exclamationDensity;
+  if (userExcl < 0.3) {
+    // User is calm — reduce exclamations in response
+    let replaced = 0;
+    r = r.replace(/!/g, () => {
+      replaced++;
+      return replaced > 1 ? "." : "!"; // keep at most one exclamation
+    });
+  } else if (userExcl > 1.5 && (r.match(/!/g) || []).length < 1) {
+    // User is energetic — add enthusiasm
+    r = r.replace(/\.$/, "!");
+  }
+
+  return r;
+}
+
 /* ── Conversation Arc Awareness ──
  * Tracks the NARRATIVE of the conversation — not just individual messages,
  * but the progression of topics, mood, and depth. At key moments,
@@ -8012,6 +8211,9 @@ export function getAIResponse(input) {
   const userStyle = analyzeUserStyle();
   response = adaptToStyle(response, userStyle);
 
+  // ═══ Lexical mirroring: adapt vocabulary register, punctuation, and echo user phrases ═══
+  response = mirrorRegister(response, text);
+
   // Conversation phase adjustment
   const phase = getConversationPhase();
   response = phaseAwareAdjust(response, phase);
@@ -8096,6 +8298,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
