@@ -203,6 +203,9 @@ export const DEFAULT_PROPS = {
   "bento-grid":  { active: 0 },
   "feature-table":{ highlight: 1 },
   "cart-item":   { qty: 1 },
+  receipt:       { tip: 0 },
+  "order-summary":{ discount: false },
+  "promo-banner":{ dismissed: false },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));

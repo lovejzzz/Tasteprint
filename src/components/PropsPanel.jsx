@@ -195,6 +195,35 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Tip (receipt) */
+  if ("tip" in defaults) {
+    const tip = G("tip");
+    const tipLabels = ["None", "15%", "18%", "20%"];
+    controls.push(<React.Fragment key="tip"><span style={label}>Tip</span>
+      {tipLabels.map((tl, i) => <button key={i} style={{ ...btn(tip === i), fontSize: 8, minWidth: 26, height: 20 }} onMouseDown={stop} onClick={() => onProp("tip", i)}>{tl}</button>)}
+    </React.Fragment>);
+  }
+
+  /* Discount toggle (order-summary) */
+  if ("discount" in defaults) {
+    const on = G("discount");
+    controls.push(<React.Fragment key="discount"><span style={label}>{on ? "Promo" : "No promo"}</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#4CAF50" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("discount", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
+  /* Dismissed toggle (promo-banner) */
+  if ("dismissed" in defaults) {
+    const on = G("dismissed");
+    controls.push(<React.Fragment key="dismissed"><span style={label}>{on ? "Hidden" : "Visible"}</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.mu + "50" : p.ac, border: "none" }} onMouseDown={stop} onClick={() => onProp("dismissed", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
   if (controls.length === 0) return null;
 
   return <div style={sty} onMouseDown={stop}>{controls}</div>;
