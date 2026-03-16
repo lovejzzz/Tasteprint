@@ -77,7 +77,7 @@ export const VARIANTS = {
   "order-summary":["Card","Compact","Discount","Itemized","Glass"],
   rating:["Stars","Compact","Review","Sentiment","Breakdown"],
   receipt:["Dashed","Clean","Digital","Thermal","Glass"],
-  "sub-toggle":["Cards","Switch","Pill","Glass"],
+  "sub-toggle":["Cards","Switch","Pill","Glass","Brutal","Gradient"],
   tooltip:   ["Light","Dark","Arrow","Glass","Rich"],
   breadcrumb:["Slash","Arrow","Dots","Pill","Underline"],
   skeleton:  ["Card","List","Profile","Feed","Dashboard"],
