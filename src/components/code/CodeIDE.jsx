@@ -435,7 +435,7 @@ const SHORTCUTS = [
     ['Alt+\u2191/\u2193', 'Move line up/down'],
     ['Alt+Shift+\u2191/\u2193', 'Copy line up/down'],
     ['Tab / Shift+Tab', 'Indent / Outdent'],
-    ['Ctrl+\u232B', 'Delete word left'],
+    ['Ctrl+\u232B', 'Delete word left (camelCase)'],
     ['Ctrl+Del', 'Delete word right'],
     ['Home', 'Smart line start'],
     ['End', 'End of line'],
@@ -997,6 +997,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  cp <f> <t> — Copy a file' },
         { t: 'log', v: '  man <m>    — Show docs for tp method' },
         { t: 'log', v: '  which <m>  — Show docs for tp method' },
+        { t: 'log', v: '  tree       — Show file tree structure' },
         { t: 'log', v: '  alias      — Show terminal shortcuts' },
         { t: 'log', v: '  cmd | cmd  — Pipe output between commands' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
@@ -1348,6 +1349,36 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       } else {
         setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `uniq: ${path}: No such file` }], ms: null, err: null, errLn: null }));
       }
+      setTermInput(''); return;
+    }
+    if (cmd === 'tree') {
+      const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)].sort();
+      const tree = {};
+      for (const p of allPaths) {
+        const parts = p.split('/');
+        let node = tree;
+        for (let i = 0; i < parts.length; i++) {
+          if (i === parts.length - 1) { node[parts[i]] = null; } // file
+          else { if (!node[parts[i]]) node[parts[i]] = {}; node = node[parts[i]]; }
+        }
+      }
+      const renderTree = (obj, prefix = '', isLast = true) => {
+        const entries = Object.keys(obj);
+        const lines = [];
+        entries.forEach((key, i) => {
+          const last = i === entries.length - 1;
+          const connector = last ? '\u2514\u2500\u2500 ' : '\u251C\u2500\u2500 ';
+          const isDir = obj[key] !== null;
+          lines.push(prefix + connector + (isDir ? key + '/' : key));
+          if (isDir) {
+            const childPrefix = prefix + (last ? '    ' : '\u2502   ');
+            lines.push(...renderTree(obj[key], childPrefix, last));
+          }
+        });
+        return lines;
+      };
+      const treeLines = ['.', ...renderTree(tree)];
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F tree' }, ...treeLines.map(l => ({ t: 'log', v: l }))], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
     }
     if (cmd === 'alias' || cmd === 'aliases') {
@@ -3080,15 +3111,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     if (readonly) return;
 
-    /* Ctrl+Backspace: delete word left */
+    /* Ctrl+Backspace: delete word left (camelCase-aware) */
     if (e.key === 'Backspace' && (e.ctrlKey || e.altKey) && !e.metaKey) {
       e.preventDefault();
       if (s === en && s > 0) {
         let j = s - 1;
         // Skip whitespace
         while (j > 0 && /\s/.test(code[j])) j--;
-        // Skip word characters
-        while (j > 0 && /\w/.test(code[j - 1])) j--;
+        if (j >= 0 && /\w/.test(code[j])) {
+          // CamelCase-aware: stop at uppercase boundaries
+          const isUpper = c => /[A-Z]/.test(c);
+          const isLower = c => /[a-z]/.test(c);
+          // If on an uppercase char, skip consecutive uppercase (acronym)
+          if (isUpper(code[j])) {
+            while (j > 0 && isUpper(code[j - 1]) && !isLower(code[j])) j--;
+            // If still uppercase, check if next is lower (start of word)
+            while (j > 0 && /\w/.test(code[j - 1]) && !isUpper(code[j])) j--;
+          } else {
+            // Skip lowercase/digits until uppercase or non-word
+            while (j > 0 && /\w/.test(code[j - 1]) && !isUpper(code[j])) j--;
+          }
+        } else {
+          // Skip non-word chars (punctuation)
+          while (j > 0 && !/\w|\s/.test(code[j - 1])) j--;
+        }
         setCode(code.substring(0, j) + code.substring(s));
         setTimeout(() => { el.selectionStart = el.selectionEnd = j }, 0);
       }
@@ -5425,17 +5471,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       })}
                     </div>
                     {/* Detail panel for selected item */}
-                    {selItem && selItem.desc !== 'keyword' && TP_DOCS[selItem.label.replace(/\(.*/, '')] && (
-                      <div style={{
-                        background: '#1e1e2e', border: '1px solid #ffffff15', borderLeft: 'none',
-                        borderRadius: '0 6px 6px 0', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
-                        padding: '6px 10px', maxWidth: 220, minWidth: 140,
-                      }}>
-                        {TP_DOCS[selItem.label.replace(/\(.*/, '')].split('\n').map((line, i) => (
-                          <div key={i} style={{ fontSize: 8, lineHeight: '12px', fontFamily: MONO, color: i === 0 ? '#cba6f7' : '#777', fontWeight: i === 0 ? 600 : 400, whiteSpace: 'pre-wrap' }}>{line}</div>
-                        ))}
-                      </div>
-                    )}
+                    {selItem && selItem.desc !== 'keyword' && (() => {
+                      const tpDoc = TP_DOCS[selItem.label.replace(/\(.*/, '')];
+                      const snippetBody = selItem.desc?.startsWith('\u2702') ? SNIPPETS[selItem.label] : null;
+                      if (!tpDoc && !snippetBody && selItem.desc !== 'local') return null;
+                      return (
+                        <div style={{
+                          background: '#1e1e2e', border: '1px solid #ffffff15', borderLeft: 'none',
+                          borderRadius: '0 6px 6px 0', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
+                          padding: '6px 10px', maxWidth: 220, minWidth: 140,
+                        }}>
+                          {tpDoc ? tpDoc.split('\n').map((line, i) => (
+                            <div key={i} style={{ fontSize: 8, lineHeight: '12px', fontFamily: MONO, color: i === 0 ? '#cba6f7' : '#777', fontWeight: i === 0 ? 600 : 400, whiteSpace: 'pre-wrap' }}>{line}</div>
+                          )) : snippetBody ? (<>
+                            <div style={{ fontSize: 7, color: '#f9e2af', fontWeight: 600, marginBottom: 2 }}>Snippet: {selItem.label}</div>
+                            {snippetBody.replace(/\$\{\d+:?([^}]*)}/g, '$1').split('\n').map((line, i) => (
+                              <div key={i} style={{ fontSize: 8, lineHeight: '11px', fontFamily: MONO, color: '#777', whiteSpace: 'pre' }}><HighlightLine text={line} /></div>
+                            ))}
+                          </>) : selItem.desc === 'local' ? (
+                            <div style={{ fontSize: 8, color: '#a6e3a1', fontWeight: 500 }}>Local variable: {selItem.label}</div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}
@@ -6157,7 +6215,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           if (match) ghost = match.substring(argPartial.length);
                         }
                       } else {
-                        const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq'];
+                        const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq', 'tree'];
                         const partial = val.toLowerCase();
                         const match = cmds.find(c => c.startsWith(partial) && c !== partial);
                         if (match) ghost = match.substring(val.length);
@@ -6211,7 +6269,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               if (match) { setTermInput(cmd + ' ' + match); return; }
                             }
                           }
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq', 'tree'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
                           if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp', 'man', 'which', 'sort', 'uniq'].includes(match) ? ' ' : ''));
