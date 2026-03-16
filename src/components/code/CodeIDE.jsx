@@ -331,6 +331,7 @@ const SHORTCUTS = [
     ['F2/Shift+F2', 'Next/prev bookmark'],
     ['Ctrl+Tab', 'Next tab'],
     ['Ctrl+Shift+Tab', 'Previous tab'],
+    ['\u2318+W', 'Close tab'],
   ]},
   { cat: 'View', items: [
     ['\u2318+=/\u2318+-', 'Zoom in/out'],
@@ -718,6 +719,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  touch <f>  — Create a new file' },
         { t: 'log', v: '  grep <t>   — Search in all files' },
         { t: 'log', v: '  wc <f>     — Count lines in file' },
+        { t: 'log', v: '  env        — Show environment variables' },
+        { t: 'log', v: '  time <e>   — Benchmark an expression' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -803,6 +806,41 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTermInput(''); return;
     }
     if (cmd === 'run') { runCode(); setTermInput(''); return; }
+    if (cmd === 'env') {
+      const modFiles = Object.keys(editFiles).filter(p => initFiles[p] !== undefined && editFiles[p] !== initFiles[p]);
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F env' },
+        { t: 'log', v: `  IDE_VERSION=1.0` },
+        { t: 'log', v: `  PALETTE=${tp?.palette() || 'unknown'}` },
+        { t: 'log', v: `  DEVICE=${tp?.device() || 'unknown'}` },
+        { t: 'log', v: `  SHAPES=${tp?.shapes()?.length || 0}` },
+        { t: 'log', v: `  FILES=${Object.keys(editFiles).length}` },
+        { t: 'log', v: `  MODIFIED=${modFiles.length}` },
+        { t: 'log', v: `  TAB_SIZE=${tabSize}` },
+        { t: 'log', v: `  ZOOM=${Math.round(editorZoom * 100)}%` },
+        { t: 'log', v: `  WORD_WRAP=${wordWrap}` },
+      ], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('time ')) {
+      const expr = cmd.slice(5).trim();
+      if (expr) {
+        const t0 = performance.now();
+        try {
+          const r = new Function('tp', expr)(tp || {});
+          const ms = (performance.now() - t0).toFixed(2);
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F time ${expr}` },
+            { t: 'log', v: `  Result: ${JSON.stringify(r)}` },
+            { t: 'log', v: `  Time: ${ms}ms` },
+          ], ms: null, err: null, errLn: null }));
+        } catch (e) {
+          const ms = (performance.now() - t0).toFixed(2);
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F time ${expr}` },
+            { t: 'err', v: `  ${e.message} (${ms}ms)` },
+          ], ms: null, err: null, errLn: null }));
+        }
+      }
+      setTermInput(''); return;
+    }
     const logs = [];
     const fc = {
       log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
@@ -1465,6 +1503,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     /* Toggle terminal: Cmd+J or Ctrl+` */
     if ((e.key === 'j' && (e.metaKey || e.ctrlKey) && !e.shiftKey) || (e.key === '`' && e.ctrlKey)) {
       e.preventDefault(); setTermOpen(t => !t); return;
+    }
+
+    /* Close tab: Cmd+W */
+    if (e.key === 'w' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault();
+      if (openTabs.length > 1) closeTab(activeFile, e);
+      return;
     }
 
     /* Autocomplete navigation */
@@ -2706,6 +2751,36 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
             {/* Code editor */}
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative', outline: editorFocused ? '1px solid #cba6f720' : 'none', outlineOffset: -1, transition: 'outline-color .2s' }}>
+              {/* Sticky scroll — show enclosing function/block when scrolled */}
+              {scrollTop > 50 && (() => {
+                const topVisibleLine = Math.floor(scrollTop / Math.round(16 * zf));
+                // Find the enclosing function for the top visible line
+                for (let i = topVisibleLine; i >= 0; i--) {
+                  const l = lines[i];
+                  if (l && /(?:function\s+\w|(?:const|let|var)\s+\w+\s*=\s*(?:\(|function|async|\w+\s*=>)|class\s+\w|(?:if|for|while)\s*\()/.test(l)) {
+                    const endRange = foldableRanges[i];
+                    if (endRange !== undefined && endRange > topVisibleLine) {
+                      const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
+                      return (
+                        <div onClick={() => {
+                          setActiveLn(i + 1); setCursor({ ln: i + 1, col: 1 });
+                          const pos = lines.slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
+                          if (taRef.current) { taRef.current.scrollTop = i * Math.round(16 * zf); taRef.current.selectionStart = taRef.current.selectionEnd = pos; }
+                        }} style={{
+                          position: 'absolute', top: 0, left: gutterW + 1, right: 0, zIndex: 5,
+                          background: '#1e1e2eee', borderBottom: '1px solid #ffffff10',
+                          padding: '2px 8px', fontSize: fs(9), lineHeight: lh,
+                          fontFamily: MONO, cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                        }}>
+                          <HighlightLine text={l.trimStart()} />
+                        </div>
+                      );
+                    }
+                    break;
+                  }
+                }
+                return null;
+              })()}
               {/* Scroll shadows */}
               {scrollTop > 10 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 12, background: 'linear-gradient(to bottom, #1e1e2e, transparent)', zIndex: 4, pointerEvents: 'none' }} />}
               <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 12, background: 'linear-gradient(to top, #1e1e2e, transparent)', zIndex: 4, pointerEvents: 'none' }} />
@@ -3339,6 +3414,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     null,
                     { label: 'Find', action: () => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }, hint: '\u2318F' },
                     { label: 'Go to Line', action: () => { setGotoOpen(true); setTimeout(() => gotoRef.current?.focus(), 50); }, hint: 'Ctrl+G' },
+                    { label: 'Rename Symbol', action: () => { const el = taRef.current; if (el) { const s = el.selectionStart; const bef = code.substring(0, s); const aft = code.substring(s); const wB = bef.match(/(\w+)$/); const wA = aft.match(/^(\w*)/); const word = (wB ? wB[1] : '') + (wA ? wA[1] : ''); if (word.length >= 2) { setRenameSymbol({ word, newName: word }); setTimeout(() => renameSymbolRef.current?.focus(), 50); } } }, disabled: readonly, hint: '\u2318R' },
+                    { label: 'Surround With...', action: () => { const el = taRef.current; if (el && el.selectionStart !== el.selectionEnd) { setSurroundMenu({ s: el.selectionStart, en: el.selectionEnd }); } else { showToast('Select code to surround', 'warn'); } }, disabled: readonly, hint: '\u2318\u21E7S' },
+                    null,
                     { label: 'Format Document', action: formatCode, disabled: readonly },
                     { label: 'Run', action: runCode, hint: '\u2318+Enter', disabled: readonly },
                   ].map((item, i) => item === null ? (
@@ -3568,10 +3646,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
