@@ -12970,6 +12970,122 @@ function applyCalibratedAgreement(response, text, topics) {
   return prefix + " " + response;
 }
 
+/* ── Conversational Specificity Anchoring (Round 79) ──
+ * The #1 chatbot tell: vague responses like "that's interesting" or
+ * "great point" when a human would say "the React migration thing
+ * is interesting" or "your point about caching — solid."
+ *
+ * This system detects generic/vague phrases in the AI's response
+ * and anchors them with concrete specifics from:
+ * 1. The user's current message (extract key nouns/phrases)
+ * 2. Recent conversation topics
+ * 3. The user's actual quoted words
+ *
+ * Transforms: "That's really interesting" → "The caching idea is really interesting"
+ *            "Good point" → "Good point about the API rate limits"
+ *            "I see what you mean" → "I see what you mean about the deploy pipeline"
+ *
+ * 25% fire rate, 3-turn cooldown. Surgical — only replaces genuinely vague bits.
+ */
+
+let lastAnchorTurn = 0;
+
+// Extract the most "specific" noun phrase from text — the thing worth referencing back
+function extractAnchorPhrase(text) {
+  const lower = text.toLowerCase();
+  const words = lower.split(/\s+/);
+  if (words.length < 3) return null;
+
+  // Pattern 1: "about X" / "with X" / "for X" — whatever follows a preposition
+  const prepMatch = text.match(/\b(?:about|regarding|with|for|on|into)\s+(?:the\s+)?(.{4,35}?)(?:\.|,|!|\?|$|\s+(?:and|but|so|because|which|that|is|are|was|has|have))/i);
+  if (prepMatch) return prepMatch[1].trim().replace(/\s+/g, " ");
+
+  // Pattern 2: "X is/are/was..." — subject of a be-verb clause
+  const subjMatch = text.match(/^(.{4,30}?)\s+(?:is|are|was|were|has been|should be)\b/i);
+  if (subjMatch && !/^(?:i|it|this|that|there|what|how|why|who|he|she|they|we|you)\b/i.test(subjMatch[1])) {
+    return subjMatch[1].trim();
+  }
+
+  // Pattern 3: "I think X" / "I believe X" — extract the claim
+  const claimMatch = text.match(/\b(?:i think|i believe|i feel like|i'm saying)\s+(?:that\s+)?(.{6,40}?)(?:\.|,|!|\?|$)/i);
+  if (claimMatch) return claimMatch[1].trim();
+
+  // Pattern 4: Extract the longest noun-like phrase (2-4 words, no function words at start)
+  const chunks = text.match(/\b(?:[A-Z][a-z]+(?:\s+[a-z]+){0,3}|[a-z]+(?:\s+[a-z]+){1,3})\b/g);
+  if (chunks) {
+    const filtered = chunks
+      .filter(c => c.split(/\s+/).length >= 2 && c.length >= 6)
+      .filter(c => !/^(?:i |you |we |they |it |the |a |an |this |that |my |your |but |and |or |so |if |do |can |will |just |very |really )/i.test(c))
+      .filter(c => !/^(?:is |are |was |has |have |be |been |get |got )/i.test(c));
+    if (filtered.length > 0) {
+      // Prefer longer phrases
+      filtered.sort((a, b) => b.length - a.length);
+      return filtered[0];
+    }
+  }
+
+  // Pattern 5: fallback — first topic from extractTopics
+  return null;
+}
+
+// Detect and replace vague/generic phrases with anchored specifics
+function applySpecificityAnchoring(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 2) return response;
+  if (turn - lastAnchorTurn < 3) return response; // 3-turn cooldown
+  if (Math.random() > 0.25) return response; // 25% fire rate
+
+  // Get the anchor — what to reference back
+  let anchor = extractAnchorPhrase(text);
+  if (!anchor && topics.length > 0) anchor = topics[0];
+  if (!anchor) return response;
+
+  // Clean anchor: trim trailing function words
+  anchor = anchor.replace(/\s+(?:is|are|was|and|but|or|the|a|an|to|in|on|at|for)$/i, "").trim();
+  if (anchor.length < 3 || anchor.length > 40) return response;
+
+  // Don't anchor if the response already mentions the anchor phrase
+  if (response.toLowerCase().includes(anchor.toLowerCase())) return response;
+
+  // Map of vague patterns → anchored replacements
+  // Each entry: [regex to match, replacement function]
+  const vagueToSpecific = [
+    [/^(That(?:'s| is) (?:really |so |pretty )?(?:interesting|cool|neat|fascinating))/i,
+      (m) => `The ${anchor} thing — ${m[1].toLowerCase().replace(/^that(?:'s| is) /, "")}`],
+    [/^(Good (?:point|call|take|observation))[.!]?/i,
+      (m) => `${m[1]} about ${anchor}`],
+    [/^(I (?:see|get|understand) what you (?:mean|'re saying))/i,
+      (m) => `${m[1]} about ${anchor}`],
+    [/^(Yeah,? (?:that|it) makes (?:total )?sense)/i,
+      (m) => `Yeah, the ${anchor} part makes sense`],
+    [/^(Hmm,? (?:that|it)(?:'s| is) (?:a )?(?:fair|valid|solid) (?:point|take))/i,
+      (m) => `Hmm, ${anchor} — ${m[1].replace(/^hmm,?\s*/i, "").toLowerCase()}`],
+    [/(I (?:hadn't|haven't) thought (?:about|of) (?:it|that) (?:that way|like that|before))/i,
+      (m) => `I hadn't thought about ${anchor} that way`],
+    [/^(That(?:'s| is) (?:exactly|precisely) (?:it|right|what I mean))/i,
+      (m) => `The ${anchor} thing — that's exactly it`],
+    [/(I can see (?:that|how|why))/i,
+      (m) => `I can see how ${anchor} plays into this`],
+  ];
+
+  let modified = false;
+  for (const [pattern, replacer] of vagueToSpecific) {
+    const match = response.match(pattern);
+    if (match) {
+      const replacement = replacer(match);
+      response = response.replace(pattern, replacement);
+      modified = true;
+      break; // Only replace one vague phrase per turn
+    }
+  }
+
+  if (modified) {
+    lastAnchorTurn = turn;
+  }
+
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -13479,6 +13595,9 @@ export function getAIResponse(input) {
   // ═══ Calibrated agreement: nuanced agree/disagree instead of yes-man chatbot ═══
   response = applyCalibratedAgreement(response, text, currentTopics);
 
+  // ═══ Specificity anchoring: replace vague phrases with concrete references from context ═══
+  response = applySpecificityAnchoring(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -13531,6 +13650,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
