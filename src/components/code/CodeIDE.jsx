@@ -1,5 +1,5 @@
 import React from "react";
-import { HighlightLine } from "./tokenizer";
+import { HighlightLine, tokenize, TC } from "./tokenizer";
 import { TpContext } from "../../contexts/TpContext";
 
 /* ========== Constants ========== */
@@ -727,6 +727,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  time <e>   — Benchmark an expression' },
         { t: 'log', v: '  open <f>   — Open a file in editor' },
         { t: 'log', v: '  diff       — Show changes vs original' },
+        { t: 'log', v: '  mv <f> <t> — Rename/move a file' },
+        { t: 'log', v: '  head [n] f — Show first n lines of file' },
+        { t: 'log', v: '  rm <f>     — Delete a user-created file' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -880,6 +883,59 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           ...(diffs.length ? diffs.slice(0, 40) : [{ t: 'log', v: '  No changes' }]),
           ...(diffs.length > 40 ? [{ t: 'log', v: `  ... and ${diffs.length - 40} more` }] : []),
         ], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('mv ')) {
+      const args = cmd.slice(3).trim().split(/\s+/);
+      if (args.length === 2) {
+        const [from, to] = args;
+        const allPaths = Object.keys(editFiles);
+        const src = allPaths.find(p => p === from || p.endsWith('/' + from) || p.split('/').pop() === from);
+        if (src) {
+          const newName = to.includes('/') ? to.split('/').pop() : to;
+          const folder = src.substring(0, src.lastIndexOf('/') + 1);
+          const dest = folder + newName;
+          renameFileFn(src, newName);
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F mv ${from} ${to}` }, { t: 'log', v: `Renamed ${src} → ${dest}` }], ms: null, err: null, errLn: null }));
+        } else {
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `File not found: ${from}` }], ms: null, err: null, errLn: null }));
+        }
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: 'Usage: mv <from> <to>' }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('head ')) {
+      const args = cmd.slice(5).trim().split(/\s+/);
+      const n = args.length > 1 && /^\d+$/.test(args[0]) ? parseInt(args[0]) : 10;
+      const path = args.length > 1 ? args[1] : args[0];
+      const f = getFile(path);
+      if (f) {
+        const headLines = f.content.split('\n').slice(0, n);
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F head ${cmd.slice(5).trim()}` },
+          ...headLines.map(l => ({ t: 'log', v: l })),
+          ...(f.content.split('\n').length > n ? [{ t: 'log', v: `  ... (${f.content.split('\n').length - n} more lines)` }] : []),
+        ], ms: null, err: null, errLn: null }));
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `File not found: ${path}` }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('rm ')) {
+      const path = cmd.slice(3).trim();
+      const allPaths = Object.keys(editFiles);
+      const src = allPaths.find(p => p === path || p.endsWith('/' + path) || p.split('/').pop() === path);
+      if (src && !initFiles[src]) {
+        // Only allow deleting user-created files
+        setEditFiles(prev => { const n = { ...prev }; delete n[src]; return n; });
+        setOpenTabs(prev => prev.filter(t => t !== src));
+        if (activeFile === src) setActiveFile(openTabs.filter(t => t !== src)[0] || 'src/main.js');
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F rm ${path}` }, { t: 'warn', v: `Deleted ${src}` }], ms: null, err: null, errLn: null }));
+      } else if (src) {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `Cannot delete built-in file: ${src}` }], ms: null, err: null, errLn: null }));
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `File not found: ${path}` }], ms: null, err: null, errLn: null }));
       }
       setTermInput(''); return;
     }
@@ -1382,16 +1438,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (!trimmed) return '';
       // Decrease indent for closing brackets
       if (/^[}\])]/.test(trimmed)) indent = Math.max(0, indent - 1);
-      const result = ' '.repeat(tabSize).repeat(indent) + trimmed;
+      // Decrease indent for case/default (already indented by switch)
+      if (/^(case\b|default\s*:)/.test(trimmed) && indent > 0) {
+        // Don't dedent the first case in a switch
+        const prev = formatted.filter(Boolean);
+        const lastNonEmpty = prev[prev.length - 1]?.trim();
+        if (lastNonEmpty && !/[{]$/.test(lastNonEmpty)) indent = Math.max(0, indent - 1);
+      }
+      // Handle chained method calls: lines starting with .method()
+      const isChained = /^\./.test(trimmed);
+      const chainIndent = isChained ? 1 : 0;
+      const result = ' '.repeat(tabSize).repeat(indent + chainIndent) + trimmed;
       // Increase indent for opening brackets
       const opens = (trimmed.match(/[{[(]/g) || []).length;
       const closes = (trimmed.match(/[}\])]/g) || []).length;
       indent = Math.max(0, indent + opens - closes);
       // If line started with close bracket, we already decreased, re-add opens
       if (/^[}\])]/.test(trimmed)) indent += opens;
+      // Increase indent after case/default:
+      if (/^(case\b.*:|default\s*:)/.test(trimmed) && !trimmed.includes('{')) indent++;
       return result;
     });
-    setCode(formatted.join('\n'));
+    // Remove trailing whitespace on empty lines
+    const cleaned = formatted.map(l => l.trimEnd() || '');
+    setCode(cleaned.join('\n'));
     showToast('Formatted!', 'info');
   };
 
@@ -3016,6 +3086,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   bracketLines[ln2] = col2;
                 }
                 // Precompute bracket colorization depths per line
+                // Precompute inline lint hints for error-lens display
+                const lintMap = {};
+                if (!readonly) {
+                  lines.forEach((ll, li) => {
+                    if (/^\s*\/\//.test(ll)) return;
+                    if (/\bvar\b/.test(ll)) lintMap[li] = { msg: 'Prefer const/let', sev: 'warn' };
+                    else if (/==(?!=)/.test(ll) && !/===/.test(ll)) lintMap[li] = { msg: 'Use === instead of ==', sev: 'warn' };
+                    else if (/\beval\s*\(/.test(ll)) lintMap[li] = { msg: 'Avoid eval()', sev: 'warn' };
+                    else if (/\bdebugger\b/.test(ll.trim())) lintMap[li] = { msg: 'Debugger statement', sev: 'warn' };
+                    else if (/\balert\s*\(/.test(ll)) lintMap[li] = { msg: 'Avoid alert()', sev: 'warn' };
+                  });
+                }
                 const bracketColorMap = {}; // { lineIdx: [{ col, color }] }
                 let depth = 0;
                 for (let li = 0; li < lines.length; li++) {
@@ -3158,6 +3240,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               }}>{output.err}</span>
                             )}
                           </>)}
+                          {/* Inline lint warning (error lens style) */}
+                          {lintMap[i] && output?.errLn !== i + 1 && (
+                            <span style={{
+                              position: 'absolute', right: 8, top: 0, height: '100%',
+                              display: 'flex', alignItems: 'center',
+                              fontSize: 7, color: '#f9e2af50', fontStyle: 'italic',
+                              maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap', pointerEvents: 'none',
+                            }}>{lintMap[i].msg}</span>
+                          )}
                         </div>
                       );
                     })}
@@ -3492,18 +3584,34 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       if (selectedWord) {
                         wordOccurrences.forEach(ln => wordMatchLines.add(ln));
                       }
+                      // Precompute selection range for minimap
+                      const selRange = {};
+                      const el = taRef.current;
+                      if (el && el.selectionStart !== el.selectionEnd) {
+                        const selStartLn = code.substring(0, Math.min(el.selectionStart, el.selectionEnd)).split('\n').length;
+                        const selEndLn = code.substring(0, Math.max(el.selectionStart, el.selectionEnd)).split('\n').length;
+                        for (let sl = selStartLn; sl <= selEndLn; sl++) selRange[sl] = true;
+                      }
+                      // Precompute lint warning lines for minimap
+                      const lintLines = new Set();
+                      lines.forEach((ll, li) => {
+                        if (/^\s*\/\//.test(ll)) return;
+                        if (/\bvar\b/.test(ll) || (/==(?!=)/.test(ll) && !/===/.test(ll)) || /\beval\s*\(/.test(ll) || /\bdebugger\b/.test(ll.trim())) lintLines.add(li + 1);
+                      });
                       return lines.map((l, i) => {
                         const trimLen = Math.min(l.trimStart().length, 36);
                         const isErr = output?.errLn === i + 1;
+                        const isLint = lintLines.has(i + 1);
                         const isActive = i + 1 === activeLn;
                         const isSearch = searchMatchLines.has(i + 1);
                         const isWordMatch = wordMatchLines.has(i + 1);
                         const isBookmark = bookmarks.has(i + 1);
+                        const isSel = selRange[i + 1];
                         return <div key={i} style={{
                           height: Math.max(1, Math.min(2, 120 / lines.length)),
                           marginBottom: lines.length > 100 ? 0 : 1,
                           width: `${Math.max(4, (trimLen / 36) * 100)}%`,
-                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isBookmark ? '#89b4fa' : isWordMatch ? '#cba6f750' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
+                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isBookmark ? '#89b4fa' : isLint ? '#f9e2af60' : isWordMatch ? '#cba6f750' : isSel ? '#cba6f740' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
                           borderRadius: 1,
                           position: 'relative',
                         }}>
@@ -3671,7 +3779,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             {l.t === 'err' && <span style={{ fontSize: 6, background: '#f38ba820', color: '#f38ba8', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>ERR</span>}
                             {l.t === 'warn' && <span style={{ fontSize: 6, background: '#f9e2af20', color: '#f9e2af', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>WARN</span>}
                             {l.t === 'dbg' && <span style={{ fontSize: 6, background: '#6c708620', color: '#6c7086', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>DBG</span>}
-                            {l.t === 'ret' ? '\u2190 ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' && !isExpandable ? '\u276F ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' ? '' : ' '}{preview}
+                            {l.t === 'ret' ? '\u2190 ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' && !isExpandable ? '\u276F ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' ? '' : ' '}{l.t === 'ret' || l.t === 'log' ? (() => {
+                              // Syntax highlight JS-like output
+                              try {
+                                const tokens = tokenize(preview);
+                                return tokens.map((tk, ti) => <span key={ti} style={{ color: l.t === 'ret' ? (TC[tk.c] === '#cdd6f4' ? '#89b4fa' : TC[tk.c]) : TC[tk.c] || '#a6adc8' }}>{tk.v}</span>);
+                              } catch(_) { return preview; }
+                            })() : preview}
                             {l.ts && <span style={{ float: 'right', fontSize: 7, color: '#444', fontStyle: 'normal', marginLeft: 8 }}>{l.ts}</span>}
                           </div>
                         );
@@ -3792,10 +3906,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'rm'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'rm'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
