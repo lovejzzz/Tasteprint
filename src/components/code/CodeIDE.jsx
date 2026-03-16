@@ -711,6 +711,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const quickSwitchRef = React.useRef(openTabs);
   quickSwitchRef.current = openTabs;
 
+  /* ---- Minimap hover preview ---- */
+  const [minimapHover, setMinimapHover] = React.useState(null); // { line, y }
+
   /* ---- Surround with menu ---- */
   const [surroundMenu, setSurroundMenu] = React.useState(null);
 
@@ -4050,8 +4053,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     {viewportLines.map((i) => {
                       const l = lines[i];
                       const isFolded = foldedLines.has(i) && foldableRanges[i] !== undefined;
-                      /* Indent guides */
-                      const indent = l.match(/^(\s*)/)[0].length;
+                      /* Indent guides — extend through empty lines using neighbor indent */
+                      let indent = l.match(/^(\s*)/)[0].length;
+                      if (l.trim() === '' && i > 0) {
+                        // On empty lines, use the indent of the next non-empty line (or previous)
+                        let nextIndent = 0;
+                        for (let ni = i + 1; ni < lines.length && ni < i + 20; ni++) {
+                          if (lines[ni].trim()) { nextIndent = lines[ni].match(/^(\s*)/)[0].length; break; }
+                        }
+                        let prevIndent = 0;
+                        for (let pi = i - 1; pi >= 0 && pi > i - 20; pi--) {
+                          if (lines[pi].trim()) { prevIndent = lines[pi].match(/^(\s*)/)[0].length; break; }
+                        }
+                        indent = Math.min(nextIndent, prevIndent);
+                      }
                       const INDENT_COLORS = ['#cba6f718', '#89b4fa18', '#a6e3a118', '#f9e2af18', '#fab38718', '#f38ba818'];
                       const guides = [];
                       for (let g = tabSize; g <= indent; g += tabSize) {
@@ -4060,8 +4075,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           <span key={`g${g}`} style={{
                             position: 'absolute', left: (g - 1) * charW, top: 0, bottom: 0, width: 1,
                             background: showIndentRainbow
-                              ? (g === indent ? INDENT_COLORS[depthIdx % INDENT_COLORS.length].replace('18', '30') : INDENT_COLORS[depthIdx % INDENT_COLORS.length])
-                              : (g === indent ? '#ffffff0a' : '#ffffff06')
+                              ? (g === indent && l.trim() !== '' ? INDENT_COLORS[depthIdx % INDENT_COLORS.length].replace('18', '30') : INDENT_COLORS[depthIdx % INDENT_COLORS.length])
+                              : (g === indent && l.trim() !== '' ? '#ffffff0a' : '#ffffff06')
                           }} />
                         );
                       }
@@ -4130,18 +4145,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             }
                             return <HighlightLine text={l} />;
                           })()}
-                          {isFolded && (
-                            <span onClick={() => toggleFold(i)} style={{
-                              background: '#cba6f715', border: '1px solid #cba6f730', borderRadius: 3,
-                              padding: '0 4px', fontSize: 8, color: '#cba6f7', cursor: 'pointer', marginLeft: 4,
-                              pointerEvents: 'auto', position: 'relative', zIndex: 3,
-                            }}>{`... ${foldableRanges[i] - i} lines`}</span>
-                          )}
+                          {isFolded && (() => {
+                            const foldEnd = foldableRanges[i];
+                            const foldCount = foldEnd - i;
+                            const previewText = lines.slice(i + 1, Math.min(i + 4, foldEnd + 1)).map(fl => fl.trim()).filter(Boolean).join(' \u2022 ');
+                            return (
+                              <span onClick={() => toggleFold(i)}
+                                title={previewText.substring(0, 120)}
+                                style={{
+                                  background: '#cba6f715', border: '1px solid #cba6f730', borderRadius: 3,
+                                  padding: '0 4px', fontSize: 8, color: '#cba6f7', cursor: 'pointer', marginLeft: 4,
+                                  pointerEvents: 'auto', position: 'relative', zIndex: 3,
+                                  transition: 'background .15s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#cba6f730'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#cba6f715'}
+                              >{`... ${foldCount} lines`}</span>
+                            );
+                          })()}
                           {/* Active scope guide line */}
-                          {activeScope && i + 1 > activeScope.startLn && i + 1 < activeScope.endLn && (
+                          {activeScope && i + 1 >= activeScope.startLn && i + 1 <= activeScope.endLn && (
                             <span style={{
                               position: 'absolute', left: activeScope.indent * charW + Math.floor(charW / 2), top: 0, bottom: 0,
-                              width: 1, background: '#cba6f720', pointerEvents: 'none', zIndex: 1,
+                              width: 1, pointerEvents: 'none', zIndex: 1,
+                              background: i + 1 === activeScope.startLn || i + 1 === activeScope.endLn ? '#cba6f735' : '#cba6f720',
                             }} />
                           )}
                           {/* Bracket pair colorization */}
@@ -4172,7 +4199,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             <span style={{
                               position: 'absolute', left: bracketCol * charW, top: 0,
                               width: charW, height: '100%',
-                              background: '#cba6f718', borderBottom: '1px solid #cba6f740'
+                              background: '#cba6f718', borderBottom: '2px solid #cba6f750',
+                              borderRadius: '0 0 2px 2px',
                             }} />
                           )}
                           {output?.errLn === i + 1 && (<>
@@ -4618,13 +4646,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     const pct = (e.clientY - rect.top) / rect.height;
                     const totalH = lines.length * Math.round(16 * zf);
                     if (taRef.current) taRef.current.scrollTop = pct * totalH;
-                    // Set cursor to clicked line
                     const lineIdx = Math.min(lines.length - 1, Math.max(0, Math.floor(pct * lines.length)));
                     setActiveLn(lineIdx + 1);
                     setCursor({ ln: lineIdx + 1, col: 1 });
                     const pos = lineOffsets[lineIdx] || 0;
                     setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
                   }}
+                  onMouseMove={e => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const pct = (e.clientY - rect.top) / rect.height;
+                    const lineIdx = Math.min(lines.length - 1, Math.max(0, Math.floor(pct * lines.length)));
+                    setMinimapHover({ line: lineIdx, y: e.clientY - rect.top });
+                  }}
+                  onMouseLeave={() => setMinimapHover(null)}
                   style={{
                     position: 'absolute', top: 0, right: 0, width: 40, bottom: 0,
                     background: '#16162a', zIndex: 2, cursor: 'pointer', overflow: 'hidden',
@@ -4711,6 +4745,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     onMouseEnter={e => e.currentTarget.style.background = '#cba6f720'}
                     onMouseLeave={e => e.currentTarget.style.background = '#cba6f710'}
                   />
+                  {/* Minimap hover preview tooltip */}
+                  {minimapHover && (() => {
+                    const li = minimapHover.line;
+                    const previewLines = lines.slice(Math.max(0, li - 1), li + 2);
+                    return (
+                      <div style={{
+                        position: 'absolute', right: 44, top: Math.max(0, Math.min(minimapHover.y - 20, 300)),
+                        background: '#181825', border: '1px solid #ffffff15', borderRadius: 4,
+                        boxShadow: '0 2px 8px rgba(0,0,0,.5)', padding: '3px 6px', zIndex: 10,
+                        pointerEvents: 'none', maxWidth: 200, overflow: 'hidden',
+                      }}>
+                        <div style={{ fontSize: 7, color: '#555', marginBottom: 1 }}>Line {li + 1}</div>
+                        {previewLines.map((pl, pi) => (
+                          <div key={pi} style={{
+                            fontSize: 7, lineHeight: '10px', fontFamily: MONO, whiteSpace: 'nowrap',
+                            overflow: 'hidden', textOverflow: 'ellipsis',
+                            color: pi === (li > 0 ? 1 : 0) ? '#cdd6f4' : '#666',
+                            fontWeight: pi === (li > 0 ? 1 : 0) ? 500 : 400,
+                          }}><HighlightLine text={pl.substring(0, 60)} /></div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -4865,6 +4922,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       }}>{tab}{tab === 'problems' && (output?.err || lines.some(l => /\bvar\b/.test(l) || (/==(?!=)/.test(l) && !/===/.test(l)))) ? ' \u25CF' : ''}</span>
                   ))}
                   {output?.ms && <span style={{ fontSize: 8, color: '#27c93f', opacity: .5, marginLeft: 6 }}>{output.ms}ms</span>}
+                  {output?.logs?.length > 0 && <span style={{ fontSize: 7, color: '#444', marginLeft: 6 }}>{output.logs.length} entries</span>}
                   {output?.logs?.length > 0 && <span onClick={() => {
                     const text = output.logs.map(l => l.v).join('\n');
                     navigator.clipboard?.writeText(text);
