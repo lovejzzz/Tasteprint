@@ -57,7 +57,7 @@ export const VARIANTS = {
   badge:     ["Tinted","Solid","Outline","Glass","Brutal"],
   toast:     ["Card","Dark snack","Accent bar","Glass","Brutal","Gradient"],
   progress:  ["Round","Flat","Thin","Striped","Glow","Brutal","Gradient"],
-  modal:     ["Card","Minimal","Sheet","Glass","Destructive"],
+  modal:     ["Card","Minimal","Sheet","Glass","Destructive","Brutal","Gradient"],
   sidebar:   ["Full","Minimal","Grouped","Glass","Brutal","Gradient"],
   table:     ["Striped","Bordered","Minimal","Terminal","Glass","Gradient"],
   accordion: ["Bordered","Card","Minimal","Glass","Accent"],
