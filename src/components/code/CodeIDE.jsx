@@ -308,6 +308,10 @@ const SHORTCUTS = [
     ['Alt+\u2191/\u2193', 'Move line up/down'],
     ['Alt+Shift+\u2191/\u2193', 'Copy line up/down'],
     ['Tab / Shift+Tab', 'Indent / Outdent'],
+    ['Ctrl+\u232B', 'Delete word left'],
+    ['Ctrl+Del', 'Delete word right'],
+    ['Home', 'Smart line start'],
+    ['End', 'End of line'],
     ['\u2318+Z', 'Undo'],
     ['\u2318+Shift+Z', 'Redo'],
     ['\u2318+R', 'Rename symbol'],
@@ -1258,7 +1262,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     showToast('Formatted!', 'info');
   };
 
-  /* ---- Cursor tracking ---- */
+  /* ---- Cursor tracking with scroll-into-view ---- */
   const updateCursor = (el) => {
     if (!el) return;
     const s = el.selectionStart;
@@ -1267,6 +1271,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     const col = s - before.lastIndexOf('\n');
     setCursor({ ln, col });
     setActiveLn(ln);
+    // Ensure cursor line is visible
+    const lineH = Math.round(16 * zf);
+    const viewH = el.clientHeight;
+    const cursorY = (ln - 1) * lineH;
+    if (cursorY < el.scrollTop + lineH) {
+      el.scrollTop = Math.max(0, cursorY - lineH);
+    } else if (cursorY > el.scrollTop + viewH - lineH * 2) {
+      el.scrollTop = cursorY - viewH + lineH * 2;
+    }
   };
 
   /* ---- Line helpers ---- */
@@ -1573,6 +1586,34 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Home: go to first non-whitespace, then to column 0 */
+    if (e.key === 'Home' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+      const lineText = code.substring(lineStart);
+      const firstNonWs = lineStart + (lineText.match(/^\s*/)[0].length);
+      const target = s === firstNonWs ? lineStart : firstNonWs;
+      if (e.shiftKey) {
+        setTimeout(() => { el.selectionStart = Math.min(target, en); el.selectionEnd = Math.max(target, s === el.selectionStart ? en : s); }, 0);
+      } else {
+        setTimeout(() => { el.selectionStart = el.selectionEnd = target; }, 0);
+      }
+      return;
+    }
+
+    /* End: go to end of line */
+    if (e.key === 'End' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      const lineEnd = code.indexOf('\n', s);
+      const target = lineEnd === -1 ? code.length : lineEnd;
+      if (e.shiftKey) {
+        setTimeout(() => { el.selectionStart = Math.min(s, target); el.selectionEnd = target; }, 0);
+      } else {
+        setTimeout(() => { el.selectionStart = el.selectionEnd = target; }, 0);
+      }
+      return;
+    }
+
     if (readonly) return;
 
     /* Ctrl+Backspace: delete word left */
@@ -1710,6 +1751,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         e.preventDefault(); setCode(code.substring(0, s - 1) + code.substring(s + 1));
         setTimeout(() => { el.selectionStart = el.selectionEnd = s - 1 }, 0); return;
       }
+      // Smart unindent: if cursor is right after leading spaces, remove one indent level
+      const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+      const beforeCursor = code.substring(lineStart, s);
+      if (/^\s+$/.test(beforeCursor) && beforeCursor.length >= tabSize) {
+        const removeCount = ((beforeCursor.length - 1) % tabSize) + 1; // align to tab stops
+        e.preventDefault();
+        setCode(code.substring(0, s - removeCount) + code.substring(s));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s - removeCount }, 0);
+        return;
+      }
     }
   };
 
@@ -1834,6 +1885,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 const isActive = f.path === activeFile;
                 const isReadonly = !editFiles.hasOwnProperty(f.path) && GEN_FILES[f.path];
                 const isDeletable = editFiles.hasOwnProperty(f.path) && !initFiles[f.path];
+                const isModified = editFiles.hasOwnProperty(f.path) && initFiles[f.path] !== undefined && editFiles[f.path] !== initFiles[f.path];
                 return (
                   <div key={f.path}
                     onClick={() => { openFile(f.path); setExplorerCtx(null); }}
@@ -1865,6 +1917,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     ) : (
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name}</span>
                     )}
+                    {isModified && <span style={{ fontSize: 6, color: '#f9e2af', flexShrink: 0 }} title="Modified">{'\u25CF'}</span>}
                     {isReadonly && <span style={{ fontSize: 7, color: '#555', flexShrink: 0 }}>{'\uD83D\uDD12'}</span>}
                   </div>
                 );
@@ -2524,6 +2577,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative', outline: editorFocused ? '1px solid #cba6f720' : 'none', outlineOffset: -1, transition: 'outline-color .2s' }}>
               {/* Scroll shadows */}
               {scrollTop > 10 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 12, background: 'linear-gradient(to bottom, #1e1e2e, transparent)', zIndex: 4, pointerEvents: 'none' }} />}
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 12, background: 'linear-gradient(to top, #1e1e2e, transparent)', zIndex: 4, pointerEvents: 'none' }} />
               {/* Line numbers with fold arrows */}
               {showLineNumbers && (() => {
                 const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
@@ -3060,6 +3114,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     const pct = (e.clientY - rect.top) / rect.height;
                     const totalH = lines.length * Math.round(16 * zf);
                     if (taRef.current) taRef.current.scrollTop = pct * totalH;
+                    // Set cursor to clicked line
+                    const lineIdx = Math.min(lines.length - 1, Math.max(0, Math.floor(pct * lines.length)));
+                    setActiveLn(lineIdx + 1);
+                    setCursor({ ln: lineIdx + 1, col: 1 });
+                    const pos = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0);
+                    setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
                   }}
                   style={{
                     position: 'absolute', top: 0, right: 0, width: 40, bottom: 0,
@@ -3235,11 +3295,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         const collapsed = isExpandable && !isExpanded;
                         const preview = collapsed ? l.v.trim().substring(0, 50) + '...' : l.v;
                         return (
-                          <div key={i} style={{
+                          <div key={i} onDoubleClick={() => {
+                            navigator.clipboard?.writeText(l.v);
+                            showToast('Copied to clipboard', 'info');
+                          }} style={{
                             fontSize: fs(9), lineHeight: Math.round(15 * zf) + 'px',
                             color: l.t === 'err' ? '#f38ba8' : l.t === 'warn' ? '#f9e2af' : l.t === 'ret' ? '#89b4fa' : l.t === 'dbg' ? '#6c7086' : '#a6adc8',
-                            whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0'
-                          }}>
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0',
+                            borderRadius: 2,
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                             {isExpandable && (
                               <span onClick={() => setExpandedLogs(prev => {
                                 const next = new Set(prev);
