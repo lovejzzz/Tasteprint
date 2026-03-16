@@ -5967,6 +5967,178 @@ function addGrounding(response, userText, parsed, sent, topics) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   RESPONSE LENGTH CALIBRATION & ENERGY MIRRORING
+   Matches AI response length and energy to the current user message.
+   - Short inputs ("yeah", "cool", "ok") → short, punchy replies
+   - Medium inputs → balanced responses
+   - Long/detailed inputs → richer, more detailed replies
+   - High-energy inputs (!!!, caps, rapid) → energetic replies
+   - Low-energy (lowercase, no punctuation) → calm, chill replies
+   Also tracks a rolling "energy curve" so the AI doesn't abruptly
+   shift tone between turns.
+   ══════════════════════════════════════════════════════════════════ */
+
+let energyCurve = []; // rolling window of last 5 energy scores
+
+function measureInputEnergy(text) {
+  const len = text.length;
+  let energy = 0.5; // neutral baseline
+
+  // Length contributes to energy (more words = more invested)
+  if (len < 8) energy -= 0.2;
+  else if (len < 20) energy -= 0.1;
+  else if (len > 120) energy += 0.15;
+  else if (len > 200) energy += 0.25;
+
+  // Exclamation marks boost energy
+  const excl = (text.match(/!/g) || []).length;
+  energy += Math.min(excl * 0.1, 0.3);
+
+  // Question marks show engagement
+  const qs = (text.match(/\?/g) || []).length;
+  energy += Math.min(qs * 0.05, 0.15);
+
+  // ALL CAPS words boost energy
+  const capsWords = (text.match(/\b[A-Z]{2,}\b/g) || []).length;
+  energy += Math.min(capsWords * 0.08, 0.2);
+
+  // Emoji boost energy
+  const emojis = (text.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu) || []).length;
+  energy += Math.min(emojis * 0.05, 0.15);
+
+  // Laughter/excitement markers
+  if (/\b(haha|lol|lmao|omg|wow|whoa|dude|yes!)\b/i.test(text)) energy += 0.15;
+
+  // Low-energy signals
+  if (/^(ok|okay|sure|yep|yeah|yea|mhm|hmm|cool|fine|k|kk|nah|nope|idk)\.?$/i.test(text.trim())) energy -= 0.25;
+  if (text === text.toLowerCase() && len < 30 && !text.includes("!")) energy -= 0.05;
+
+  // Ellipsis signals trailing off
+  if (/\.{2,}$/.test(text)) energy -= 0.1;
+
+  return Math.max(0, Math.min(1, energy));
+}
+
+function getSmoothedEnergy(currentEnergy) {
+  energyCurve.push(currentEnergy);
+  if (energyCurve.length > 5) energyCurve.shift();
+  // Weighted average: recent messages matter more
+  const weights = [0.1, 0.15, 0.2, 0.25, 0.3];
+  const start = Math.max(0, weights.length - energyCurve.length);
+  let sum = 0, wsum = 0;
+  for (let i = 0; i < energyCurve.length; i++) {
+    const w = weights[start + i];
+    sum += energyCurve[i] * w;
+    wsum += w;
+  }
+  return sum / wsum;
+}
+
+function computeTargetLength(inputLen, energy) {
+  // Base ratio: AI responds with ~1.5-3x user input length
+  // Low energy → lower ratio, high energy → higher ratio
+  const ratio = 1.2 + energy * 2.0; // 1.2x at energy=0, 3.2x at energy=1
+  let target = Math.round(inputLen * ratio);
+
+  // Clamp to reasonable bounds
+  target = Math.max(25, Math.min(280, target));
+
+  // Very short inputs shouldn't produce very long responses
+  if (inputLen < 10) target = Math.min(target, 60);
+  if (inputLen < 20) target = Math.min(target, 100);
+
+  return target;
+}
+
+function calibrateResponseLength(response, text, energy) {
+  const inputLen = text.length;
+  const smoothedEnergy = getSmoothedEnergy(energy);
+  const targetLen = computeTargetLength(inputLen, smoothedEnergy);
+  const currentLen = response.length;
+
+  // Don't calibrate greeting/farewell/very short responses
+  if (currentLen < 20) return response;
+  // Don't trim responses that are answering questions (they need to be informative)
+  if (/^(what|how|why|when|where|who|can you|could you|tell me)/i.test(text) && currentLen < 250) return response;
+
+  let r = response;
+
+  // ── Need to shorten ──
+  if (currentLen > targetLen * 1.4) {
+    // Strategy 1: trim to N sentences that fit target
+    const sentences = r.match(/[^.!?]+[.!?]+/g) || [r];
+    if (sentences.length > 1) {
+      let built = "";
+      for (const s of sentences) {
+        if (built.length + s.length > targetLen && built.length > 20) break;
+        built += s;
+      }
+      // Keep at least one sentence
+      if (built.length > 15) r = built.trim();
+    }
+
+    // Strategy 2: if still too long, find a clean cut point
+    if (r.length > targetLen * 1.5) {
+      const cutPoints = [". ", "! ", "? ", " — ", ", "];
+      for (const cp of cutPoints) {
+        const idx = r.lastIndexOf(cp, targetLen);
+        if (idx > targetLen * 0.5) {
+          r = r.slice(0, idx + cp.trimEnd().length);
+          break;
+        }
+      }
+    }
+  }
+
+  // ── Need to lengthen (rare — only when user writes a lot and AI gives a stub) ──
+  if (currentLen < targetLen * 0.4 && inputLen > 80 && smoothedEnergy > 0.5) {
+    // Add a follow-up that shows engagement with their long message
+    const extensions = [
+      " I'd actually love to dig into that more.",
+      " There's a lot to unpack there.",
+      " That's the kind of thing I could talk about for a while.",
+      " I feel like there's a deeper thread here worth pulling on.",
+      " What part of that feels most important to you?",
+    ];
+    if (!r.includes("?")) r += pick(extensions);
+  }
+
+  return r.trim();
+}
+
+function adjustResponseEnergy(response, energy) {
+  const smoothed = energyCurve.length > 0 ? energyCurve[energyCurve.length - 1] : energy;
+  let r = response;
+
+  // ── Low energy user → calm, chill, less punctuation ──
+  if (smoothed < 0.3) {
+    // Strip trailing exclamation marks (keep at most one)
+    r = r.replace(/!{2,}/g, ".");
+    // Convert "!" to "." on non-emotional responses (first sentence)
+    if (!/\b(wow|whoa|amazing|awesome|love|great)\b/i.test(r)) {
+      r = r.replace(/^([^.!?]+)!/, "$1.");
+    }
+    // Remove overly enthusiastic openers
+    r = r.replace(/^(Oh wow|Wow|Oh!|Yes!|Ooh)\s*/i, "");
+  }
+
+  // ── High energy user → match their enthusiasm ──
+  if (smoothed > 0.75) {
+    // Boost a trailing period to exclamation (on first sentence only, 40% chance)
+    if (Math.random() < 0.4) {
+      const firstEnd = r.indexOf(". ");
+      if (firstEnd > 10 && firstEnd < 80) {
+        r = r.slice(0, firstEnd) + "!" + r.slice(firstEnd + 1);
+      } else if (r.endsWith(".")) {
+        r = r.slice(0, -1) + "!";
+      }
+    }
+  }
+
+  return r;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CONVERSATIONAL DISFLUENCY — Natural Speech Patterns
    Real humans don't produce perfect prose. They self-correct,
    restart mid-thought, hedge, and think out loud. This engine
@@ -6348,6 +6520,11 @@ export function getAIResponse(input) {
   // ═══ Epistemic modulation: calibrate certainty based on knowledge depth ═══
   response = modulateEpistemics(response, currentTopics, parsed);
 
+  // ═══ Response length calibration & energy mirroring ═══
+  const inputEnergy = measureInputEnergy(text);
+  response = calibrateResponseLength(response, text, inputEnergy);
+  response = adjustResponseEnergy(response, inputEnergy);
+
   // ═══ Conversational disfluency: natural speech patterns (self-correction, false starts) ═══
   response = addDisfluency(response);
 
@@ -6387,6 +6564,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
