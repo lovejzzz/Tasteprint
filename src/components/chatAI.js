@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 49: Belief tracking & contradiction/surprise detection
+   Round 50: Self-aware humor & observational wit
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -3452,7 +3452,140 @@ function handleRiddleAnswer() {
   return `${riddle.a} Want another riddle, or shall we talk about something else?`;
 }
 
-// Contextual humor injection — adds humor to non-joke responses when appropriate
+/* ══════════════════════════════════════════════════════════════════
+   SELF-AWARE HUMOR & OBSERVATIONAL WIT (Round 50)
+   Makes the AI contextually funny by observing patterns IN the
+   conversation itself — topic fixation, message length patterns,
+   belief shifts, pacing, and conversational dynamics. These are
+   the kind of observations that create genuine surprise:
+   "Wait, this AI just... noticed that about our conversation?"
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastObservationTurn = 0;
+let messageLengthHistory = []; // track user message lengths for pattern detection
+
+function trackMessageLength(text) {
+  messageLengthHistory.push(text.length);
+  if (messageLengthHistory.length > 15) messageLengthHistory.shift();
+}
+
+function generateObservationalWit(response, text, topics) {
+  // Guards: not too often, not on emotional/heavy moments
+  if (mem.turn < 6) return null;
+  if (mem.turn - lastObservationTurn < 5) return null;
+  if (response.length < 30) return null;
+  // Don't be funny during heavy emotional moments
+  if (/sorry|loss|died|breakup|quit|fired|sick/i.test(text)) return null;
+  // 15% fire rate
+  if (Math.random() > 0.15) return null;
+
+  const observations = [];
+
+  // ── 1. Topic fixation: user has been on one topic for many turns ──
+  if (topics.length > 0) {
+    const mainTopic = topics[0];
+    const topicCount = mem.topics[mainTopic] || 0;
+    if (topicCount >= 4) {
+      observations.push(
+        `We've been deep in ${mainTopic} territory for a while now — I think we both caught the ${mainTopic} bug 😄`,
+        `At this point I think ${mainTopic} should be sponsoring our conversation`,
+        `We've circled back to ${mainTopic} about ${topicCount} times now — not complaining though, it's clearly your thing!`,
+        `If someone were reading this conversation they'd think it's the ${mainTopic} fan club meeting minutes 📝`,
+      );
+    }
+  }
+
+  // ── 2. Message length contrast: user suddenly writes WAY more or less ──
+  if (messageLengthHistory.length >= 4) {
+    const recent = messageLengthHistory.slice(-1)[0];
+    const avg = messageLengthHistory.slice(0, -1).reduce((a, b) => a + b, 0) / (messageLengthHistory.length - 1);
+
+    // User suddenly wrote a novel
+    if (recent > avg * 3 && recent > 100) {
+      observations.push(
+        "Whoa — you went from quick messages to a full essay! I love the energy shift 😄",
+        "That message was basically a blog post and I am HERE for it 📖",
+        "I see you had a lot to say there! Should I be taking notes? 📝",
+      );
+    }
+    // User suddenly went ultra-brief after being verbose
+    if (recent < 15 && avg > 60) {
+      observations.push(
+        "Going from paragraphs to a one-liner — the duality 😄",
+        "Short and sweet this time! I respect the efficiency.",
+      );
+    }
+  }
+
+  // ── 3. Conversation length milestone ──
+  if (mem.turn === 10 || mem.turn === 20 || mem.turn === 30) {
+    const turns = mem.turn;
+    if (turns === 10) {
+      observations.push(
+        "We're 10 messages in and I'm still entertained — that's a good sign 😊",
+        "10 messages deep! This is officially a real conversation now.",
+      );
+    } else if (turns === 20) {
+      observations.push(
+        "20 messages in! We're basically old friends at this point 😄",
+        "This is officially the longest conversation I've had today. And the best, obviously 😊",
+      );
+    } else {
+      observations.push(
+        "30 messages! At this point you should know — I'm a tiny AI running in your browser. The fact we're still here is kind of amazing 🤯",
+        "We've hit 30 turns and honestly? This has been great. You're good at this whole 'talking' thing 😄",
+      );
+    }
+  }
+
+  // ── 4. Question barrage: user asking lots of questions in a row ──
+  const recentHistory = mem.history.slice(-5);
+  const recentQuestions = recentHistory.filter(h => h.role === "user" && /\?/.test(h.text)).length;
+  if (recentQuestions >= 3) {
+    observations.push(
+      "You're firing off questions like a talk show host and I am loving it! Keep them coming 🎤",
+      "The rapid-fire questions! I feel like I'm on a quiz show 😄 What's next?",
+    );
+  }
+
+  // ── 5. Self-deprecating AI humor (occasional) ──
+  if (Math.random() < 0.3) {
+    observations.push(
+      "Disclaimer: I'm literally JavaScript running in a browser pretending to be smart. But I try! 😅",
+      "I should mention — I'm not actually thinking. I'm pattern-matching at superhuman speed. Same thing, basically 😄",
+      "Sometimes I impress myself with how coherent I sound for a few hundred lines of JavaScript",
+    );
+  }
+
+  // ── 6. User is teaching the AI — role reversal ──
+  const recentUserMessages = mem.history.filter(h => h.role === "user").slice(-3);
+  const isTeaching = recentUserMessages.some(h =>
+    /actually|well technically|not exactly|let me explain|the thing is|you see/i.test(h.text)
+  );
+  if (isTeaching) {
+    observations.push(
+      "I love that you're schooling me right now. I'm taking mental notes 📝",
+      "Okay I see who the teacher is in this conversation — and it's definitely not me 😄",
+      "You clearly know more about this than I do! I should be the one asking the questions here.",
+    );
+  }
+
+  // ── 7. Late-night/early-morning awareness ──
+  const hour = new Date().getHours();
+  if (hour >= 0 && hour < 5 && mem.turn > 5) {
+    observations.push(
+      `It's ${hour === 0 ? 'midnight' : hour + ' AM'} and you're chatting with an AI. No judgment — I'm literally always here 🦉`,
+      `The fact that we're having this conversation at ${hour} AM says something about both of us. Not sure what, but something 😄`,
+    );
+  }
+
+  if (observations.length === 0) return null;
+
+  lastObservationTurn = mem.turn;
+  return pick(observations);
+}
+
+// Enhanced contextual humor injection — now includes observational wit
 function injectHumor(response, topics) {
   // Don't inject too often (every 6+ turns)
   if (mem.turn - lastJokeTurn < 6) return response;
@@ -8878,6 +9011,15 @@ export function getAIResponse(input) {
   // ═══ Topic bridging: natural connective tissue on topic shifts/callbacks ═══
   response = addTopicBridge(response, currentTopics);
 
+  // ═══ Observational wit: self-aware humor about conversation patterns ═══
+  trackMessageLength(text);
+  const wit = generateObservationalWit(response, text, currentTopics);
+  if (wit) {
+    // Replace the response with the observation (it's the main event when it fires)
+    const witSentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+    response = witSentences[0].trim() + " " + wit;
+  }
+
   // Contextual humor injection (coherence guard will strip if inappropriate)
   response = injectHumor(response, currentTopics);
 
@@ -8972,6 +9114,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
