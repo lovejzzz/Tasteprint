@@ -696,6 +696,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Per-file scroll/cursor memory ---- */
   const filePositions = React.useRef({});
 
+  /* ---- Quick file switcher (Ctrl+Tab overlay) ---- */
+  const [quickSwitch, setQuickSwitch] = React.useState(null); // { idx }
+  const quickSwitchRef = React.useRef(openTabs);
+  quickSwitchRef.current = openTabs;
+
   /* ---- Surround with menu ---- */
   const [surroundMenu, setSurroundMenu] = React.useState(null);
 
@@ -721,8 +726,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [cmdHeld, setCmdHeld] = React.useState(false);
   React.useEffect(() => {
     const onKey = e => { if (e.key === 'Meta' || e.key === 'Control') setCmdHeld(true); };
-    const onUp = e => { if (e.key === 'Meta' || e.key === 'Control') setCmdHeld(false); };
-    const onBlur = () => setCmdHeld(false);
+    const onUp = e => {
+      if (e.key === 'Meta' || e.key === 'Control') setCmdHeld(false);
+      // Confirm quick file switcher on Ctrl release
+      if (e.key === 'Control') {
+        setQuickSwitch(prev => {
+          if (prev) {
+            const tabs = quickSwitchRef.current; // ref always has latest openTabs
+            if (tabs && tabs[prev.idx]) setActiveFile(tabs[prev.idx]);
+          }
+          return null;
+        });
+      }
+    };
+    const onBlur = () => { setCmdHeld(false); setQuickSwitch(null); };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onUp);
     window.addEventListener('blur', onBlur);
@@ -2135,6 +2152,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     /* Escape: close overlays */
     if (e.key === 'Escape') {
+      if (quickSwitch) { setQuickSwitch(null); return; }
       if (peekDef) { setPeekDef(null); return; }
       if (acOpen) { setAcOpen(false); return; }
       if (surroundMenu) { setSurroundMenu(null); return; }
@@ -2147,16 +2165,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (symbolOpen) { setSymbolOpen(false); return; }
     }
 
-    /* Tab cycling: Ctrl+Tab / Ctrl+Shift+Tab */
+    /* Tab cycling with quick switcher: Ctrl+Tab / Ctrl+Shift+Tab */
     if (e.key === 'Tab' && e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      const idx = openTabs.indexOf(activeFile);
-      if (e.shiftKey) {
-        const prev = idx <= 0 ? openTabs.length - 1 : idx - 1;
-        setActiveFile(openTabs[prev]);
+      if (openTabs.length <= 1) return;
+      if (!quickSwitch) {
+        // Open quick switcher starting at next tab
+        const curIdx = openTabs.indexOf(activeFile);
+        const startIdx = e.shiftKey
+          ? (curIdx <= 0 ? openTabs.length - 1 : curIdx - 1)
+          : (curIdx >= openTabs.length - 1 ? 0 : curIdx + 1);
+        setQuickSwitch({ idx: startIdx });
       } else {
-        const next = idx >= openTabs.length - 1 ? 0 : idx + 1;
-        setActiveFile(openTabs[next]);
+        // Cycle within the switcher
+        setQuickSwitch(prev => {
+          const nextIdx = e.shiftKey
+            ? (prev.idx <= 0 ? openTabs.length - 1 : prev.idx - 1)
+            : (prev.idx >= openTabs.length - 1 ? 0 : prev.idx + 1);
+          return { idx: nextIdx };
+        });
       }
       return;
     }
@@ -3285,6 +3312,46 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
+          {/* Quick file switcher (Ctrl+Tab) */}
+          {quickSwitch && (
+            <div onMouseDown={stop} style={{
+              position: 'absolute', top: 30, left: '15%', right: '15%', zIndex: 22,
+              background: '#181825', border: '1px solid #ffffff15', borderRadius: 8,
+              boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 240,
+            }}>
+              <div style={{ padding: '6px 10px', borderBottom: '1px solid #ffffff08', fontSize: 9, color: '#555', fontWeight: 600 }}>
+                Open Files — release Ctrl to switch
+              </div>
+              <div style={{ overflow: 'auto', maxHeight: 200 }}>
+                {openTabs.map((path, i) => {
+                  const name = path.split('/').pop();
+                  const isActive = i === quickSwitch.idx;
+                  const isCurrent = path === activeFile;
+                  const isModified = editFiles.hasOwnProperty(path) && editFiles[path] !== initFiles[path];
+                  return (
+                    <div key={path}
+                      onClick={() => { setActiveFile(path); setQuickSwitch(null); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px',
+                        fontSize: fs(9), cursor: 'pointer',
+                        background: isActive ? '#cba6f718' : 'transparent',
+                        color: isActive ? '#cdd6f4' : '#a6adc8',
+                        borderLeft: isActive ? '2px solid #cba6f7' : '2px solid transparent',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = isActive ? '#cba6f718' : '#ffffff06'}
+                      onMouseLeave={e => e.currentTarget.style.background = isActive ? '#cba6f718' : 'transparent'}>
+                      <span style={{ fontSize: 7, color: FCOLORS[name] || '#555', width: 12, textAlign: 'center' }}>{FICONS[name] || 'JS'}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isActive ? 600 : 400 }}>{name}</span>
+                      <span style={{ fontSize: 7, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{path}</span>
+                      {isModified && <span style={{ fontSize: 6, color: '#f9e2af' }}>{'\u25CF'}</span>}
+                      {isCurrent && <span style={{ fontSize: 7, color: '#cba6f7', opacity: .5 }}>current</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Command palette */}
           {cmdOpen && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 260 }}>
@@ -3998,6 +4065,21 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       if (filtered.length) { setAcItems(filtered); setAcIdx(0); setAcOpen(true); }
                       else setAcOpen(false);
                     }
+                  } else if (before.match(/(?:import|from)\s+.*?['"]([^'"]*)$/)) {
+                    // Import path autocomplete: suggest file paths
+                    const pathMatch = before.match(/['"]([^'"]*)$/);
+                    if (pathMatch) {
+                      const partial = pathMatch[1].toLowerCase();
+                      const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+                      const filtered = allPaths
+                        .filter(p => p.toLowerCase().includes(partial) && p !== activeFile)
+                        .map(p => {
+                          const name = p.split('/').pop();
+                          return { label: name, desc: 'path', insert: p.slice(partial.length) };
+                        }).slice(0, 10);
+                      if (filtered.length) { setAcItems(filtered); setAcIdx(0); setAcOpen(true); }
+                      else setAcOpen(false);
+                    } else setAcOpen(false);
                   } else {
                     // Autocomplete: JS keywords + local identifiers from current file
                     const wordMatch = before.match(/\b(\w{2,})$/);
@@ -4289,9 +4371,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             <span style={{
                               width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
                               borderRadius: 3, fontSize: 7, fontWeight: 700, flexShrink: 0,
-                              background: isMethod ? '#cba6f712' : '#89b4fa12',
-                              color: isMethod ? '#cba6f7' : '#89b4fa',
-                            }}>{isMethod ? (item.label.includes('(') ? 'M' : 'P') : 'K'}</span>
+                              background: item.desc === 'local' ? '#a6e3a112' : item.desc?.includes('snippet') ? '#f9e2af12' : item.desc === 'keyword' ? '#89b4fa12' : item.desc === 'path' ? '#fab38712' : '#cba6f712',
+                              color: item.desc === 'local' ? '#a6e3a1' : item.desc?.includes('snippet') ? '#f9e2af' : item.desc === 'keyword' ? '#89b4fa' : item.desc === 'path' ? '#fab387' : '#cba6f7',
+                            }}>{item.desc === 'local' ? 'V' : item.desc?.includes('snippet') ? 'S' : item.desc === 'keyword' ? 'K' : item.desc === 'path' ? 'F' : item.label.includes('(') ? 'M' : 'P'}</span>
                             <span style={{ fontWeight: isActive ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
                             <span style={{ color: '#555', fontSize: 7, flexShrink: 0 }}>{item.desc}</span>
                           </div>
