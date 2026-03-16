@@ -558,6 +558,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Color decorators setting ---- */
   const [showColorDecorators, setShowColorDecorators] = React.useState(true);
+  const [showLineNumbers, setShowLineNumbers] = React.useState(true);
+  const [tabSize, setTabSize] = React.useState(2);
 
   /* ---- Bookmarks ---- */
   const [bookmarks, setBookmarks] = React.useState(new Set());
@@ -1573,6 +1575,37 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     if (readonly) return;
 
+    /* Ctrl+Backspace: delete word left */
+    if (e.key === 'Backspace' && (e.ctrlKey || e.altKey) && !e.metaKey) {
+      e.preventDefault();
+      if (s === en && s > 0) {
+        let j = s - 1;
+        // Skip whitespace
+        while (j > 0 && /\s/.test(code[j])) j--;
+        // Skip word characters
+        while (j > 0 && /\w/.test(code[j - 1])) j--;
+        setCode(code.substring(0, j) + code.substring(s));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = j }, 0);
+      }
+      return;
+    }
+
+    /* Ctrl+Delete: delete word right */
+    if (e.key === 'Delete' && (e.ctrlKey || e.altKey) && !e.metaKey) {
+      e.preventDefault();
+      if (s === en && s < code.length) {
+        let j = s;
+        // Skip word characters
+        while (j < code.length && /\w/.test(code[j])) j++;
+        // Skip whitespace
+        while (j < code.length && /\s/.test(code[j])) j++;
+        if (j === s) j++; // at least delete one char
+        setCode(code.substring(0, s) + code.substring(j));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s }, 0);
+      }
+      return;
+    }
+
     /* Tab / Shift+Tab: indent/outdent */
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -1585,10 +1618,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         let diff = 0;
         for (let i = startLn; i <= endLn; i++) {
           if (e.shiftKey) {
-            if (newLines[i].startsWith('  ')) { newLines[i] = newLines[i].slice(2); diff -= 2; }
-            else if (newLines[i].startsWith(' ')) { newLines[i] = newLines[i].slice(1); diff -= 1; }
+            const sp = ' '.repeat(tabSize);
+            if (newLines[i].startsWith(sp)) { newLines[i] = newLines[i].slice(tabSize); diff -= tabSize; }
+            else { const ws = newLines[i].match(/^ */)[0].length; if (ws) { newLines[i] = newLines[i].slice(ws); diff -= ws; } }
           } else {
-            newLines[i] = '  ' + newLines[i]; diff += 2;
+            newLines[i] = ' '.repeat(tabSize) + newLines[i]; diff += tabSize;
           }
         }
         const nc = newLines.join('\n');
@@ -1598,9 +1632,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         // Single line outdent
         const lineStart = code.lastIndexOf('\n', s - 1) + 1;
         const line = code.substring(lineStart);
-        if (line.startsWith('  ')) {
-          setCode(code.substring(0, lineStart) + line.slice(2));
-          setTimeout(() => { el.selectionStart = el.selectionEnd = Math.max(lineStart, s - 2) }, 0);
+        const sp = ' '.repeat(tabSize);
+        if (line.startsWith(sp)) {
+          setCode(code.substring(0, lineStart) + line.slice(tabSize));
+          setTimeout(() => { el.selectionStart = el.selectionEnd = Math.max(lineStart, s - tabSize) }, 0);
         }
       } else {
         // Check for snippet trigger before plain Tab
@@ -1632,9 +1667,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           showToast(`Snippet: ${trigger}`, 'info');
           return;
         }
-        setCode(code.substring(0, s) + '  ' + code.substring(en));
-        setTimeout(() => { el.selectionStart = el.selectionEnd = s + 2 }, 0);
+        const sp = ' '.repeat(tabSize);
+        setCode(code.substring(0, s) + sp + code.substring(en));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + tabSize }, 0);
       }
+      return;
+    }
+    /* Selection wrapping: typing bracket/quote with selection wraps it */
+    if (PAIRS[e.key] && s !== en) {
+      e.preventDefault();
+      const close = PAIRS[e.key];
+      const selected = code.substring(s, en);
+      setCode(code.substring(0, s) + e.key + selected + close + code.substring(en));
+      setTimeout(() => { el.selectionStart = s + 1; el.selectionEnd = s + 1 + selected.length }, 0);
       return;
     }
     if (PAIRS[e.key]) { e.preventDefault(); const close = PAIRS[e.key]; setCode(code.substring(0, s) + e.key + close + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return; }
@@ -1648,9 +1693,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         e.preventDefault();
         const closer = OPEN_CLOSE[bef];
         const after = code[s] === closer;
-        const nc = code.substring(0, s) + '\n' + indent + '  ' + (after ? '\n' + indent : '') + code.substring(s);
+        const tab = ' '.repeat(tabSize);
+        const nc = code.substring(0, s) + '\n' + indent + tab + (after ? '\n' + indent : '') + code.substring(s);
         setCode(nc);
-        setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + 3 }, 0);
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
         return;
       }
       if (indent) { e.preventDefault(); setCode(code.substring(0, s) + '\n' + indent + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + 1 }, 0); return; }
@@ -1980,6 +2026,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 { label: 'Bracket Colors', val: showBracketColors, set: setShowBracketColors },
                 { label: 'Indent Rainbow', val: showIndentRainbow, set: setShowIndentRainbow },
                 { label: 'Color Decorators', val: showColorDecorators, set: setShowColorDecorators },
+                { label: 'Line Numbers', val: showLineNumbers, set: setShowLineNumbers },
                 { label: 'Auto Save on Run', val: autoSave, set: setAutoSave },
               ].map(opt => (
                 <div key={opt.label}
@@ -2008,6 +2055,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               <div style={{ padding: '4px 10px', fontSize: 8, color: '#555' }}>
                 Zoom: {Math.round(editorZoom * 100)}%
                 <span onClick={() => setEditorZoom(1)} style={{ color: '#cba6f7', cursor: 'pointer', marginLeft: 6 }}>Reset</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 8, color: '#555', gap: 4 }}>
+                <span>Tab Size:</span>
+                {[2, 4].map(sz => (
+                  <span key={sz} onClick={() => setTabSize(sz)}
+                    style={{ padding: '1px 5px', borderRadius: 3, cursor: 'pointer', fontSize: 8,
+                      background: tabSize === sz ? '#cba6f720' : '#ffffff06',
+                      color: tabSize === sz ? '#cba6f7' : '#555',
+                    }}>{sz}</span>
+                ))}
               </div>
               <div style={{ padding: '4px 10px', fontSize: 8, color: '#555' }}>
                 Snippets: {Object.keys(SNIPPETS).join(', ')}
@@ -2468,7 +2525,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               {/* Scroll shadows */}
               {scrollTop > 10 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 12, background: 'linear-gradient(to bottom, #1e1e2e, transparent)', zIndex: 4, pointerEvents: 'none' }} />}
               {/* Line numbers with fold arrows */}
-              {(() => {
+              {showLineNumbers && (() => {
                 const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
                 return (
                   <div ref={lnRef} style={{
@@ -2542,7 +2599,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
               {/* Syntax highlight overlay */}
               {(() => {
-                const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
+                const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
                 const charW = fs(6.1);
                 // Precompute bracket match line positions
                 const bracketLines = {};
@@ -2871,7 +2928,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   caretColor: readonly ? 'transparent' : '#cba6f7',
                   border: 'none', outline: 'none', resize: 'none', padding: 8,
                   fontSize: fs(10), lineHeight: lh, fontFamily: MONO,
-                  tabSize: 2, whiteSpace: wordWrap ? 'pre-wrap' : 'pre', wordBreak: wordWrap ? 'break-all' : 'normal', overflow: 'auto', minWidth: 0,
+                  tabSize: tabSize, whiteSpace: wordWrap ? 'pre-wrap' : 'pre', wordBreak: wordWrap ? 'break-all' : 'normal', overflow: 'auto', minWidth: 0,
                   position: 'relative', zIndex: 1, cursor: readonly ? 'default' : cmdHeld ? 'pointer' : 'text',
                 }}
               />
@@ -3192,7 +3249,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                                 {isExpanded ? '\u25BE' : '\u25B8'}
                               </span>
                             )}
-                            {l.t === 'err' ? '\u2717 ' : l.t === 'warn' ? '\u26A0 ' : l.t === 'ret' ? '  ' : l.t === 'dbg' ? '\u25E6 ' : !isExpandable ? '\u276F ' : ''}{preview}
+                            {l.t === 'err' && <span style={{ fontSize: 6, background: '#f38ba820', color: '#f38ba8', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>ERR</span>}
+                            {l.t === 'warn' && <span style={{ fontSize: 6, background: '#f9e2af20', color: '#f9e2af', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>WARN</span>}
+                            {l.t === 'dbg' && <span style={{ fontSize: 6, background: '#6c708620', color: '#6c7086', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>DBG</span>}
+                            {l.t === 'ret' ? '\u2190 ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' && !isExpandable ? '\u276F ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' ? '' : ' '}{preview}
                             {l.ts && <span style={{ float: 'right', fontSize: 7, color: '#444', fontStyle: 'normal', marginLeft: 8 }}>{l.ts}</span>}
                           </div>
                         );
@@ -3344,7 +3404,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             <span onClick={() => setWordWrap(w => !w)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: wordWrap ? '#cba6f7' : '#555', marginLeft: 'auto', cursor: 'pointer' }}
               title="Toggle word wrap">{wordWrap ? 'Wrap: On' : 'Wrap: Off'}</span>
-            <span style={{ fontSize: fs(8), color: '#555' }}>Spaces: 2</span>
+            <span onClick={() => setTabSize(t => t === 2 ? 4 : 2)} onMouseDown={stop}
+              style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }} title="Toggle tab size">Spaces: {tabSize}</span>
             {editorZoom !== 1 && <span onClick={() => setEditorZoom(1)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: '#89b4fa', cursor: 'pointer', opacity: .7 }}
               title="Reset zoom (⌘0)">{Math.round(editorZoom * 100)}%</span>}
