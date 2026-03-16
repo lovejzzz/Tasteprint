@@ -13992,6 +13992,194 @@ function applyEpistemicHedge(response) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   GENUINE ENCOURAGEMENT & VALIDATION (Round 88)
+   Humans naturally encourage each other — "that's awesome!", "good
+   for you!", "that takes guts". Most chatbots skip this entirely,
+   responding to "I just ran my first 5K" the same way they respond
+   to "the weather is nice". This stage detects achievement, effort,
+   vulnerability, and good ideas, then prepends specific praise.
+
+   Categories:
+   - achievement: completed something, hit a milestone, got results
+   - effort: working hard, grinding, struggling but persisting
+   - vulnerability: sharing something personal, admitting weakness
+   - insight: clever observation, good question, interesting take
+   - growth: learning new things, changing habits, self-improvement
+
+   Fire rate: ~20% of eligible turns. 5-turn cooldown.
+   Max 1 encouragement per response. Skips if response already
+   starts with a praise-like word. Never fires on very short input.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastEncourageTurn = 0;
+let recentEncouragements = [];
+
+const ENCOURAGEMENT_POOLS = {
+  achievement: [
+    "That's genuinely impressive —",
+    "Okay, that's a real accomplishment.",
+    "You should be proud of that.",
+    "That's no small thing!",
+    "Wait, that's actually huge —",
+    "Good for you, seriously.",
+    "That took work, and it shows.",
+    "Hell yeah —",
+  ],
+  effort: [
+    "The fact that you're putting in the work says a lot.",
+    "That kind of dedication is rare.",
+    "Respect for sticking with it.",
+    "That's real commitment right there.",
+    "Most people wouldn't push through that.",
+    "You're doing more than you think.",
+    "That grind will pay off —",
+  ],
+  vulnerability: [
+    "I appreciate you being real about that.",
+    "That takes courage to say.",
+    "Thanks for trusting me with that.",
+    "That's honestly really brave to share.",
+    "That's real, and I respect it.",
+    "Not everyone can be that honest.",
+  ],
+  insight: [
+    "Ooh, that's a sharp observation.",
+    "Actually, that's a really good point.",
+    "I hadn't thought of it that way —",
+    "That's a smart way to frame it.",
+    "Okay, you're onto something there.",
+    "That's a genuinely interesting angle.",
+    "That's more insightful than you realize.",
+  ],
+  growth: [
+    "Love that you're investing in yourself.",
+    "That growth mindset is everything.",
+    "The fact that you're even thinking about this is great.",
+    "That self-awareness is rare.",
+    "Good — that's exactly how you level up.",
+    "Most people don't actively work on themselves like that.",
+  ],
+};
+
+// Keyword patterns for each category
+const ENCOURAGE_SIGNALS = {
+  achievement: {
+    patterns: [
+      /\b(finally|just)\s+(finished|completed|shipped|launched|published|released|submitted|passed|got|made|built|created|graduated)\b/i,
+      /\b(got (promoted|hired|accepted|the job|into|funded|my (degree|cert)))\b/i,
+      /\b(hit|reached|crossed)\s+\d+/i,
+      /\b(first|1st)\s+(time|ever|one)\b/i,
+      /\b(won|earned|landed|nailed|aced|crushed)\b/i,
+      /\bI (did it|made it|got in)\b/i,
+      /\bpersonal (best|record)\b/i,
+      /\b(ran|finished)\s+(a|my)\s+(marathon|5k|10k|half|race)\b/i,
+    ],
+    weight: 1.0,
+  },
+  effort: {
+    patterns: [
+      /\b(been (working|grinding|studying|practicing|training|trying) (on|for|at))\b/i,
+      /\b(hours|weeks|months|years)\s+(of|into|on)\b/i,
+      /\b(keep(ing)? (going|trying|pushing|at it))\b/i,
+      /\b(won't|can't|refuse to)\s+(give up|quit|stop)\b/i,
+      /\b(grind|hustle|dedication|commitment|persever)\b/i,
+      /\b(hard|tough|difficult|challenging)\s+(but|and)\s+(I|worth)\b/i,
+      /\b(still\s+(working|trying|pushing|learning|going))\b/i,
+    ],
+    weight: 0.8,
+  },
+  vulnerability: {
+    patterns: [
+      /\b(honestly|truthfully|to be (honest|real)|I'll admit|confession)\b/i,
+      /\b(I('m| am)\s+(afraid|scared|anxious|worried|nervous|insecure|struggling|not sure|lost|confused))\b/i,
+      /\b(I (feel|felt)\s+(alone|lonely|overwhelmed|inadequate|stuck|behind))\b/i,
+      /\b(I('ve| have) never told|this is hard to (say|admit|share))\b/i,
+      /\b(I (don't|can't) know (if|what|how|whether))\b.*\b(right|wrong|good|ready)\b/i,
+      /\b(going through (a |some )?(hard|rough|tough|difficult) (time|period|phase))\b/i,
+    ],
+    weight: 0.9,
+  },
+  insight: {
+    patterns: [
+      /\b(I (think|believe|realized|noticed|wonder if))\b.*\b(because|actually|really|maybe)\b/i,
+      /\bwhat if\b.{15,}/i,
+      /\b(the (real|actual|underlying|root) (issue|problem|reason|cause))\b/i,
+      /\b(it('s| is) (actually|really|kind of|sort of) (about|like|similar))\b/i,
+      /\b(connection|parallel|analogy|metaphor|pattern) between\b/i,
+      /\b(nobody (talks|thinks) about)\b/i,
+    ],
+    weight: 0.7,
+  },
+  growth: {
+    patterns: [
+      /\b(started|beginning|learning|teaching myself|picking up)\s+(to |a )?(code|cook|read|meditate|exercise|journal|new)\b/i,
+      /\b(trying to (be|become|get) (better|more|less|healthier|stronger))\b/i,
+      /\b(quit|quitting|gave up|giving up|cutting out)\s+(smoking|drinking|junk|social media|sugar)\b/i,
+      /\b(working on (myself|my (health|habits|mindset|skills|confidence)))\b/i,
+      /\b(used to\b.*\bnow I)\b/i,
+      /\b(changed my (mind|approach|perspective|habits|routine))\b/i,
+      /\b(I('m| am) (finally |now )?(in therapy|seeing a therapist|getting help))\b/i,
+    ],
+    weight: 0.85,
+  },
+};
+
+function detectEncouragementOpportunity(text) {
+  if (text.length < 20) return null; // skip very short messages
+
+  let bestCategory = null;
+  let bestScore = 0;
+
+  for (const [category, { patterns, weight }] of Object.entries(ENCOURAGE_SIGNALS)) {
+    let matches = 0;
+    for (const rx of patterns) {
+      if (rx.test(text)) matches++;
+    }
+    if (matches === 0) continue;
+    const score = matches * weight;
+    if (score > bestScore) {
+      bestScore = score;
+      bestCategory = category;
+    }
+  }
+
+  // Need at least one pattern match
+  return bestScore >= 0.7 ? bestCategory : null;
+}
+
+function applyEncouragement(response, text) {
+  const turn = mem.turn;
+  if (turn < 3) return response;
+  if (turn - lastEncourageTurn < 5) return response; // 5-turn cooldown
+  if (response.length < 30) return response;
+  if (Math.random() > 0.20) return response; // 20% fire rate
+
+  // Skip if response already starts with praise-like interjection
+  if (/^(That's (great|awesome|amazing|wonderful|fantastic|impressive|incredible)|(Nice|Good|Awesome|Amazing|Great|Congrats|Wow)[\s!,—])/i.test(response)) return response;
+
+  const category = detectEncouragementOpportunity(text);
+  if (!category) return response;
+
+  const pool = ENCOURAGEMENT_POOLS[category];
+  if (!pool || pool.length === 0) return response;
+
+  // Pick a non-recently-used encouragement
+  const available = pool.filter(e => !recentEncouragements.includes(e));
+  if (available.length === 0) return response;
+
+  const encouragement = available[Math.floor(Math.random() * available.length)];
+
+  // Track usage
+  recentEncouragements.push(encouragement);
+  if (recentEncouragements.length > 10) recentEncouragements.shift();
+  lastEncourageTurn = turn;
+
+  // Prepend with natural spacing
+  const spacer = encouragement.endsWith("—") ? " " : " ";
+  return encouragement + spacer + response;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    GENUINE MICRO-REACTIONS (Round 86)
    Humans don't just respond — they *react* first. A quick "Oh!" or
    "Wait, seriously?" or "Ha —" before launching into their actual
@@ -14583,6 +14771,9 @@ export function getAIResponse(input) {
   // ═══ Genuine micro-reactions: spontaneous emotional leakage ("Oh wow —", "Wait, really?") ═══
   response = applyMicroReaction(response, text, sent, emo, currentTopics);
 
+  // ═══ Genuine encouragement: detect achievements, effort, vulnerability, insight, growth ═══
+  response = applyEncouragement(response, text);
+
   // ═══ Conversational hooks & open loops: create forward pull and curiosity ═══
   response = addConversationalHooks(response, currentTopics, inputEnergy);
 
@@ -14720,6 +14911,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
