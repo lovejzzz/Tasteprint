@@ -362,6 +362,38 @@ const SNIPPETS = {
   'iife': '(() => {\n  ${0}\n})();',
 };
 
+/* Emmet-like JSX abbreviation expander */
+function expandEmmet(abbr) {
+  // Match patterns: tag.class#id, tag>child, tag:type, .class, #id
+  const m = abbr.match(/^([a-z][a-z0-9]*)?(?:\.([a-zA-Z_][\w-]*))?(?:#([a-zA-Z_][\w-]*))?(?::([a-z]+))?$/);
+  if (!m) return null;
+  const [, tag, cls, id, type] = m;
+  if (!tag && !cls && !id) return null;
+  const t = tag || 'div';
+  const attrs = [];
+  if (cls) attrs.push(`className="${cls}"`);
+  if (id) attrs.push(`id="${id}"`);
+  if (type) attrs.push(`type="${type}"`);
+  const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
+  const selfClose = ['input', 'img', 'br', 'hr', 'meta', 'link'].includes(t);
+  if (selfClose) return `<${t}${attrStr} />`;
+  return `<${t}${attrStr}>\${0}</${t}>`;
+}
+function expandEmmetNested(abbr) {
+  // Handle nesting: parent>child
+  const parts = abbr.split('>');
+  if (parts.length < 2) return expandEmmet(abbr);
+  const expanded = parts.map(p => expandEmmet(p));
+  if (expanded.some(e => !e)) return null;
+  // Nest: each child goes inside parent
+  let result = expanded[expanded.length - 1];
+  for (let i = expanded.length - 2; i >= 0; i--) {
+    const parent = expanded[i].replace('${0}', '\n  ' + result + '\n');
+    result = parent;
+  }
+  return result;
+}
+
 /* Parameter hints for tp methods */
 const PARAM_HINTS = {
   'add': ['type: string', 'opts?: { x, y, w, h, variant, font, fsize, texts, props }'],
@@ -410,7 +442,10 @@ const SHORTCUTS = [
     ['\u2318+Shift+Z', 'Redo'],
     ['\u2318+R', 'Rename symbol'],
     ['\u2318+Shift+S', 'Surround with...'],
-    ['Tab (on trigger)', 'Expand snippet'],
+    ['Ctrl+J', 'Join lines'],
+    ['Ctrl+U', 'Uppercase selection'],
+    ['Ctrl+Shift+U', 'Lowercase selection'],
+    ['Tab (on trigger)', 'Expand snippet / Emmet'],
     ['\u2318+Shift+\\', 'Jump to matching bracket'],
     ['\u2318+Shift+[', 'Fold at cursor'],
     ['\u2318+Shift+]', 'Unfold at cursor'],
@@ -1798,14 +1833,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Zoom In', key: 'zoomin', hint: '\u2318+=' },
       { label: 'Zoom Out', key: 'zoomout', hint: '\u2318+-' },
       { label: 'Reset Zoom', key: 'zoomreset', hint: '\u2318+0' },
-      { label: 'Transform to Uppercase', key: 'upper', hint: '' },
-      { label: 'Transform to Lowercase', key: 'lower', hint: '' },
+      { label: 'Transform to Uppercase', key: 'upper', hint: 'Ctrl+U' },
+      { label: 'Transform to Lowercase', key: 'lower', hint: 'Ctrl+\u21E7+U' },
       { label: 'Transform to Title Case', key: 'title', hint: '' },
       { label: 'Transform to camelCase', key: 'camel', hint: '' },
       { label: 'Sort Lines Ascending', key: 'sortasc', hint: '' },
       { label: 'Sort Lines Descending', key: 'sortdesc', hint: '' },
       { label: 'Remove Duplicate Lines', key: 'dedup', hint: '' },
-      { label: 'Join Lines', key: 'join', hint: '' },
+      { label: 'Join Lines', key: 'join', hint: 'Ctrl+J' },
       { label: zenMode ? 'Exit Zen Mode' : 'Zen Mode', key: 'zen', hint: '\u2318+\u21E7+Z' },
       { label: 'Paste from Clipboard History', key: 'cliphistory', hint: '\u2318+\u21E7+V' },
       { label: 'Sort Imports', key: 'sortimports', hint: '' },
@@ -2888,6 +2923,41 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Join lines: Ctrl+J */
+    if (e.key === 'j' && e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      if (readonly) return;
+      if (s !== en) {
+        const sel = code.substring(s, en);
+        const joined = sel.split('\n').map(l => l.trim()).join(' ');
+        setCode(code.substring(0, s) + joined + code.substring(en));
+        setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + joined.length }, 0);
+      } else {
+        const [ls, le] = getLineRange(s);
+        if (le < code.length) {
+          const nextLineEnd = code.indexOf('\n', le + 1);
+          const nextEnd = nextLineEnd === -1 ? code.length : nextLineEnd;
+          const nextLine = code.substring(le + 1, nextEnd).trim();
+          const nc = code.substring(0, le) + ' ' + nextLine + code.substring(nextEnd);
+          setCode(nc);
+          setTimeout(() => { el.selectionStart = el.selectionEnd = le }, 0);
+        }
+      }
+      return;
+    }
+
+    /* Transform case: Ctrl+U (upper) / Ctrl+Shift+U (lower) */
+    if (e.key === 'u' && e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      if (readonly || s === en) return;
+      const sel = code.substring(s, en);
+      const transformed = e.shiftKey ? sel.toLowerCase() : sel.toUpperCase();
+      setCode(code.substring(0, s) + transformed + code.substring(en));
+      setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + transformed.length }, 0);
+      showToast(e.shiftKey ? 'Lowercased' : 'Uppercased', 'info');
+      return;
+    }
+
     /* Home: go to first non-whitespace, then to column 0 */
     if (e.key === 'Home' && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
@@ -2993,9 +3063,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           setTimeout(() => { el.selectionStart = el.selectionEnd = Math.max(lineStart, s - tabSize) }, 0);
         }
       } else {
-        // Check for snippet trigger before plain Tab
+        // Check for Emmet abbreviation before snippet
         const lineStart = code.lastIndexOf('\n', s - 1) + 1;
         const beforeCursor = code.substring(lineStart, s);
+        const emmetMatch = beforeCursor.match(/([\w.#:>]+)$/);
+        if (emmetMatch && (activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx')) && /[.#>:]/.test(emmetMatch[1])) {
+          const expanded = expandEmmetNested(emmetMatch[1]);
+          if (expanded) {
+            const currentIndent = beforeCursor.match(/^(\s*)/)[0];
+            const snipLines = expanded.split('\n');
+            const indented = snipLines.map((l, idx) => idx === 0 ? l : currentIndent + l).join('\n');
+            let clean = indented.replace(/\$\{0(?::([^}]*))?\}/g, (_, def) => def || '');
+            clean = clean.replace(/\$\{\d+:([^}]*)\}/g, '$1');
+            const zeroIdx = indented.indexOf('${0');
+            const beforeZero = zeroIdx >= 0 ? indented.substring(0, zeroIdx).replace(/\$\{\d+:([^}]*)\}/g, '$1') : clean;
+            const replaceStart = s - emmetMatch[1].length;
+            const nc = code.substring(0, replaceStart) + clean + code.substring(s);
+            setCode(nc);
+            const newPos = replaceStart + beforeZero.length;
+            setTimeout(() => { el.selectionStart = el.selectionEnd = newPos; }, 0);
+            showToast(`Emmet: ${emmetMatch[1]}`, 'info');
+            return;
+          }
+        }
+        // Check for snippet trigger before plain Tab
         const wordMatch = beforeCursor.match(/(\w+)$/);
         if (wordMatch && SNIPPETS[wordMatch[1]]) {
           const trigger = wordMatch[1];
@@ -3074,6 +3165,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         return;
       }
       if (indent) { e.preventDefault(); setCode(code.substring(0, s) + '\n' + indent + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + 1 }, 0); return; }
+    }
+    /* Wrap selection with brackets/quotes when a pair char is typed */
+    if (s !== en && !readonly && PAIRS[e.key]) {
+      e.preventDefault();
+      const sel = code.substring(s, en);
+      const open = e.key, close = PAIRS[e.key];
+      const wrapped = open + sel + close;
+      setCode(code.substring(0, s) + wrapped + code.substring(en));
+      setTimeout(() => { el.selectionStart = s + 1; el.selectionEnd = s + 1 + sel.length }, 0);
+      return;
     }
     if (')]}"\'`'.includes(e.key) && code[s] === e.key) {
       e.preventDefault(); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return;
@@ -5008,7 +5109,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   if (readonly) return;
                   const text = e.clipboardData?.getData('text');
                   if (text) clipHistory.current = [text, ...clipHistory.current.filter(c => c !== text)].slice(0, 10);
-                  if (!text || !text.includes('\n')) return; // single-line paste handled natively
+                  if (!text) return;
+                  // Auto-format JSON on paste into .json files
+                  if (activeFile.endsWith('.json') && text.trim()) {
+                    try {
+                      const parsed = JSON.parse(text);
+                      const formatted = JSON.stringify(parsed, null, tabSize);
+                      e.preventDefault();
+                      const el = e.target;
+                      const s = el.selectionStart, en = el.selectionEnd;
+                      const nc = code.substring(0, s) + formatted + code.substring(en);
+                      setCode(nc);
+                      setTimeout(() => { el.selectionStart = el.selectionEnd = s + formatted.length; }, 0);
+                      showToast('JSON auto-formatted', 'info');
+                      return;
+                    } catch(_) { /* not valid JSON, fall through to normal paste */ }
+                  }
+                  if (!text.includes('\n')) return; // single-line paste handled natively
                   e.preventDefault();
                   const el = e.target;
                   const s = el.selectionStart, en = el.selectionEnd;
