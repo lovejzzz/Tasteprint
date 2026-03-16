@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 66: Counterintuitive knowledge & surprise insights
+   Round 74: Rhetorical device engine
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -12059,6 +12059,259 @@ function applyMicroStory(response, text, topics) {
   return `${story.setup} ${story.bridge} ${story.punchline} And honestly, ${response.charAt(0).toLowerCase() + response.slice(1)}`;
 }
 
+/* ── Rhetorical Device Engine (Round 74) ──
+ * Skilled communicators use specific rhetorical devices that make speech
+ * feel articulate, memorable, and persuasive. This module occasionally
+ * restructures AI responses using classic devices:
+ *
+ * - Tricolon (rule of three): lists/emphasis in groups of three
+ * - Litotes: understatement via double negative ("not bad" → "not bad at all")
+ * - Antithesis: contrasting pairs ("easy to start, hard to master")
+ * - Anaphora: repeated phrase openings ("it's about X, it's about Y")
+ * - Chiasmus: reversed structure ("work to live, not live to work")
+ * - Rhetorical question → answer: "Why does this matter? Because..."
+ *
+ * Fires rarely (15%), 5-turn cooldown. Picks ONE device per turn
+ * to avoid sounding like a TED talk. Targets medium-length declarative
+ * responses — skips questions, short reactions, emotional support.
+ */
+
+let lastRhetoricTurn = 0;
+let lastRhetoricDevice = "";
+
+// Tricolon: restructure a statement into a rule-of-three pattern
+function applyTricolon(response) {
+  // Find a sentence with a list-like quality or a broad claim to expand
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 1) return null;
+
+  const target = sentences[0].trim();
+  // Only apply to declarative sentences that make a point
+  if (target.length < 20 || target.includes("?")) return null;
+
+  const tricolonTemplates = [
+    (s) => {
+      // "It's X, it's Y, and it's Z" — amplifying emphasis
+      const core = s.replace(/[.!]+$/, "").replace(/^(I think |Honestly |Like |So )/i, "");
+      if (core.length > 80) return null;
+      const synonymPairs = [
+        ["clear", "direct", "unmistakable"],
+        ["important", "meaningful", "worth remembering"],
+        ["interesting", "surprising", "kind of fascinating"],
+        ["tricky", "nuanced", "worth thinking through"],
+        ["simple", "clean", "elegant"],
+        ["real", "tangible", "impossible to ignore"],
+      ];
+      for (const [a, b, c] of synonymPairs) {
+        if (core.toLowerCase().includes(a)) {
+          return `It's ${a}, it's ${b}, and honestly? It's ${c}. ${sentences.slice(1).join(" ").trim()}`;
+        }
+      }
+      return null;
+    },
+    (s) => {
+      // "You need X. You need Y. And you definitely need Z."
+      if (!s.toLowerCase().includes("need") && !s.toLowerCase().includes("want") && !s.toLowerCase().includes("have to")) return null;
+      const core = s.replace(/[.!]+$/, "").replace(/^(You |We )(need|want|have) to /i, "");
+      if (core.length > 60) return null;
+      return null; // bail if no clean extraction
+    },
+  ];
+
+  for (const tmpl of tricolonTemplates) {
+    const result = tmpl(target);
+    if (result) return result;
+  }
+
+  // Fallback: add a rhythmic trio ending if response has an adjective
+  const adj = target.match(/\b(good|great|cool|nice|interesting|solid|strong|beautiful|clean|smart)\b/i);
+  if (adj) {
+    const trios = {
+      good: "good, really good, borderline great",
+      great: "great, genuinely great, the kind of great that sticks",
+      cool: "cool, genuinely cool, the kind of thing you remember",
+      nice: "nice, thoughtful, exactly right",
+      interesting: "interesting, layered, the kind of thing you keep coming back to",
+      solid: "solid, reliable, built to last",
+      strong: "strong, grounded, hard to argue with",
+      beautiful: "beautiful, effortless, the kind you don't forget",
+      clean: "clean, focused, no wasted moves",
+      smart: "smart, sharp, deceptively simple",
+    };
+    const key = adj[1].toLowerCase();
+    if (trios[key]) {
+      const replaced = target.replace(new RegExp(`\\b${adj[1]}\\b`, "i"), trios[key]);
+      return replaced + " " + (sentences.slice(1).join(" ").trim() || "");
+    }
+  }
+  return null;
+}
+
+// Litotes: understatement for emphasis ("not bad at all", "not exactly simple")
+function applyLitotes(response) {
+  const litotesMap = [
+    [/\bthat's (really |very |super )?good\b/i, "that's not bad — not bad at all"],
+    [/\bthat's (really |very |super )?hard\b/i, "that's not exactly a walk in the park"],
+    [/\bthat's (really |very |super )?easy\b/i, "that's not the hardest thing in the world"],
+    [/\bthat's (really |very |super )?impressive\b/i, "that's... not nothing. That's seriously not nothing"],
+    [/\bthat's (really |very |super )?important\b/i, "that's not something you can just ignore"],
+    [/\bI (really )?like that\b/i, "I don't hate that. Actually I kind of love it"],
+    [/\bthat makes sense\b/i, "that's not wrong — actually that's pretty spot-on"],
+    [/\bthat's smart\b/i, "that's not a bad move at all"],
+    [/\bthat's interesting\b/i, "that's not boring, I'll say that much"],
+    [/\bI agree\b/i, "I'm not gonna disagree with you there"],
+  ];
+
+  for (const [pattern, replacement] of litotesMap) {
+    if (pattern.test(response)) {
+      return response.replace(pattern, replacement);
+    }
+  }
+  return null;
+}
+
+// Antithesis: create contrast for emphasis
+function applyAntithesis(response) {
+  const antithesisMap = [
+    [/\b(it's |that's )?(easy to learn)\b/i, "$1easy to learn, hard to master"],
+    [/\b(it's |that's )?(simple)\b(?! but| yet| —)/i, "$1simple to explain, tricky to execute"],
+    [/\bstart small\b/i, "start small, think big"],
+    [/\bquality over quantity\b/i, "quality over quantity — always quantity begs for attention, but quality earns it"],
+    [/\bless is more\b/i, "less is more — what you leave out defines what stays in"],
+    [/\btakes time\b/i, "takes time — but the shortcut takes longer"],
+    [/\bpatience\b/i, "patience — the fast way is almost always the slow way"],
+    [/\bnot about (\w+), it's about (\w+)/i, (_, a, b) => `not about ${a} — it's about ${b}. The ${a} fades, the ${b} stays`],
+  ];
+
+  for (const [pattern, replacement] of antithesisMap) {
+    if (pattern.test(response)) {
+      return response.replace(pattern, replacement);
+    }
+  }
+  return null;
+}
+
+// Anaphora: repeated phrase opening for rhythm ("It's about X. It's about Y.")
+function applyAnaphora(response) {
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 2) return null;
+
+  // Only if we have a sentence starting with "it's about" or "the key is" or "you need"
+  const openers = [
+    { match: /^(it's about|it's really about) /i, prefix: "It's about" },
+    { match: /^(the key is|the real key is) /i, prefix: "The key is" },
+    { match: /^(you need|you really need) /i, prefix: "You need" },
+    { match: /^(it comes down to) /i, prefix: "It comes down to" },
+  ];
+
+  for (const { match, prefix } of openers) {
+    if (match.test(sentences[0].trim())) {
+      // Reinforce with anaphora on second sentence
+      const s2 = sentences[1]?.trim().replace(/^(And |But |Also |Plus )/i, "");
+      if (s2 && s2.length > 10) {
+        const core = s2.charAt(0).toLowerCase() + s2.slice(1);
+        return `${sentences[0].trim()} ${prefix} ${core} ${sentences.slice(2).join(" ").trim()}`.trim();
+      }
+    }
+  }
+  return null;
+}
+
+// Chiasmus: reversed parallel structure (A B → B A)
+function applyChiasmus(response) {
+  const chiasmusPatterns = [
+    [/\bwork (hard|smart) and (live|play) (well|hard)\b/i, (m) => `${m[2]} ${m[3]} so you can ${m[0].split(" and ")[0]}`],
+    [/\blearn by doing\b/i, "learn by doing, and do by learning"],
+    [/\bwrite to think\b/i, "write to think, and think to write better"],
+    [/\bbuild to learn\b/i, "build to learn, and learn to build better"],
+    [/\bfail fast\b/i, "fail fast, and fast you'll stop failing"],
+    [/\bplan the work\b/i, "plan the work, then work the plan"],
+    [/\bask questions\b/i, "ask questions — but also question your answers"],
+    [/\btrust the process\b/i, "trust the process, and the process will earn your trust"],
+  ];
+
+  for (const [pattern, replacement] of chiasmusPatterns) {
+    if (pattern.test(response)) {
+      if (typeof replacement === "function") {
+        const m = response.match(pattern);
+        if (m) return response.replace(pattern, replacement(m));
+      } else {
+        return response.replace(pattern, replacement);
+      }
+    }
+  }
+  return null;
+}
+
+// Rhetorical question → answer: wrap a claim in a self-answering question
+function applyRhetoricalQuestion(response) {
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 1) return null;
+
+  const first = sentences[0].trim();
+  // Target "The important thing is X" / "The key is X" / "What matters is X"
+  const claimMatch = first.match(/^(The (?:important|key|real|interesting|tricky|hard) (?:thing|part|bit) is|What (?:matters|counts|helps) is) (.+)/i);
+  if (claimMatch) {
+    const claim = claimMatch[2].replace(/[.!]+$/, "");
+    const questionForms = [
+      `So what's the one thing that actually matters here? ${claim.charAt(0).toUpperCase() + claim.slice(1)}.`,
+      `Why does this work? Because ${claim.charAt(0).toLowerCase() + claim.slice(1)}.`,
+      `Here's the question no one asks: ${claim}. And that changes everything.`,
+    ];
+    const q = questionForms[Math.floor(Math.random() * questionForms.length)];
+    return q + " " + sentences.slice(1).join(" ").trim();
+  }
+
+  // Target strong assertions — wrap in "why?" framing
+  if (first.length > 30 && first.length < 100 && !first.includes("?") && /\b(because|since|matters|important)\b/i.test(first)) {
+    const core = first.replace(/[.!]+$/, "");
+    return `Why? ${core}. ${sentences.slice(1).join(" ").trim()}`.trim();
+  }
+
+  return null;
+}
+
+// Main dispatcher — picks ONE device per turn
+function applyRhetoric(response, text, topics) {
+  const turn = mem.turn;
+
+  if (turn < 4) return response;
+  if (turn - lastRhetoricTurn < 5) return response;   // 5-turn cooldown
+  if (response.length < 30) return response;             // too short
+  if (response.length > 250) return response;            // too long — don't restructure
+  if (/^(Ha|Haha|Lol|Oh|Hmm|Hey|Aw|Yay)/i.test(response)) return response; // reactions
+  if (response.includes("sorry") || response.includes("I hear you")) return response; // empathy
+  if (Math.random() > 0.15) return response;              // 15% fire rate
+
+  // Cycle through devices, avoid repeating the same one consecutively
+  const devices = [
+    { name: "tricolon", fn: () => applyTricolon(response) },
+    { name: "litotes", fn: () => applyLitotes(response) },
+    { name: "antithesis", fn: () => applyAntithesis(response) },
+    { name: "anaphora", fn: () => applyAnaphora(response) },
+    { name: "chiasmus", fn: () => applyChiasmus(response) },
+    { name: "rhetorical_q", fn: () => applyRhetoricalQuestion(response) },
+  ];
+
+  // Shuffle but deprioritize the last-used device
+  const shuffled = devices.sort(() => Math.random() - 0.5);
+  if (lastRhetoricDevice) {
+    const idx = shuffled.findIndex(d => d.name === lastRhetoricDevice);
+    if (idx >= 0) shuffled.push(shuffled.splice(idx, 1)[0]); // move to end
+  }
+
+  for (const device of shuffled) {
+    const result = device.fn();
+    if (result && result !== response) {
+      lastRhetoricTurn = turn;
+      lastRhetoricDevice = device.name;
+      return result;
+    }
+  }
+
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -12553,6 +12806,9 @@ export function getAIResponse(input) {
   // ═══ Micro-storytelling: replace abstract statements with vivid mini-scenarios ═══
   response = applyMicroStory(response, text, currentTopics);
 
+  // ═══ Rhetorical devices: tricolon, litotes, antithesis, anaphora, chiasmus, rhetorical questions ═══
+  response = applyRhetoric(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -12605,6 +12861,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
