@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 13: Style matching & conversation phase awareness
+   Round 14: Deep world model — richer fact extraction & personalized responses
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1143,6 +1143,7 @@ function extractTopics(tokens) {
 
 /* Extract entities and facts from user text */
 function extractFacts(text, parsed) {
+  // ── Explicit preferences from parser ──
   for (const pref of parsed.preferences) {
     switch (pref.type) {
       case "likes": mem.setFact("likes_"+pref.value.split(" ")[0], pref.value); break;
@@ -1157,6 +1158,212 @@ function extractFacts(text, parsed) {
       case "has": mem.setFact("has_"+pref.value.split(" ")[0], pref.value); break;
     }
   }
+
+  // ── Implicit fact extraction — catch things the parser misses ──
+  const lower = text.toLowerCase();
+
+  // Family & relationships
+  const familyPats = [
+    [/my (?:wife|husband|spouse|partner)\b.*?(?:is |named |called )?(\w+)?/i, "partner"],
+    [/my (?:girlfriend|boyfriend|gf|bf)\b.*?(?:is |named |called )?(\w+)?/i, "partner"],
+    [/my (?:son|daughter|kid|child|baby)\b.*?(?:is |named |called )?(\w+)?/i, "child"],
+    [/my (?:dog|cat|pet)\b.*?(?:is |named |called )?(\w+)?/i, "pet"],
+    [/i have (?:a |an )?(?:(\d+) )?(?:kid|child|children|son|daughter)/i, "has_kids"],
+    [/i have (?:a )?(dog|cat|hamster|fish|bird|rabbit|parrot|turtle)/i, "pet_type"],
+  ];
+  for (const [pat, key] of familyPats) {
+    const m = text.match(pat);
+    if (m) {
+      if (key === "has_kids") mem.setFact("has_kids", m[1] || "yes");
+      else if (key === "pet_type") mem.setFact("pet", m[1]);
+      else if (m[1] && /^[A-Z]/.test(m[1])) mem.setFact(key, m[1]);
+      else mem.setFact(key, "yes");
+    }
+  }
+
+  // Skills & experience
+  if (/i (?:know|speak|use|code in|write)\s+(python|javascript|typescript|rust|go|java|c\+\+|ruby|php|swift|kotlin)/i.test(lower)) {
+    const lang = text.match(/i (?:know|speak|use|code in|write)\s+(\w+)/i);
+    if (lang) mem.setFact("knows_"+lang[1].toLowerCase(), lang[1]);
+  }
+  if (/(\d+)\s*years?\b.*?\b(experience|programming|coding|developing|designing)/i.test(lower)) {
+    const yrs = text.match(/(\d+)\s*years?/i);
+    if (yrs) mem.setFact("experience_years", yrs[1]);
+  }
+
+  // Education
+  if (/i (?:study|studied|am studying|major(?:ed)? in)\s+(.+?)(?:\.|!|$|\bat\b)/i.test(text)) {
+    const m = text.match(/i (?:study|studied|am studying|major(?:ed)? in)\s+(.+?)(?:\.|!|$|\bat\b)/i);
+    if (m) mem.setFact("studies", m[1].trim());
+  }
+  if (/i (?:go|went|attend) to\s+(.+?)(?:\.|!|$)/i.test(text)) {
+    const m = text.match(/i (?:go|went|attend) to\s+(.+?)(?:\.|!|$)/i);
+    if (m) mem.setFact("school", m[1].trim());
+  }
+
+  // Opinions — track what they think about things
+  const opinionPats = [
+    [/i think\s+(.+?)\s+is\s+(great|amazing|terrible|overrated|underrated|the best|the worst|okay|decent|awesome|garbage)/i],
+    [/(.+?)\s+is\s+(?:so |really |pretty )?(great|amazing|terrible|overrated|underrated|the best|the worst|awesome|garbage)/i],
+  ];
+  for (const [pat] of opinionPats) {
+    const m = text.match(pat);
+    if (m && m[1].length < 30) {
+      const subject = m[1].replace(/^(i think |that )/i, "").trim();
+      if (subject.length > 1 && subject.length < 25) {
+        mem.setFact("opinion_"+subject.split(" ")[0].toLowerCase(), `${subject} is ${m[2]}`);
+      }
+    }
+  }
+
+  // "Remember" command — user explicitly asks AI to remember something
+  const rememberPat = /(?:remember|note|keep in mind)(?:\s+that)?\s+(.+?)(?:\.|!|$)/i;
+  const remMatch = text.match(rememberPat);
+  if (remMatch && remMatch[1].length > 3 && remMatch[1].length < 80) {
+    mem.setFact("noted_"+mem.turn, remMatch[1].trim());
+  }
+
+  // Time-related facts
+  if (/(?:my |i have a )?(birthday|bday)\s+(?:is\s+)?(?:on\s+)?(.+?)(?:\.|!|$)/i.test(text)) {
+    const m = text.match(/(?:my |i have a )?(birthday|bday)\s+(?:is\s+)?(?:on\s+)?(.+?)(?:\.|!|$)/i);
+    if (m) mem.setFact("birthday", m[2].trim());
+  }
+  if (/i'?m (\d{1,2})\s*(?:years?\s*old)?(?:\s|$|\.)/i.test(text)) {
+    const m = text.match(/i'?m (\d{1,2})/i);
+    if (m && parseInt(m[1]) > 5 && parseInt(m[1]) < 100) mem.setFact("age", m[1]);
+  }
+}
+
+/* ── World Model: Personalized Response Generation ──
+ * Uses accumulated facts to generate responses that show the AI
+ * genuinely "knows" the user. Called from multiple response paths.
+ */
+
+function personalizeResponse(response) {
+  const facts = mem.facts;
+  const factCount = Object.keys(facts).length;
+  if (factCount < 2 || mem.turn < 5) return response;
+
+  // Don't personalize every response — ~20% chance
+  if (Math.random() > 0.2) return response;
+
+  // Don't double-personalize
+  if (/you mentioned|you said|you told me|as a |since you/i.test(response)) return response;
+
+  let r = response;
+
+  // Role-aware personalization
+  if (facts.role && Math.random() > 0.5) {
+    const roleTouches = [
+      ` — especially relevant for a ${facts.role}!`,
+      ` As a ${facts.role}, you probably know this, but`,
+      ` I bet you see this a lot as a ${facts.role}.`,
+    ];
+    if (!r.includes(facts.role)) {
+      const touch = pick(roleTouches);
+      // Insert before last sentence or at end
+      const lastDot = r.lastIndexOf(".");
+      if (lastDot > 20 && lastDot < r.length - 5) {
+        r = r.slice(0, lastDot + 1) + touch;
+      }
+    }
+    return r;
+  }
+
+  // Project-aware
+  if (facts.project && Math.random() > 0.5) {
+    if (!r.toLowerCase().includes(facts.project.toLowerCase())) {
+      r += pick([
+        ` Is this related to your ${facts.project} project?`,
+        ` Might be useful for ${facts.project}!`,
+      ]);
+    }
+    return r;
+  }
+
+  // Location-aware
+  if (facts.location && Math.random() > 0.6) {
+    r += pick([
+      ` How are things going in ${facts.location}?`,
+      ` Is that a popular thing in ${facts.location}?`,
+    ]);
+    return r;
+  }
+
+  // Experience-aware
+  if (facts.experience_years && Math.random() > 0.6) {
+    r += pick([
+      ` With ${facts.experience_years} years of experience, you've probably seen a lot of this.`,
+      ` ${facts.experience_years} years in — you must have some good stories about this.`,
+    ]);
+    return r;
+  }
+
+  return r;
+}
+
+function handleRememberCommand(text) {
+  // "What do you remember about me?" / "What do you know about me?"
+  if (/what do you (?:remember|know|recall) about me/i.test(text)) {
+    const facts = mem.facts;
+    const keys = Object.keys(facts);
+    if (keys.length === 0) return "Hmm, I don't have much yet! Tell me about yourself and I'll remember 😊";
+
+    const bits = [];
+    if (facts.role) bits.push(`you're a ${facts.role}`);
+    if (mem.userName) bits.push(`your name is ${mem.userName}`);
+    if (facts.location) bits.push(`you're in ${facts.location}`);
+    if (facts.project) bits.push(`you're working on ${facts.project}`);
+    if (facts.age) bits.push(`you're ${facts.age} years old`);
+    if (facts.studies) bits.push(`you study ${facts.studies}`);
+    if (facts.school) bits.push(`you go to ${facts.school}`);
+    if (facts.partner) bits.push(`your partner's name is ${facts.partner}`);
+    if (facts.pet || facts.pet_type) bits.push(`you have a ${facts.pet_type || "pet"}${facts.pet && facts.pet !== "yes" ? " named " + facts.pet : ""}`);
+    if (facts.experience_years) bits.push(`${facts.experience_years} years of experience`);
+    if (facts.favorite) bits.push(`your favorite is ${facts.favorite}`);
+
+    // Likes
+    const likes = keys.filter(k => k.startsWith("likes_")).map(k => facts[k]);
+    if (likes.length > 0) bits.push(`you like ${likes.slice(0, 3).join(", ")}`);
+
+    // Opinions
+    const opinions = keys.filter(k => k.startsWith("opinion_")).map(k => facts[k]);
+    if (opinions.length > 0) bits.push(`you think ${opinions[0]}`);
+
+    // Noted items
+    const noted = keys.filter(k => k.startsWith("noted_")).map(k => facts[k]);
+    if (noted.length > 0) bits.push(`you asked me to remember: "${noted.slice(-2).join('", "')}"`);
+
+    // Programming languages
+    const langs = keys.filter(k => k.startsWith("knows_")).map(k => facts[k]);
+    if (langs.length > 0) bits.push(`you know ${langs.join(", ")}`);
+
+    if (bits.length === 0) return "I know a few things but nothing I can summarize neatly yet! Keep chatting and I'll pick things up 😊";
+
+    const summary = bits.slice(0, 6).join(", ");
+    return `Here's what I remember: ${summary}. ${bits.length > 6 ? `Plus ${bits.length - 6} more things! ` : ""}Not bad for a tiny AI, right? 😄`;
+  }
+
+  // "Forget X" / "Forget everything"
+  if (/forget (?:everything|all|it all)/i.test(text)) {
+    mem.facts = {};
+    return "Done! Clean slate 🧹 I've forgotten everything about you. We're starting fresh!";
+  }
+
+  // "Remember that..." — confirm what was stored
+  const remPat = /(?:remember|note|keep in mind)(?:\s+that)?\s+(.+?)(?:\.|!|$)/i;
+  const rm = text.match(remPat);
+  if (rm && rm[1].length > 3) {
+    // extractFacts already stored it via noted_ key
+    return pickNew([
+      `Got it — I'll remember that "${rm[1].trim()}" 📝 My tiny memory grows!`,
+      `Noted! "${rm[1].trim()}" — filed away in my brain 🧠`,
+      `I'll hold onto that: "${rm[1].trim()}". Ask me what I remember anytime!`,
+      `Stored! "${rm[1].trim()}" 📋 You can ask "what do you remember about me?" to check.`,
+    ]);
+  }
+
+  return null;
 }
 
 /* ── Question Answering Engine ── */
@@ -1463,6 +1670,10 @@ function generateResponse(text) {
   // Record in memory
   mem.add("user", text, nonMod.map(i=>i.intent), topics, sent);
   extractFacts(text, parsed);
+
+  // ═══ -1. Remember/recall commands — "what do you remember about me?" ═══
+  const rememberCmd = handleRememberCommand(text);
+  if (rememberCmd) return rememberCmd;
 
   // ═══ 0. Multi-sentence processing — handle paragraph-length inputs ═══
   if (text.length > 40 && /[.!?]\s/.test(text)) {
@@ -2521,6 +2732,9 @@ export function getAIResponse(input) {
   // Conversation phase — adjust for where we are in the conversation
   const phase = getConversationPhase();
   response = phaseAwareAdjust(response, phase);
+
+  // World model — personalize based on accumulated facts about the user
+  response = personalizeResponse(response);
 
   // Track questions the AI asks for answer-linking
   trackAIQuestion(response);
