@@ -1321,6 +1321,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Zoom In', key: 'zoomin', hint: '\u2318+=' },
       { label: 'Zoom Out', key: 'zoomout', hint: '\u2318+-' },
       { label: 'Reset Zoom', key: 'zoomreset', hint: '\u2318+0' },
+      { label: 'Transform to Uppercase', key: 'upper', hint: '' },
+      { label: 'Transform to Lowercase', key: 'lower', hint: '' },
+      { label: 'Transform to Title Case', key: 'title', hint: '' },
+      { label: 'Transform to camelCase', key: 'camel', hint: '' },
+      { label: 'Sort Lines Ascending', key: 'sortasc', hint: '' },
+      { label: 'Sort Lines Descending', key: 'sortdesc', hint: '' },
+      { label: 'Remove Duplicate Lines', key: 'dedup', hint: '' },
+      { label: 'Join Lines', key: 'join', hint: '' },
+      { label: 'Trim Trailing Whitespace', key: 'trim', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -1378,6 +1387,80 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'zoomin') setEditorZoom(z => Math.min(2, z + 0.1));
     else if (key === 'zoomout') setEditorZoom(z => Math.max(0.6, z - 0.1));
     else if (key === 'zoomreset') setEditorZoom(1);
+    else if (key === 'upper' || key === 'lower' || key === 'title' || key === 'camel') {
+      if (readonly) return;
+      const el = taRef.current;
+      if (el) {
+        const s = el.selectionStart, en = el.selectionEnd;
+        if (s !== en) {
+          const sel = code.substring(s, en);
+          let transformed;
+          if (key === 'upper') transformed = sel.toUpperCase();
+          else if (key === 'lower') transformed = sel.toLowerCase();
+          else if (key === 'title') transformed = sel.replace(/\b\w/g, c => c.toUpperCase());
+          else transformed = sel.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^./, c => c.toLowerCase());
+          setCode(code.substring(0, s) + transformed + code.substring(en));
+          setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + transformed.length; el.focus(); }, 0);
+          showToast(`Transformed to ${key}`, 'info');
+        } else showToast('Select text first', 'warn');
+      }
+    }
+    else if (key === 'sortasc' || key === 'sortdesc') {
+      if (readonly) return;
+      const el = taRef.current;
+      if (el) {
+        const s = el.selectionStart, en = el.selectionEnd;
+        if (s !== en) {
+          const sel = code.substring(s, en);
+          const sorted = sel.split('\n').sort((a, b) => key === 'sortasc' ? a.localeCompare(b) : b.localeCompare(a)).join('\n');
+          setCode(code.substring(0, s) + sorted + code.substring(en));
+          showToast(`Lines sorted ${key === 'sortasc' ? 'A-Z' : 'Z-A'}`, 'info');
+        } else {
+          const sorted = code.split('\n').sort((a, b) => key === 'sortasc' ? a.localeCompare(b) : b.localeCompare(a)).join('\n');
+          setCode(sorted);
+          showToast(`All lines sorted ${key === 'sortasc' ? 'A-Z' : 'Z-A'}`, 'info');
+        }
+      }
+    }
+    else if (key === 'dedup') {
+      if (readonly) return;
+      const all = code.split('\n');
+      const seen = new Set();
+      const deduped = all.filter(l => { const trimmed = l.trim(); if (!trimmed || !seen.has(trimmed)) { seen.add(trimmed); return true; } return false; });
+      const removed = all.length - deduped.length;
+      setCode(deduped.join('\n'));
+      showToast(removed ? `Removed ${removed} duplicate lines` : 'No duplicates found', removed ? 'info' : 'warn');
+    }
+    else if (key === 'join') {
+      if (readonly) return;
+      const el = taRef.current;
+      if (el) {
+        const s = el.selectionStart, en = el.selectionEnd;
+        if (s !== en) {
+          const sel = code.substring(s, en);
+          const joined = sel.split('\n').map(l => l.trim()).join(' ');
+          setCode(code.substring(0, s) + joined + code.substring(en));
+          showToast('Lines joined', 'info');
+        } else {
+          // Join current line with next
+          const [ls, le] = getLineRange(s);
+          if (le < code.length) {
+            const nextLineEnd = code.indexOf('\n', le + 1);
+            const nextEnd = nextLineEnd === -1 ? code.length : nextLineEnd;
+            const nextLine = code.substring(le + 1, nextEnd).trim();
+            setCode(code.substring(0, le) + ' ' + nextLine + code.substring(nextEnd));
+            showToast('Line joined', 'info');
+          }
+        }
+      }
+    }
+    else if (key === 'trim') {
+      if (readonly) return;
+      const trimmed = code.split('\n').map(l => l.trimEnd()).join('\n');
+      const diff = code.length - trimmed.length;
+      setCode(trimmed);
+      showToast(diff ? `Trimmed ${diff} chars` : 'No trailing whitespace', diff ? 'info' : 'warn');
+    }
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
