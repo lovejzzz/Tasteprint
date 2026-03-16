@@ -283,6 +283,234 @@ const KB = {
   },
 };
 
+/* ══════════════════════════════════════════════════════════════════
+   COMPOSITIONAL NLG ENGINE — The fundamental shift from templates
+   to generated, contextual, unique responses every time.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Association Web ──
+ * Semantic graph: each concept links to related concepts, opinions,
+ * facts, and conversation hooks. The AI "knows" things by association,
+ * like a human would — not by lookup, but by connection.
+ */
+const ASSOC = {
+  // Tech
+  react:      { related:["hooks","components","jsx","nextjs","state","redux","typescript"], opinions:["component model is so elegant","hooks changed everything","thinking in components just clicks"], hooks:["are you using hooks or class components?","have you tried Next.js with it?","what's your state management approach?"], facts:["React's virtual DOM diffing is what makes it fast","Server components are the next big evolution","The React team at Meta drives most of the innovation"] },
+  javascript: { related:["typescript","node","npm","async","promises","es6"], opinions:["it runs literally everywhere","the ecosystem moves insanely fast","it's gotten so much better with modern syntax"], hooks:["are you more frontend or backend JS?","do you use TypeScript too?","what's your take on the framework wars?"], facts:["JS was created in 10 days by Brendan Eich","It's the most used language on GitHub","Every browser has a JS engine built in"] },
+  typescript: { related:["javascript","types","interfaces","generics","zod"], opinions:["type safety catches so many bugs before runtime","it makes refactoring fearless","the DX improvement is massive"], hooks:["strict mode or loose?","do you use zod for runtime validation too?","how do you handle generic types?"], facts:["TypeScript is a superset of JavaScript","It was created by Anders Hejlsberg at Microsoft","It compiles down to plain JS"] },
+  python:     { related:["django","flask","numpy","pandas","ml","ai"], opinions:["readability is unmatched","it's the Swiss army knife of languages","the data science ecosystem is incredible"], hooks:["what are you building with it?","are you doing data science or web dev?","have you tried FastAPI?"], facts:["Python was named after Monty Python","It uses indentation for scope, not braces","It's the #1 language for AI/ML"] },
+  css:        { related:["tailwind","flexbox","grid","animation","responsive"], opinions:["it's gotten incredibly powerful lately","container queries changed the game","the :has() selector is mind-blowing"], hooks:["are you a Tailwind person or vanilla CSS?","what's your approach to responsive design?","do you use CSS-in-JS?"], facts:["CSS Grid and Flexbox handle 99% of layouts","The cascade is a feature, not a bug","CSS now has native nesting"] },
+  node:       { related:["express","npm","backend","api","server","bun","deno"], opinions:["JavaScript on the server was a game-changer","the npm ecosystem is massive","event-driven architecture is elegant"], hooks:["Express or Fastify?","have you looked at Bun or Deno?","what kind of APIs are you building?"], facts:["Node uses V8, Chrome's JS engine","npm has over 2 million packages","It's great for real-time applications"] },
+  git:        { related:["github","branches","merge","rebase","commits"], opinions:["it's one of those tools with infinite depth","good commit messages are an art","branching strategies matter more than people think"], hooks:["are you team rebase or team merge?","do you use conventional commits?","how do you handle merge conflicts?"], facts:["Git was created by Linus Torvalds in 2005","It's a distributed version control system","git bisect is an underrated debugging tool"] },
+  rust:       { related:["ownership","borrow","systems","wasm","performance"], opinions:["the ownership model is genius","once it compiles, you know it works","the community is incredibly welcoming"], hooks:["what attracted you to Rust?","are you using it for systems programming or web?","have you tried wasm with Rust?"], facts:["Rust has been the most loved language for years","It achieves memory safety without garbage collection","The borrow checker is strict but fair"] },
+  vue:        { related:["nuxt","composition","reactivity","pinia"], opinions:["the learning curve is so gentle","single-file components are brilliant","the reactivity system is elegant"], hooks:["are you using the Composition API?","have you tried Nuxt 3?","what made you choose Vue over React?"] },
+  nextjs:     { related:["react","vercel","ssr","app router","server components"], opinions:["the developer experience is top-tier","app router changed how we think about routing","it's the React framework for production"], hooks:["are you on the app router or pages?","have you deployed on Vercel?","what's your data fetching strategy?"] },
+  tailwind:   { related:["css","utility","design system","components"], opinions:["utility-first changed my workflow completely","it looks messy at first but it's incredibly productive","the design system constraints are actually freeing"], hooks:["do you customize the config much?","have you used it with a component library?","what's your approach to dark mode with it?"] },
+
+  // Design
+  ui:         { related:["ux","design","figma","components","accessibility"], opinions:["good UI is invisible","the best interfaces make users feel smart","consistency beats cleverness every time"], hooks:["what's your design tool of choice?","do you design in the browser or in Figma?","how do you handle design system tokens?"], facts:["Users form an opinion about a site in 50ms","The average user only reads 20% of page text","F-pattern and Z-pattern are the most common reading patterns"] },
+  ux:         { related:["ui","research","testing","accessibility","personas"], opinions:["it's all about empathy","removing features is often better than adding them","real user testing beats assumptions every time"], hooks:["do you do user research?","what's your approach to usability testing?","how do you balance user needs with business goals?"] },
+  figma:      { related:["design","prototype","ui","components","variables"], opinions:["it democratized design tools","auto layout changed everything","the plugin ecosystem is incredible"], hooks:["do you use variables for theming?","how do you organize your component library?","Dev mode or inspect?"] },
+  color:      { related:["palette","contrast","accessibility","brand","theme"], opinions:["color theory is both science and art","the 60-30-10 rule works every time","accessible contrast isn't optional"], hooks:["what's your approach to dark mode?","do you use HSL or hex?","how many accent colors do you typically use?"] },
+  typography: { related:["fonts","hierarchy","readability","spacing"], opinions:["it's 95% of web design","a good type scale solves most hierarchy problems","variable fonts are the future"], hooks:["serif or sans-serif person?","what's your go-to font pairing?","how do you handle fluid typography?"] },
+
+  // Life
+  pizza:      { related:["food","italian","cooking","cheese"], opinions:["it's basically a perfect food","the crust makes or breaks it","cold pizza for breakfast is underrated"], hooks:["what's your ideal pizza?","deep dish or thin crust?","pineapple — yes or no?"] },
+  coffee:     { related:["caffeine","morning","productivity","cafe"], opinions:["it's basically a hug in a mug","the ritual matters as much as the taste","a good pour-over is an experience"], hooks:["how do you take yours?","espresso or drip?","what's your go-to coffee order?"] },
+  music:      { related:["playlist","spotify","concert","genre","artist"], opinions:["the right song at the right time is pure magic","lo-fi is perfect for coding","live music hits different"], hooks:["what have you been listening to?","do you listen while you work?","what genre is your comfort zone?"] },
+  gaming:     { related:["games","steam","console","pc","multiplayer"], opinions:["it teaches problem-solving in the best way","the industry is bigger than movies and music combined","indie games are having a golden age"], hooks:["what are you playing right now?","PC or console?","story games or competitive?"] },
+  travel:     { related:["adventure","vacation","explore","culture"], opinions:["getting lost in a new city is the best kind of lost","the unplanned moments make the best memories","travel is the best education"], hooks:["where would you go next?","what's been your favorite trip?","do you prefer adventure or relaxation?"] },
+  fitness:    { related:["workout","gym","running","health","yoga"], opinions:["consistency beats intensity every single time","the hardest part is showing up","rest days are just as important"], hooks:["what's your workout routine?","morning or evening workouts?","do you track your progress?"] },
+  dog:        { related:["pet","puppy","walk","loyal"], opinions:["we genuinely don't deserve dogs","their love is completely unconditional","a dog can fix a bad day instantly"], hooks:["what breed?","what's their name?","do they do any tricks?"] },
+  cat:        { related:["pet","kitten","independent","purr"], opinions:["cats have peak personality","they're secretly cuddly and they know it","the internet was basically built for cat content"], hooks:["what's their name?","are they an indoor or outdoor cat?","do they have a favorite spot?"] },
+};
+
+/* ── Sentence Composition Engine ──
+ * Instead of picking from templates, COMPOSE sentences from parts.
+ * Each part is contextually chosen. The combination space is exponential,
+ * so responses feel unique every time while staying grammatically correct.
+ */
+
+const COMP = {
+  // Reaction to what user said (mirrors their energy)
+  reactions: {
+    positive: ["Oh I love that!","That's awesome!","Yes!","Love it!","So cool!","That's great!","Nice!","Amazing!"],
+    negative: ["Aw, that's tough.","I hear you.","That sucks.","I feel that.","That's frustrating.","Hmm, yeah."],
+    neutral:  ["Interesting!","Hmm!","Oh!","Okay!","Got it!","I see!","Right!"],
+    curious:  ["Ooh!","Wait —","Oh that's cool —","Hmm interesting —","No way —"],
+  },
+  // Bridges between reaction and body
+  bridges: {
+    agree:    ["I totally get that —","That makes sense —","Yeah,","For sure —","Absolutely —"],
+    pivot:    ["So here's the thing —","The way I see it,","What I find interesting is","You know what's cool though?","Here's what I think —"],
+    empathy:  ["I completely understand.","That's valid.","I can see why you feel that way.","That's a fair point."],
+    mirror:   ["So you're saying","It sounds like","What I'm hearing is","So basically"],
+  },
+  // Topic opinions — dynamically composed
+  opinion_starters: ["I think","honestly I feel like","in my experience","the thing about","what I love about","the cool thing about","I've always thought"],
+  opinion_connectors: ["is that","is how","is the way","is really about"],
+  // Follow-up questions — the engine of good conversation
+  deepeners: ["What drew you to that?","How long have you been into that?","What's the best part about it?","What got you started?","Is there a specific aspect you focus on?","What's been the biggest surprise?","Would you recommend it to a beginner?","What's next for you with that?","Has it changed how you think about things?","What would you do differently if starting over?"],
+  // Topic transitions
+  connectors: ["Speaking of which —","Oh that reminds me —","Related to that —","On a similar note —","That actually connects to something —","You know what goes well with that?"],
+};
+
+/* Generate a composed response for a topic with mirroring */
+function composeResponse(topic, userWords, sent, isQuestion) {
+  const assoc = ASSOC[topic];
+  if (!assoc) return null;
+
+  const parts = [];
+
+  // 1. Reaction (mirror sentiment)
+  const reactionPool = sent > 1 ? COMP.reactions.positive :
+                       sent < -1 ? COMP.reactions.negative :
+                       isQuestion ? COMP.reactions.curious : COMP.reactions.neutral;
+  parts.push(pick(reactionPool));
+
+  // 2. Mirror user's words when possible
+  const meaningfulWords = userWords.filter(w => !STOP.has(w) && w.length > 2);
+  if (meaningfulWords.length > 0 && Math.random() > 0.4) {
+    const mirrorPhrase = meaningfulWords.slice(0, 2).join(" ");
+    parts.push(pick(COMP.bridges.mirror) + ` ${mirrorPhrase} —`);
+  }
+
+  // 3. Opinion or fact (the "body")
+  if (assoc.opinions && Math.random() > 0.3) {
+    const starter = pick(COMP.opinion_starters);
+    const connector = pick(COMP.opinion_connectors);
+    const opinion = pick(assoc.opinions);
+    parts.push(`${starter} ${topic} ${connector} ${opinion}.`);
+  } else if (assoc.facts) {
+    parts.push(pick(assoc.facts) + ".");
+  }
+
+  // 4. Bring in a related concept naturally
+  if (assoc.related && Math.random() > 0.5) {
+    const related = pick(assoc.related);
+    const relAssoc = ASSOC[related];
+    if (relAssoc) {
+      parts.push(pick(COMP.connectors) + ` ${related} ${relAssoc.opinions ? pick(relAssoc.opinions) : "is pretty interesting too"}.`);
+    }
+  }
+
+  // 5. End with a hook (follow-up question)
+  if (assoc.hooks && Math.random() > 0.2) {
+    parts.push(pick(assoc.hooks));
+  } else {
+    parts.push(pick(COMP.deepeners));
+  }
+
+  return parts.join(" ");
+}
+
+/* ── Input Mirroring Engine ──
+ * Takes user's actual words and weaves them into the response.
+ * This is what makes conversations feel HEARD, not just processed.
+ */
+
+function mirrorInput(text, keywords) {
+  // Extract the user's key phrase (what they're actually talking about)
+  const meaningful = keywords.filter(w => w.length > 2).slice(0, 4);
+  if (meaningful.length === 0) return null;
+
+  const phrase = meaningful.join(" ");
+
+  // Different mirroring strategies
+  const strategies = [
+    () => `"${phrase}" — ${pick(["I like how you put that","that's an interesting way to think about it","I hadn't considered it that way","that really resonates"])}! ${pick(COMP.deepeners)}`,
+    () => `So ${phrase} — ${pick(["tell me more about that","what's the story there","I'm curious about your take","what's your experience been like"])}?`,
+    () => `${pick(["You mentioned","I noticed you brought up","When you say"])} ${phrase} — ${pick(["what do you mean exactly","is that something you're passionate about","how did that come up","what's the context"])}?`,
+  ];
+
+  return pick(strategies)();
+}
+
+/* ── Conversation Momentum ──
+ * Track the "energy" of the conversation. If it's dying, inject energy.
+ * If they're engaged, go deeper. If they switch topics, acknowledge it.
+ */
+
+function getMomentum() {
+  const recent = mem.history.filter(h => h.role === "user").slice(-4);
+  if (recent.length < 2) return "starting";
+
+  // Average message length trend
+  const lengths = recent.map(h => h.text.length);
+  const trend = lengths[lengths.length - 1] - lengths[0];
+
+  // Topic consistency
+  const topicSets = recent.map(h => new Set(h.topics));
+  const lastTopics = topicSets[topicSets.length - 1];
+  const prevTopics = topicSets.length > 1 ? topicSets[topicSets.length - 2] : new Set();
+  const topicOverlap = [...lastTopics].some(t => prevTopics.has(t));
+
+  if (trend < -20 && recent[recent.length - 1].text.length < 15) return "dying";
+  if (trend > 20) return "engaged";
+  if (!topicOverlap && lastTopics.size > 0 && prevTopics.size > 0) return "switching";
+  return "steady";
+}
+
+function momentumResponse() {
+  const m = getMomentum();
+  if (m === "dying") {
+    // Inject energy — ask something exciting
+    const energizers = [
+      "Hey, random thought — what's something you're genuinely excited about right now?",
+      "Okay, let me shake things up — if you could master one thing overnight, what would it be?",
+      "Plot twist question: what's the most surprising thing you've learned recently?",
+      "Quick — tell me something you're looking forward to this week!",
+      "Here's a fun one: what's a hill you'd die on that most people disagree with?",
+      "Ooh wait — what's the coolest project you've ever worked on or seen?",
+    ];
+    return pickNew(energizers);
+  }
+  if (m === "switching") {
+    // Acknowledge the topic switch
+    const prevTopics = mem.history.filter(h => h.role === "user").slice(-3, -1).flatMap(h => h.topics);
+    const newTopics = mem.history.filter(h => h.role === "user").slice(-1).flatMap(h => h.topics);
+    if (prevTopics.length > 0 && newTopics.length > 0) {
+      return `Oh, switching gears from ${prevTopics[0]} to ${newTopics[0]} — I'm here for it! `;
+    }
+    return "Oh, new topic — I'm here for it! ";
+  }
+  return null; // steady/engaged = no intervention needed
+}
+
+/* ── Comparison Engine ──
+ * When user asks "X vs Y" or "should I use X or Y", actually compare them.
+ */
+
+function handleComparison(text) {
+  // Detect comparison patterns
+  const vsMatch = text.match(/(\w+)\s+(?:vs\.?|versus|or|compared to)\s+(\w+)/i);
+  if (!vsMatch) return null;
+
+  const a = vsMatch[1].toLowerCase(), b = vsMatch[2].toLowerCase();
+  const assocA = ASSOC[a], assocB = ASSOC[b];
+
+  if (!assocA && !assocB) return null;
+
+  const parts = [`${a} vs ${b} — great question!`];
+
+  if (assocA?.opinions) parts.push(`${a}: ${pick(assocA.opinions)}.`);
+  if (assocB?.opinions) parts.push(`${b}: ${pick(assocB.opinions)}.`);
+
+  // Give a nuanced take
+  const nuances = [
+    `Honestly, they're both solid — it depends on what you're optimizing for.`,
+    `I'd say ${a} wins for some use cases and ${b} wins for others.`,
+    `They each have their strengths — it's less about which is "better" and more about which fits your situation.`,
+    `The community around both is great, so you can't really go wrong.`,
+  ];
+  parts.push(pick(nuances));
+
+  // Hook
+  parts.push(`What's your use case? That'll help narrow it down.`);
+
+  return parts.join(" ");
+}
+
 /* ── Dynamic Response Composition ── */
 
 function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
@@ -301,7 +529,6 @@ function fillSlots(tpl, slots={}) {
 
 /* Build a composed response from understanding */
 function compose(parts) {
-  // parts: { opener?, body?, followup?, emoji? }
   let r = "";
   if (parts.opener) r += parts.opener;
   if (parts.body) r += (r ? " " : "") + parts.body;
@@ -548,6 +775,10 @@ function generateResponse(text) {
   // ═══ 8. Excitement for very positive ═══
   if (sent >= 3 && nonMod.length === 0) return pickNew(EXCITED);
 
+  // ═══ 8.5. Comparison engine — "X vs Y" ═══
+  const comparison = handleComparison(text);
+  if (comparison) return comparison;
+
   // ═══ 9. Questions — use Q&A engine ═══
   if (parsed.qType) {
     const answer = answerQuestion(text, parsed, nonMod, topics);
@@ -600,15 +831,35 @@ function generateResponse(text) {
 
   // ═══ 15. Short reply — contextual follow-up ═══
   if (mem.isShort(text) && nonMod.length === 0) {
+    // Check momentum first — dying conversations need energy
+    const momentum = momentumResponse();
+    if (momentum) return momentum;
     return respondToShortReply(text);
   }
 
-  // ═══ 16. Topic-based responses with knowledge ═══
+  // ═══ 16. Topic-based: try COMPOSITIONAL NLG first, fall back to templates ═══
+  if (topics.length > 0) {
+    // Try compositional response for known topics in association web
+    for (const topic of topics) {
+      if (ASSOC[topic]) {
+        const composed = composeResponse(topic, tokens, sent, !!parsed.qType);
+        if (composed) return composed;
+      }
+    }
+  }
   if (nonMod.length > 0) {
     return respondToTopic(nonMod, topics, primaryTopic, parsed);
   }
 
-  // ═══ 17. Fallback — echo and engage ═══
+  // ═══ 17. Fallback — mirror input, then momentum, then echo ═══
+  // Try mirroring the user's actual words first
+  const mirrored = mirrorInput(text, keywords);
+  if (mirrored && Math.random() > 0.3) return mirrored;
+
+  // Check if conversation needs energy
+  const momentum = momentumResponse();
+  if (momentum) return momentum;
+
   return respondFallback(text, tokens, keywords);
 }
 
