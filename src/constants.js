@@ -223,6 +223,7 @@ export const DEFAULT_PROPS = {
   breadcrumb:    { active: 2 },
   input:         { focused: false },
   select:        { active: 0 },
+  search:        { results: 3 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));

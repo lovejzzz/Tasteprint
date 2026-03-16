@@ -6652,6 +6652,89 @@ function applyGentleReframing(response, text, sent) {
   return pick + " " + trimmed;
 }
 
+/* ── Selective Curiosity (Round 97) ──
+ * Instead of generic topic questions, asks about SPECIFIC details the user
+ * just mentioned. Extracts concrete nouns, experiences, or claims from user
+ * input and generates targeted follow-up questions about those exact details.
+ * Creates "they actually listened" moments vs. generic conversation fillers.
+ */
+
+let lastCuriosityTurn = 0;
+let recentCuriosityTargets = [];
+
+const DETAIL_EXTRACT_PATTERNS = [
+  { pattern: /\bi(?:'ve been| have been| am| was) (?:working on|building|making|creating|designing) (.{6,40}?)(?:\.|!|,|\?|$)/i, type: "project" },
+  { pattern: /\bi(?:'m| am) (?:learning|studying|reading about|exploring|trying) (.{4,35}?)(?:\.|!|,|\?|$)/i, type: "learning" },
+  { pattern: /\bthe (?:problem|issue|tricky part|hard part|challenge) (?:is|was) (.{6,40}?)(?:\.|!|,|\?|$)/i, type: "challenge" },
+  { pattern: /\bi (?:just|recently) (?:started|finished|discovered|found|tried) (.{4,35}?)(?:\.|!|,|\?|$)/i, type: "experience" },
+  { pattern: /\bi (?:really )?(?:like|love|enjoy|prefer) (.{4,30}?) (?:because|since|for)\b/i, type: "preference" },
+  { pattern: /\b(?:we|my team|our company) (?:are|is|just) (.{6,35}?)(?:\.|!|,|\?|$)/i, type: "team" },
+];
+
+const CURIOSITY_TEMPLATES = {
+  project: [
+    "Wait — {detail}? What stage is that at right now?",
+    "Oh interesting, {detail}. What's been the most surprising part of that?",
+    "Tell me more about {detail} — what's driving that?",
+  ],
+  learning: [
+    "What drew you to {detail} specifically?",
+    "How far along are you with {detail}? Hit any 'aha' moments yet?",
+    "{detail} — are you learning that by doing or more theory first?",
+  ],
+  challenge: [
+    "When you say {detail} — what does that actually look like day to day?",
+    "How long has {detail} been an issue? Or is this recent?",
+    "Is {detail} the kind of thing you've seen before, or totally new territory?",
+  ],
+  experience: [
+    "What made you try {detail}? Was it planned or spontaneous?",
+    "And? How did {detail} go? I want the honest version.",
+    "Okay I need to know — was {detail} worth it?",
+  ],
+  preference: [
+    "What is it about {detail} that clicks for you?",
+    "Has {detail} always been your go-to, or is that newer?",
+  ],
+  team: [
+    "How's the team feeling about {detail}?",
+    "Is {detail} going smoothly, or is there friction?",
+  ],
+};
+
+function applySelectiveCuriosity(response, text) {
+  const turn = mem.turn;
+  if (turn - lastCuriosityTurn < 5) return response; // 5-turn cooldown
+  if (Math.random() > 0.15) return response; // 15% fire rate
+  if (response.includes("?")) return response; // already has a question
+
+  // Extract a specific detail from user input
+  let bestDetail = null;
+  for (const dp of DETAIL_EXTRACT_PATTERNS) {
+    const m = text.match(dp.pattern);
+    if (m && m[1]) {
+      const detail = m[1].trim().replace(/\s+/g, " ");
+      if (detail.length >= 4 && !recentCuriosityTargets.includes(detail.substring(0, 15))) {
+        bestDetail = { detail, type: dp.type };
+        break;
+      }
+    }
+  }
+
+  if (!bestDetail) return response;
+
+  const pool = CURIOSITY_TEMPLATES[bestDetail.type] || CURIOSITY_TEMPLATES.experience;
+  const question = pool[Math.floor(Math.random() * pool.length)]
+    .replace("{detail}", bestDetail.detail);
+
+  lastCuriosityTurn = turn;
+  recentCuriosityTargets.push(bestDetail.detail.substring(0, 15));
+  if (recentCuriosityTargets.length > 6) recentCuriosityTargets.shift();
+
+  // Append the curiosity question
+  return response.replace(/\?[^?]*$/, ".").trimEnd() + " " + question;
+}
+
 /* ── Conversational Grounding & Active Listening ──
  * Humans constantly signal they're tracking conversation:
  * - Micro-acknowledgments: "Right", "Gotcha", "Mm-hmm"
@@ -15710,6 +15793,9 @@ export function getAIResponse(input) {
   // ═══ Gentle reframing: redirect negative framing without dismissing the concern ═══
   response = applyGentleReframing(response, text, sent);
 
+  // ═══ Selective curiosity: ask targeted follow-up about specific details ═══
+  response = applySelectiveCuriosity(response, text);
+
   // ═══ Subtext trend: if user is withdrawing over multiple turns, acknowledge it ═══
   const trend = getSubtextTrend();
   if (trend === "losing_interest" && Math.random() > 0.6) {
@@ -15756,6 +15842,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };

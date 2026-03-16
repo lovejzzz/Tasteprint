@@ -195,6 +195,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Results count (search) */
+  if ("results" in defaults) {
+    const res = G("results");
+    controls.push(<React.Fragment key="results"><span style={label}>Results</span>
+      <button style={btn(false)} onMouseDown={stop} onClick={() => onProp("results", Math.max(0, res - 1))}>−</button>
+      <span style={{ fontSize: 11, fontWeight: 500, color: p.tx, minWidth: 14, textAlign: "center" }}>{res}</span>
+      <button style={btn(false)} onMouseDown={stop} onClick={() => onProp("results", Math.min(6, res + 1))}>+</button>
+    </React.Fragment>);
+  }
+
   /* Quantity (cart-item) */
   if ("qty" in defaults) {
     const qty = G("qty");
