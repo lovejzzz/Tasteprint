@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 26: Conversation arc awareness
+   Round 27: Anaphora resolution & contextual reference tracking
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1694,6 +1694,248 @@ function compose(parts) {
   return r;
 }
 
+/* ── Anaphora Resolution & Contextual Reference Tracking ──
+ * Tracks entities/topics mentioned each turn and resolves pronouns
+ * like "it", "that", "this", "they" to their actual referents.
+ * Runs BEFORE the rest of the pipeline so everything downstream
+ * can work with resolved, explicit text.
+ */
+
+// Referent stack: ordered list of things recently discussed
+// Each entry: { text, type, turn, gender, number }
+// type: "topic" | "entity" | "subject" | "object" | "concept"
+// gender: "neutral" | "male" | "female" | "plural"
+// number: "singular" | "plural"
+let referentStack = [];
+
+// Pronoun → constraints map: which referent types/numbers a pronoun can bind to
+const PRONOUN_MAP = {
+  // Singular neutral
+  "it":   { number: "singular", gender: "neutral", role: "subject" },
+  "its":  { number: "singular", gender: "neutral", role: "possessive" },
+  // Demonstratives
+  "that": { number: "singular", gender: "neutral", role: "subject" },
+  "this": { number: "singular", gender: "neutral", role: "subject" },
+  // Plural
+  "they": { number: "plural", gender: "neutral", role: "subject" },
+  "them": { number: "plural", gender: "neutral", role: "object" },
+  "those": { number: "plural", gender: "neutral", role: "subject" },
+  "these": { number: "plural", gender: "neutral", role: "subject" },
+  // Gendered
+  "he":   { number: "singular", gender: "male", role: "subject" },
+  "him":  { number: "singular", gender: "male", role: "object" },
+  "his":  { number: "singular", gender: "male", role: "possessive" },
+  "she":  { number: "singular", gender: "female", role: "subject" },
+  "her":  { number: "singular", gender: "female", role: "object" },
+  // Locative
+  "there": { number: "singular", gender: "neutral", role: "locative" },
+  // "one" as anaphoric ("the good one", "that one")
+  "one":  { number: "singular", gender: "neutral", role: "subject" },
+};
+
+// Patterns that indicate "that/this/it" is a pronoun, not a determiner/conjunction
+// "that" is a pronoun in "I like that" but a conjunction in "I think that you're right"
+const PRONOUN_CONTEXT_PATS = {
+  that: [
+    /\b(?:like|love|hate|enjoy|prefer|want|need|know|heard|said|tried|use|used|about|with|of|is|was|into)\s+that\b/i,
+    /\bthat\s+(?:is|was|sounds|seems|looks|works|helps|sucks|rocks)\b/i,
+    /\btell me (?:more )?about that\b/i,
+    /\bwhat(?:'s| is| was) that\b/i,
+    /^that\b/i,
+  ],
+  this: [
+    /\b(?:like|love|hate|enjoy|prefer|want|need|know|about|with|is|was|try|tried)\s+this\b/i,
+    /\bthis\s+(?:is|was|sounds|seems|looks|works|helps|sucks|rocks)\b/i,
+    /^this\b/i,
+  ],
+  one: [
+    /\b(?:that|this|the|which|good|best|other|another|first|last)\s+one\b/i,
+  ],
+};
+
+// Detect whether a word is acting as a pronoun in context (not a determiner)
+function isPronounInContext(word, text) {
+  const lower = text.toLowerCase();
+  const w = word.toLowerCase();
+
+  // "it", "they", "he", "she", "them" — always pronouns
+  if (["it","its","they","them","those","these","he","him","his","she","her","there"].includes(w)) return true;
+
+  // "that", "this", "one" — need context check
+  const pats = PRONOUN_CONTEXT_PATS[w];
+  if (!pats) return false;
+  return pats.some(p => p.test(lower));
+}
+
+// Infer gender/number for a given entity text
+function inferReferentTraits(text) {
+  const lower = text.toLowerCase();
+  // Plural detection
+  const pluralWords = ["they","them","people","things","languages","frameworks","tools","apps","games","movies","songs","books","teams"];
+  if (pluralWords.some(w => lower.includes(w)) || /s$/.test(lower) && lower.length > 3 && !/ss$/.test(lower)) {
+    return { gender: "neutral", number: "plural" };
+  }
+  // Gendered entities
+  const maleNames = new Set(["he","him","dad","father","brother","son","boyfriend","husband","guy"]);
+  const femaleNames = new Set(["she","her","mom","mother","sister","daughter","girlfriend","wife","girl"]);
+  const tokens = lower.split(/\s+/);
+  if (tokens.some(t => maleNames.has(t))) return { gender: "male", number: "singular" };
+  if (tokens.some(t => femaleNames.has(t))) return { gender: "female", number: "singular" };
+  // Location detection
+  const locWords = ["place","city","town","country","office","home","school","restaurant","cafe","park","store","shop"];
+  if (locWords.some(w => lower.includes(w))) return { gender: "neutral", number: "singular", locative: true };
+  return { gender: "neutral", number: "singular" };
+}
+
+// After each user turn, extract what was mentioned and push to referent stack
+function updateReferents(text, topics, parsed) {
+  const turn = mem.turn;
+
+  // 1. Explicit topics are strong referents
+  for (const topic of topics) {
+    const traits = inferReferentTraits(topic);
+    pushReferent({ text: topic, type: "topic", turn, ...traits });
+  }
+
+  // 2. Subject/object from parser
+  if (parsed.subject && parsed.subject.length > 1 && !STOP.has(parsed.subject.toLowerCase())) {
+    const traits = inferReferentTraits(parsed.subject);
+    pushReferent({ text: parsed.subject.toLowerCase(), type: "subject", turn, ...traits });
+  }
+  if (parsed.object && parsed.object.length > 1 && !STOP.has(parsed.object.toLowerCase())) {
+    const traits = inferReferentTraits(parsed.object);
+    pushReferent({ text: parsed.object.toLowerCase(), type: "object", turn, ...traits });
+  }
+
+  // 3. Named entities — proper nouns (capitalized words not at sentence start)
+  const words = text.split(/\s+/);
+  for (let i = 1; i < words.length; i++) {
+    const w = words[i];
+    if (/^[A-Z][a-z]{2,}$/.test(w) && !STOP.has(w.toLowerCase())) {
+      pushReferent({ text: w, type: "entity", turn, gender: "neutral", number: "singular" });
+    }
+  }
+
+  // 4. Extract noun phrases that could be referents ("my project", "the app", etc.)
+  const nounPhrases = text.match(/\b(?:my|the|this|a|an)\s+(\w{3,}(?:\s+\w{3,})?)\b/gi);
+  if (nounPhrases) {
+    for (const np of nounPhrases.slice(0, 3)) {
+      const clean = np.replace(/^(?:my|the|this|a|an)\s+/i, "").toLowerCase();
+      if (clean.length > 2 && !STOP.has(clean)) {
+        const traits = inferReferentTraits(clean);
+        pushReferent({ text: clean, type: "concept", turn, ...traits });
+      }
+    }
+  }
+
+  // 5. Prune old referents (keep last 12, max 5 turns old)
+  referentStack = referentStack.filter(r => turn - r.turn <= 5).slice(-12);
+}
+
+function pushReferent(ref) {
+  // Deduplicate: if same text already exists, update turn
+  const idx = referentStack.findIndex(r => r.text.toLowerCase() === ref.text.toLowerCase());
+  if (idx >= 0) {
+    referentStack[idx].turn = ref.turn;
+    // Move to end (most recent)
+    const item = referentStack.splice(idx, 1)[0];
+    referentStack.push(item);
+  } else {
+    referentStack.push(ref);
+  }
+}
+
+// Find the best referent for a given pronoun
+function resolveReferent(pronoun) {
+  const constraints = PRONOUN_MAP[pronoun.toLowerCase()];
+  if (!constraints) return null;
+
+  // Search stack from most recent to oldest
+  for (let i = referentStack.length - 1; i >= 0; i--) {
+    const ref = referentStack[i];
+
+    // Number must match
+    if (constraints.number === "plural" && ref.number !== "plural") continue;
+    if (constraints.number === "singular" && ref.number === "plural") continue;
+
+    // Gender must match (neutral matches anything)
+    if (constraints.gender !== "neutral" && ref.gender !== "neutral" && constraints.gender !== ref.gender) continue;
+
+    // Locative: "there" prefers locative referents
+    if (constraints.role === "locative" && ref.locative) return ref;
+    if (constraints.role === "locative" && !ref.locative) continue;
+
+    return ref;
+  }
+
+  // Fallback: return most recent regardless of constraints
+  if (referentStack.length > 0 && constraints.number === "singular") {
+    return referentStack[referentStack.length - 1];
+  }
+  return null;
+}
+
+// Main resolve function: takes user text, returns { resolved, referents, didResolve }
+// resolved = text with pronouns replaced (for internal use)
+// referents = map of what was resolved { "it" → "react" }
+function resolveAnaphora(text) {
+  const lower = text.toLowerCase();
+  const result = { resolved: text, referents: {}, didResolve: false, resolvedTopics: [] };
+
+  // Don't resolve if referent stack is empty
+  if (referentStack.length === 0) return result;
+
+  // Find all pronouns in the text that are actually acting as pronouns
+  let resolved = text;
+  const pronounsFound = [];
+
+  for (const [pronoun] of Object.entries(PRONOUN_MAP)) {
+    // Check if this word appears in the text
+    const regex = new RegExp(`\\b${pronoun}\\b`, "gi");
+    if (!regex.test(lower)) continue;
+    if (!isPronounInContext(pronoun, text)) continue;
+
+    pronounsFound.push(pronoun);
+  }
+
+  // Resolve each pronoun
+  for (const pronoun of pronounsFound) {
+    const ref = resolveReferent(pronoun);
+    if (!ref) continue;
+
+    result.referents[pronoun] = ref.text;
+    result.didResolve = true;
+
+    // Add resolved topic to list for downstream enrichment
+    if (TOPIC_SET.has(ref.text.toLowerCase())) {
+      result.resolvedTopics.push(ref.text.toLowerCase());
+    }
+
+    // Build resolved text — replace pronoun with referent for internal processing
+    // Only replace first occurrence to avoid over-replacement
+    const pat = new RegExp(`\\b${pronoun}\\b`, "i");
+    resolved = resolved.replace(pat, ref.text);
+  }
+
+  result.resolved = resolved;
+  return result;
+}
+
+// Get a natural reference phrase when AI wants to use the resolved referent
+// Instead of awkwardly using the raw noun, frame it conversationally
+function getReferencePhrase(pronoun, referent) {
+  const templates = {
+    it: [`${referent}`, `the ${referent} thing`, referent],
+    that: [`${referent}`, `${referent}`, `the ${referent} stuff`],
+    this: [referent, `${referent}`],
+    they: [referent, `those ${referent}`],
+    them: [referent],
+    one: [`${referent}`],
+  };
+  const pool = templates[pronoun.toLowerCase()] || [referent];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 /* ── Topic & Entity Extraction ── */
 
 const TOPIC_SET = new Set("javascript react python css html typescript node git api database frontend backend component algorithm rust go java swift kotlin sql vue angular svelte nextjs tailwind webpack vite docker aws graphql redux figma sketch prototype wireframe typography layout color animation responsive mockup brand logo gradient spacing ui ux interface accessibility spotify playlist rock jazz pop hiphop classical lofi guitar piano drums synthwave pizza sushi coffee pasta tacos ramen curry burger vegan vegetarian cooking recipe movie film netflix anime series gaming minecraft fortnite valorant league steam travel vacation fitness gym yoga workout exercise running dog cat pet puppy kitten ai ml gpt llm chatbot book reading sleep money finance investing startup business photography camera weather".split(" "));
@@ -2597,15 +2839,28 @@ function generateResponse(text) {
   const parsed = parseSentence(text);
   const intents = classify(text);
   const { tokens, keywords } = extractKW(text);
-  const topics = extractTopics(tokens);
+  let topics = extractTopics(tokens);
   const sent = sentiment(text);
+
+  // ═══ Anaphora resolution: resolve pronouns BEFORE processing ═══
+  const anaphora = resolveAnaphora(text);
+  // Enrich topics with resolved referents (e.g., "tell me about it" → adds "react")
+  if (anaphora.didResolve && anaphora.resolvedTopics.length > 0) {
+    topics = [...new Set([...topics, ...anaphora.resolvedTopics])];
+  }
+  // Use resolved text for intent classification when pronouns were resolved
+  const effectiveText = anaphora.didResolve ? anaphora.resolved : text;
+
   const nonMod = intents.filter(i=>!i.modifier);
   const primaryTopic = topics[0] || "";
   const primary = nonMod[0];
 
-  // Record in memory
+  // Record in memory (original text, not resolved)
   mem.add("user", text, nonMod.map(i=>i.intent), topics, sent);
   extractFacts(text, parsed);
+
+  // Update referent stack with what was mentioned this turn
+  updateReferents(effectiveText, topics, parsed);
 
   // Feed topics into thread manager
   for (const topic of topics) {
@@ -2730,7 +2985,9 @@ function generateResponse(text) {
 
   // ═══ 9. Questions — use Q&A engine ═══
   if (parsed.qType) {
-    const answer = answerQuestion(text, parsed, nonMod, topics);
+    // Use resolved text for questions so "what is it?" → "what is react?"
+    const qText = anaphora.didResolve ? effectiveText : text;
+    const answer = answerQuestion(qText, parsed, nonMod, topics);
     if (answer) return answer;
   }
 
@@ -4819,6 +5076,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
