@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 25: Conversational grounding & active listening
+   Round 26: Conversation arc awareness
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -4522,6 +4522,158 @@ function addGrounding(response, userText, parsed, sent, topics) {
   return grounding + response;
 }
 
+/* ── Conversation Arc Awareness ──
+ * Tracks the NARRATIVE of the conversation — not just individual messages,
+ * but the progression of topics, mood, and depth. At key moments,
+ * the AI makes meta-observations that show it's been following the arc:
+ *
+ * "You know what's cool? We started with React, then hit state management,
+ *  and now you're into Redux — that's the classic developer journey."
+ *
+ * "I've noticed you keep coming back to design topics — that's clearly
+ *  where your passion is."
+ *
+ * These moments create genuine surprise ("wait, this runs client-side?!")
+ * and make the AI feel like a thoughtful conversation partner, not a
+ * response-generating machine.
+ */
+
+let lastArcTurn = 0;
+
+function detectConversationArc() {
+  // Need enough conversation to detect an arc
+  if (mem.turn < 8) return null;
+  // Don't observe arcs too frequently
+  if (mem.turn - lastArcTurn < 8) return null;
+  // Only ~15% chance per eligible turn
+  if (Math.random() > 0.15) return null;
+
+  const userMsgs = mem.history.filter(h => h.role === "user");
+  if (userMsgs.length < 5) return null;
+
+  // ── Arc 1: Topic Journey — track progression of topics discussed ──
+  const topicSequence = userMsgs.slice(-8).flatMap(m => m.topics || []).filter(Boolean);
+  const uniqueTopics = [...new Set(topicSequence)];
+
+  if (uniqueTopics.length >= 3) {
+    // Check if topics are related (form a natural progression)
+    const relatedPairs = [];
+    for (let i = 0; i < uniqueTopics.length - 1; i++) {
+      const a = ASSOC[uniqueTopics[i]];
+      if (a?.related?.includes(uniqueTopics[i + 1])) {
+        relatedPairs.push([uniqueTopics[i], uniqueTopics[i + 1]]);
+      }
+    }
+    if (relatedPairs.length >= 2) {
+      const journey = uniqueTopics.slice(0, 4).join(", then ");
+      lastArcTurn = mem.turn;
+      return pick([
+        `You know what I love about this conversation? We went from ${journey} — there's a really natural flow to how your mind works.`,
+        `Can I just say — the way you went from ${journey} is such a cool thought progression. That's how the best ideas connect.`,
+        `I notice we've been on this journey: ${journey}. It all connects — I love following your train of thought!`,
+      ]);
+    }
+  }
+
+  // ── Arc 2: Deepening Interest — user keeps returning to one topic ──
+  const topicCounts = {};
+  for (const t of topicSequence) topicCounts[t] = (topicCounts[t] || 0) + 1;
+  const deepTopic = Object.entries(topicCounts).find(([, c]) => c >= 3);
+  if (deepTopic) {
+    lastArcTurn = mem.turn;
+    return pick([
+      `I've noticed ${deepTopic[0]} keeps coming up — it's clearly something that really matters to you. I respect that depth.`,
+      `We keep circling back to ${deepTopic[0]}, and honestly, I think that's where your real interest lies. What's drawing you to it?`,
+      `You know what? ${deepTopic[0]} is clearly your thing. The way you keep exploring it from different angles is really cool.`,
+    ]);
+  }
+
+  // ── Arc 3: Mood Shift — detect if the conversation mood has changed ──
+  const recentSent = userMsgs.slice(-4).map(m => m.sentiment || 0);
+  const earlierSent = userMsgs.slice(-8, -4).map(m => m.sentiment || 0);
+  if (recentSent.length >= 3 && earlierSent.length >= 3) {
+    const recentAvg = recentSent.reduce((s, v) => s + v, 0) / recentSent.length;
+    const earlierAvg = earlierSent.reduce((s, v) => s + v, 0) / earlierSent.length;
+
+    if (recentAvg - earlierAvg > 1.5) {
+      lastArcTurn = mem.turn;
+      return pick([
+        "Hey, I'm noticing the vibe has gotten way more positive as we've been chatting — I love that! 😊",
+        "Is it just me or has this conversation gotten way more fun as it's gone on? I'm here for it.",
+        "I feel like we really hit our stride in this conversation — the energy shift is real! 😄",
+      ]);
+    }
+    if (earlierAvg - recentAvg > 1.5) {
+      lastArcTurn = mem.turn;
+      return pick([
+        "Hey, I'm picking up that the mood shifted a bit — is everything okay? No pressure, just checking in.",
+        "I feel like the energy changed a little. Want to talk about something different, or is there something on your mind?",
+        "Just want to check in — the vibe shifted a bit. I'm here if you want to talk about anything.",
+      ]);
+    }
+  }
+
+  // ── Arc 4: Engagement Milestone — acknowledge a great conversation ──
+  if (mem.turn >= 15 && mem.turn % 10 === 0) {
+    const factCount = Object.keys(mem.facts).length;
+    const topicCount = Object.keys(mem.topics).length;
+    lastArcTurn = mem.turn;
+
+    if (factCount >= 3) {
+      const factSamples = [];
+      if (mem.userName) factSamples.push(`your name is ${mem.userName}`);
+      if (mem.facts.role) factSamples.push(`you're a ${mem.facts.role}`);
+      if (mem.facts.project) factSamples.push(`you're building ${mem.facts.project}`);
+      const likeKeys = Object.keys(mem.facts).filter(k => k.startsWith("likes_")).slice(0, 2);
+      for (const lk of likeKeys) factSamples.push(`you like ${mem.facts[lk]}`);
+
+      if (factSamples.length >= 2) {
+        return `Can I just say — I've really enjoyed this conversation. I know that ${factSamples.slice(0, 3).join(", ")}... for a tiny AI, I feel like I'm actually getting to know you! 😊`;
+      }
+    }
+
+    if (topicCount >= 4) {
+      return pick([
+        `We've covered a lot of ground today! ${topicCount} different topics and counting. This has been a great conversation 😊`,
+        `${mem.turn} messages in and we've explored ${topicCount} topics — I love a wide-ranging conversation like this!`,
+        `Not gonna lie, this is one of the more interesting conversations I've had. ${topicCount} topics deep and still going! 😄`,
+      ]);
+    }
+  }
+
+  // ── Arc 5: Knowledge Growth — user is learning about something ──
+  if (mem.turn > 10) {
+    // Check if user asked multiple questions about the same domain
+    const questionMsgs = userMsgs.filter(m => m.intents?.length > 0);
+    const domainQuestions = {};
+    for (const qm of questionMsgs) {
+      for (const topic of (qm.topics || [])) {
+        domainQuestions[topic] = (domainQuestions[topic] || 0) + 1;
+      }
+    }
+    const deepDomain = Object.entries(domainQuestions).find(([, c]) => c >= 3);
+    if (deepDomain) {
+      lastArcTurn = mem.turn;
+      return pick([
+        `You've asked some really thoughtful questions about ${deepDomain[0]}. I can tell you're really digging into it — that curiosity is awesome.`,
+        `I love how you keep going deeper on ${deepDomain[0]}. That's how real understanding develops — one good question at a time.`,
+      ]);
+    }
+  }
+
+  return null;
+}
+
+// Wire arc observations into the response pipeline as rare "wow" moments
+function tryArcObservation(response) {
+  const arc = detectConversationArc();
+  if (!arc) return response;
+
+  // Arc observations replace the response entirely if they fire
+  // (they're already rare, so when they hit, they should be the main event)
+  return arc;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -4642,6 +4794,9 @@ export function getAIResponse(input) {
     response = "Hey, I want to make sure I'm being helpful here. " + response;
   }
 
+  // ═══ Conversation arc: rare "wow" moments that acknowledge the journey ═══
+  response = tryArcObservation(response);
+
   // ═══ Discourse coherence: add natural transition markers ═══
   response = addDiscourseMarker(response, plan.flavor);
 
@@ -4664,6 +4819,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
