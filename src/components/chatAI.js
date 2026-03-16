@@ -13697,6 +13697,92 @@ function applyEmotionalMemoryCallback(response, text, topics) {
   return response + " " + callback;
 }
 
+/* ── Perspective Acknowledgment (Round 94) ──
+ * When the user expresses a clear opinion or stance, the AI explicitly
+ * acknowledges their viewpoint before offering alternatives or nuance.
+ * Creates "I see your point — and here's another angle" moments that
+ * show respect for the user's frame of thinking.
+ */
+
+let lastPerspTurn = 0;
+let recentPerspAcks = [];
+
+const STANCE_PATTERNS = [
+  { pattern: /\bi (?:think|believe|feel like|reckon) (.{8,50})/i, type: "opinion" },
+  { pattern: /\bi(?:'m| am) (?:pretty |fairly |really )?(?:sure|certain|convinced) (.{8,40})/i, type: "conviction" },
+  { pattern: /\bmy (?:take|view|perspective|position) (?:is |on this is )?(.{6,40})/i, type: "stance" },
+  { pattern: /\bi (?:prefer|would rather|lean toward|lean towards) (.{6,40})/i, type: "preference" },
+  { pattern: /\b(?:the (?:problem|issue|thing) is|what bothers me is|the way i see it) (.{8,50})/i, type: "framing" },
+  { pattern: /\bi (?:don't|wouldn't|can't) (?:agree|buy|see) (.{6,40})/i, type: "disagreement" },
+];
+
+const PERSP_ACK_TEMPLATES = {
+  opinion: [
+    "I see where you're coming from on that.",
+    "That's a fair read on it.",
+    "I hear you — that makes sense as a lens.",
+  ],
+  conviction: [
+    "Your confidence on that is noted — and honestly, it's well-placed.",
+    "I can see why you feel strongly about this.",
+  ],
+  stance: [
+    "I respect that framing.",
+    "That's a solid perspective to start from.",
+    "Good anchor point — let me build off that.",
+  ],
+  preference: [
+    "Fair preference — I can see the appeal.",
+    "That's a reasonable lean. Here's a thought though —",
+  ],
+  framing: [
+    "I see the frame you're putting on this, and it makes sense.",
+    "That's a useful way to think about it.",
+  ],
+  disagreement: [
+    "I appreciate the pushback on that — it's warranted.",
+    "Fair challenge. Let me think about this differently.",
+    "You're right to question that.",
+  ],
+};
+
+function applyPerspectiveAcknowledgment(response, text) {
+  const turn = mem.turn;
+  if (turn - lastPerspTurn < 5) return response; // 5-turn cooldown
+  if (Math.random() > 0.18) return response; // 18% fire rate
+
+  // Find a stance in the user's message
+  let bestMatch = null;
+  for (const sp of STANCE_PATTERNS) {
+    const m = text.match(sp.pattern);
+    if (m) { bestMatch = { type: sp.type, content: m[1] }; break; }
+  }
+
+  if (!bestMatch) return response;
+
+  // Skip if response already starts with perspective-like language
+  const lower = response.toLowerCase();
+  if (/^(?:i see|i hear|fair|good point|that's valid|i get|i understand|i respect)/.test(lower)) return response;
+
+  const pool = PERSP_ACK_TEMPLATES[bestMatch.type] || PERSP_ACK_TEMPLATES.opinion;
+  const available = pool.filter(t => !recentPerspAcks.includes(t));
+  if (available.length === 0) return response;
+
+  const pick = available[Math.floor(Math.random() * available.length)];
+
+  lastPerspTurn = turn;
+  recentPerspAcks.push(pick);
+  if (recentPerspAcks.length > 6) recentPerspAcks.shift();
+
+  // Prepend acknowledgment
+  const first = response[0];
+  const joined = first === first.toUpperCase() && first !== "I"
+    ? pick + " " + response[0].toLowerCase() + response.slice(1)
+    : pick + " " + response;
+
+  return joined;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -15419,6 +15505,9 @@ export function getAIResponse(input) {
   // ═══ Emotional memory callback: reference user's prior emotional state about recurring topics ═══
   response = applyEmotionalMemoryCallback(response, text, currentTopics);
 
+  // ═══ Perspective acknowledgment: validate user's viewpoint before offering alternatives ═══
+  response = applyPerspectiveAcknowledgment(response, text);
+
   // ═══ Digression & self-correction: brief tangent then catch-self for natural wandering mind ═══
   response = applyDigression(response, text, currentTopics);
 
@@ -15498,6 +15587,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
