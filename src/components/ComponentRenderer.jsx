@@ -194,7 +194,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .2s both"}}>Track your key metrics and team activity</T>
     </div>;
     /* v4 Badge — title with accent badge/label + count chip */
-    return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:6}}>
+    if(v===4)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:6}}>
       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
         <T k="title" s={{fontSize:f(20),fontWeight:700,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1}}>Dashboard</T>
         <span style={{fontSize:f(10),fontWeight:600,color:p.ac,background:p.ac+"14",padding:"2px 8px",borderRadius:999,whiteSpace:"nowrap",animation:"tp-badge-pop .4s cubic-bezier(.34,1.56,.64,1) .2s both"}}>New</span>
@@ -202,6 +202,26 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       </div>
       <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .15s both"}}>Track your key metrics and team activity</T>
       <div style={{height:1,background:p.bd,opacity:.5}}/>
+    </div>;
+    /* v5 Brutal — neubrutalist heading: thick border block, hard shadow, uppercase overline, bold title */
+    if(v===5)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:0}}>
+      <div style={{border:`2.5px solid ${p.tx}`,borderRadius:3,padding:"8px 12px",boxShadow:`4px 4px 0 ${p.ac}`,background:p.card}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <div style={{width:8,height:8,background:p.ac,borderRadius:1,border:`1.5px solid ${p.tx}`}}/>
+          <T k="over" s={{fontSize:f(9),fontWeight:800,color:p.ac,textTransform:"uppercase",letterSpacing:"0.14em"}}>Section</T>
+        </div>
+        <T k="title" s={{fontSize:f(22),fontWeight:900,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1,textTransform:"uppercase"}}>Dashboard</T>
+        <T k="sub" s={{fontSize:f(11),color:p.mu,lineHeight:1.4,marginTop:4,fontWeight:500}}>Track your key metrics and team activity</T>
+      </div>
+    </div>;
+    /* v6 Gradient — animated aurora gradient accent strip + gradient-glow title + floating dot */
+    return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:6}}>
+      <div style={{height:3,borderRadius:99,background:`linear-gradient(90deg,${p.ac},${p.ac2||p.ac},${p.ac})`,backgroundSize:"200% 100%",animation:"tp-shimmer 3s ease infinite",boxShadow:`0 0 12px ${p.ac}30`,width:"60%"}}/>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginTop:2}}>
+        <T k="title" s={{fontSize:f(22),fontWeight:800,letterSpacing:"-0.03em",lineHeight:1.1,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",filter:`drop-shadow(0 0 8px ${p.ac}25)`}}>Dashboard</T>
+        <div style={{width:6,height:6,borderRadius:99,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,boxShadow:`0 0 8px ${p.ac}60`,animation:"tp-pulse 2s ease-in-out infinite"}}/>
+      </div>
+      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .2s both"}}>Track your key metrics and team activity</T>
     </div>;
   }
 

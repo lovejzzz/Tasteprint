@@ -45,7 +45,7 @@ export const VARIANTS = {
   hero:      ["Gradient","Centered","Bold fill","Terminal","Glass","Brutal"],
   navbar:    ["Classic","Underline","Pill","Glass","Terminal"],
   tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered","Brutal","Gradient"],
-  heading:   ["Clean","Accent bar","Overline","Gradient","Badge"],
+  heading:   ["Clean","Accent bar","Overline","Gradient","Badge","Brutal","Gradient glow"],
   "stat-card":["Outlined","Tinted icon","Left accent","Inverted","Terminal"],
   "dash-panel":["Telemetry","Signal","Minimal","Gradient","Glass"],
   "image-placeholder":["Subtle","Gradient","Dashed","Glass","Brutal"],
