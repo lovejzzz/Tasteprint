@@ -2051,6 +2051,13 @@ function generateResponse(text) {
     }
   }
 
+  // ═══ 0.75. Turn-taking — continuation, elaboration, correction, confirmation ═══
+  const turnSignal = detectTurnSignal(text);
+  if (turnSignal) {
+    const turnResponse = handleTurnSignal(turnSignal);
+    if (turnResponse) return turnResponse;
+  }
+
   // ═══ 1. Name introduction ═══
   const nameMatch = text.match(/(?:i'?m|i am|name is|call me|they call me)\s+([A-Z][a-z]{1,15})/);
   if (nameMatch && !STOP.has(nameMatch[1].toLowerCase())) {
@@ -2324,6 +2331,168 @@ function respondToShortReply(text) {
   }
 
   return pickNew(["Tell me more about what you're thinking!","What's on your mind? I'm all ears 😊","I'd love to hear more!","What else is going on in your world?"]);
+}
+
+/* ── Conversational Turn-Taking & Active Listening ──
+ * Handles the subtle conversational patterns humans use to manage dialogue:
+ * continuation signals, elaboration requests, corrections, and confirmations.
+ * Without this, the bot treats "mmhmm" the same as a new question.
+ */
+
+function detectTurnSignal(text) {
+  const lower = text.toLowerCase().trim();
+
+  // Continuation signals — user is listening, wants the AI to keep going
+  if (/^(mmhmm|mhm|uh.?huh|go on|continue|and\??|then\??|so\??|right|I see|okay and|yeah and|interesting\.?\.?)$/i.test(lower))
+    return { type: "continue" };
+  if (/^(keep going|carry on|don't stop|finish|what happened|then what)$/i.test(lower))
+    return { type: "continue" };
+
+  // Elaboration requests — user wants deeper info on last AI topic
+  if (/^(tell me more|more details?|elaborate|explain more|like what|such as|for example|give me an example|can you explain|how so|in what way|what do you mean)/i.test(lower))
+    return { type: "elaborate" };
+  if (/^(more about that|expand on that|what exactly|be more specific|dig deeper)/i.test(lower))
+    return { type: "elaborate" };
+
+  // Correction — user is fixing a misunderstanding
+  if (/^(no,?\s+I\s+mean|actually\s+I\s+(mean|was|want)|not\s+(that|what|quite)|I\s+didn'?t\s+mean|that'?s?\s+not\s+what)/i.test(lower))
+    return { type: "correct", payload: lower.replace(/^(no,?\s+I\s+mean|actually\s+I\s+(?:mean|was|want)|not\s+(?:that|what|quite),?\s*|I\s+didn'?t\s+mean\s+(?:that,?\s*)?|that'?s?\s+not\s+what\s+I\s+(?:mean|said),?\s*)/i, "").trim() };
+
+  // Confirmation seeking — user wants validation
+  if (/^(right\?|you know\?|does that make sense|am I right|is that correct|isn'?t it|ya know)/i.test(lower))
+    return { type: "confirm" };
+
+  // Restatement — user is rephrasing or summarizing
+  if (/^(so basically|so you'?re saying|in other words|so what you mean|so that means|let me get this straight)/i.test(lower))
+    return { type: "restate", payload: lower.replace(/^(so basically|so you'?re saying|in other words|so what you mean is?|so that means|let me get this straight),?\s*/i, "").trim() };
+
+  return null;
+}
+
+function handleTurnSignal(signal) {
+  const lastAI = mem.lastAI();
+  if (!lastAI) return null;
+
+  const lastText = lastAI.text;
+  const lastTopics = mem.history.filter(h=>h.role==="ai").slice(-1)[0]?.topics || [];
+
+  switch (signal.type) {
+    case "continue": {
+      // Continue the thought from the last AI message
+      // Find what topic the AI was discussing and go deeper
+      const topic = lastTopics[0];
+      const assoc = topic ? ASSOC[topic] : null;
+
+      if (assoc) {
+        // Pick a related fact, opinion, or hook we haven't used
+        const pools = [
+          ...(assoc.facts || []).map(f => `And actually, ${f.charAt(0).toLowerCase() + f.slice(1)}`),
+          ...(assoc.opinions || []).map(o => `Plus, ${o}.`),
+          ...(assoc.hooks || []),
+        ];
+        const continuation = pickNew(pools);
+        if (continuation) return continuation;
+      }
+
+      // Generic continuations that reference the last message
+      const snippet = lastText.length > 50 ? lastText.substring(0, 50).replace(/\s\w+$/, "") + "..." : lastText;
+      const conts = [
+        `So building on that — ${pick(COMP.deepeners)}`,
+        `And the thing is, there's more to it. ${pick(COMP.deepeners)}`,
+        `Right, so to continue that thought — it's actually a bigger topic than it seems. ${pick(COMP.deepeners)}`,
+        `Yeah, and honestly there's a lot more I could say about it. What specifically are you curious about?`,
+      ];
+      return pickNew(conts);
+    }
+
+    case "elaborate": {
+      // Expand on the specific point the AI made
+      const topic = lastTopics[0];
+      const assoc = topic ? ASSOC[topic] : null;
+
+      if (assoc) {
+        // Give a fact + opinion combo for depth
+        const fact = assoc.facts ? pick(assoc.facts) : null;
+        const opinion = pick(assoc.opinions);
+        if (fact && opinion) return `Sure! So ${fact.charAt(0).toLowerCase() + fact.slice(1)}. And honestly, ${opinion}. ${pick(assoc.hooks || COMP.deepeners)}`;
+        if (fact) return `Of course! ${fact}. Pretty cool, right? ${pick(COMP.deepeners)}`;
+        if (opinion) return `Yeah so, ${opinion}. ${pick(COMP.deepeners)}`;
+      }
+
+      // Extract the key phrase from last AI message to elaborate on
+      const lastWords = lastText.split(/\s+/).filter(w => w.length > 4 && !/^(that|this|about|would|could|should|really|think)/i.test(w));
+      const keyPhrase = lastWords.slice(0, 3).join(" ");
+      if (keyPhrase) {
+        const elaborations = [
+          `So when I mentioned ${keyPhrase} — the key thing is that it's not as simple as it seems on the surface. There are layers to it.`,
+          `Right, so about ${keyPhrase}: the interesting part is really in the details. What aspect are you most curious about?`,
+          `Good question! The ${keyPhrase} part is actually pretty nuanced. Want me to break it down step by step?`,
+        ];
+        return pickNew(elaborations);
+      }
+
+      return "Sure! The gist is that there's more depth there than meets the eye. What specifically caught your interest?";
+    }
+
+    case "correct": {
+      // User is correcting a misunderstanding
+      const corrected = signal.payload;
+      if (corrected && corrected.length > 2) {
+        const corrections = [
+          `Oh, ${corrected}! Got it, my bad. That changes things — `,
+          `Ahh, ${corrected} — okay, that makes more sense! `,
+          `Oh right, ${corrected}! Sorry I misread that. `,
+        ];
+        const base = pickNew(corrections);
+        // Try to generate a response for the corrected topic
+        const correctedTopics = extractTopics(tokenize(corrected));
+        if (correctedTopics.length > 0 && ASSOC[correctedTopics[0]]) {
+          const assoc = ASSOC[correctedTopics[0]];
+          return base + pick(assoc.opinions || assoc.hooks || ["Tell me more about that!"]);
+        }
+        return base + "So tell me more about what you actually meant!";
+      }
+      return pickNew([
+        "Oh, my bad! I misunderstood. What were you actually getting at?",
+        "Sorry about that! Let me recalibrate — what did you mean?",
+        "Ah, I read that wrong! Take two — what were you saying?",
+      ]);
+    }
+
+    case "confirm": {
+      // User seeks validation — agree and add depth
+      const confirmations = [
+        "Yeah, exactly! You've got it.",
+        "Spot on! That's pretty much it.",
+        "Yep, you nailed it! 😊",
+        "100% — you're following perfectly.",
+        "That's right! And actually, there's an interesting layer to it too —",
+      ];
+      const base = pickNew(confirmations);
+      const topic = lastTopics[0];
+      if (topic && ASSOC[topic]?.hooks) {
+        return base + " " + pick(ASSOC[topic].hooks);
+      }
+      return base;
+    }
+
+    case "restate": {
+      // User is paraphrasing — confirm, refine, or correct their restatement
+      const restatement = signal.payload;
+      if (restatement && restatement.length > 5) {
+        const responses = [
+          `Yeah, that's a good way to put it! "${restatement}" — exactly.`,
+          `Pretty much! Though I'd add a small nuance: it's not just about ${restatement.split(/\s+/)[0]}, but the bigger picture around it.`,
+          `Close! ${restatement} is part of it, but there's a bit more to it. ${pick(COMP.deepeners)}`,
+          `Exactly right! You got the essence of it. ${pick(COMP.deepeners)}`,
+        ];
+        return pickNew(responses);
+      }
+      return "Yeah, that's the gist of it! Did I explain it clearly enough?";
+    }
+
+    default: return null;
+  }
 }
 
 function respondToTopic(intents, topics, primaryTopic, parsed) {
