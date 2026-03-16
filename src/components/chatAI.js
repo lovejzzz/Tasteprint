@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 27: Anaphora resolution & contextual reference tracking
+   Round 28: Contextual fragment completion & rhetorical understanding
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -2313,6 +2313,188 @@ function synthesizeAnswer(text, topics, qType) {
   return result;
 }
 
+/* ── Contextual Fragment Completion ──
+ * Handles sentence fragments and short contextual follow-ups that rely
+ * on conversational history for their full meaning:
+ *   "What about X?"     → pivot to X in current discussion context
+ *   "How come?"         → explain reasoning behind last AI statement
+ *   "Like what?"        → give examples related to last statement
+ *   "Not really"        → hedged disagreement, clarify
+ *   "Right?" "You know?" → rhetorical tags, expect agreement
+ *   "Same" "Exactly"    → emphatic agreement, deepen
+ *   "Since when?"       → challenge timeline
+ *   "Says who?"         → challenge authority
+ *   "And then?"         → narrative continuation
+ */
+
+function resolveFragment(text, lower, parsed, topics) {
+  const lastAI = mem.lastAI();
+  const lastAIText = lastAI?.text || "";
+  const lastTopics = lastAI?.topics || mem.recentTopics(2);
+  const contextTopic = lastTopics[0] || topics[0] || "";
+
+  // ── "What about X?" — pivot to new subject in current context ──
+  const whatAbout = lower.match(/^(?:what about|how about|and|but)\s+(.+?)[\?.]?$/i);
+  if (whatAbout && whatAbout[1].length > 1 && whatAbout[1].length < 40) {
+    const newSubject = whatAbout[1].trim();
+    // Check if it's in our knowledge base
+    const subjTokens = tokenize(newSubject);
+    const subjTopics = extractTopics(subjTokens);
+    const subjTopic = subjTopics[0] || newSubject;
+
+    if (ASSOC[subjTopic]) {
+      const a = ASSOC[subjTopic];
+      const fact = a.facts ? pick(a.facts) : null;
+      const opinion = a.opinions ? pick(a.opinions) : null;
+      const bridge = contextTopic
+        ? pick([`Good pivot from ${contextTopic}! `, `Switching to ${subjTopic} — `, `Oh, ${subjTopic}! `])
+        : pick([`${subjTopic}? `, `Ah, ${subjTopic}! `]);
+      return bridge + (fact || `That's an interesting area!`) + (opinion ? ` Personally, ${opinion}.` : "") + (a.hooks ? " " + pick(a.hooks) : "");
+    }
+
+    // No ASSOC match — contextual pivot response
+    const pivotResponses = [
+      `Ooh, ${newSubject}! That's a different angle. ` + (contextTopic ? `Compared to ${contextTopic}, ` : "") + `what's your take on it?`,
+      `${newSubject}? Good question! ` + (contextTopic ? `It's definitely related to ${contextTopic} in some ways. ` : "") + `What made you think of it?`,
+      `Shifting to ${newSubject} — I like it! What specifically about it are you curious about?`,
+    ];
+    return pick(pivotResponses);
+  }
+
+  // ── "How come?" / "Why's that?" — explain reasoning ──
+  if (/^(how come|why'?s that|why so|what makes you say that|why do you (?:think|say) (?:that|so))\??$/i.test(lower)) {
+    if (lastAIText) {
+      // Extract key claim from last AI response
+      const sentences = lastAIText.split(/[.!]/).filter(s => s.trim().length > 10);
+      const claim = sentences[0]?.trim() || lastAIText.substring(0, 50);
+      return pick([
+        `Fair question! When I said "${claim.substring(0, 45)}..." — it's because that's what my patterns suggest. ` + (contextTopic ? `${contextTopic} tends to work that way.` : "Does that track with your experience?"),
+        `Good catch asking why! I think it comes down to how most people experience this. ` + (contextTopic ? `With ${contextTopic}, ` : "") + `there's usually a pattern. What's your theory?`,
+        `Hmm, you're right to push back! Honestly, it's based on common patterns I've seen. What would you say instead?`,
+      ]);
+    }
+    return "Good question! I should probably back that up better. What's your intuition?";
+  }
+
+  // ── "Like what?" / "Such as?" / "For example?" — demand specifics ──
+  if (/^(like what|such as|for (?:example|instance)|give me (?:an? )?example|like\??)$/i.test(lower)) {
+    if (contextTopic && ASSOC[contextTopic]) {
+      const a = ASSOC[contextTopic];
+      const related = a.related || [];
+      if (related.length >= 2) {
+        return pick([
+          `Sure! Think ${related[0]} and ${related[1]} — both relate to ${contextTopic} in interesting ways.`,
+          `Off the top of my head: ${related[0]}, ${related[1]}${related[2] ? `, ${related[2]}` : ""}. Want to dig into any of those?`,
+          `Well, ${related[0]} is a good one. And ${related[1]} too. Which sounds more interesting?`,
+        ]);
+      }
+      if (a.facts && a.facts.length > 0) {
+        return `Here's one: ${pick(a.facts)}. Want more specifics?`;
+      }
+    }
+    return pick([
+      "Hmm, let me think of a good example... What kind of thing would be most useful to you?",
+      "Good question! It depends on context — what area are you most interested in?",
+      "I should give a concrete example! What's your use case? That'll help me pick the right one.",
+    ]);
+  }
+
+  // ── "Not really" / "I guess" / "Sort of" / "Kinda" — hedged disagreement ──
+  if (/^(not really|i guess|sort of|kinda|kind of|i suppose|i mean|eh|meh|if you say so|i guess so)\.?$/i.test(lower)) {
+    const hedges = [
+      `I'm sensing some hesitation! What's the part that doesn't quite land?`,
+      `Fair enough — I might be off base. What's your actual take?`,
+      `You don't sound fully convinced! Where does it break down for you?`,
+      `I hear some doubt there. ` + (contextTopic ? `What part of ${contextTopic} isn't clicking?` : "What's nagging at you?"),
+      `Hmm, not quite right? Help me understand what I'm missing!`,
+    ];
+    return pick(hedges);
+  }
+
+  // ── "Right?" / "You know?" / "Don't you think?" — rhetorical agreement-seekers ──
+  if (/^(right\??|you know\??|don'?t you think\??|isn'?t it\??|wouldn'?t you say\??|am i right\??|amirite)$/i.test(lower)) {
+    return pick([
+      "Absolutely! " + (contextTopic ? `${contextTopic} is definitely like that.` : "That's a solid point.") + " What makes you feel that way?",
+      "100%! You're onto something. " + (contextTopic ? `${contextTopic} really does work that way.` : ""),
+      "I think so too! It's one of those things that just... makes sense once you see it.",
+      "Yeah, that checks out! " + (contextTopic ? `With ${contextTopic}, ` : "") + "most people would agree.",
+    ]);
+  }
+
+  // ── "Since when?" — challenge timeline/validity ──
+  if (/^(since when|when did that|that's new|is that new)\??$/i.test(lower)) {
+    return pick([
+      "Ha, good point — I might be jumping the gun! " + (contextTopic ? `${contextTopic} has been evolving a lot though.` : "Things change fast!") + " What's your experience been?",
+      "You're right to question that! It's been happening gradually but " + (contextTopic ? `${contextTopic} definitely shifted` : "things shifted") + " in the last couple years.",
+      "Fair challenge! I should be more precise. What does your timeline look like?",
+    ]);
+  }
+
+  // ── "Says who?" / "According to what?" — challenge authority ──
+  if (/^(says who|who says|according to (?:what|whom)|where'd you (?:hear|get|read) that|source)\??$/i.test(lower)) {
+    return pick([
+      "Ha, you got me — I'm pattern-matching, not citing! But it's a pretty common take" + (contextTopic ? ` on ${contextTopic}` : "") + ". You disagree?",
+      "Good callout! I don't have sources per se — I'm a tiny model running in your browser. But what's YOUR take?",
+      "Fair! I'm basing that on general patterns, not a specific source. What have you seen?",
+    ]);
+  }
+
+  // ── "And then?" / "What happened?" — narrative continuation ──
+  if (/^(and then\??|what happened|then what|what next|go on|continue)$/i.test(lower)) {
+    // This is handled by turn-taking, but provide contextual fallback
+    if (lastAIText.length > 60) {
+      const sentences = lastAIText.split(/[.!?]/).filter(s => s.trim().length > 10);
+      if (sentences.length > 1) {
+        return pick([
+          `Well, building on that — `,
+          `So the next part is — `,
+          `Right, so after that: `,
+        ]) + (contextTopic && ASSOC[contextTopic]?.facts ? pick(ASSOC[contextTopic].facts) + "." : `there's more to explore here! What angle interests you most?`);
+      }
+    }
+    return null; // Let turn-taking handle it
+  }
+
+  // ── "Seriously?" / "Wait what?" / "No way" — surprise/disbelief ──
+  if (/^(seriously|wait what|no way|really|for real|you serious|are you serious|that's crazy|that's wild|you're kidding|shut up|get out)\?*!*$/i.test(lower)) {
+    return pick([
+      "Dead serious! " + (contextTopic ? `${contextTopic} is genuinely like that.` : "It's real!") + " I know, right?",
+      "I know it sounds wild, but yeah! " + (contextTopic ? `${contextTopic} is more interesting than it seems.` : ""),
+      "Ha, I had the same reaction! It's one of those things that's surprisingly true.",
+      "100% for real! What part surprises you the most?",
+    ]);
+  }
+
+  // ── "Never mind" / "Forget it" / "Whatever" — topic abandonment ──
+  if (/^(never ?mind|forget (?:it|about it)|whatever|doesn'?t matter|nvm|skip|pass)\.?$/i.test(lower)) {
+    return pick([
+      "No worries! " + (contextTopic ? `We can circle back to ${contextTopic} later if you want. ` : "") + "What else is on your mind?",
+      "All good! Sometimes topics don't click. What would you rather talk about?",
+      "Okay, moving on! 😊 I'm curious — what ARE you interested in right now?",
+    ]);
+  }
+
+  // ── "I know" / "Obviously" / "Duh" — user already knew this ──
+  if (/^(i know|i knew that|obviously|duh|no (?:duh|kidding|shit)|yeah i know|tell me something (?:i don'?t know|new))\.?$/i.test(lower)) {
+    return pick([
+      "Ha, fair — I'm preaching to the choir! " + (contextTopic ? `What's something about ${contextTopic} that most people DON'T know?` : "What would you like to go deeper on?"),
+      "Sorry for the basics! Let me level up — " + (contextTopic && ASSOC[contextTopic]?.opinions ? pick(ASSOC[contextTopic].opinions) + ". That more your speed?" : "what's the nuance you're thinking about?"),
+      "Okay, you're ahead of me! 😄 What's your hot take then?",
+    ]);
+  }
+
+  // ── "Depends" / "It depends" — nuanced non-answer ──
+  if (/^(it depends|depends|that depends|it'?s complicated|it'?s complex)\.?$/i.test(lower)) {
+    return pick([
+      "You're right, it does! What's the specific situation you're thinking of?",
+      "Fair point — context matters a lot! " + (contextTopic ? `With ${contextTopic}, what's the variable that changes things most?` : "What factors are you weighing?"),
+      "Totally. Most interesting things are nuanced. What's the scenario?",
+    ]);
+  }
+
+  return null;
+}
+
 /* ── Question Answering Engine ── */
 
 function answerQuestion(text, parsed, intents, topics) {
@@ -2371,6 +2553,10 @@ function answerQuestion(text, parsed, intents, topics) {
   if (/^how\??$/i.test(lower)) {
     return "That's the million dollar question! It usually comes down to practice and patience. Want to dive deeper into specifics?";
   }
+
+  // ═══ Contextual fragment completion — reconstruct meaning from conversational context ═══
+  const fragmentResponse = resolveFragment(text, lower, parsed, topics);
+  if (fragmentResponse) return fragmentResponse;
 
   // Topic-specific questions with knowledge
   for (const intent of intents) {
@@ -3033,6 +3219,13 @@ function generateResponse(text) {
       "Something on your mind? Let's talk about it!",
     ];
     return pickNew(fillers);
+  }
+
+  // ═══ 14.5. Fragment resolution for non-question fragments ═══
+  // Catches things like "not really", "it depends", "says who?" that aren't classified as questions
+  if (tokens.length <= 6 && !parsed.qType) {
+    const frag = resolveFragment(text, parsed.lower || text.toLowerCase(), parsed, topics);
+    if (frag) return frag;
   }
 
   // ═══ 15. Short reply — contextual follow-up ═══
