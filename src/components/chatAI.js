@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 28: Contextual fragment completion & rhetorical understanding
+   Round 29: Temporal awareness & session context
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -530,6 +530,230 @@ class Memory {
 }
 
 const mem = new Memory();
+
+/* ── Temporal Awareness & Session Context ──
+ * Tracks time-of-day, day-of-week, session duration, and message pacing.
+ * Provides contextual time references that make the AI feel present
+ * in the same moment as the user.
+ */
+
+let sessionStartTime = Date.now();
+let lastMessageTime = Date.now();
+
+function getTimeContext() {
+  const now = new Date();
+  const hour = now.getHours();
+  const day = now.getDay(); // 0=Sun
+  const mins = now.getMinutes();
+
+  // Time of day
+  let period, greeting, mood;
+  if (hour >= 5 && hour < 12) {
+    period = "morning"; greeting = "Good morning"; mood = "fresh";
+  } else if (hour >= 12 && hour < 17) {
+    period = "afternoon"; greeting = "Good afternoon"; mood = "active";
+  } else if (hour >= 17 && hour < 21) {
+    period = "evening"; greeting = "Good evening"; mood = "winding_down";
+  } else {
+    period = "night"; greeting = "Hey night owl"; mood = "late";
+  }
+
+  // Day context
+  const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const dayName = dayNames[day];
+  const isWeekend = day === 0 || day === 6;
+  const isFriday = day === 5;
+  const isMonday = day === 1;
+
+  // Session duration
+  const sessionMs = Date.now() - sessionStartTime;
+  const sessionMins = Math.floor(sessionMs / 60000);
+
+  // Message pacing (time since last message)
+  const sinceLast = Date.now() - lastMessageTime;
+  const paceSeconds = Math.floor(sinceLast / 1000);
+  lastMessageTime = Date.now();
+
+  return { hour, mins, period, greeting, mood, dayName, isWeekend, isFriday, isMonday, sessionMins, paceSeconds };
+}
+
+// Time-aware greeting enhancers
+function timeGreeting() {
+  const t = getTimeContext();
+
+  // Late night (after 11pm or before 5am)
+  if (t.period === "night") {
+    return pick([
+      `Hey night owl! 🌙 Still up at this hour?`,
+      `Burning the midnight oil? What's keeping you up?`,
+      `Late night vibes! What's on your mind?`,
+      `Hey! The late hours are when the best ideas happen 🌙`,
+    ]);
+  }
+
+  // Early morning (5-8am)
+  if (t.period === "morning" && t.hour < 8) {
+    return pick([
+      `${t.greeting}! ☀️ Early bird! What's on the agenda today?`,
+      `Rise and shine! What are you working on this fine ${t.dayName}?`,
+      `${t.greeting}! You're up early — productive mode?`,
+    ]);
+  }
+
+  // Regular morning
+  if (t.period === "morning") {
+    return pick([
+      `${t.greeting}! ☀️ How's the day starting out?`,
+      `${t.greeting}! What's on your plate today?`,
+      `Hey! Good ${t.dayName} morning! What's up?`,
+    ]);
+  }
+
+  // Friday special
+  if (t.isFriday) {
+    return pick([
+      `Happy Friday! 🎉 Any fun plans for the weekend?`,
+      `TGIF! What's good?`,
+      `Friday vibes! How's the week been?`,
+    ]);
+  }
+
+  // Monday
+  if (t.isMonday) {
+    return pick([
+      `Happy Monday! Fresh start to the week — what's up?`,
+      `Monday energy! ☕ How's the week kicking off?`,
+    ]);
+  }
+
+  // Weekend
+  if (t.isWeekend) {
+    return pick([
+      `Hey! Enjoying the ${t.dayName}? What's going on?`,
+      `${t.dayName} vibes! Relaxing or being productive? 😊`,
+      `Happy ${t.dayName}! What brings you here?`,
+    ]);
+  }
+
+  // Default afternoon/evening
+  if (t.period === "afternoon") {
+    return pick([
+      `${t.greeting}! How's the day going so far?`,
+      `Hey! Afternoon check-in — what's on your mind?`,
+    ]);
+  }
+
+  return pick([
+    `${t.greeting}! 😊 How's your ${t.dayName} going?`,
+    `Hey! Nice ${t.dayName} ${t.period}. What's up?`,
+  ]);
+}
+
+// Time-aware farewell enhancers
+function timeFarewell() {
+  const t = getTimeContext();
+
+  if (t.period === "night") {
+    return pick([
+      "Get some rest! 🌙 See you next time.",
+      "Sweet dreams! Don't stay up too late 😊",
+      "Night! Sleep well when you do ✨",
+    ]);
+  }
+  if (t.period === "evening") {
+    return pick([
+      "Have a great evening! ✌️",
+      "Enjoy the rest of your night!",
+    ]);
+  }
+  if (t.isWeekend) {
+    return pick([
+      "Enjoy the rest of your weekend! 🎉",
+      "Have an awesome " + t.dayName + "!",
+    ]);
+  }
+  if (t.isFriday) {
+    return pick([
+      "Have an amazing weekend! 🎉",
+      "TGIF! Enjoy your weekend ✌️",
+    ]);
+  }
+  return null; // fall through to default farewell
+}
+
+// Session-duration observations (sprinkled into responses occasionally)
+function sessionObservation() {
+  const t = getTimeContext();
+  if (t.sessionMins < 3) return null;
+
+  if (t.sessionMins >= 30 && Math.random() > 0.7) {
+    return pick([
+      "We've been chatting for a while — I'm enjoying this!",
+      "Half an hour of great conversation! You're fun to talk to 😊",
+      "Time flies! We've been at this for " + t.sessionMins + " minutes.",
+    ]);
+  }
+  if (t.sessionMins >= 15 && Math.random() > 0.8) {
+    return pick([
+      "This has been a good conversation so far!",
+      "We've covered a lot of ground! What else is on your mind?",
+    ]);
+  }
+  return null;
+}
+
+// Pace observation — if user comes back after a long pause
+function paceObservation() {
+  const t = getTimeContext();
+
+  // Long pause (> 2 min) — they might have been away
+  if (t.paceSeconds > 120 && mem.turn > 3) {
+    return pick([
+      "Welcome back! 😊 ",
+      "Hey, you're back! ",
+      "Oh hi again! ",
+    ]);
+  }
+  // Very rapid fire (< 2 sec) — they're engaged
+  if (t.paceSeconds < 2 && mem.turn > 5 && Math.random() > 0.85) {
+    return pick([
+      "You're quick! ",
+      "Rapid-fire mode! ",
+    ]);
+  }
+  return null;
+}
+
+// Add time flavor to any response (occasional, not every turn)
+function addTimeFlavor(response) {
+  if (mem.turn < 4) return response;
+  const t = getTimeContext();
+
+  // Very occasional time references (~8% of responses)
+  if (Math.random() > 0.92) {
+    if (t.period === "night" && t.hour >= 23) {
+      const lateNight = pick([
+        " (Side note: don't forget to sleep!)",
+        " Late night productivity is real though 🌙",
+      ]);
+      return response + lateNight;
+    }
+    if (t.period === "morning" && t.hour < 9 && t.isWeekend) {
+      return response + pick([" Weekend morning energy! ☕", ""]);
+    }
+    if (t.isFriday && t.hour >= 16) {
+      return response + pick([" Almost weekend! 🎉", ""]);
+    }
+  }
+
+  // Session observations (~5% chance after 10+ mins)
+  if (Math.random() > 0.95 && t.sessionMins >= 10) {
+    const obs = sessionObservation();
+    if (obs) return response + " " + obs;
+  }
+
+  return response;
+}
 
 /* ── Question-Answer Linking ── */
 /*
@@ -3104,17 +3328,25 @@ function generateResponse(text) {
     return pickNew(intros);
   }
 
-  // ═══ 2. Greeting ═══
+  // ═══ 2. Greeting — time-aware ═══
   if (primary?.intent === "greeting") {
     const name = mem.userName;
+    // First greeting: use time-aware greeting ~60% of the time
+    if (mem.turn <= 2 && !name && Math.random() > 0.4) return timeGreeting();
     if (name && mem.turn > 4) return fillSlots(pickNew(GREETINGS.namedReturn), {name});
     if (name) return fillSlots(pickNew(GREETINGS.named), {name});
     if (mem.turn > 4) return pickNew(GREETINGS.returning);
-    return pickNew(GREETINGS.first);
+    // Mix in time-aware greetings for unnamed first greetings
+    return Math.random() > 0.5 ? timeGreeting() : pickNew(GREETINGS.first);
   }
 
-  // ═══ 3. Farewell ═══
+  // ═══ 3. Farewell — time-aware ═══
   if (primary?.intent === "farewell") {
+    // Try time-aware farewell first
+    const tf = timeFarewell();
+    if (tf && Math.random() > 0.4) {
+      return mem.userName ? `Bye ${mem.userName}! ${tf}` : tf;
+    }
     if (mem.userName) return fillSlots(pickNew(FAREWELLS.named), {name:mem.userName});
     if (mem.turn > 6) return pickNew(FAREWELLS.long);
     return pickNew(FAREWELLS.basic);
@@ -5213,6 +5445,11 @@ export function getAIResponse(input) {
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
 
+  // ═══ Temporal awareness: time-of-day flavor + pace observation ═══
+  const pacePrefix = paceObservation();
+  if (pacePrefix) response = pacePrefix + response;
+  response = addTimeFlavor(response);
+
   // ═══ Conversational grounding: show active listening before responding ═══
   response = addGrounding(response, text, parsed, sent, currentTopics);
 
@@ -5269,6 +5506,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
