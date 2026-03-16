@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 44: Progressive question depth & intelligent probing
+   Round 45: Conversational momentum & topic bridging
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -7564,6 +7564,195 @@ function deepenQuestions(response, topics) {
 
 let lastDeepenerTurn = 0;
 
+/* ── Round 45: Conversational Momentum & Topic Bridging ──
+ * Detects topic shifts vs continuations and generates appropriate
+ * connective tissue. Weaves in callbacks to earlier conversation
+ * moments. Varies response openers based on momentum direction.
+ */
+
+let lastBridgeTurn = 0;
+let previousTopics = []; // track last turn's topics for shift detection
+let topicHistory = [];   // rolling window of [turn, topic] pairs
+
+function trackTopicFlow(topics) {
+  const turn = mem.history.length;
+  for (const t of topics) {
+    topicHistory.push({ turn, topic: t });
+  }
+  // Keep rolling window of 30
+  if (topicHistory.length > 30) topicHistory = topicHistory.slice(-30);
+  const prev = previousTopics;
+  previousTopics = [...topics];
+  return prev;
+}
+
+// Detect if user shifted topics vs continued on the same thread
+function detectTopicShift(currentTopics, prevTopics) {
+  if (prevTopics.length === 0 || currentTopics.length === 0) return null;
+  const overlap = currentTopics.filter(t => prevTopics.includes(t));
+  if (overlap.length > 0) return { type: "continuation", shared: overlap[0] };
+
+  // Check if any current topic is related to previous via ASSOC
+  for (const curr of currentTopics) {
+    for (const prev of prevTopics) {
+      const assoc = ASSOC[prev];
+      if (assoc && assoc.related && assoc.related.includes(curr)) {
+        return { type: "related", from: prev, to: curr };
+      }
+      const assocCurr = ASSOC[curr];
+      if (assocCurr && assocCurr.related && assocCurr.related.includes(prev)) {
+        return { type: "related", from: prev, to: curr };
+      }
+    }
+  }
+
+  return { type: "shift", from: prevTopics[0], to: currentTopics[0] };
+}
+
+// Find something from earlier conversation that connects to current topic
+function findCallback(currentTopics) {
+  const turn = mem.history.length;
+  if (turn < 6) return null; // too early for callbacks
+
+  // Look for a topic mentioned 5+ turns ago that relates to current
+  const oldEntries = topicHistory.filter(e => turn - e.turn >= 5 && turn - e.turn <= 20);
+  for (const curr of currentTopics) {
+    for (const old of oldEntries) {
+      if (old.topic === curr) continue; // same topic = topic return, handled elsewhere
+      const assocOld = ASSOC[old.topic];
+      const assocCurr = ASSOC[curr];
+      if (assocOld && assocOld.related && assocOld.related.includes(curr)) {
+        return { oldTopic: old.topic, currentTopic: curr, turnsAgo: turn - old.turn };
+      }
+      if (assocCurr && assocCurr.related && assocCurr.related.includes(old.topic)) {
+        return { oldTopic: old.topic, currentTopic: curr, turnsAgo: turn - old.turn };
+      }
+    }
+  }
+
+  // Check stored facts for connections
+  const facts = mem.facts || {};
+  for (const curr of currentTopics) {
+    if (facts.project && ASSOC[curr]) {
+      return { type: "project", project: facts.project, currentTopic: curr };
+    }
+  }
+
+  return null;
+}
+
+// Generate a bridge phrase based on the topic shift type
+function generateBridge(shift, callback) {
+  if (!shift) return null;
+
+  if (shift.type === "continuation") {
+    // Continuing same topic — use deepening connectors
+    return pick([
+      "Yeah, and building on that —",
+      "Right, so going deeper —",
+      "Exactly, and here's the thing —",
+      "So following that thread —",
+      "Mm, and on that note —",
+    ]);
+  }
+
+  if (shift.type === "related") {
+    // Related topic shift — acknowledge the natural flow
+    return pick([
+      `Oh, from ${shift.from} to ${shift.to} — that's a natural jump.`,
+      `${shift.to.charAt(0).toUpperCase() + shift.to.slice(1)} — yeah, that connects to what you were saying about ${shift.from}.`,
+      `That's actually closely tied to the ${shift.from} stuff.`,
+    ]);
+  }
+
+  if (shift.type === "shift") {
+    // Unrelated topic shift — acknowledge the pivot
+    return pick([
+      "Oh, switching gears —",
+      "Okay, new topic! I'm here for it.",
+      "Oh interesting, different direction —",
+      "Sure, let's talk about that instead.",
+    ]);
+  }
+
+  return null;
+}
+
+// Generate a callback weave — reference earlier conversation
+function generateCallbackWeave(callback) {
+  if (!callback) return null;
+
+  if (callback.type === "project") {
+    return pick([
+      `You know, this connects to that ${callback.project} project you mentioned.`,
+      `Actually, this might be relevant for ${callback.project} too.`,
+    ]);
+  }
+
+  return pick([
+    `This actually ties back to when we were talking about ${callback.oldTopic} earlier.`,
+    `Funny — we touched on ${callback.oldTopic} a while back, and this connects to that.`,
+    `Remember when we were on ${callback.oldTopic}? There's a thread here.`,
+  ]);
+}
+
+// Pipeline step: inject bridge phrases and callback weaves
+function addTopicBridge(response, topics) {
+  const turn = mem.history.length;
+  if (turn - lastBridgeTurn < 3) return response; // 3-turn cooldown
+  if (response.length < 30) return response; // too short to bridge
+
+  const prevTopics = trackTopicFlow(topics);
+  const shift = detectTopicShift(topics, prevTopics);
+
+  // 25% chance to add a bridge on topic shift/related transition
+  if (shift && shift.type !== "continuation" && Math.random() < 0.25) {
+    const bridge = generateBridge(shift, null);
+    if (bridge) {
+      lastBridgeTurn = turn;
+      // Replace bland openers with the bridge
+      const blandOpeners = /^(Oh!|Interesting!|Hmm!|Okay!|Got it!|I see!|Right!|Nice!)\s*/;
+      if (blandOpeners.test(response)) {
+        return response.replace(blandOpeners, bridge + " ");
+      }
+      return bridge + " " + response;
+    }
+  }
+
+  // 15% chance to weave in a callback to earlier conversation
+  if (Math.random() < 0.15 && topics.length > 0) {
+    const callback = findCallback(topics);
+    if (callback) {
+      const weave = generateCallbackWeave(callback);
+      if (weave) {
+        lastBridgeTurn = turn;
+        // Append callback as a parenthetical or sentence
+        if (response.endsWith("?")) {
+          // Don't mess with questions, prepend instead
+          return weave + " " + response;
+        }
+        return response + " " + weave;
+      }
+    }
+  }
+
+  // On continuation, occasionally deepen instead of just acknowledging
+  if (shift && shift.type === "continuation" && Math.random() < 0.12) {
+    const depth = topicHistory.filter(e => e.topic === shift.shared).length;
+    if (depth >= 3) {
+      const depthNote = pick([
+        `We keep coming back to ${shift.shared} — clearly something there.`,
+        `This is like the third time ${shift.shared} has come up — must be on your mind.`,
+        `You're really in the ${shift.shared} zone right now and I love it.`,
+      ]);
+      lastBridgeTurn = turn;
+      return response + " " + depthNote;
+    }
+  }
+
+  return response;
+}
+
 /* ── Conversation Arc Awareness ──
  * Tracks the NARRATIVE of the conversation — not just individual messages,
  * but the progression of topics, mood, and depth. At key moments,
@@ -7813,6 +8002,9 @@ export function getAIResponse(input) {
   // ═══ Conversational grounding: show active listening before responding ═══
   response = addGrounding(response, text, parsed, sent, currentTopics);
 
+  // ═══ Topic bridging: natural connective tissue on topic shifts/callbacks ═══
+  response = addTopicBridge(response, currentTopics);
+
   // Contextual humor injection (coherence guard will strip if inappropriate)
   response = injectHumor(response, currentTopics);
 
@@ -7904,6 +8096,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
