@@ -52,7 +52,7 @@ export const VARIANTS = {
   "avatar-row":["Circular","Small tight","Rounded sq"],
   "list-item":["Card row","Divider","Tinted"],
   input:     ["Outlined","Labeled","Filled","Underline","Glass"],
-  search:    ["Bordered","Pill kbd","Underline"],
+  search:    ["Bordered","Pill kbd","Underline","Glass","AI"],
   toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass"],
   badge:     ["Tinted","Solid","Outline","Glass","Brutal"],
   toast:     ["Card","Dark snack","Accent bar","Glass"],
