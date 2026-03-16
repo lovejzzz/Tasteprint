@@ -469,6 +469,7 @@ const SHORTCUTS = [
     ['\u2318+B', 'Toggle bookmark'],
     ['F3/Shift+F3', 'Next/prev search match'],
     ['F2/Shift+F2', 'Next/prev bookmark'],
+    ['F9', 'Toggle breakpoint'],
     ['Alt+F5/Shift+Alt+F5', 'Next/prev change'],
     ['Ctrl+Tab', 'Next tab'],
     ['Ctrl+Shift+Tab', 'Previous tab'],
@@ -737,6 +738,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [selToolbar, setSelToolbar] = React.useState(null); // { x, y }
   const [showLineNumbers, setShowLineNumbers] = React.useState(true);
   const [tabSize, setTabSize] = React.useState(2);
+
+  /* ---- Breakpoints ---- */
+  const [breakpoints, setBreakpoints] = React.useState(new Set());
+  const toggleBreakpoint = (ln) => setBreakpoints(prev => { const n = new Set(prev); if (n.has(ln)) n.delete(ln); else n.add(ln); return n; });
 
   /* ---- Bookmarks ---- */
   const [bookmarks, setBookmarks] = React.useState(new Set());
@@ -2098,6 +2103,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: showGhostText ? 'Disable Ghost Text' : 'Enable Ghost Text', key: 'ghosttext', hint: '' },
       { label: activeFile.endsWith('.md') ? (mdPreview ? 'Show Code' : 'Show Markdown Preview') : 'Markdown Preview (only for .md)', key: 'mdpreview', hint: '' },
       { label: `Line Ending: ${lineEnding}`, key: 'lineending', hint: '' },
+      { label: 'Toggle Breakpoint', key: 'breakpoint', hint: 'F9' },
+      { label: 'Clear All Breakpoints', key: 'clearbreakpoints', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -2356,6 +2363,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         showToast('Extracted to function — rename it now', 'info');
       }
     }
+    else if (key === 'breakpoint') { toggleBreakpoint(activeLn); showToast(breakpoints.has(activeLn) ? 'Breakpoint removed' : 'Breakpoint set', 'info'); }
+    else if (key === 'clearbreakpoints') { setBreakpoints(new Set()); showToast('All breakpoints cleared', 'info'); }
     else if (key === 'ghosttext') { setShowGhostText(v => !v); showToast(showGhostText ? 'Ghost text off' : 'Ghost text on', 'info'); }
     else if (key === 'mdpreview') { if (activeFile.endsWith('.md')) setMdPreview(v => !v); else showToast('Only for .md files', 'warn'); }
     else if (key === 'lineending') { setLineEnding(le => le === 'LF' ? 'CRLF' : 'LF'); showToast(`Line ending: ${lineEnding === 'LF' ? 'CRLF' : 'LF'}`, 'info'); }
@@ -2403,12 +2412,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       }
       return null;
     };
+    // Inject breakpoint pauses (log variable state at breakpoint lines)
+    let execCode = code;
+    if (breakpoints.size > 0) {
+      const codeLines = code.split('\n');
+      const injected = codeLines.map((l, li) => {
+        if (breakpoints.has(li + 1)) {
+          // Inject a console.debug call showing the breakpoint hit and local variable values
+          return `console.debug('[BP line ${li + 1}] ' + (() => { try { const _vars = {}; ${l.match(/\b(?:const|let|var)\s+(\w+)/g)?.map(d => { const n = d.split(/\s+/).pop(); return `try{_vars['${n}']=${n}}catch(_){}`; }).join(';') || ''} return Object.entries(_vars).map(([k,v])=>k+'='+JSON.stringify(v)).join(', ') || 'hit'; } catch(_) { return 'hit'; } })());\n${l}`;
+        }
+        return l;
+      });
+      execCode = injected.join('\n');
+    }
     const t0 = performance.now();
     // Detect async code and run accordingly
-    const isAsync = /\bawait\b/.test(code);
+    const isAsync = /\bawait\b/.test(execCode);
     if (isAsync) {
       const timeout = 10000; // 10s timeout for async code
-      const fn = new Function('console', 'tp', `return (async () => {\n${code}\n})()`);
+      const fn = new Function('console', 'tp', `return (async () => {\n${execCode}\n})()`);
       let timedOut = false;
       const timer = setTimeout(() => {
         timedOut = true;
@@ -2435,7 +2457,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       });
     } else {
       try {
-        const r = new Function('console', 'tp', code)(fc, tp || {});
+        const r = new Function('console', 'tp', execCode)(fc, tp || {});
         const ms = (performance.now() - t0).toFixed(1);
         if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
         setOutput({ logs: logs.slice(-100), ms, err: null, errLn: null });
@@ -3037,6 +3059,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     /* Next bookmark: F2, Previous: Shift+F2 */
     if (e.key === 'F2' && !e.metaKey && !e.ctrlKey && !e.altKey) {
       e.preventDefault(); jumpBookmark(e.shiftKey ? -1 : 1); return;
+    }
+    /* Toggle breakpoint: F9 */
+    if (e.key === 'F9' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault(); toggleBreakpoint(activeLn);
+      showToast(breakpoints.has(activeLn) ? `Breakpoint removed at line ${activeLn}` : `Breakpoint set at line ${activeLn}`, breakpoints.has(activeLn) ? 'info' : 'warn');
+      return;
     }
 
     /* Rename symbol: Cmd+R */
@@ -4005,6 +4033,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 { label: 'Color Decorators', val: showColorDecorators, set: setShowColorDecorators },
                 { label: 'Line Numbers', val: showLineNumbers, set: setShowLineNumbers },
                 { label: 'Auto Save on Run', val: autoSave, set: setAutoSave },
+                { label: 'Ghost Text', val: showGhostText, set: setShowGhostText },
               ].map(opt => (
                 <div key={opt.label}
                   onClick={() => opt.set(v => !v)}
@@ -4045,6 +4074,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               </div>
               <div style={{ padding: '4px 10px', fontSize: 8, color: '#555' }}>
                 Snippets: {Object.keys(SNIPPETS).join(', ')}
+              </div>
+              {breakpoints.size > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 8, color: '#f38ba8', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 99, background: '#f38ba8', flexShrink: 0 }} />
+                  <span>{breakpoints.size} breakpoint{breakpoints.size > 1 ? 's' : ''}</span>
+                  <span onClick={() => { setBreakpoints(new Set()); showToast('All breakpoints cleared', 'info'); }} onMouseDown={stop}
+                    style={{ color: '#cba6f7', cursor: 'pointer', marginLeft: 'auto' }}>Clear all</span>
+                </div>
+              )}
+              <div style={{ height: 1, background: '#ffffff06', margin: '4px 0' }} />
+              <div style={{ padding: '4px 10px', fontSize: 8, color: '#555' }}>
+                Line Ending: <span onClick={() => setLineEnding(le => le === 'LF' ? 'CRLF' : 'LF')} onMouseDown={stop} style={{ color: '#cba6f7', cursor: 'pointer' }}>{lineEnding}</span>
               </div>
             </div>
           </div>
@@ -4970,6 +5011,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               }}>{i + 1}</span>
                             {isFolded && <span style={{ position: 'absolute', right: -2, fontSize: 6, color: '#cba6f760' }}>...</span>}
                             {bookmarks.has(i + 1) && <span style={{ position: 'absolute', left: 0, top: 0, fontSize: 7, color: '#89b4fa', lineHeight: lh }}>{'\u25CF'}</span>}
+                            {breakpoints.has(i + 1) && <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 7, height: 7, borderRadius: 99, background: '#f38ba8', zIndex: 3, cursor: 'pointer', boxShadow: '0 0 4px #f38ba850' }} onClick={e => { e.stopPropagation(); toggleBreakpoint(i + 1); }} title="Remove breakpoint" />}
+                            {!breakpoints.has(i + 1) && i + 1 === activeLn && <span className="bp-ghost" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 7, height: 7, borderRadius: 99, background: 'transparent', border: '1px solid transparent', zIndex: 3, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); toggleBreakpoint(i + 1); }} onMouseEnter={e => { e.currentTarget.style.background = '#f38ba830'; e.currentTarget.style.borderColor = '#f38ba850'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }} title="Add breakpoint" />}
                             {lineChanges[i] && <span onClick={e => { e.stopPropagation(); setDiffOpen(true); }} style={{ position: 'absolute', right: -1, top: 2, bottom: 2, width: 2, borderRadius: 1, background: lineChanges[i] === 'added' ? '#27c93f' : '#89b4fa', cursor: 'pointer' }} title={lineChanges[i] === 'added' ? 'Added line' : 'Modified line'} />}
                             {/* Quick fix lightbulb on active line with lint issues */}
                             {i + 1 === activeLn && lintMap[i] && (
@@ -5114,6 +5157,28 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         }
                       }
 
+                      /* Inline word-level diff for modified lines */
+                      let inlineDiffMarks = null;
+                      if (lineChanges[i] === 'modified' && initFiles[activeFile]) {
+                        const origLines = initFiles[activeFile].split('\n');
+                        if (i < origLines.length) {
+                          const origLine = origLines[i];
+                          // Find changed character ranges
+                          const marks = [];
+                          let j = 0, oj = 0;
+                          // Simple diff: find common prefix and suffix, mark the middle as changed
+                          let prefixLen = 0;
+                          while (prefixLen < l.length && prefixLen < origLine.length && l[prefixLen] === origLine[prefixLen]) prefixLen++;
+                          let suffixLen = 0;
+                          while (suffixLen < l.length - prefixLen && suffixLen < origLine.length - prefixLen && l[l.length - 1 - suffixLen] === origLine[origLine.length - 1 - suffixLen]) suffixLen++;
+                          const changeStart = prefixLen;
+                          const changeEnd = l.length - suffixLen;
+                          if (changeStart < changeEnd) {
+                            inlineDiffMarks = { start: changeStart, end: changeEnd };
+                          }
+                        }
+                      }
+
                       /* Bracket match scope range highlight */
                       const bracketCol = bracketLines[i + 1];
                       const inBracketRange = matchBracket && (() => {
@@ -5246,6 +5311,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               }}>{output.err}</span>
                             )}
                           </>)}
+                          {/* Inline word-level diff highlight */}
+                          {inlineDiffMarks && (
+                            <span style={{
+                              position: 'absolute', left: inlineDiffMarks.start * charW, top: 0,
+                              width: (inlineDiffMarks.end - inlineDiffMarks.start) * charW, height: '100%',
+                              background: '#89b4fa12', borderBottom: '1px solid #89b4fa30',
+                              pointerEvents: 'none', zIndex: 1,
+                            }} />
+                          )}
                           {/* Ghost text inline completion */}
                           {ghostText && i + 1 === activeLn && !lintMap[i] && (
                             <span style={{
@@ -6444,15 +6518,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         const isExpanded = expandedLogs.has(i);
                         const collapsed = isExpandable && !isExpanded;
                         const preview = collapsed ? l.v.trim().substring(0, 50) + '...' : l.v;
+                        // Parse line references from error/debug messages for click-to-jump
+                        const lineRef = l.v?.match(/(?:line\s+(\d+)|\[BP line (\d+)\]|:(\d+):\d+)/i);
+                        const clickLine = lineRef ? parseInt(lineRef[1] || lineRef[2] || lineRef[3]) : null;
                         return (
                           <div key={i} onDoubleClick={() => {
                             navigator.clipboard?.writeText(l.v);
                             showToast('Copied to clipboard', 'info');
-                          }} style={{
+                          }}
+                          onClick={clickLine ? () => {
+                            goToLine(clickLine);
+                            showToast(`Jumped to line ${clickLine}`, 'info');
+                          } : undefined}
+                          style={{
                             fontSize: fs(9), lineHeight: Math.round(15 * zf) + 'px',
                             color: l.t === 'err' ? '#f38ba8' : l.t === 'warn' ? '#f9e2af' : l.t === 'ret' ? '#89b4fa' : l.t === 'dbg' ? '#6c7086' : '#a6adc8',
                             whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '1px 0',
-                            borderRadius: 2,
+                            borderRadius: 2, cursor: clickLine ? 'pointer' : 'default',
                           }}
                           onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -6469,6 +6551,26 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             {l.t === 'warn' && <span style={{ fontSize: 6, background: '#f9e2af20', color: '#f9e2af', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>WARN</span>}
                             {l.t === 'dbg' && <span style={{ fontSize: 6, background: '#6c708620', color: '#6c7086', padding: '0 3px', borderRadius: 2, marginRight: 3, fontWeight: 600, letterSpacing: '.03em' }}>DBG</span>}
                             {l.t === 'ret' ? '\u2190 ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' && !isExpandable ? '\u276F ' : l.t !== 'err' && l.t !== 'warn' && l.t !== 'dbg' ? '' : ' '}{l.t === 'ret' || l.t === 'log' ? (() => {
+                              // Check for ANSI color codes
+                              if (/\x1b\[/.test(preview) || /\033\[/.test(preview)) {
+                                const ANSI_COLORS = { '30': '#45475a', '31': '#f38ba8', '32': '#a6e3a1', '33': '#f9e2af', '34': '#89b4fa', '35': '#cba6f7', '36': '#94e2d5', '37': '#cdd6f4', '90': '#585b70', '91': '#f38ba8', '92': '#a6e3a1', '93': '#f9e2af', '94': '#89b4fa', '95': '#f5c2e7', '96': '#94e2d5', '97': '#ffffff' };
+                                const parts = [];
+                                let color = null, bold = false, cur = 0, key2 = 0;
+                                const ansiRx = /(?:\x1b|\033)\[([0-9;]*)m/g;
+                                let am;
+                                while ((am = ansiRx.exec(preview)) !== null) {
+                                  if (am.index > cur) parts.push(<span key={key2++} style={{ color: color || undefined, fontWeight: bold ? 700 : undefined }}>{preview.slice(cur, am.index)}</span>);
+                                  const codes = am[1].split(';');
+                                  for (const c of codes) {
+                                    if (c === '0' || c === '') { color = null; bold = false; }
+                                    else if (c === '1') bold = true;
+                                    else if (ANSI_COLORS[c]) color = ANSI_COLORS[c];
+                                  }
+                                  cur = am.index + am[0].length;
+                                }
+                                if (cur < preview.length) parts.push(<span key={key2++} style={{ color: color || undefined, fontWeight: bold ? 700 : undefined }}>{preview.slice(cur)}</span>);
+                                return parts;
+                              }
                               // Syntax highlight JS-like output
                               try {
                                 const tokens = tokenize(preview);
@@ -6800,6 +6902,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               const lintCount = Object.keys(lintMap).length;
               return lintCount > 0 ? <span onClick={() => { setTermOpen(true); setTermTab('problems'); }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#f9e2af', cursor: 'pointer', opacity: .6 }} title="Click to see warnings">{'\u26A0'} {lintCount}</span> : null;
             })()}
+            {breakpoints.size > 0 && <span onClick={() => { setSidebarMode('settings'); }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#f38ba8', cursor: 'pointer', opacity: .6 }} title={`${breakpoints.size} breakpoint(s) — click to manage`}>{'\u25CF'} {breakpoints.size}</span>}
             {tp && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .4 }}>tp</span>}
             <span onClick={() => setWordWrap(w => !w)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: wordWrap ? '#cba6f7' : '#555', marginLeft: 'auto', cursor: 'pointer' }}
