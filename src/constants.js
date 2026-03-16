@@ -224,6 +224,7 @@ export const DEFAULT_PROPS = {
   input:         { focused: false },
   select:        { active: 0 },
   search:        { results: 3 },
+  tooltip:       { on: true },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
