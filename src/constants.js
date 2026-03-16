@@ -43,7 +43,7 @@ export const VARIANTS = {
   card:      ["Elevated","Outlined","Filled bg","Top media","Minimal","Glass","Brutal","Terminal"],
   "card-sm": ["Rounded","Horizontal","Tinted","Glass","Brutal"],
   hero:      ["Gradient","Centered","Bold fill","Terminal","Glass","Brutal"],
-  navbar:    ["Classic","Underline","Pill","Glass","Terminal"],
+  navbar:    ["Classic","Underline","Pill","Glass","Terminal","Brutal","Gradient"],
   tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered","Brutal","Gradient"],
   heading:   ["Clean","Accent bar","Overline","Gradient","Badge","Brutal","Gradient glow"],
   "stat-card":["Outlined","Tinted icon","Left accent","Inverted","Terminal"],
