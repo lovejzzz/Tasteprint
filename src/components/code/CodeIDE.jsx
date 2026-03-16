@@ -579,6 +579,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Breadcrumb dropdown ---- */
   const [breadcrumbDrop, setBreadcrumbDrop] = React.useState(null);
 
+  /* ---- Cmd key held (for go-to-definition underline) ---- */
+  const [cmdHeld, setCmdHeld] = React.useState(false);
+  React.useEffect(() => {
+    const onKey = e => { if (e.key === 'Meta' || e.key === 'Control') setCmdHeld(true); };
+    const onUp = e => { if (e.key === 'Meta' || e.key === 'Control') setCmdHeld(false); };
+    const onBlur = () => setCmdHeld(false);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur); };
+  }, []);
+
   /* ---- Dynamic tree (base + user files) ---- */
   const userFiles = React.useMemo(() => {
     const known = new Set();
@@ -2580,14 +2592,24 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       else setAcOpen(false);
                     }
                   } else {
-                    // Also autocomplete JS keywords after partial word
+                    // Autocomplete: JS keywords + local identifiers from current file
                     const wordMatch = before.match(/\b(\w{2,})$/);
                     if (wordMatch && !before.match(/\.\w*$/)) {
                       const partial = wordMatch[1].toLowerCase();
                       const JS_KW = ['const','let','var','function','return','if','else','for','while','console','forEach','map','filter','reduce','length','push','splice','indexOf','includes','toString','parseInt','parseFloat','JSON','stringify','parse','Math','random','floor','ceil','round','setTimeout','setInterval','Promise','async','await','try','catch','throw','true','false','null','undefined'];
-                      const filtered = JS_KW.filter(k => k.toLowerCase().startsWith(partial) && k.toLowerCase() !== partial).slice(0, 8);
-                      if (filtered.length) {
-                        setAcItems(filtered.map(k => ({ label: k, desc: 'keyword', insert: k.slice(partial.length) })));
+                      // Extract local identifiers from code
+                      const localIds = new Set();
+                      const idRx = /(?:const|let|var|function)\s+(\w+)/g;
+                      let idM;
+                      while ((idM = idRx.exec(val)) !== null) { if (idM[1].length >= 2) localIds.add(idM[1]); }
+                      const locals = [...localIds].filter(id => id.toLowerCase().startsWith(partial) && id.toLowerCase() !== partial);
+                      const kwFiltered = JS_KW.filter(k => k.toLowerCase().startsWith(partial) && k.toLowerCase() !== partial);
+                      const combined = [
+                        ...locals.map(id => ({ label: id, desc: 'local', insert: id.slice(partial.length) })),
+                        ...kwFiltered.map(k => ({ label: k, desc: 'keyword', insert: k.slice(partial.length) })),
+                      ].slice(0, 10);
+                      if (combined.length) {
+                        setAcItems(combined);
                         setAcIdx(0); setAcOpen(true);
                       } else setAcOpen(false);
                     } else {
@@ -2705,7 +2727,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   const newPos = s + reindented.length;
                   setTimeout(() => { el.selectionStart = el.selectionEnd = newPos; }, 0);
                 }}
-                onFocus={() => setEditorFocused(true)}
+                onFocus={() => { setEditorFocused(true); if (!welcomeDismissed) setWelcomeDismissed(true); }}
                 onBlur={() => setEditorFocused(false)}
                 onKeyUp={e => updateCursor(e.target)} onKeyDown={handleKey}
                 readOnly={readonly} spellCheck={false}
@@ -2715,7 +2737,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   border: 'none', outline: 'none', resize: 'none', padding: 8,
                   fontSize: fs(10), lineHeight: lh, fontFamily: MONO,
                   tabSize: 2, whiteSpace: wordWrap ? 'pre-wrap' : 'pre', wordBreak: wordWrap ? 'break-all' : 'normal', overflow: 'auto', minWidth: 0,
-                  position: 'relative', zIndex: 1, cursor: readonly ? 'default' : 'text',
+                  position: 'relative', zIndex: 1, cursor: readonly ? 'default' : cmdHeld ? 'pointer' : 'text',
                 }}
               />
 
@@ -2726,37 +2748,68 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 const lineStart = code.lastIndexOf('\n', (taRef.current?.selectionStart || 0) - 1) + 1;
                 const col = (taRef.current?.selectionStart || 0) - lineStart;
                 const left = col * fs(6.1) + 8;
+                const selItem = acItems[acIdx];
                 return (
-                  <div onMouseDown={stop} style={{
-                    position: 'absolute', top: Math.min(top, 200), left: Math.min(left, 200),
-                    zIndex: 10, background: '#1e1e2e', border: '1px solid #ffffff15',
-                    borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.5)',
-                    maxHeight: 150, overflow: 'auto', minWidth: 180
-                  }}>
-                    {acItems.map((item, i) => (
-                      <div key={item.label}
-                        onClick={() => {
-                          const s = taRef.current?.selectionStart || 0;
-                          const before = code.substring(0, s);
-                          const dotIdx = before.lastIndexOf('tp.');
-                          if (dotIdx !== -1) {
-                            const nc = code.substring(0, dotIdx + 3) + item.insert + code.substring(s);
-                            setCode(nc);
-                            const newPos = dotIdx + 3 + item.insert.length;
-                            setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = newPos; el.focus(); } }, 0);
-                          }
-                          setAcOpen(false);
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px',
-                          fontSize: 9, cursor: 'pointer',
-                          background: i === acIdx ? '#ffffff10' : 'transparent',
-                          color: i === acIdx ? '#cdd6f4' : '#a6adc8',
-                        }}>
-                        <span style={{ color: '#cba6f7', fontWeight: 500, minWidth: 0 }}>{item.label}</span>
-                        <span style={{ color: '#555', fontSize: 8, marginLeft: 'auto', flexShrink: 0 }}>{item.desc}</span>
+                  <div style={{ position: 'absolute', top: Math.min(top, 200), left: Math.min(left, 200), zIndex: 10, display: 'flex', gap: 0 }}>
+                    {/* Autocomplete list */}
+                    <div onMouseDown={stop} style={{
+                      background: '#1e1e2e', border: '1px solid #ffffff15',
+                      borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.5)',
+                      maxHeight: 150, overflow: 'auto', minWidth: 200
+                    }}>
+                      {acItems.map((item, i) => {
+                        const isMethod = item.desc !== 'keyword';
+                        const isActive = i === acIdx;
+                        return (
+                          <div key={item.label}
+                            onClick={() => {
+                              const s = taRef.current?.selectionStart || 0;
+                              const before = code.substring(0, s);
+                              const dotIdx = before.lastIndexOf('tp.');
+                              if (dotIdx !== -1 && isMethod) {
+                                const nc = code.substring(0, dotIdx + 3) + item.insert + code.substring(s);
+                                setCode(nc);
+                                const newPos = dotIdx + 3 + item.insert.length;
+                                setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = newPos; el.focus(); } }, 0);
+                              } else {
+                                const nc = code.substring(0, s) + item.insert + code.substring(s);
+                                setCode(nc);
+                                const newPos = s + item.insert.length;
+                                setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = newPos; el.focus(); } }, 0);
+                              }
+                              setAcOpen(false);
+                            }}
+                            onMouseEnter={() => setAcIdx(i)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5, padding: '3px 8px',
+                              fontSize: 9, cursor: 'pointer',
+                              background: isActive ? '#cba6f715' : 'transparent',
+                              color: isActive ? '#cdd6f4' : '#a6adc8',
+                            }}>
+                            <span style={{
+                              width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              borderRadius: 3, fontSize: 7, fontWeight: 700, flexShrink: 0,
+                              background: isMethod ? '#cba6f712' : '#89b4fa12',
+                              color: isMethod ? '#cba6f7' : '#89b4fa',
+                            }}>{isMethod ? (item.label.includes('(') ? 'M' : 'P') : 'K'}</span>
+                            <span style={{ fontWeight: isActive ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                            <span style={{ color: '#555', fontSize: 7, flexShrink: 0 }}>{item.desc}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Detail panel for selected item */}
+                    {selItem && selItem.desc !== 'keyword' && TP_DOCS[selItem.label.replace(/\(.*/, '')] && (
+                      <div style={{
+                        background: '#1e1e2e', border: '1px solid #ffffff15', borderLeft: 'none',
+                        borderRadius: '0 6px 6px 0', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
+                        padding: '6px 10px', maxWidth: 220, minWidth: 140,
+                      }}>
+                        {TP_DOCS[selItem.label.replace(/\(.*/, '')].split('\n').map((line, i) => (
+                          <div key={i} style={{ fontSize: 8, lineHeight: '12px', fontFamily: MONO, color: i === 0 ? '#cba6f7' : '#777', fontWeight: i === 0 ? 600 : 400, whiteSpace: 'pre-wrap' }}>{line}</div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 );
               })()}
@@ -3150,6 +3203,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             {hasSel && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .6 }}>({selLen} chars, {selLines} lines)</span>}
             <span style={{ fontSize: fs(8), color: '#555' }}>{lines.length} lines</span>
             {readonly && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }}>Read-only</span>}
+            {output?.ms && <span style={{ fontSize: fs(8), color: '#27c93f', opacity: .5 }} title="Last execution time">{output.ms}ms</span>}
+            {output?.err && <span onClick={() => { setTermOpen(true); setTermTab('problems'); }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#f38ba8', cursor: 'pointer', opacity: .6 }} title="Click to see error">{'\u2717'} 1</span>}
             {tp && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .4 }}>tp</span>}
             <span onClick={() => setWordWrap(w => !w)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: wordWrap ? '#cba6f7' : '#555', marginLeft: 'auto', cursor: 'pointer' }}
