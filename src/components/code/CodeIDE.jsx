@@ -2,6 +2,29 @@ import React from "react";
 import { HighlightLine, tokenize, TC } from "./tokenizer";
 import { TpContext } from "../../contexts/TpContext";
 
+/* ========== Raw source imports (Vite ?raw) ========== */
+import SRC_App from "../../App.jsx?raw";
+import SRC_main from "../../main.jsx?raw";
+import SRC_constants from "../../constants.js?raw";
+import SRC_utils from "../../utils.js?raw";
+import SRC_TpContext from "../../contexts/TpContext.js?raw";
+import SRC_Header from "../Header.jsx?raw";
+import SRC_ShapeItem from "../ShapeItem.jsx?raw";
+import SRC_ComponentRenderer from "../ComponentRenderer.jsx?raw";
+import SRC_LibrarySidebar from "../LibrarySidebar.jsx?raw";
+import SRC_PropsPanel from "../PropsPanel.jsx?raw";
+import SRC_CodeIDE from "./CodeIDE.jsx?raw";
+import SRC_tokenizer from "./tokenizer.jsx?raw";
+import SRC_codeIndex from "./index.js?raw";
+import SRC_CodeBenchmark from "./CodeBenchmark.jsx?raw";
+import SRC_CodeMinimap from "./CodeMinimap.jsx?raw";
+import SRC_CodeNotebook from "./CodeNotebook.jsx?raw";
+import SRC_CodeReview from "./CodeReview.jsx?raw";
+import SRC_CodeTypewriter from "./CodeTypewriter.jsx?raw";
+import SRC_AsciiArt from "./AsciiArt.jsx?raw";
+import SRC_useKeyboard from "../../hooks/useKeyboard.js?raw";
+import SRC_useHistory from "../../hooks/useHistory.js?raw";
+
 /* ========== Constants ========== */
 const MONO = "'JetBrains Mono',monospace";
 const PAIRS = {'(':')','[':']','{':'}','"':'"',"'":"'",'`':'`'};
@@ -90,6 +113,37 @@ const TREE_BASE = [
     { name: 'main.js', path: 'src/main.js' },
     { name: 'playground.js', path: 'src/playground.js' },
   ]},
+  { name: 'tasteprint', children: [
+    { name: 'App.jsx', path: 'tasteprint/App.jsx' },
+    { name: 'main.jsx', path: 'tasteprint/main.jsx' },
+    { name: 'constants.js', path: 'tasteprint/constants.js' },
+    { name: 'utils.js', path: 'tasteprint/utils.js' },
+  ]},
+  { name: 'components', children: [
+    { name: 'Header.jsx', path: 'tasteprint/components/Header.jsx' },
+    { name: 'ShapeItem.jsx', path: 'tasteprint/components/ShapeItem.jsx' },
+    { name: 'ComponentRenderer.jsx', path: 'tasteprint/components/ComponentRenderer.jsx' },
+    { name: 'LibrarySidebar.jsx', path: 'tasteprint/components/LibrarySidebar.jsx' },
+    { name: 'PropsPanel.jsx', path: 'tasteprint/components/PropsPanel.jsx' },
+  ]},
+  { name: 'code', children: [
+    { name: 'CodeIDE.jsx', path: 'tasteprint/code/CodeIDE.jsx' },
+    { name: 'tokenizer.jsx', path: 'tasteprint/code/tokenizer.jsx' },
+    { name: 'index.js', path: 'tasteprint/code/index.js' },
+    { name: 'CodeBenchmark.jsx', path: 'tasteprint/code/CodeBenchmark.jsx' },
+    { name: 'CodeMinimap.jsx', path: 'tasteprint/code/CodeMinimap.jsx' },
+    { name: 'CodeNotebook.jsx', path: 'tasteprint/code/CodeNotebook.jsx' },
+    { name: 'CodeReview.jsx', path: 'tasteprint/code/CodeReview.jsx' },
+    { name: 'CodeTypewriter.jsx', path: 'tasteprint/code/CodeTypewriter.jsx' },
+    { name: 'AsciiArt.jsx', path: 'tasteprint/code/AsciiArt.jsx' },
+  ]},
+  { name: 'hooks', children: [
+    { name: 'useKeyboard.js', path: 'tasteprint/hooks/useKeyboard.js' },
+    { name: 'useHistory.js', path: 'tasteprint/hooks/useHistory.js' },
+  ]},
+  { name: 'contexts', children: [
+    { name: 'TpContext.js', path: 'tasteprint/contexts/TpContext.js' },
+  ]},
   { name: 'config', children: [
     { name: 'palette.js', path: 'config/palette.js' },
     { name: 'shapes.js', path: 'config/shapes.js' },
@@ -114,6 +168,19 @@ const FCOLORS = {
   'variants.js':'#89b4fa', 'types.js':'#89b4fa', 'device.js':'#89b4fa',
   'layout.js':'#fab387', 'theme.js':'#fab387', 'batch.js':'#fab387',
   'api.js':'#a6e3a1',
+  /* Tasteprint source files */
+  'App.jsx':'#61dafb', 'main.jsx':'#61dafb',
+  'constants.js':'#f9e2af', 'utils.js':'#f9e2af',
+  'Header.jsx':'#61dafb', 'ShapeItem.jsx':'#61dafb',
+  'ComponentRenderer.jsx':'#61dafb', 'LibrarySidebar.jsx':'#61dafb',
+  'PropsPanel.jsx':'#61dafb',
+  'CodeIDE.jsx':'#cba6f7', 'tokenizer.jsx':'#cba6f7',
+  'index.js':'#cba6f7', 'CodeBenchmark.jsx':'#cba6f7',
+  'CodeMinimap.jsx':'#cba6f7', 'CodeNotebook.jsx':'#cba6f7',
+  'CodeReview.jsx':'#cba6f7', 'CodeTypewriter.jsx':'#cba6f7',
+  'AsciiArt.jsx':'#cba6f7',
+  'useKeyboard.js':'#a6e3a1', 'useHistory.js':'#a6e3a1',
+  'TpContext.js':'#a6e3a1',
 };
 
 const FICONS = {
@@ -122,6 +189,19 @@ const FICONS = {
   'variants.js': '\u2726', 'types.js': 'T', 'device.js': '\uD83D\uDCF1',
   'layout.js': '\u2B1A', 'theme.js': '\uD83C\uDF19', 'batch.js': '\u21C6',
   'api.js': '\uD83D\uDCD6',
+  /* Tasteprint source files */
+  'App.jsx': '\u269B', 'main.jsx': '\u25B6',
+  'constants.js': 'C', 'utils.js': 'U',
+  'Header.jsx': '\u269B', 'ShapeItem.jsx': '\u269B',
+  'ComponentRenderer.jsx': '\u269B', 'LibrarySidebar.jsx': '\u269B',
+  'PropsPanel.jsx': '\u269B',
+  'CodeIDE.jsx': '\u2328', 'tokenizer.jsx': '\u2328',
+  'index.js': '\u2328', 'CodeBenchmark.jsx': '\u2328',
+  'CodeMinimap.jsx': '\u2328', 'CodeNotebook.jsx': '\u2328',
+  'CodeReview.jsx': '\u2328', 'CodeTypewriter.jsx': '\u2328',
+  'AsciiArt.jsx': '\u2328',
+  'useKeyboard.js': '\u21A9', 'useHistory.js': '\u21A9',
+  'TpContext.js': '\u21A9',
 };
 
 /* Snippet content */
@@ -414,7 +494,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [editFiles, setEditFiles] = React.useState(initFiles);
   const [activeFile, setActiveFile] = React.useState('src/main.js');
   const [openTabs, setOpenTabs] = React.useState(['src/main.js']);
-  const [openFolders, setOpenFolders] = React.useState({ src: true, config: false, docs: false, snippets: false, user: false });
+  const [openFolders, setOpenFolders] = React.useState({ src: true, tasteprint: false, components: false, code: false, hooks: false, contexts: false, config: false, docs: false, snippets: false, user: false });
   const [showTree, setShowTree] = React.useState(true);
 
   /* ---- Editor state ---- */
@@ -672,6 +752,28 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     'config/types.js': () => genTypes(tp),
     'config/device.js': () => genDevice(tp),
     'docs/api.js': () => API_DOCS,
+    /* Tasteprint actual source files */
+    'tasteprint/App.jsx': () => SRC_App,
+    'tasteprint/main.jsx': () => SRC_main,
+    'tasteprint/constants.js': () => SRC_constants,
+    'tasteprint/utils.js': () => SRC_utils,
+    'tasteprint/contexts/TpContext.js': () => SRC_TpContext,
+    'tasteprint/components/Header.jsx': () => SRC_Header,
+    'tasteprint/components/ShapeItem.jsx': () => SRC_ShapeItem,
+    'tasteprint/components/ComponentRenderer.jsx': () => SRC_ComponentRenderer,
+    'tasteprint/components/LibrarySidebar.jsx': () => SRC_LibrarySidebar,
+    'tasteprint/components/PropsPanel.jsx': () => SRC_PropsPanel,
+    'tasteprint/code/CodeIDE.jsx': () => SRC_CodeIDE,
+    'tasteprint/code/tokenizer.jsx': () => SRC_tokenizer,
+    'tasteprint/code/index.js': () => SRC_codeIndex,
+    'tasteprint/code/CodeBenchmark.jsx': () => SRC_CodeBenchmark,
+    'tasteprint/code/CodeMinimap.jsx': () => SRC_CodeMinimap,
+    'tasteprint/code/CodeNotebook.jsx': () => SRC_CodeNotebook,
+    'tasteprint/code/CodeReview.jsx': () => SRC_CodeReview,
+    'tasteprint/code/CodeTypewriter.jsx': () => SRC_CodeTypewriter,
+    'tasteprint/code/AsciiArt.jsx': () => SRC_AsciiArt,
+    'tasteprint/hooks/useKeyboard.js': () => SRC_useKeyboard,
+    'tasteprint/hooks/useHistory.js': () => SRC_useHistory,
   };
 
   const getFile = (path) => {
@@ -3362,13 +3464,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {!welcomeDismissed && activeFile === 'src/main.js' && !output && (
             <div style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 24, zIndex: 12, background: '#1e1e2e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#cba6f7', letterSpacing: '-.02em' }}>Tasteprint IDE</div>
-              <div style={{ fontSize: 9, color: '#555', maxWidth: 260, textAlign: 'center', lineHeight: '1.5' }}>
-                Code your designs. The <span style={{ color: '#cba6f7' }}>tp</span> API gives you full control over the canvas — add components, change themes, and automate layouts.
+              <div style={{ fontSize: 9, color: '#555', maxWidth: 280, textAlign: 'center', lineHeight: '1.5' }}>
+                Code your designs. The <span style={{ color: '#cba6f7' }}>tp</span> API gives you full control over the canvas. Browse the full <span style={{ color: '#61dafb' }}>source code</span> in the file explorer.
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 {[
                   { label: '\u25B6 Run main.js', action: () => { setWelcomeDismissed(true); runCode(); }, color: '#27c93f' },
                   { label: 'Open Playground', action: () => { setWelcomeDismissed(true); openFile('src/playground.js'); }, color: '#f9e2af' },
+                  { label: 'Browse Source', action: () => { setWelcomeDismissed(true); openFile('tasteprint/App.jsx'); setOpenFolders(prev => ({ ...prev, tasteprint: true })); }, color: '#61dafb' },
                   { label: 'API Docs', action: () => { setWelcomeDismissed(true); openFile('docs/api.js'); }, color: '#89b4fa' },
                 ].map(b => (
                   <button key={b.label} onClick={b.action} onMouseDown={stop}
@@ -4539,7 +4642,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               style={{ fontSize: fs(8), color: '#89b4fa', cursor: 'pointer', opacity: .7 }}
               title="Reset zoom (⌘0)">{Math.round(editorZoom * 100)}%</span>}
             <span style={{ fontSize: fs(8), color: '#555' }}>
-              {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
+              {activeFile.endsWith('.jsx') ? 'React JSX' : activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
             </span>
             <span style={{ fontSize: fs(8), color: '#555' }}>{code.length > 1024 ? `${(code.length / 1024).toFixed(1)}KB` : `${code.length}B`}</span>
             {(() => {
