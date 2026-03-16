@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 75: Conversational prosody & emphasis marking
+   Round 76: Conversational parallel structure
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -12489,6 +12489,150 @@ function applyProsody(response, text, sent) {
   return response;
 }
 
+/* ── Conversational Parallel Structure (Round 76) ──
+ * When users give multi-part inputs ("I like X, Y, and Z", "should I use
+ * React or Vue?", "what about cost, speed, and reliability?"), humans
+ * naturally address each part. Bad chatbots only respond to the last item.
+ *
+ * This module detects parallel items in user input and restructures the
+ * response to acknowledge multiple parts — either by generating brief
+ * comments for each item or by explicitly listing responses.
+ *
+ * Detection strategies:
+ * 1. Comma-separated lists: "X, Y, and Z"
+ * 2. "or" alternatives: "X or Y"
+ * 3. Multi-question inputs: sentences ending with "?"
+ * 4. "both X and Y" patterns
+ *
+ * 22% fire rate, 5-turn cooldown. Only fires when items detected >= 2.
+ */
+
+let lastParallelTurn = 0;
+
+// Extract parallel items from user text
+function detectParallelItems(text) {
+  const items = [];
+
+  // Pattern 1: "X, Y, and Z" or "X, Y, & Z"
+  const listMatch = text.match(/\b([\w\s]+),\s+([\w\s]+),?\s+(?:and|&)\s+([\w\s]+)/i);
+  if (listMatch) {
+    items.push(...[listMatch[1], listMatch[2], listMatch[3]].map(s => s.trim()).filter(s => s.length > 1 && s.length < 30));
+    if (items.length >= 2) return { items, type: "list" };
+  }
+
+  // Pattern 2: "X or Y" alternatives
+  const orMatch = text.match(/\b([\w\s]{2,25})\s+or\s+([\w\s]{2,25})(?:\?|$|\.)/i);
+  if (orMatch) {
+    const a = orMatch[1].trim().replace(/^(?:should i use|between|choose|pick|try|use|go with|get) /i, "");
+    const b = orMatch[2].trim();
+    if (a.length > 1 && b.length > 1) return { items: [a, b], type: "alternative" };
+  }
+
+  // Pattern 3: "both X and Y"
+  const bothMatch = text.match(/both\s+([\w\s]{2,25})\s+and\s+([\w\s]{2,25})/i);
+  if (bothMatch) {
+    return { items: [bothMatch[1].trim(), bothMatch[2].trim()], type: "both" };
+  }
+
+  // Pattern 4: Multiple questions in one message
+  const questions = text.split(/[?]/).filter(s => s.trim().length > 5);
+  if (questions.length >= 2) {
+    return { items: questions.map(q => q.trim()), type: "multi_question" };
+  }
+
+  return null;
+}
+
+// Generate brief per-item reactions
+function generateItemReactions(items, type) {
+  const reactions = {
+    positive: ["solid choice", "love that", "good one", "classic", "great pick", "can't go wrong there", "nice", "respectable"],
+    compare: ["has its strengths", "is great for certain things", "depends on what you need", "has a loyal fanbase for a reason", "brings something different to the table"],
+    acknowledge: ["yeah", "for sure", "definitely", "that's a big one", "important one", "underrated actually", "huge", "key factor"],
+  };
+
+  const pool = type === "alternative" ? reactions.compare :
+               type === "list" ? reactions.positive : reactions.acknowledge;
+
+  const used = new Set();
+  return items.map(item => {
+    let reaction;
+    do {
+      reaction = pool[Math.floor(Math.random() * pool.length)];
+    } while (used.has(reaction) && used.size < pool.length);
+    used.add(reaction);
+    return { item, reaction };
+  });
+}
+
+function applyParallelStructure(response, text) {
+  const turn = mem.turn;
+
+  if (turn < 3) return response;
+  if (turn - lastParallelTurn < 5) return response;    // 5-turn cooldown
+  if (response.length > 220) return response;            // don't bloat
+  if (response.length < 20) return response;             // too short
+  if (Math.random() > 0.22) return response;              // 22% fire rate
+
+  const parallel = detectParallelItems(text);
+  if (!parallel) return response;
+
+  const { items, type } = parallel;
+  if (items.length < 2 || items.length > 5) return response;
+
+  lastParallelTurn = turn;
+  const reactions = generateItemReactions(items, type);
+  const roll = Math.random();
+
+  if (type === "alternative") {
+    // "X vs Y" — address both sides
+    const [a, b] = reactions;
+    const framings = [
+      `${a.item} ${a.reaction}, but ${b.item} ${b.reaction}. ${response}`,
+      `Hmm, ${a.item}... ${a.reaction}. And ${b.item}? ${b.reaction}. ${response.replace(/^(Well|So|Hmm|I think|Honestly),? ?/i, "")}`,
+      `${response.replace(/[.!]\s*$/, "")} — ${a.item} ${a.reaction}, ${b.item} ${b.reaction}.`,
+    ];
+    return framings[Math.floor(Math.random() * framings.length)];
+  }
+
+  if (type === "list" && items.length >= 3) {
+    // Acknowledge the list with brief per-item nods
+    if (roll < 0.5) {
+      // Inline: "X — nice, Y — solid, and Z — love that"
+      const parts = reactions.map((r, i) => {
+        const connector = i === reactions.length - 1 ? "and " : "";
+        return `${connector}${r.item} — ${r.reaction}`;
+      });
+      return parts.join(", ") + ". " + response;
+    } else {
+      // Summary: acknowledge the breadth then respond
+      const breadthPhrases = [
+        `All three are solid picks.`,
+        `Good taste across the board.`,
+        `Each of those brings something different.`,
+        `Interesting mix.`,
+      ];
+      return breadthPhrases[Math.floor(Math.random() * breadthPhrases.length)] + " " + response;
+    }
+  }
+
+  if (type === "both") {
+    const [a, b] = reactions;
+    return `${a.item}? ${a.reaction.charAt(0).toUpperCase() + a.reaction.slice(1)}. ${b.item}? ${b.reaction.charAt(0).toUpperCase() + b.reaction.slice(1)}. ${response}`;
+  }
+
+  if (type === "multi_question") {
+    // Address first question explicitly, then the rest
+    if (items.length === 2) {
+      const connectors = ["And for your second question — ", "As for the other thing — ", "Oh and — "];
+      return response + " " + connectors[Math.floor(Math.random() * connectors.length)] + items[1].replace(/^\s*(and|also|but)\s*/i, "").trim() + "? Good question, honestly.";
+    }
+    return `You're asking a few things at once — love that. ${response} As for the rest, each one deserves its own moment.`;
+  }
+
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -12989,6 +13133,9 @@ export function getAIResponse(input) {
   // ═══ Prosody & emphasis: strategic caps, em-dashes, ellipsis, stretched words, repetition ═══
   response = applyProsody(response, text, sent);
 
+  // ═══ Parallel structure: address multi-part inputs (lists, alternatives, multi-questions) ═══
+  response = applyParallelStructure(response, text);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -13041,6 +13188,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
