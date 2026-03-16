@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 47: Narrative understanding & story acknowledgment
+   Round 48: Implicit need detection & experience context awareness
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -3838,6 +3838,261 @@ function respondToImplicitFarewell() {
   return resp;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   IMPLICIT NEED DETECTION — Experience Context & Proactive Help (Round 48)
+   People share experiences as statements, not questions:
+   "I just started learning React" → beginner wanting encouragement/tips
+   "My team wants to switch to X" → wants perspective on a group decision
+   "I finally got X working" → celebrating an achievement
+   "Everyone seems to love X" → curious about a trend, wants understanding
+   "I've been doing X for years" → expert sharing, wants recognition
+   "I tried X but..." → hit a wall, wants troubleshooting help
+   This engine detects these experiential contexts and generates responses
+   that address the REAL need, not just the topic keyword.
+   ══════════════════════════════════════════════════════════════════ */
+
+const EXPERIENCE_PATTERNS = {
+  beginner: {
+    patterns: [
+      /i (?:just )?(?:started|began) (?:learning|studying|using|trying|picking up|working with) (.+?)(?:\.|!|$)/i,
+      /i'?m (?:just )?(?:getting into|diving into|trying out|experimenting with|exploring) (.+?)(?:\.|!|$)/i,
+      /i (?:recently )?(?:picked up|took up|started with|got into) (.+?)(?:\.|!|$)/i,
+      /(?:first time|first day|first week|brand new) (?:with|using|trying|learning) (.+?)(?:\.|!|$)/i,
+    ],
+    need: "encouragement_and_tips",
+  },
+  achievement: {
+    patterns: [
+      /i (?:finally |just )?(?:got|figured|worked) (?:it |this |that )?(?:out|working|done|fixed|solved|built|finished|shipped|deployed|launched)/i,
+      /i (?:finally |just )?(?:finished|completed|shipped|launched|deployed|built|created|made|released) (.+?)(?:\.|!|$)/i,
+      /it (?:finally )?(?:works|worked|clicked|makes sense)(?:!|\.|\s|$)/i,
+      /i (?:did it|made it|nailed it|crushed it|pulled it off)/i,
+    ],
+    need: "celebration",
+  },
+  teamPressure: {
+    patterns: [
+      /(?:my (?:team|boss|company|manager|lead|org|workplace)) (?:wants|decided|is (?:pushing|switching|moving)|chose|picked) (?:to (?:use|switch to|adopt|try|move to) )?(.+?)(?:\.|!|$)/i,
+      /(?:we'?re|our team is) (?:switching|moving|migrating|transitioning) (?:to|from) (.+?)(?:\.|!|$)/i,
+      /(?:they|management) (?:want|decided|chose|picked) (.+?)(?:\.|!|$)/i,
+    ],
+    need: "perspective_on_decision",
+  },
+  trendCuriosity: {
+    patterns: [
+      /everyone(?:'s| is| seems to be) (?:talking about|using|into|obsessed with|hyped about|raving about) (.+?)(?:\.|!|$)/i,
+      /(?:i keep (?:hearing|seeing)|there'?s (?:so much|a lot of) (?:hype|buzz|talk)) about (.+?)(?:\.|!|$)/i,
+      /(.+?) (?:is|seems) (?:everywhere|all over|trending|blowing up|getting popular)(?:\.|!|$)/i,
+      /what'?s (?:the (?:deal|hype|fuss|buzz)) (?:with|about) (.+?)(?:\?|$)/i,
+    ],
+    need: "trend_explanation",
+  },
+  veteran: {
+    patterns: [
+      /i'?ve been (?:using|doing|working with|building with|coding in|writing) (.+?) for (?:\d+|a (?:few|couple|long)|many|several|years|quite)/i,
+      /i'?ve (?:used|worked with|done|been doing) (.+?) (?:for years|since|forever|a long time|my whole career)/i,
+      /i (?:know|love|live and breathe) (.+?) (?:inside and out|pretty well|backwards and forwards|really well)/i,
+    ],
+    need: "expert_recognition",
+  },
+  stuckOnProblem: {
+    patterns: [
+      /i'?ve been (?:stuck|struggling|staring at|fighting with|wrestling with|banging my head|losing my mind) (?:on|with|over|at) (.+?)(?:\.|!|$)/i,
+      /i (?:can'?t|cannot) (?:figure out|get|make|understand|solve|fix|debug) (.+?)(?:\.|!|$)/i,
+      /(.+?) (?:keeps? (?:breaking|crashing|failing|erroring|not working)|(?:is|are) (?:driving me crazy|killing me|broken))/i,
+      /i tried (.+?) but (?:it )?(?:didn'?t|doesn'?t|won'?t) (?:work|help|fix|solve)/i,
+    ],
+    need: "troubleshooting_empathy",
+  },
+  decisionParalysis: {
+    patterns: [
+      /i (?:can'?t|cannot) (?:decide|choose|pick) (?:between|whether) (.+?)(?:\.|!|$)/i,
+      /(?:should i|i'?m (?:not sure|unsure|torn|debating) (?:if i should|whether to|about)) (?:use|learn|try|switch to|go with|pick) (.+?)(?:\.|!|\?|$)/i,
+      /(.+?) (?:or|vs\.?|versus) (.+?)[\s—–-]+(?:which|what|i can'?t|help)/i,
+      /i'?m (?:torn|split|on the fence|undecided) (?:between|about|on) (.+?)(?:\.|!|$)/i,
+    ],
+    need: "decision_help",
+  },
+};
+
+function detectExperienceContext(text, lower, topics) {
+  for (const [context, config] of Object.entries(EXPERIENCE_PATTERNS)) {
+    for (const pat of config.patterns) {
+      const m = text.match(pat) || lower.match(pat);
+      if (m) {
+        // Extract subject from capture group
+        const raw = (m[2] || m[1] || "").replace(/[.!?,]$/, "").trim();
+        if (raw.length < 2 && context !== "achievement") continue;
+        const subjectTopics = raw.length >= 2 ? extractTopics(tokenize(raw)) : topics;
+        return { context, need: config.need, subject: raw, topics: subjectTopics.length > 0 ? subjectTopics : topics };
+      }
+    }
+  }
+  return null;
+}
+
+function respondToExperienceContext(exp, text, sent, topics) {
+  const subject = exp.subject || (exp.topics[0] || "that");
+  const topic = exp.topics[0] || subject;
+  const hasAssoc = ASSOC[topic];
+  const hasExplain = EXPLAIN[topic.toLowerCase().replace(/\s+/g, "")];
+
+  switch (exp.need) {
+    case "encouragement_and_tips": {
+      const openers = [
+        `Oh nice, welcome to the ${subject} world! `,
+        `That's exciting — ${subject} is a great choice to learn! `,
+        `Love that you're diving into ${subject}! `,
+        `${subject.charAt(0).toUpperCase() + subject.slice(1)} is a solid pick — you're going to enjoy the journey. `,
+      ];
+      let resp = pick(openers);
+      if (hasExplain) resp += hasExplain.brief + " ";
+      else if (hasAssoc?.opinions?.length) resp += "Honestly, " + pick(hasAssoc.opinions) + ". ";
+      if (hasAssoc?.facts?.length) resp += pick(hasAssoc.facts) + ". ";
+      const tips = [
+        `The biggest tip I'd give: build something small early. Tutorials are great but nothing beats hands-on.`,
+        `My advice: don't try to learn everything at once. Pick one small thing and get good at it.`,
+        `Pro tip: the frustration phase is temporary. Once it clicks, it REALLY clicks.`,
+        `Start with the official docs or a small project — that's where the real learning happens.`,
+      ];
+      resp += pick(tips);
+      if (hasAssoc?.hooks?.length) resp += " " + pick(hasAssoc.hooks);
+      return resp;
+    }
+    case "celebration": {
+      const celebrations = [
+        "YES! That feeling when it finally clicks is the BEST. 🎉 What was the breakthrough?",
+        "Let's GO! There's no better feeling than getting something to work after struggling with it. What did you build?",
+        "That's awesome! The sense of accomplishment when it works is unmatched. Tell me about it!",
+        "🎉 NICE! You should be proud of that — seriously. What made it finally click?",
+        "The victory moment! That dopamine hit when the code works is why we do this. What was the tricky part?",
+      ];
+      let resp = pick(celebrations);
+      if (topic && hasAssoc?.opinions?.length && Math.random() > 0.6) {
+        resp += ` And ${topic} — ` + pick(hasAssoc.opinions) + ".";
+      }
+      return resp;
+    }
+    case "perspective_on_decision": {
+      let resp = "";
+      const openers = [
+        `Oh interesting — a ${subject} move. I have thoughts on this. `,
+        `${subject.charAt(0).toUpperCase() + subject.slice(1)}, huh? That's a big team decision. `,
+        `That's a significant switch! Let me share some perspective on ${subject}. `,
+      ];
+      resp = pick(openers);
+      if (hasExplain) resp += hasExplain.deep + " ";
+      else if (hasAssoc) {
+        if (hasAssoc.opinions?.length) resp += "Generally speaking, " + pick(hasAssoc.opinions) + ". ";
+        if (hasAssoc.facts?.length) resp += pick(hasAssoc.facts) + ". ";
+      }
+      const closers = [
+        "How do you feel about the switch?",
+        "Are you excited about it or more reluctant?",
+        "What's driving the decision?",
+        "Is the team on board or is there pushback?",
+      ];
+      resp += pick(closers);
+      return resp;
+    }
+    case "trend_explanation": {
+      let resp = "";
+      const openers = [
+        `Yeah, ${subject} is definitely having a moment! Here's why: `,
+        `The ${subject} hype is real — and honestly, it's mostly deserved. `,
+        `Ha, ${subject} IS everywhere right now. Let me break down why. `,
+      ];
+      resp = pick(openers);
+      if (hasExplain) resp += hasExplain.deep + " ";
+      else if (hasAssoc) {
+        if (hasAssoc.facts?.length) resp += pick(hasAssoc.facts) + ". ";
+        if (hasAssoc.opinions?.length) resp += pick(hasAssoc.opinions) + ". ";
+      } else {
+        resp += `It's gotten a lot of attention recently and I can see why people are drawn to it. `;
+      }
+      const closers = [
+        "Have you tried it yourself yet?",
+        "Are you thinking about jumping on the bandwagon?",
+        "Curious — are you drawn to it or skeptical?",
+        "What made you notice the trend?",
+      ];
+      resp += pick(closers);
+      return resp;
+    }
+    case "expert_recognition": {
+      const openers = [
+        `Oh wow, a seasoned ${subject} person! I respect the depth that comes from years of experience. `,
+        `Nice — you've put in the reps with ${subject}. That kind of deep knowledge is invaluable. `,
+        `A ${subject} veteran! That's awesome — you've probably seen the whole evolution. `,
+      ];
+      let resp = pick(openers);
+      if (hasAssoc?.hooks?.length) {
+        resp += pick(hasAssoc.hooks);
+      } else {
+        const hooks = [
+          `What's the biggest lesson ${subject} has taught you over the years?`,
+          `What's changed the most about ${subject} since you started?`,
+          `Do you ever mentor others on ${subject}?`,
+          `What would you tell someone just starting with ${subject}?`,
+        ];
+        resp += pick(hooks);
+      }
+      return resp;
+    }
+    case "troubleshooting_empathy": {
+      const openers = [
+        `Ugh, that's the worst feeling. ${subject.charAt(0).toUpperCase() + subject.slice(1)} debugging can be maddening. `,
+        `I feel you — being stuck is so frustrating, especially when you've been at it a while. `,
+        `That sounds rough! ${subject.charAt(0).toUpperCase() + subject.slice(1)} issues can be tricky to pin down. `,
+        `Been there (well, metaphorically). Getting stuck on ${subject} is a rite of passage, honestly. `,
+      ];
+      let resp = pick(openers);
+      if (hasAssoc?.facts?.length && Math.random() > 0.5) {
+        resp += "For context: " + pick(hasAssoc.facts) + ". ";
+      }
+      const tips = [
+        "Sometimes stepping away for 10 minutes and coming back fresh reveals the answer instantly.",
+        "The rubber duck method is no joke — try explaining the problem out loud step by step.",
+        "Have you tried narrowing it down? Comment out half the code and see if it still breaks.",
+        "Fresh eyes help. If you describe what's happening vs what you expect, I can try to think through it with you.",
+      ];
+      resp += pick(tips) + " What exactly is going wrong?";
+      return resp;
+    }
+    case "decision_help": {
+      let resp = "";
+      // Try to find a comparison
+      const parts = exp.subject.split(/\s+(?:or|vs\.?|versus)\s+/i).map(s => s.trim().toLowerCase());
+      if (parts.length >= 2) {
+        const a = parts[0].replace(/\s+/g, ""), b = parts[1].replace(/\s+/g, "");
+        const comp = lookupComparison(a, b);
+        if (comp) {
+          resp = `Great question! ` + comp.take + " " + comp.hook;
+          return resp;
+        }
+      }
+      const openers = [
+        `That's a legit dilemma! Here's how I'd think about it: `,
+        `Totally fair to be torn on this. Let me share a framework: `,
+        `Good problem to have! Here's my take: `,
+      ];
+      resp = pick(openers);
+      if (parts.length >= 2) {
+        const aAssoc = ASSOC[parts[0]] || ASSOC[parts[0].replace(/\s+/g, "")];
+        const bAssoc = ASSOC[parts[1]] || ASSOC[parts[1].replace(/\s+/g, "")];
+        if (aAssoc?.opinions?.length) resp += parts[0] + " — " + pick(aAssoc.opinions) + ". ";
+        if (bAssoc?.opinions?.length) resp += parts[1] + " — " + pick(bAssoc.opinions) + ". ";
+        resp += "The right choice depends on what you value most. What matters most to you in this decision?";
+      } else {
+        resp += `It usually comes down to: what are you trying to achieve? What's your timeline? And what feels right in your gut? What's pulling you in each direction?`;
+      }
+      return resp;
+    }
+    default:
+      return null;
+  }
+}
+
 // Main pragmatic inference — called early in generateResponse
 function inferPragmatics(text, lower, parsed, topics) {
   // 1. Indirect requests ("can you explain X?" → explain X)
@@ -3949,6 +4204,15 @@ function generateResponse(text) {
   // "Guess what" → probe for story
   const pragmatic = inferPragmatics(text, parsed.lower || text.toLowerCase(), parsed, topics);
   if (pragmatic) return pragmatic;
+
+  // ═══ 0.82. Implicit need detection — experience-sharing statements ═══
+  // "I just started learning X" → encouragement+tips, "I finally got it working" → celebration
+  // "My team wants to switch to X" → perspective, "I've been stuck on X" → empathy+help
+  const expContext = detectExperienceContext(text, parsed.lower || text.toLowerCase(), topics);
+  if (expContext) {
+    const expResp = respondToExperienceContext(expContext, text, sent, topics);
+    if (expResp) return expResp;
+  }
 
   // ═══ 0.85. Meta-conversational awareness — comments about the AI/conversation ═══
   const meta = handleMetaConversation(text, parsed.lower || text.toLowerCase(), sent);
