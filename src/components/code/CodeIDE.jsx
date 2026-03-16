@@ -573,6 +573,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Search state ---- */
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const searchHistory = React.useRef([]);
+  const [showSearchHist, setShowSearchHist] = React.useState(false);
   const [replaceWith, setReplaceWith] = React.useState('');
   const [showReplace, setShowReplace] = React.useState(false);
   const searchRef = React.useRef(null);
@@ -2025,6 +2027,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   const jumpToMatch = (dir) => {
     if (!searchMatches.length) return;
+    // Save to search history
+    if (searchTerm && !searchHistory.current.includes(searchTerm)) {
+      searchHistory.current = [searchTerm, ...searchHistory.current].slice(0, 12);
+    }
     const next = dir > 0 ? (searchIdx + 1) % searchMatches.length : (searchIdx - 1 + searchMatches.length) % searchMatches.length;
     setSearchIdx(next);
     const m = searchMatches[next];
@@ -2077,6 +2083,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Transform to Lowercase', key: 'lower', hint: 'Ctrl+\u21E7+U' },
       { label: 'Transform to Title Case', key: 'title', hint: '' },
       { label: 'Transform to camelCase', key: 'camel', hint: '' },
+      { label: 'Transform to snake_case', key: 'snake', hint: '' },
+      { label: 'Transform to kebab-case', key: 'kebab', hint: '' },
       { label: 'Sort Lines Ascending', key: 'sortasc', hint: '' },
       { label: 'Sort Lines Descending', key: 'sortdesc', hint: '' },
       { label: 'Remove Duplicate Lines', key: 'dedup', hint: '' },
@@ -2187,7 +2195,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'zoomin') setEditorZoom(z => Math.min(2, z + 0.1));
     else if (key === 'zoomout') setEditorZoom(z => Math.max(0.6, z - 0.1));
     else if (key === 'zoomreset') setEditorZoom(1);
-    else if (key === 'upper' || key === 'lower' || key === 'title' || key === 'camel') {
+    else if (key === 'upper' || key === 'lower' || key === 'title' || key === 'camel' || key === 'snake' || key === 'kebab') {
       if (readonly) return;
       const el = taRef.current;
       if (el) {
@@ -2198,7 +2206,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           if (key === 'upper') transformed = sel.toUpperCase();
           else if (key === 'lower') transformed = sel.toLowerCase();
           else if (key === 'title') transformed = sel.replace(/\b\w/g, c => c.toUpperCase());
-          else transformed = sel.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^./, c => c.toLowerCase());
+          else if (key === 'camel') transformed = sel.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^./, c => c.toLowerCase());
+          else if (key === 'snake') transformed = sel.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[-\s]+/g, '_').toLowerCase();
+          else transformed = sel.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[_\s]+/g, '-').toLowerCase();
           setCode(code.substring(0, s) + transformed + code.substring(en));
           setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + transformed.length; el.focus(); }, 0);
           showToast(`Transformed to ${key}`, 'info');
@@ -4285,10 +4295,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {/* Search bar */}
           {searchOpen && (
             <div onMouseDown={stop} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff08', flexShrink: 0, alignItems: 'center' }}>
-              <input ref={searchRef} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSearchIdx(0); }}
-                placeholder="Find..." spellCheck={false}
-                onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setSearchOpen(false); taRef.current?.focus(); } if (e.key === 'Enter') { e.shiftKey ? jumpToMatch(-1) : jumpToMatch(1); } }}
-                style={{ flex: 1, minWidth: 80, maxWidth: 140, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+              <div style={{ position: 'relative', flex: 1, minWidth: 80, maxWidth: 140 }}>
+                <input ref={searchRef} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSearchIdx(0); setShowSearchHist(false); }}
+                  placeholder="Find..." spellCheck={false}
+                  onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { if (showSearchHist) setShowSearchHist(false); else { setSearchOpen(false); taRef.current?.focus(); } } if (e.key === 'Enter') { e.shiftKey ? jumpToMatch(-1) : jumpToMatch(1); } if (e.key === 'ArrowDown' && !searchTerm && searchHistory.current.length) { e.preventDefault(); setShowSearchHist(true); } }}
+                  style={{ width: '100%', background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                {searchHistory.current.length > 0 && <span onClick={() => setShowSearchHist(h => !h)} style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', fontSize: 8, color: '#555', cursor: 'pointer', lineHeight: 1 }} title="Search history">{'\u29D6'}</span>}
+                {showSearchHist && searchHistory.current.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#181825', border: '1px solid #ffffff15', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,.5)', zIndex: 30, maxHeight: 120, overflow: 'auto' }}>
+                    {searchHistory.current.map((h, i) => (
+                      <div key={i} onClick={() => { setSearchTerm(h); setSearchIdx(0); setShowSearchHist(false); setTimeout(() => searchRef.current?.focus(), 0); }}
+                        style={{ fontSize: 8, padding: '3px 6px', cursor: 'pointer', color: '#a6adc8', fontFamily: MONO, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#cba6f715'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>{h}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <span onClick={() => setSearchCase(c => !c)} style={{ fontSize: 7, color: searchCase ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchCase ? '#cba6f718' : 'transparent', fontWeight: 600 }} title="Case sensitive">Aa</span>
               <span onClick={() => setSearchWholeWord(w => !w)} style={{ fontSize: 7, color: searchWholeWord ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchWholeWord ? '#cba6f718' : 'transparent', fontWeight: 600, fontFamily: MONO }} title="Whole word">ab</span>
               <span onClick={() => setSearchRegex(r => !r)} style={{ fontSize: 7, color: searchRegex ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchRegex ? '#cba6f718' : 'transparent', fontWeight: 600 }} title="Regex">.*</span>
@@ -6064,6 +6087,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   }},
                   { icon: '\u2191', tip: 'To uppercase', action: () => { setCode(code.substring(0, s) + sel.toUpperCase() + code.substring(en)); setSelToolbar(null); } },
                   { icon: '\u2193', tip: 'To lowercase', action: () => { setCode(code.substring(0, s) + sel.toLowerCase() + code.substring(en)); setSelToolbar(null); } },
+                  isWord && { icon: 'aB', tip: 'To camelCase', action: () => { setCode(code.substring(0, s) + sel.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^./, c => c.toLowerCase()) + code.substring(en)); setSelToolbar(null); } },
+                  isWord && { icon: 'a_b', tip: 'To snake_case', action: () => { setCode(code.substring(0, s) + sel.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[-\s]+/g, '_').toLowerCase() + code.substring(en)); setSelToolbar(null); } },
+                  isMultiLine && { icon: '//', tip: 'Toggle comment', action: () => {
+                    const selLines = sel.split('\n');
+                    const allCommented = selLines.every(l => /^\s*\/\//.test(l) || !l.trim());
+                    const toggled = selLines.map(l => allCommented ? l.replace(/^(\s*)\/\/\s?/, '$1') : l.replace(/^(\s*)/, '$1// ')).join('\n');
+                    setCode(code.substring(0, s) + toggled + code.substring(en));
+                    setSelToolbar(null);
+                  }},
                 ].filter(Boolean);
                 return (
                   <div onMouseDown={stop} style={{
@@ -6157,17 +6189,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         const isSearch = searchMatchLines.has(i + 1);
                         const isWordMatch = wordMatchLines.has(i + 1);
                         const isBookmark = bookmarks.has(i + 1);
+                        const isBP = breakpoints.has(i + 1);
                         const isSel = selRange[i + 1];
                         const isScope = activeScope && i + 1 >= activeScope.startLn && i + 1 <= activeScope.endLn;
                         return <div key={i} style={{
                           height: Math.max(1, Math.min(2, 120 / lines.length)),
                           marginBottom: lines.length > 100 ? 0 : 1,
                           width: `${Math.max(4, (trimLen / 36) * 100)}%`,
-                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isBookmark ? '#89b4fa' : isLint ? '#f9e2af60' : isWordMatch ? '#cba6f750' : isSel ? '#cba6f740' : isActive ? '#cba6f760' : isScope ? '#cba6f718' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
+                          background: isErr ? '#f38ba8' : isBP ? '#f38ba880' : isSearch ? '#f9e2af' : isBookmark ? '#89b4fa' : isLint ? '#f9e2af60' : isWordMatch ? '#cba6f750' : isSel ? '#cba6f740' : isActive ? '#cba6f760' : isScope ? '#cba6f718' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
                           borderRadius: 1,
                           position: 'relative',
                         }}>
                           {isBookmark && <span style={{ position: 'absolute', right: -2, top: -1, width: 3, height: 3, borderRadius: 99, background: '#89b4fa' }} />}
+                          {isBP && <span style={{ position: 'absolute', left: -2, top: -1, width: 3, height: 3, borderRadius: 99, background: '#f38ba8' }} />}
                         </div>;
                       });
                     })()}
@@ -6464,7 +6498,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         padding: '4px 10px', cursor: 'pointer',
                         color: termTab === tab ? '#cba6f7' : '#555',
                         borderBottom: termTab === tab ? '1px solid #cba6f7' : '1px solid transparent',
-                      }}>{tab}{tab === 'problems' && (output?.err || lines.some(l => /\bvar\b/.test(l) || (/==(?!=)/.test(l) && !/===/.test(l)))) ? ' \u25CF' : ''}</span>
+                      }}>{tab}{tab === 'problems' && (output?.err || lines.some(l => /\bvar\b/.test(l) || (/==(?!=)/.test(l) && !/===/.test(l)) || /\/\/\s*(TODO|FIXME|HACK|BUG)\b/i.test(l))) ? ' \u25CF' : ''}</span>
                   ))}
                   {output?.ms && <span style={{ fontSize: 8, color: '#27c93f', opacity: .5, marginLeft: 6 }}>{output.ms}ms</span>}
                   {output?.logs?.length > 0 && termTab === 'output' && (
@@ -6618,6 +6652,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const all = code.split('\n'); all.splice(i, 1); setCode(all.join('\n')); showToast('Removed debugger', 'success');
                         }});
                         if (/,\s*[}\]]/.test(l) && !/\/\//.test(l.substring(0, l.indexOf(',')))) { /* trailing comma OK */ }
+                        const todoMatch = trimmed.match(/\/\/\s*(TODO|FIXME|HACK|XXX|BUG|NOTE)\b[:\s]*(.*)/i);
+                        if (todoMatch) hints.push({ ln: i + 1, msg: `${todoMatch[1].toUpperCase()}: ${todoMatch[2].trim() || '(no description)'}`, sev: todoMatch[1].toUpperCase() === 'FIXME' || todoMatch[1].toUpperCase() === 'BUG' ? 'warn' : 'info', tag: todoMatch[1].toUpperCase() });
                         if (/\bnew\s+Array\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use [] instead of new Array()', sev: 'info', fix: () => {
                           const all = code.split('\n'); all[i] = all[i].replace(/new\s+Array\(\)/g, '[]'); setCode(all.join('\n')); showToast('Fixed: new Array() → []', 'success');
                         }});
@@ -6695,6 +6731,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <span>{h.sev === 'warn' ? '\u26A0' : '\u24D8'}</span>
+                        {h.tag && <span style={{ fontSize: 6, background: h.tag === 'FIXME' || h.tag === 'BUG' ? '#f38ba820' : h.tag === 'HACK' ? '#f9e2af20' : '#89b4fa20', color: h.tag === 'FIXME' || h.tag === 'BUG' ? '#f38ba8' : h.tag === 'HACK' ? '#f9e2af' : '#89b4fa', padding: '0 3px', borderRadius: 2, fontWeight: 600, letterSpacing: '.03em' }}>{h.tag}</span>}
                         <span style={{ flex: 1 }}>{h.msg}</span>
                         {h.fix && <span onClick={e => { e.stopPropagation(); h.fix(); }}
                           style={{ fontSize: 7, color: '#89b4fa', background: '#89b4fa10', padding: '1px 4px', borderRadius: 2, cursor: 'pointer', flexShrink: 0 }}
