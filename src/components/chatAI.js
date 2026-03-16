@@ -7087,6 +7087,151 @@ function breakPattern(response, text, topics, energy) {
   return response;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   PRECISION ECHOING & CONTENT-AWARE REFLECTION (Round 42)
+   Generic mirroring says "tell me more about that." Precision echoing
+   extracts the SPECIFIC detail — the verb, the struggle, the tool
+   name, the emotional phrase — and reflects it back with surgical
+   accuracy. "You said the borrow checker keeps tripping you up —
+   is it the lifetime annotations or the ownership model?"
+   Fire rate: ~20% of eligible turns (long enough input, 4-turn cooldown).
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastEchoTurn = 0;
+
+// Extract structured content from user input
+function extractContent(text, tokens, lower) {
+  const content = { actions: [], concepts: [], struggles: [], tools: [], emotions: [] };
+
+  // Actions: what the user is DOING (verb phrases)
+  const actionPats = [
+    { pat: /i(?:'m| am) (?:trying to|working on|building|learning|creating|making|debugging|fixing|writing|designing|studying|researching|exploring|reading about|getting into|starting)\s+(.+?)(?:\.|,|!|\?|$)/i, type: "ongoing" },
+    { pat: /i (?:want to|need to|have to|plan to|hope to|decided to)\s+(.+?)(?:\.|,|!|\?|$)/i, type: "goal" },
+    { pat: /i (?:just|recently) (?:started|finished|tried|learned|discovered|found|built|shipped|deployed|released)\s+(.+?)(?:\.|,|!|\?|$)/i, type: "recent" },
+  ];
+  for (const { pat, type } of actionPats) {
+    const m = text.match(pat);
+    if (m) content.actions.push({ text: m[1].trim().replace(/\s+/g, " ").slice(0, 60), type });
+  }
+
+  // Struggles: what's HARD (frustration markers + subject)
+  const strugglePats = [
+    /(?:keeps?|keep) (?:tripping|confusing|breaking|failing|crashing|bugging|messing)\s+(?:me\s+)?(?:up\s+)?(?:with |on |about )?(.+?)(?:\.|,|!|$)/i,
+    /(?:can't|cannot|struggling with|stuck on|confused (?:by|about)|having trouble with|having a hard time with)\s+(.+?)(?:\.|,|!|$)/i,
+    /(.+?) (?:is|are) (?:so |really |super )?(?:confusing|hard|tricky|difficult|annoying|frustrating|overwhelming)/i,
+  ];
+  for (const pat of strugglePats) {
+    const m = text.match(pat);
+    if (m) content.struggles.push(m[1].trim().slice(0, 40));
+  }
+
+  // Tools/technologies: specific named things
+  const toolPats = /\b(react|vue|angular|svelte|next\.?js|nuxt|remix|astro|vite|webpack|typescript|javascript|python|rust|go|swift|kotlin|java|c\+\+|ruby|php|elixir|haskell|sql|graphql|docker|kubernetes|aws|gcp|azure|firebase|supabase|prisma|drizzle|tailwind|sass|less|figma|sketch|framer|notion|linear|slack|discord|git|github|gitlab|vercel|netlify|railway|postgres|mongodb|redis|sqlite|node|deno|bun)\b/gi;
+  const toolMatches = text.match(toolPats);
+  if (toolMatches) content.tools = [...new Set(toolMatches.map(t => t.toLowerCase()))];
+
+  // Emotions: specific feeling phrases
+  const emotionPats = [
+    { pat: /i(?:'m| am| feel) (?:so |really |kinda |pretty )?(.+?)(?:\.|,|!|$)/i, extract: 1 },
+  ];
+  for (const { pat, extract } of emotionPats) {
+    const m = text.match(pat);
+    if (m) {
+      const word = m[extract].trim().split(/\s+/).slice(0, 3).join(" ");
+      if (word.length > 2 && word.length < 30) content.emotions.push(word);
+    }
+  }
+
+  return content;
+}
+
+// Generate precision echo that reflects specific details
+function precisionEcho(response, text, tokens) {
+  // Guards
+  if (text.length < 30) return response;
+  if (mem.turn - lastEchoTurn < 4) return response;
+  if (Math.random() > 0.20) return response;
+
+  const lower = text.toLowerCase();
+  const content = extractContent(text, tokens, lower);
+
+  // Need at least some extractable content
+  const hasContent = content.actions.length + content.struggles.length + content.tools.length > 0;
+  if (!hasContent) return response;
+
+  lastEchoTurn = mem.turn;
+
+  // Strategy 1: Sharpen a generic trailing question with specific content
+  const trailingQ = response.match(/\?[^?]*$/);
+  if (trailingQ) {
+    const genericQs = /what do you think|tell me more|what's (?:your|the) (?:take|story)|how (?:did|do) you|what got you|what draws you|what's on your mind|what aspect/i;
+    if (genericQs.test(trailingQ[0])) {
+      let sharpQ = null;
+
+      if (content.struggles.length > 0) {
+        const s = content.struggles[0];
+        sharpQ = pick([
+          `What specifically about ${s} is tripping you up — the concept or the syntax?`,
+          `When you hit the wall with ${s}, what does that actually look like?`,
+          `Is ${s} the kind of thing where you know WHAT to do but not HOW, or the other way around?`,
+        ]);
+      } else if (content.actions.length > 0 && content.tools.length > 0) {
+        const a = content.actions[0];
+        const t = content.tools[0];
+        sharpQ = pick([
+          `How far along are you with ${t}? Like, just starting out or already in the weeds?`,
+          `What made you pick ${t} for that? Were there other options you considered?`,
+          `Is ${a.text.slice(0, 30)} a personal project or something for work?`,
+        ]);
+      } else if (content.actions.length > 0) {
+        const a = content.actions[0];
+        sharpQ = pick([
+          `What's the hardest part of ${a.text.slice(0, 30)} so far?`,
+          `How long have you been at it?`,
+          `What does success look like for that?`,
+        ]);
+      }
+
+      if (sharpQ) {
+        // Replace the generic trailing question
+        return response.replace(/[^.!]*\?[^?]*$/, "").trim() + " " + sharpQ;
+      }
+    }
+  }
+
+  // Strategy 2: Replace vague acknowledgment at the start with specific echo
+  const vagueStarts = /^(that's (?:cool|interesting|great|awesome|nice)|oh (?:cool|nice|interesting)|neat|gotcha|I see|makes sense)/i;
+  if (vagueStarts.test(response)) {
+    let specificAck = null;
+
+    if (content.struggles.length > 0) {
+      specificAck = pick([
+        `Yeah, ${content.struggles[0]} is genuinely one of those things that takes a while to click.`,
+        `Oh man, ${content.struggles[0]} — that's a common pain point and for good reason.`,
+      ]);
+    } else if (content.tools.length > 0 && content.actions.length > 0) {
+      const tool = content.tools[0];
+      specificAck = pick([
+        `${tool.charAt(0).toUpperCase() + tool.slice(1)} for that — solid choice.`,
+        `Oh, ${tool}! That's a great pick for what you're doing.`,
+      ]);
+    } else if (content.actions.length > 0) {
+      const a = content.actions[0];
+      specificAck = pick([
+        `${a.type === "ongoing" ? "Building" : a.type === "goal" ? "Planning" : "Just did"} ${a.text.slice(0, 25)} — I love that.`,
+        `So you're ${a.type === "goal" ? "looking to" : "in the middle of"} ${a.text.slice(0, 25)} — nice.`,
+      ]);
+    }
+
+    if (specificAck) {
+      const rest = response.replace(vagueStarts, "").trim();
+      return specificAck + (rest ? " " + rest : "");
+    }
+  }
+
+  return response;
+}
+
 /* ── Conversation Arc Awareness ──
  * Tracks the NARRATIVE of the conversation — not just individual messages,
  * but the progression of topics, mood, and depth. At key moments,
@@ -7364,6 +7509,9 @@ export function getAIResponse(input) {
   // ═══ Detail seeding & specificity: replace vague fillers, inject vivid details ═══
   response = seedDetails(response, currentTopics);
 
+  // ═══ Precision echoing: replace generic questions/acks with content-specific ones ═══
+  response = precisionEcho(response, text, tokens);
+
   // ═══ Cross-domain analogy: unexpected connections between fields ═══
   response = injectAnalogy(response, currentTopics);
 
@@ -7418,6 +7566,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
