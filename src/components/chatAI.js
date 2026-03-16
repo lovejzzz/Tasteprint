@@ -9204,6 +9204,135 @@ function addConversationalHooks(response, topics, inputEnergy) {
   return addStrategicIncompleteness(response, topics, inputEnergy);
 }
 
+/* ── Emotional Trajectory Awareness (Round 53) ──
+ * Tracks sentiment over time as a trajectory, detecting mood shifts
+ * (improving, declining, volatile, stable) and responding to the
+ * *direction* of change, not just the current state.
+ * When someone warms up: celebrate the shift. When they decline: intervene.
+ * When they suddenly pivot: acknowledge the whiplash. When stable: stay calibrated.
+ */
+
+let emotionalTrajectory = [];   // [{ sent, emotion, turn }]
+let lastTrajectoryTurn = 0;
+let lastTrajectoryType = "";
+
+function trackEmotionalTrajectory(sent, emotion) {
+  emotionalTrajectory.push({ sent, emotion, turn: mem.turn });
+  if (emotionalTrajectory.length > 12) emotionalTrajectory.shift();
+}
+
+function analyzeTrajectory() {
+  if (emotionalTrajectory.length < 3) return null;
+
+  const recent = emotionalTrajectory.slice(-5);
+  const sentiments = recent.map(e => e.sent);
+
+  // Compute slope: positive = improving, negative = declining
+  const n = sentiments.length;
+  const xMean = (n - 1) / 2;
+  const yMean = sentiments.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (i - xMean) * (sentiments[i] - yMean);
+    den += (i - xMean) * (i - xMean);
+  }
+  const slope = den !== 0 ? num / den : 0;
+
+  // Compute volatility: standard deviation of sentiment changes
+  const diffs = [];
+  for (let i = 1; i < sentiments.length; i++) {
+    diffs.push(Math.abs(sentiments[i] - sentiments[i - 1]));
+  }
+  const avgDiff = diffs.length > 0 ? diffs.reduce((a, b) => a + b, 0) / diffs.length : 0;
+
+  // Detect sudden shift: last turn vs previous average
+  const lastSent = sentiments[sentiments.length - 1];
+  const prevAvg = sentiments.slice(0, -1).reduce((a, b) => a + b, 0) / (sentiments.length - 1);
+  const suddenShift = Math.abs(lastSent - prevAvg) > 2;
+
+  // Classify trajectory
+  if (suddenShift) {
+    return { type: lastSent > prevAvg ? "sudden_uplift" : "sudden_drop", slope, volatility: avgDiff, lastSent, prevAvg };
+  }
+  if (avgDiff > 1.8) return { type: "volatile", slope, volatility: avgDiff, lastSent, prevAvg };
+  if (slope > 0.4) return { type: "warming", slope, volatility: avgDiff, lastSent, prevAvg };
+  if (slope < -0.4) return { type: "cooling", slope, volatility: avgDiff, lastSent, prevAvg };
+  return { type: "stable", slope, volatility: avgDiff, lastSent, prevAvg };
+}
+
+function applyTrajectoryAwareness(response, sent) {
+  if (mem.turn - lastTrajectoryTurn < 5 || mem.turn < 5) return response;
+
+  const traj = analyzeTrajectory();
+  if (!traj || traj.type === "stable") return response;
+
+  // Don't repeat the same trajectory observation type consecutively
+  if (traj.type === lastTrajectoryType) return response;
+
+  // Probability gate: trajectory comments are rare and meaningful
+  if (Math.random() > 0.25) return response;
+
+  let prefix = "";
+
+  switch (traj.type) {
+    case "warming": {
+      const warmers = [
+        "I'm really enjoying where this conversation is going.",
+        "You know, this chat has gotten progressively better.",
+        "I can tell you're getting into this — and honestly, so am I.",
+        "The energy here is shifting and I'm here for it.",
+      ];
+      prefix = warmers[Math.floor(Math.random() * warmers.length)] + " ";
+      break;
+    }
+    case "cooling": {
+      const coolers = [
+        "I feel like I might be losing you a bit — ",
+        "Am I reading this right that the vibe's shifted? ",
+        "Let me recalibrate — I want to be actually helpful here. ",
+        "I sense this isn't landing the way I want it to. ",
+      ];
+      prefix = coolers[Math.floor(Math.random() * coolers.length)];
+      break;
+    }
+    case "sudden_uplift": {
+      const uplifts = [
+        "Oh — love that energy shift! ",
+        "Now *that's* the vibe. ",
+        "Whoa, your energy just spiked and I'm matching it — ",
+      ];
+      prefix = uplifts[Math.floor(Math.random() * uplifts.length)];
+      break;
+    }
+    case "sudden_drop": {
+      const drops = [
+        "Hey, I just noticed a shift — everything okay? ",
+        "Wait, something changed — did I say something off? ",
+        "I want to pause and check in — that felt like a turn. ",
+      ];
+      prefix = drops[Math.floor(Math.random() * drops.length)];
+      break;
+    }
+    case "volatile": {
+      const vols = [
+        "This conversation's had quite the emotional range — I'm keeping up, don't worry. ",
+        "We've been all over the emotional map and I kind of love it. ",
+        "You're keeping me on my toes here — the energy keeps shifting. ",
+      ];
+      prefix = vols[Math.floor(Math.random() * vols.length)];
+      break;
+    }
+  }
+
+  if (prefix) {
+    lastTrajectoryTurn = mem.turn;
+    lastTrajectoryType = traj.type;
+    return prefix + response;
+  }
+
+  return response;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -9217,6 +9346,9 @@ export function getAIResponse(input) {
   const parsed = parseSentence(text);
   const sent = sentiment(text);
   const emo = detectEmotion(text, sent, parsed);
+
+  // ═══ Emotional trajectory tracking: record sentiment curve ═══
+  trackEmotionalTrajectory(sent, emo?.type || "neutral");
 
   // ═══ Subtext detection: read between the lines ═══
   const subtext = detectSubtext(text, sent);
@@ -9292,6 +9424,9 @@ export function getAIResponse(input) {
 
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
+
+  // ═══ Emotional trajectory: respond to mood direction, not just current state ═══
+  response = applyTrajectoryAwareness(response, sent);
 
   // ═══ Temporal awareness: time-of-day flavor + pace observation ═══
   const pacePrefix = paceObservation();
@@ -9410,6 +9545,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
