@@ -291,37 +291,49 @@ const PARAM_HINTS = {
 
 /* Keyboard shortcuts */
 const SHORTCUTS = [
-  ['\u2318+Enter', 'Run code'],
-  ['\u2318+S', 'Save state'],
-  ['\u2318+/', 'Toggle comment'],
-  ['\u2318+F', 'Find'],
-  ['\u2318+H', 'Find & Replace'],
-  ['\u2318+Shift+F', 'Search in files'],
-  ['\u2318+P', 'Command palette'],
-  ['\u2318+L', 'Select line'],
-  ['\u2318+D', 'Select next occurrence'],
-  ['\u2318+Shift+D', 'Duplicate line'],
-  ['Ctrl+G', 'Go to line'],
-  ['Ctrl+Shift+K', 'Delete line'],
-  ['Alt+\u2191/\u2193', 'Move line up/down'],
-  ['Tab / Shift+Tab', 'Indent / Outdent'],
-  ['\u2318+A', 'Select all'],
-  ['\u2318+Z', 'Undo'],
-  ['\u2318+Shift+Z', 'Redo'],
-  ['\u2318+K', 'Shortcuts help'],
-  ['\u2318+=/\u2318+-', 'Zoom in/out'],
-  ['\u2318+0', 'Reset zoom'],
-  ['\u2318+B', 'Toggle bookmark'],
-  ['F2/Shift+F2', 'Next/prev bookmark'],
-  ['\u2318+R', 'Rename symbol'],
-  ['\u2318+E', 'Recent files'],
-  ['Ctrl+Tab', 'Next tab'],
-  ['Ctrl+Shift+Tab', 'Previous tab'],
-  ['Alt+Shift+\u2191/\u2193', 'Copy line up/down'],
-  ['\u2318+Click', 'Go to definition'],
-  ['Shift+Enter (REPL)', 'Multi-line input'],
-  ['Tab (on trigger)', 'Expand snippet'],
-  ['Esc', 'Close overlay'],
+  { cat: 'General', items: [
+    ['\u2318+Enter', 'Run code'],
+    ['\u2318+S', 'Save state'],
+    ['\u2318+P', 'Command palette'],
+    ['\u2318+K', 'Shortcuts help'],
+    ['Esc', 'Close overlay'],
+  ]},
+  { cat: 'Editing', items: [
+    ['\u2318+/', 'Toggle comment'],
+    ['\u2318+D', 'Select next occurrence'],
+    ['\u2318+L', 'Select line'],
+    ['\u2318+A', 'Select all'],
+    ['\u2318+Shift+D', 'Duplicate line'],
+    ['Ctrl+Shift+K', 'Delete line'],
+    ['Alt+\u2191/\u2193', 'Move line up/down'],
+    ['Alt+Shift+\u2191/\u2193', 'Copy line up/down'],
+    ['Tab / Shift+Tab', 'Indent / Outdent'],
+    ['\u2318+Z', 'Undo'],
+    ['\u2318+Shift+Z', 'Redo'],
+    ['\u2318+R', 'Rename symbol'],
+    ['Tab (on trigger)', 'Expand snippet'],
+  ]},
+  { cat: 'Search', items: [
+    ['\u2318+F', 'Find'],
+    ['\u2318+H', 'Find & Replace'],
+    ['\u2318+Shift+F', 'Search in files'],
+    ['Ctrl+G', 'Go to line'],
+    ['\u2318+Click', 'Go to definition'],
+  ]},
+  { cat: 'Navigation', items: [
+    ['\u2318+E', 'Recent files'],
+    ['\u2318+B', 'Toggle bookmark'],
+    ['F2/Shift+F2', 'Next/prev bookmark'],
+    ['Ctrl+Tab', 'Next tab'],
+    ['Ctrl+Shift+Tab', 'Previous tab'],
+  ]},
+  { cat: 'View', items: [
+    ['\u2318+=/\u2318+-', 'Zoom in/out'],
+    ['\u2318+0', 'Reset zoom'],
+  ]},
+  { cat: 'Terminal', items: [
+    ['Shift+Enter (REPL)', 'Multi-line input'],
+  ]},
 ];
 
 /* Generated file builders */
@@ -467,6 +479,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Search options ---- */
   const [searchCase, setSearchCase] = React.useState(false);
   const [searchRegex, setSearchRegex] = React.useState(false);
+  const [searchWholeWord, setSearchWholeWord] = React.useState(false);
   const [searchIdx, setSearchIdx] = React.useState(0);
 
   /* ---- Code folding ---- */
@@ -573,6 +586,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [renameSymbol, setRenameSymbol] = React.useState(null);
   const renameSymbolRef = React.useRef(null);
 
+  /* ---- Help filter ---- */
+  const helpSearchRef = React.useRef(null);
+  const helpFilterRef = React.useRef({ q: '' });
+
   /* ---- Welcome tab ---- */
   const [welcomeDismissed, setWelcomeDismissed] = React.useState(false);
 
@@ -674,13 +691,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (cmd === 'help') {
       setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F help' },
         { t: 'log', v: 'Built-in commands:' },
-        { t: 'log', v: '  clear    — Clear output' },
-        { t: 'log', v: '  help     — Show this help' },
-        { t: 'log', v: '  ls       — List files' },
-        { t: 'log', v: '  cat <f>  — Show file contents' },
-        { t: 'log', v: '  echo <x> — Print text' },
-        { t: 'log', v: '  run      — Run active file' },
-        { t: 'log', v: '  pwd      — Show current file' },
+        { t: 'log', v: '  clear      — Clear output' },
+        { t: 'log', v: '  help       — Show this help' },
+        { t: 'log', v: '  ls         — List files' },
+        { t: 'log', v: '  cat <f>    — Show file contents' },
+        { t: 'log', v: '  echo <x>   — Print text' },
+        { t: 'log', v: '  run        — Run active file' },
+        { t: 'log', v: '  pwd        — Show current file' },
+        { t: 'log', v: '  date       — Show current date/time' },
+        { t: 'log', v: '  whoami     — Show IDE info' },
+        { t: 'log', v: '  history    — Show command history' },
+        { t: 'log', v: '  touch <f>  — Create a new file' },
+        { t: 'log', v: '  grep <t>   — Search in all files' },
+        { t: 'log', v: '  wc <f>     — Count lines in file' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -706,6 +729,63 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     if (cmd === 'pwd') {
       setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F pwd' }, { t: 'log', v: activeFile }], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd === 'date') {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F date' }, { t: 'log', v: new Date().toString() }], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd === 'whoami') {
+      const shapeCount = tp?.shapes()?.length || 0;
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F whoami' },
+        { t: 'log', v: 'Tasteprint IDE v1.0' },
+        { t: 'log', v: `  Palette: ${tp?.palette() || 'unknown'}` },
+        { t: 'log', v: `  Device: ${tp?.device() || 'unknown'}` },
+        { t: 'log', v: `  Shapes: ${shapeCount}` },
+        { t: 'log', v: `  Files: ${Object.keys(editFiles).length + Object.keys(GEN_FILES).length}` },
+      ], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd === 'history') {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F history' },
+        ...termHistory.map((h, i) => ({ t: 'log', v: `  ${i + 1}  ${h}` })),
+        ...(termHistory.length === 0 ? [{ t: 'log', v: '  (empty)' }] : []),
+      ], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('touch ')) {
+      const name = cmd.slice(6).trim();
+      if (name) { createFile(name); setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F touch ${name}` }, { t: 'log', v: `Created ${name}` }], ms: null, err: null, errLn: null })); }
+      else { setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: 'Usage: touch <filename>' }], ms: null, err: null, errLn: null })); }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('grep ')) {
+      const term = cmd.slice(5).trim().toLowerCase();
+      if (term) {
+        const results = [];
+        for (const [path, content] of Object.entries(editFiles)) {
+          content.split('\n').forEach((line, i) => {
+            if (line.toLowerCase().includes(term)) results.push({ path, ln: i + 1, line: line.trim() });
+          });
+        }
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F grep ${term}` },
+          ...results.slice(0, 30).map(r => ({ t: 'log', v: `  ${r.path}:${r.ln}  ${r.line.substring(0, 60)}` })),
+          ...(results.length === 0 ? [{ t: 'log', v: '  No matches found' }] : []),
+          ...(results.length > 30 ? [{ t: 'log', v: `  ... and ${results.length - 30} more` }] : []),
+        ], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('wc ')) {
+      const path = cmd.slice(3).trim();
+      const f = getFile(path);
+      if (f) {
+        const lns = f.content.split('\n').length;
+        const chars = f.content.length;
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F wc ${path}` }, { t: 'log', v: `  ${lns} lines, ${chars} chars` }], ms: null, err: null, errLn: null }));
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `File not found: ${path}` }], ms: null, err: null, errLn: null }));
+      }
       setTermInput(''); return;
     }
     if (cmd === 'run') { runCode(); setTermInput(''); return; }
@@ -957,12 +1037,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       while (idx < haystack.length) {
         const found = haystack.indexOf(needle, idx);
         if (found === -1) break;
+        if (searchWholeWord) {
+          const before = found > 0 ? code[found - 1] : ' ';
+          const after = found + needle.length < code.length ? code[found + needle.length] : ' ';
+          if (/\w/.test(before) || /\w/.test(after)) { idx = found + 1; continue; }
+        }
         matches.push({ pos: found, len: searchTerm.length });
         idx = found + 1;
       }
     }
     return matches;
-  }, [code, searchTerm, searchOpen, searchCase, searchRegex]);
+  }, [code, searchTerm, searchOpen, searchCase, searchRegex, searchWholeWord]);
 
   const replaceNext = () => {
     if (!searchMatches.length || readonly) return;
@@ -1084,37 +1169,68 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       clear: () => { logs.length = 0 },
       table: (...a) => logs.push({ t: 'log', v: a.map(x => JSON.stringify(x, null, 2)).join(' '), ts: ts() }),
     };
-    const t0 = performance.now();
-    try {
-      const r = new Function('console', 'tp', code)(fc, tp || {});
-      const ms = (performance.now() - t0).toFixed(1);
-      if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
-      setOutput({ logs: logs.slice(-100), ms, err: null, errLn: null });
-    } catch (e) {
-      let ln = null;
-      const m = e.stack?.match(/<anonymous>:(\d+)/);
-      if (m) ln = parseInt(m[1]) - 2;
-      // Generate fix suggestion
-      let suggest = null;
-      const msg = e.message;
+    const genSuggestion = (msg) => {
       if (msg.includes('is not defined')) {
         const varM = msg.match(/(\w+) is not defined/);
         if (varM) {
           const w = varM[1];
-          if (TP_AC.some(a => a.label.startsWith(w))) suggest = `Did you mean tp.${w}()?`;
-          else if (['cosole', 'consol', 'consloe'].includes(w)) suggest = 'Did you mean console?';
-          else suggest = `"${w}" is not defined — check spelling or add a declaration`;
+          if (TP_AC.some(a => a.label.startsWith(w))) return `Did you mean tp.${w}()?`;
+          if (['cosole', 'consol', 'consloe'].includes(w)) return 'Did you mean console?';
+          return `"${w}" is not defined — check spelling or add a declaration`;
         }
       } else if (msg.includes('is not a function')) {
-        suggest = 'Check the method name — use ⌘+Space after tp. for autocomplete';
+        return 'Check the method name — use \u2318+Space after tp. for autocomplete';
       } else if (msg.includes('Unexpected token')) {
-        suggest = 'Syntax error — check for missing brackets, quotes, or semicolons';
+        return 'Syntax error — check for missing brackets, quotes, or semicolons';
       } else if (msg.includes('Unexpected end of input')) {
-        suggest = 'Missing closing bracket } or ) — try Format Document (⌘P → Format)';
+        return 'Missing closing bracket } or ) — try Format Document (\u2318P \u2192 Format)';
       }
-      setOutput({ logs, ms: null, err: msg, errLn: ln, suggest });
+      return null;
+    };
+    const t0 = performance.now();
+    // Detect async code and run accordingly
+    const isAsync = /\bawait\b/.test(code);
+    if (isAsync) {
+      const timeout = 10000; // 10s timeout for async code
+      const fn = new Function('console', 'tp', `return (async () => {\n${code}\n})()`);
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        const ms = (performance.now() - t0).toFixed(1);
+        logs.push({ t: 'err', v: `Execution timed out after ${timeout / 1000}s`, ts: ts() });
+        setOutput({ logs: logs.slice(-100), ms, err: `Timeout: execution exceeded ${timeout / 1000}s`, errLn: null, suggest: 'Check for infinite loops or long-running operations' });
+        setBusy(false);
+      }, timeout);
+      fn(fc, tp || {}).then(r => {
+        if (timedOut) return;
+        clearTimeout(timer);
+        const ms = (performance.now() - t0).toFixed(1);
+        if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
+        setOutput({ logs: logs.slice(-100), ms, err: null, errLn: null });
+        setBusy(false);
+      }).catch(e => {
+        if (timedOut) return;
+        clearTimeout(timer);
+        let ln = null;
+        const m = e.stack?.match(/<anonymous>:(\d+)/);
+        if (m) ln = parseInt(m[1]) - 3; // -3 for async wrapper
+        setOutput({ logs, ms: null, err: e.message, errLn: ln, suggest: genSuggestion(e.message) });
+        setBusy(false);
+      });
+    } else {
+      try {
+        const r = new Function('console', 'tp', code)(fc, tp || {});
+        const ms = (performance.now() - t0).toFixed(1);
+        if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
+        setOutput({ logs: logs.slice(-100), ms, err: null, errLn: null });
+      } catch (e) {
+        let ln = null;
+        const m = e.stack?.match(/<anonymous>:(\d+)/);
+        if (m) ln = parseInt(m[1]) - 2;
+        setOutput({ logs, ms: null, err: e.message, errLn: ln, suggest: genSuggestion(e.message) });
+      }
+      setTimeout(() => setBusy(false), 300);
     }
-    setTimeout(() => setBusy(false), 300);
   };
 
   /* ---- Format code (simple auto-indent) ---- */
@@ -1307,7 +1423,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     /* Shortcuts help: Cmd+K */
     if (e.key === 'k' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
-      e.preventDefault(); setHelpOpen(h => !h); return;
+      e.preventDefault(); helpFilterRef.current.q = ''; setHelpOpen(h => !h);
+      setTimeout(() => helpSearchRef.current?.focus(), 50); return;
     }
 
     /* Editor zoom: Cmd+= / Cmd+- */
@@ -2072,6 +2189,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { setSearchOpen(false); taRef.current?.focus(); } if (e.key === 'Enter') { e.shiftKey ? jumpToMatch(-1) : jumpToMatch(1); } }}
                 style={{ flex: 1, minWidth: 80, maxWidth: 140, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
               <span onClick={() => setSearchCase(c => !c)} style={{ fontSize: 7, color: searchCase ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchCase ? '#cba6f718' : 'transparent', fontWeight: 600 }} title="Case sensitive">Aa</span>
+              <span onClick={() => setSearchWholeWord(w => !w)} style={{ fontSize: 7, color: searchWholeWord ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchWholeWord ? '#cba6f718' : 'transparent', fontWeight: 600, fontFamily: MONO }} title="Whole word">ab</span>
               <span onClick={() => setSearchRegex(r => !r)} style={{ fontSize: 7, color: searchRegex ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 3px', borderRadius: 2, background: searchRegex ? '#cba6f718' : 'transparent', fontWeight: 600 }} title="Regex">.*</span>
               <span onClick={() => jumpToMatch(-1)} style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }} title="Previous match">{'\u2191'}</span>
               <span onClick={() => jumpToMatch(1)} style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }} title="Next match">{'\u2193'}</span>
@@ -2185,22 +2303,39 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           )}
 
           {/* Keyboard shortcuts help */}
-          {helpOpen && (
-            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '5%', right: '5%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 280 }}>
-              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderBottom: '1px solid #ffffff08' }}>
-                <span style={{ fontSize: 9, color: '#cba6f7', fontWeight: 600 }}>Keyboard Shortcuts</span>
-                <span onClick={() => setHelpOpen(false)} style={{ marginLeft: 'auto', fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
+          {helpOpen && (() => {
+            const helpQuery = helpFilterRef.current.q || '';
+            const q = helpQuery.toLowerCase();
+            return (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '5%', right: '5%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 320 }}>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', borderBottom: '1px solid #ffffff08', gap: 6 }}>
+                <span style={{ fontSize: 9, color: '#cba6f7', fontWeight: 600, flexShrink: 0 }}>Keyboard Shortcuts</span>
+                <input ref={helpSearchRef} value={helpQuery} onChange={e => { helpFilterRef.current.q = e.target.value; setHelpOpen(true); }}
+                  placeholder="Filter..." spellCheck={false}
+                  onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') { helpFilterRef.current.q = ''; setHelpOpen(false); taRef.current?.focus(); } }}
+                  style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 8, color: '#cdd6f4', outline: 'none', fontFamily: MONO, minWidth: 40 }} />
+                <span onClick={() => { helpFilterRef.current.q = ''; setHelpOpen(false); }} style={{ fontSize: 9, color: '#555', cursor: 'pointer' }}>{'\u00D7'}</span>
               </div>
-              <div style={{ padding: '4px 10px', maxHeight: 230, overflow: 'auto' }}>
-                {SHORTCUTS.map(([key, desc]) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', padding: '2px 0', fontSize: 9 }}>
-                    <span style={{ color: '#cba6f7', minWidth: 100, fontWeight: 500 }}>{key}</span>
-                    <span style={{ color: '#a6adc8' }}>{desc}</span>
-                  </div>
-                ))}
+              <div style={{ padding: '4px 10px', maxHeight: 265, overflow: 'auto' }}>
+                {SHORTCUTS.map(group => {
+                  const filtered = q ? group.items.filter(([key, desc]) => key.toLowerCase().includes(q) || desc.toLowerCase().includes(q)) : group.items;
+                  if (!filtered.length) return null;
+                  return (
+                    <div key={group.cat}>
+                      <div style={{ fontSize: 7, color: '#555', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', padding: '4px 0 2px', borderBottom: '1px solid #ffffff06', marginTop: 2 }}>{group.cat}</div>
+                      {filtered.map(([key, desc]) => (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', padding: '2px 0', fontSize: 9 }}>
+                          <span style={{ color: '#cba6f7', minWidth: 110, fontWeight: 500, fontSize: 8 }}>{key}</span>
+                          <span style={{ color: '#a6adc8' }}>{desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Rename symbol dialog */}
           {renameSymbol && (
@@ -3151,10 +3286,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (match === 'cat' || match === 'echo' ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
