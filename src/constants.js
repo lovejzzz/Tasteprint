@@ -59,7 +59,7 @@ export const VARIANTS = {
   progress:  ["Round","Flat","Thin","Striped","Glow"],
   modal:     ["Card","Minimal","Sheet","Glass","Destructive"],
   sidebar:   ["Full","Minimal","Grouped","Glass"],
-  table:     ["Striped","Bordered","Minimal","Terminal"],
+  table:     ["Striped","Bordered","Minimal","Terminal","Glass","Gradient"],
   accordion: ["Bordered","Card","Minimal","Glass","Accent"],
   footer:    ["Columns","Simple","Dark","Branded","Glass"],
   "bento-grid":["Even","Featured","Mixed","Gradient","Glass"],
