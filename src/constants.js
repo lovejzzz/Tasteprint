@@ -213,6 +213,7 @@ export const DEFAULT_PROPS = {
   "tag-input":   { active: 0 },
   "card-sm":     { featured: false },
   footer:        { active: 0 },
+  hero:          { active: 0 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
