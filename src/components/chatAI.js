@@ -14180,6 +14180,156 @@ function applyEncouragement(response, text) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   EMPATHETIC MIRRORING (Round 89)
+   Therapists do this instinctively: "So what I'm hearing is..."
+   or "It sounds like you're feeling X because of Y." It shows
+   the AI actually *understood*, not just pattern-matched.
+
+   Detects emotional statements with identifiable causes, then
+   reflects the emotional core back in the AI's own words before
+   the main response. Different from micro-reactions (which are
+   involuntary interjections) — mirroring is deliberate, slower,
+   more thoughtful acknowledgment.
+
+   Fire rate: ~18% of eligible turns. 5-turn cooldown.
+   Requires emotional signal + identifiable cause (min 25 chars).
+   Never mirrors questions, very short input, or neutral statements.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastMirrorEmTurn = 0;
+let recentMirrors = [];
+
+// Emotion-cause extraction patterns: [regex, emotion label, cause group index]
+const MIRROR_PATTERNS = [
+  { rx: /\bI(?:'m| am) (?:so |really |kinda |pretty )?(frustrated|annoyed|irritated|pissed|mad|angry)\b.*?\b(because|since|when|that|about|with|at)\b\s*(.{8,})/i, emotion: "frustrated", causeIdx: 3 },
+  { rx: /\bI(?:'m| am) (?:so |really |kinda |pretty )?(excited|pumped|stoked|hyped|thrilled)\b.*?\b(because|since|about|for|that)\b\s*(.{8,})/i, emotion: "excited", causeIdx: 3 },
+  { rx: /\bI(?:'m| am) (?:so |really |kinda |pretty )?(stressed|overwhelmed|burned out|exhausted|drained)\b.*?\b(because|since|with|from|about|by)\b\s*(.{8,})/i, emotion: "stressed", causeIdx: 3 },
+  { rx: /\bI(?:'m| am) (?:so |really |kinda |pretty )?(worried|anxious|nervous|scared|afraid)\b.*?\b(because|since|about|that|of)\b\s*(.{8,})/i, emotion: "worried", causeIdx: 3 },
+  { rx: /\bI(?:'m| am) (?:so |really |kinda |pretty )?(sad|down|depressed|bummed|upset|heartbroken)\b.*?\b(because|since|about|that|over)\b\s*(.{8,})/i, emotion: "sad", causeIdx: 3 },
+  { rx: /\bI(?:'m| am) (?:so |really |kinda |pretty )?(happy|glad|relieved|grateful|thankful)\b.*?\b(because|since|about|that|for)\b\s*(.{8,})/i, emotion: "happy", causeIdx: 3 },
+  { rx: /\bI(?:'m| am) (?:so |really |kinda |pretty )?(confused|lost|unsure|torn)\b.*?\b(because|since|about|with|between)\b\s*(.{8,})/i, emotion: "confused", causeIdx: 3 },
+  { rx: /\bI feel (?:so |really |kinda |pretty )?(frustrated|annoyed|stressed|overwhelmed|excited|happy|sad|worried|anxious|confused|lost|stuck|trapped|free|relieved|grateful)\b/i, emotion: null, causeIdx: 0 },
+  { rx: /\bI(?:'ve| have) been (?:so |really )?(struggling|dealing|coping|fighting) with\b\s*(.{8,})/i, emotion: "struggling", causeIdx: 2 },
+  { rx: /\bI can(?:'t| not) (?:stop|help) (thinking about|worrying about|feeling)\b\s*(.{8,})/i, emotion: "preoccupied", causeIdx: 2 },
+];
+
+// Mirror templates per emotion — each reflects the feeling + cause
+const MIRROR_TEMPLATES = {
+  frustrated: [
+    (cause) => `It sounds like ${cause} is really getting under your skin.`,
+    (cause) => `So ${cause} has been frustrating — I get that.`,
+    (cause) => `Yeah, that kind of thing with ${cause} would bug anyone.`,
+  ],
+  excited: [
+    (cause) => `I can tell ${cause} has you really fired up — love that.`,
+    (cause) => `The energy around ${cause} is real!`,
+    (cause) => `So ${cause} is the thing right now — I can feel it.`,
+  ],
+  stressed: [
+    (cause) => `It sounds like ${cause} is weighing on you pretty heavily.`,
+    (cause) => `That's a lot to carry — ${cause} on top of everything else.`,
+    (cause) => `I hear you — ${cause} sounds genuinely draining.`,
+  ],
+  worried: [
+    (cause) => `So ${cause} is what's on your mind — that makes total sense.`,
+    (cause) => `I can see why ${cause} would be nerve-wracking.`,
+    (cause) => `That uncertainty around ${cause} sounds tough to sit with.`,
+  ],
+  sad: [
+    (cause) => `It sounds like ${cause} really hit you.`,
+    (cause) => `That's heavy — ${cause} is the kind of thing that stays with you.`,
+    (cause) => `I hear you. ${cause.charAt(0).toUpperCase() + cause.slice(1)} can really take a toll.`,
+  ],
+  happy: [
+    (cause) => `I love that — ${cause} clearly means a lot to you.`,
+    (cause) => `That joy about ${cause} is genuine and I'm here for it.`,
+    (cause) => `So ${cause} is bringing the good vibes — you deserve that.`,
+  ],
+  confused: [
+    (cause) => `I can see why ${cause} would be confusing.`,
+    (cause) => `That's a tricky one — ${cause} doesn't have easy answers.`,
+    (cause) => `So ${cause} has you in a bit of a fog — that's understandable.`,
+  ],
+  struggling: [
+    (cause) => `It sounds like ${cause} has been a real battle.`,
+    (cause) => `Dealing with ${cause} is no joke — I hear you.`,
+  ],
+  preoccupied: [
+    (cause) => `So ${cause} is living rent-free in your head right now.`,
+    (cause) => `I can tell ${cause} is hard to shake.`,
+  ],
+};
+
+function extractMirrorTarget(text) {
+  if (text.length < 25) return null;
+  if (/\?$/.test(text.trim())) return null; // skip questions
+
+  for (const { rx, emotion, causeIdx } of MIRROR_PATTERNS) {
+    const m = text.match(rx);
+    if (!m) continue;
+    const emo = emotion || m[1]?.toLowerCase();
+    if (!emo) continue;
+
+    // Map to template key
+    const templateKey = MIRROR_TEMPLATES[emo] ? emo :
+      ["annoyed","irritated","pissed","mad","angry"].includes(emo) ? "frustrated" :
+      ["pumped","stoked","hyped","thrilled"].includes(emo) ? "excited" :
+      ["overwhelmed","burned out","exhausted","drained"].includes(emo) ? "stressed" :
+      ["anxious","nervous","scared","afraid"].includes(emo) ? "worried" :
+      ["down","depressed","bummed","upset","heartbroken"].includes(emo) ? "sad" :
+      ["glad","relieved","grateful","thankful"].includes(emo) ? "happy" :
+      ["lost","unsure","torn","stuck","trapped"].includes(emo) ? "confused" :
+      ["free"].includes(emo) ? "happy" :
+      null;
+
+    if (!templateKey || !MIRROR_TEMPLATES[templateKey]) continue;
+
+    // Extract the cause — clean it up
+    let cause = causeIdx > 0 && m[causeIdx] ? m[causeIdx].trim() : null;
+    if (!cause || cause.length < 5) continue;
+
+    // Trim trailing punctuation and limit length
+    cause = cause.replace(/[.!?,;]+$/, "").trim();
+    if (cause.length > 80) cause = cause.substring(0, 80).replace(/\s+\S*$/, "");
+
+    return { templateKey, cause };
+  }
+  return null;
+}
+
+function applyEmpatheticMirror(response, text) {
+  const turn = mem.turn;
+  if (turn < 3) return response;
+  if (turn - lastMirrorEmTurn < 5) return response; // 5-turn cooldown
+  if (response.length < 40) return response;
+  if (Math.random() > 0.18) return response; // 18% fire rate
+
+  // Don't mirror if response already starts with empathetic language
+  if (/^(I (hear|see|get|understand|feel)|That (sounds|must|seems)|It sounds)/i.test(response)) return response;
+
+  const target = extractMirrorTarget(text);
+  if (!target) return response;
+
+  const { templateKey, cause } = target;
+  const templates = MIRROR_TEMPLATES[templateKey];
+  if (!templates || templates.length === 0) return response;
+
+  // Pick non-recently-used template
+  const available = templates.filter((_, i) => !recentMirrors.includes(`${templateKey}-${i}`));
+  if (available.length === 0) return response;
+
+  const idx = Math.floor(Math.random() * available.length);
+  const mirror = available[idx](cause);
+
+  // Track
+  recentMirrors.push(`${templateKey}-${templates.indexOf(available[idx])}`);
+  if (recentMirrors.length > 8) recentMirrors.shift();
+  lastMirrorEmTurn = turn;
+
+  return mirror + " " + response;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    GENUINE MICRO-REACTIONS (Round 86)
    Humans don't just respond — they *react* first. A quick "Oh!" or
    "Wait, seriously?" or "Ha —" before launching into their actual
@@ -14774,6 +14924,9 @@ export function getAIResponse(input) {
   // ═══ Genuine encouragement: detect achievements, effort, vulnerability, insight, growth ═══
   response = applyEncouragement(response, text);
 
+  // ═══ Empathetic mirroring: reflect emotional state + cause back to show understanding ═══
+  response = applyEmpatheticMirror(response, text);
+
   // ═══ Conversational hooks & open loops: create forward pull and curiosity ═══
   response = addConversationalHooks(response, currentTopics, inputEnergy);
 
@@ -14911,6 +15064,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };

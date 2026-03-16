@@ -209,6 +209,7 @@ export const DEFAULT_PROPS = {
   table:         { highlight: 0 },
   card:          { featured: false },
   badge:         { level: 0 },
+  modal:         { on: true },
   "stat-card":   { trend: 0 },
   "list-item":   { on: true },
   "avatar-row":  { active: 0 },
