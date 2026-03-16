@@ -74,15 +74,37 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     setMessages(prev => [...prev, myMsg]);
     setInputVal("");
 
+    // Get AI response + typing speed
+    const ai = getAIResponse(text);
+    const aiText = typeof ai === "string" ? ai : ai.text;
+    const typingMs = typeof ai === "object" ? ai.typingMs : (800 + Math.random() * 1200);
+    const pause = typeof ai === "object" ? ai.pause : null;
+
     setTimeout(() => {
       setSending(null);
       setTyping(true);
-      setTimeout(() => {
-        const aiText = getAIResponse(text);
-        const aiId = idRef.current++;
-        setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId }]);
-        setTyping(false);
-      }, 800 + Math.random() * 1200);
+
+      if (pause) {
+        // Simulate typing correction: type, pause (dots disappear), restart, finish
+        setTimeout(() => {
+          setTyping(false); // dots disappear — "rethinking"
+          setTimeout(() => {
+            setTyping(true); // restart typing
+            setTimeout(() => {
+              const aiId = idRef.current++;
+              setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId }]);
+              setTyping(false);
+            }, typingMs - pause.pauseAt);
+          }, pause.pauseMs);
+        }, pause.pauseAt);
+      } else {
+        // Normal typing flow
+        setTimeout(() => {
+          const aiId = idRef.current++;
+          setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId }]);
+          setTyping(false);
+        }, typingMs);
+      }
     }, 300);
   }, [inputVal]);
 

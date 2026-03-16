@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 3: AI Friend — real understanding, dynamic composition, knowledge
+   Round 4: Personality system + typing speed simulation
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -841,14 +841,171 @@ function respondFallback(text, tokens, keywords) {
   return pickNew(fallbacks);
 }
 
+/* ── Personality System ── */
+/*
+ * Consistent personality: curious, slightly playful, warm, knowledgeable.
+ * Adds verbal tics, thinking phrases, and style markers to make responses
+ * feel like they come from one coherent person, not random string pools.
+ */
+
+const PERSONALITY = {
+  // Sentence starters — sprinkled in ~30% of responses
+  openers: {
+    thinking: ["Hmm, ","Ooh, ","Actually, ","Oh — ","Hmm let me think... ","Wait, "],
+    excited:  ["Ooh! ","Oh nice — ","Okay wait — ","Ha, ","Yesss, "],
+    casual:   ["So ","Honestly, ","Okay so ","Real talk — ","Fun fact: ","Not gonna lie, "],
+  },
+  // Filler phrases that can be inserted mid-response
+  fillers: [
+    " — which is pretty cool honestly",
+    " (I love that)",
+    " — no joke",
+    ", which I think is awesome",
+    " honestly",
+    " tbh",
+  ],
+  // Sign-off phrases appended to ~20% of responses
+  signoffs: [
+    " 😊","","","","", // mostly no signoff
+    " — just my two cents!",
+    " But I'm curious what you think!",
+    " What do you reckon?",
+  ],
+  // Emotive reactions based on conversation flow
+  reactions: {
+    surprise:  ["Wait really?! ","No way — ","Oh wow, ","Whoa, "],
+    agree:     ["Totally! ","Right?! ","100%! ","Exactly! "],
+    curious:   ["Ooh tell me more — ","I'm intrigued! ","Interesting... ","Okay I need to know more — "],
+  },
+};
+
+// Track last used personality elements to prevent repetition
+let lastOpener = "", lastSignoff = "";
+
+function applyPersonality(response, sent, parsed) {
+  let r = response;
+
+  // Don't modify very short responses (emoji reactions, simple acks)
+  if (r.length < 15) return r;
+
+  // Don't double-modify if response already starts with a personality opener
+  const startsWithOpener = Object.values(PERSONALITY.openers).flat().some(o => r.startsWith(o.trim()));
+  if (startsWithOpener) return r;
+
+  // ~30% chance of adding a personality opener
+  if (Math.random() < 0.3) {
+    let pool;
+    if (sent >= 2) pool = PERSONALITY.openers.excited;
+    else if (parsed?.act === "question" || parsed?.qType) pool = PERSONALITY.openers.thinking;
+    else pool = PERSONALITY.openers.casual;
+
+    const opener = pick(pool);
+    if (opener !== lastOpener) {
+      // Lowercase the first char of response when prepending
+      r = opener + r.charAt(0).toLowerCase() + r.slice(1);
+      lastOpener = opener;
+    }
+  }
+
+  // ~12% chance of inserting a filler into longer responses
+  if (r.length > 60 && Math.random() < 0.12) {
+    // Find a good insertion point (after a comma or period, before the last sentence)
+    const midpoint = Math.floor(r.length * 0.5);
+    const commaAfterMid = r.indexOf(",", midpoint);
+    if (commaAfterMid > 0 && commaAfterMid < r.length - 20) {
+      const filler = pick(PERSONALITY.fillers);
+      r = r.slice(0, commaAfterMid) + filler + r.slice(commaAfterMid);
+    }
+  }
+
+  // ~20% chance of a signoff
+  if (Math.random() < 0.2) {
+    const signoff = pick(PERSONALITY.signoffs);
+    if (signoff && signoff !== lastSignoff && !r.endsWith("?") && !r.endsWith("!")) {
+      r += signoff;
+      lastSignoff = signoff;
+    }
+  }
+
+  return r;
+}
+
+/* ── Typing Speed Simulation ── */
+/*
+ * Returns a realistic typing delay in ms based on response characteristics:
+ * - Short responses (< 30 chars): fast, 400-700ms
+ * - Medium responses (30-80 chars): moderate, 700-1200ms
+ * - Long responses (80+ chars): slower, 1200-2000ms
+ * - Questions about AI: slightly longer (pretending to "think")
+ * - Empathetic responses: slower (showing care)
+ * - Excited responses: faster (matching energy)
+ * Plus random jitter to feel human.
+ */
+
+function calcTypingMs(response, userSent, parsed) {
+  const len = response.length;
+
+  // Base delay: ~15ms per character, clamped
+  let base = Math.min(Math.max(len * 15, 400), 2200);
+
+  // Sentiment adjustments
+  if (userSent <= -2) base *= 1.2;      // empathetic = slower, more thoughtful
+  if (userSent >= 3) base *= 0.75;      // excited = faster, matching energy
+  if (parsed?.qType === "about_ai") base *= 1.15; // "thinking" about itself
+
+  // Short replies are snappy
+  if (len < 20) base = 300 + Math.random() * 300;
+
+  // Add human-like jitter (±20%)
+  const jitter = 1 + (Math.random() - 0.5) * 0.4;
+  base *= jitter;
+
+  // Clamp final
+  return Math.round(Math.max(300, Math.min(base, 2500)));
+}
+
+/* ── "Correction" simulation — typing pauses and restarts ── */
+/*
+ * For longer responses, there's a chance the AI "pauses" mid-typing
+ * (simulating backspace/rethink). Returns { pauseAt, pauseMs } or null.
+ */
+
+function calcTypingPause(typingMs) {
+  // Only pause on longer typing durations, 25% chance
+  if (typingMs < 1000 || Math.random() > 0.25) return null;
+
+  // Pause happens 40-70% through the typing
+  const pauseAt = typingMs * (0.4 + Math.random() * 0.3);
+  // Pause lasts 300-600ms
+  const pauseMs = 300 + Math.random() * 300;
+
+  return { pauseAt: Math.round(pauseAt), pauseMs: Math.round(pauseMs) };
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
   const text = input.trim();
-  if (!text) return "I'm listening... 👂";
-  const response = generateResponse(text);
+  if (!text) return { text: "I'm listening... 👂", typingMs: 400, pause: null };
+
+  // Parse for personality application
+  const parsed = parseSentence(text);
+  const sent = sentiment(text);
+
+  // Generate core response
+  let response = generateResponse(text);
+
+  // Apply personality layer
+  response = applyPersonality(response, sent, parsed);
+
+  // Record in memory
   mem.add("ai", response);
-  return response;
+
+  // Calculate realistic typing speed
+  const typingMs = calcTypingMs(response, sent, parsed);
+  const pause = calcTypingPause(typingMs);
+
+  return { text: response, typingMs, pause };
 }
 
 export function resetMemory() { mem.reset(); }
