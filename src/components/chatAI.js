@@ -5832,6 +5832,119 @@ function addGrounding(response, userText, parsed, sent, topics) {
   return grounding + response;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   CONVERSATIONAL DISFLUENCY — Natural Speech Patterns
+   Real humans don't produce perfect prose. They self-correct,
+   restart mid-thought, hedge, and think out loud. This engine
+   adds controlled imperfections that make responses feel like
+   live thought rather than pre-composed text.
+   Fire rate: ~15% of eligible responses (long enough, not
+   already disfluent, not farewells/greetings).
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastDisfluencyTurn = 0;
+
+function addDisfluency(response) {
+  // Guards: skip short, already-disfluent, greetings, farewells, questions-only
+  if (response.length < 40) return response;
+  if (/— (?:well|wait|actually|okay|no|hmm)/i.test(response)) return response;
+  if (/^(hey|hi|hello|bye|see you|take care|nice to meet)/i.test(response)) return response;
+  // Cooldown: 4 turns between disfluencies
+  if (mem.turn - lastDisfluencyTurn < 4) return response;
+  // ~15% fire rate
+  if (Math.random() > 0.15) return response;
+
+  lastDisfluencyTurn = mem.turn;
+
+  // Split into sentences for targeted insertion
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 1) return response;
+
+  const strategy = Math.random();
+
+  // Strategy 1: Self-correction — replace a word with a "better" one (~30%)
+  // "It's great — well, it's really impressive actually"
+  if (strategy < 0.3 && sentences.length >= 2) {
+    const first = sentences[0].trim();
+    // Find an adjective-like word to "correct"
+    const adjSwaps = [
+      { from: /\b(great)\b/i, weak: "great", strong: "genuinely impressive" },
+      { from: /\b(cool)\b/i, weak: "cool", strong: "actually really interesting" },
+      { from: /\b(nice)\b/i, weak: "nice", strong: "actually kind of beautiful" },
+      { from: /\b(good)\b/i, weak: "good", strong: "legitimately solid" },
+      { from: /\b(interesting)\b/i, weak: "interesting", strong: "kind of fascinating actually" },
+      { from: /\b(important)\b/i, weak: "important", strong: "honestly pretty critical" },
+      { from: /\b(useful)\b/i, weak: "useful", strong: "genuinely handy" },
+      { from: /\b(popular)\b/i, weak: "popular", strong: "kind of everywhere now" },
+    ];
+    for (const swap of adjSwaps) {
+      if (swap.from.test(first)) {
+        const corrected = first.replace(swap.from, `${swap.weak} — well, ${swap.strong}`);
+        return corrected + " " + sentences.slice(1).join(" ");
+      }
+    }
+  }
+
+  // Strategy 2: False start / restart (~25%)
+  // "The thing is — okay so basically, [response]"
+  if (strategy < 0.55) {
+    const falseStarts = [
+      "Okay so — ",
+      "The thing is — actually, ",
+      "I was gonna say — well, ",
+      "So basically — yeah, ",
+      "Hmm, how do I put this — ",
+    ];
+    // Only if response doesn't already start with a personality opener
+    if (!/^(Hmm|Ooh|Actually|Oh|So |Okay|Wait|Ha,|Real talk)/i.test(response)) {
+      return pick(falseStarts) + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+  }
+
+  // Strategy 3: Mid-thought pivot (~20%)
+  // Insert "— actually wait," between two sentences
+  if (strategy < 0.75 && sentences.length >= 2) {
+    const pivots = [
+      " — oh wait, actually ",
+      " — hmm, come to think of it, ",
+      " — or actually, ",
+      " — well, let me put it differently: ",
+    ];
+    const insertIdx = Math.min(1, sentences.length - 1);
+    const before = sentences.slice(0, insertIdx).join(" ").replace(/[.!]+$/, "");
+    const after = sentences.slice(insertIdx).join(" ");
+    // Lowercase first char of after
+    const afterLower = after.charAt(0).toLowerCase() + after.slice(1);
+    return before + pick(pivots) + afterLower;
+  }
+
+  // Strategy 4: Hedged emphasis (~25%)
+  // Add "I think" or "if that makes sense" or "— you know?"
+  if (strategy < 1.0) {
+    const hedges = [
+      { pos: "end", text: " — if that makes sense?" },
+      { pos: "end", text: " — you know what I mean?" },
+      { pos: "end", text: " ...at least that's how I see it." },
+      { pos: "mid", text: " — I think — " },
+      { pos: "start", text: "I might be oversimplifying but " },
+    ];
+    const hedge = pick(hedges);
+    if (hedge.pos === "end") {
+      // Replace final punctuation
+      return response.replace(/[.!]$/, "") + hedge.text;
+    }
+    if (hedge.pos === "start" && !/^(I |Hmm|Ooh|Actually)/i.test(response)) {
+      return hedge.text + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+    if (hedge.pos === "mid" && sentences.length >= 2) {
+      const mid = Math.floor(sentences.length / 2);
+      return sentences.slice(0, mid).join(" ").replace(/[.]$/, "") + hedge.text + sentences.slice(mid).join(" ");
+    }
+  }
+
+  return response;
+}
+
 /* ── Conversation Arc Awareness ──
  * Tracks the NARRATIVE of the conversation — not just individual messages,
  * but the progression of topics, mood, and depth. At key moments,
@@ -6101,6 +6214,9 @@ export function getAIResponse(input) {
   // ═══ Epistemic modulation: calibrate certainty based on knowledge depth ═══
   response = modulateEpistemics(response, currentTopics, parsed);
 
+  // ═══ Conversational disfluency: natural speech patterns (self-correction, false starts) ═══
+  response = addDisfluency(response);
+
   // ═══ Subtext-aware tone adjustment: soften/adjust based on what user actually means ═══
   response = adjustForSubtext(response, subtext);
 
@@ -6137,6 +6253,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
