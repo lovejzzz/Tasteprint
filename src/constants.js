@@ -69,7 +69,7 @@ export const VARIANTS = {
   slider:    ["Round","Thin","Stepped","Gradient","Glass","Brutal","Gradient glow"],
   alert:     ["Tinted","Card","Banner","Glass","Brutal","Gradient"],
   pagination:["Numbered","Dots","Minimal","Pill","Glass","Brutal","Gradient"],
-  "pricing-card":["Clean","Featured","Minimal","Gradient","Glass"],
+  "pricing-card":["Clean","Featured","Minimal","Gradient","Glass","Brutal","Gradient glow"],
   "product-card":["Standard","Sale badge","Horizontal","Wishlist","Glass","Brutal","Gradient"],
   "cart-item":["Standard","Compact","Detailed","Swipe","Brutal"],
   "feature-table":["Checkmark","Highlighted","Minimal","Gradient","Glass"],

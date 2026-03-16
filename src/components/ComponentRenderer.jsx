@@ -727,7 +727,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       <div style={{height:40,borderRadius:12,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.ac}30`,transition:"box-shadow .3s"}}><T k="cta" s={{fontSize:12,fontWeight:700,color:onAc,letterSpacing:".02em"}}>Get started</T></div>
     </div></div>;
     /* v4 Glass — frosted glass with aurora gradient background */
-    return <div style={{...b,background:p.card+"cc",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:20,border:`1px solid ${p.bd}`,padding:24,display:"flex",flexDirection:"column",gap:12,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}88`,animation:"tp-fadein .35s ease-out"}}>
+    if(v===4)return <div style={{...b,background:p.card+"cc",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:20,border:`1px solid ${p.bd}`,padding:24,display:"flex",flexDirection:"column",gap:12,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}88`,animation:"tp-fadein .35s ease-out"}}>
       <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,borderRadius:999,background:`radial-gradient(circle,${p.ac}18,transparent 70%)`,pointerEvents:"none"}}/>
       <div style={{position:"absolute",bottom:-30,left:-30,width:100,height:100,borderRadius:999,background:`radial-gradient(circle,${(p.ac2||p.ac)}15,transparent 70%)`,pointerEvents:"none"}}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -743,6 +743,32 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
         <T k={`f${i}`} s={{fontSize:12,color:p.tx}}>{ft}</T>
       </div>)}</div>
       <div style={{height:40,borderRadius:12,background:p.ac+"14",border:`1px solid ${p.ac}33`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",transition:"background .2s"}}><T k="cta" s={{fontSize:12,fontWeight:600,color:p.ac}}>Get started</T></div>
+    </div>;
+    /* v5 Brutal — thick borders, hard offset shadow, dot-grid bg, squared geometry, uppercase bold */
+    if(v===5)return <div style={{...b,background:p.card,borderRadius:3,border:`2.5px solid ${p.tx}`,padding:24,display:"flex",flexDirection:"column",gap:12,boxShadow:`4px 4px 0 ${p.tx}`,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${p.tx}11 1px,transparent 1px)`,backgroundSize:"12px 12px",pointerEvents:"none"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}><T k="plan" s={{fontSize:11,fontWeight:900,textTransform:"uppercase",letterSpacing:"0.1em",color:p.tx}}>PRO</T>{pcFeat&&<div style={{background:p.tx,borderRadius:2,padding:"2px 8px"}}><span style={{fontSize:9,fontWeight:800,color:p.card,letterSpacing:"0.06em"}}>★ POPULAR</span></div>}</div>
+      <div style={{display:"flex",alignItems:"baseline",gap:2,position:"relative"}}><T k="price" s={{fontSize:36,fontWeight:900,color:p.tx,letterSpacing:"-0.02em"}}>$29</T><T k="period" s={{fontSize:12,fontWeight:700,color:p.mu,textTransform:"uppercase"}}>/MO</T></div>
+      <div style={{height:2.5,background:p.tx,position:"relative"}}/>
+      <div style={{flex:1,display:"flex",flexDirection:"column",gap:8,position:"relative"}}>{features.map((ft,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{width:16,height:16,borderRadius:2,border:`2px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",background:p.ac+"18"}}><span style={{fontSize:9,fontWeight:900,color:p.tx}}>✓</span></div>
+        <T k={`f${i}`} s={{fontSize:12,fontWeight:600,color:p.tx,textTransform:"uppercase",letterSpacing:"0.04em"}}>{ft}</T>
+      </div>)}</div>
+      <div style={{height:42,borderRadius:3,border:`2.5px solid ${p.tx}`,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`3px 3px 0 ${p.tx}`,cursor:"pointer",position:"relative"}}><T k="cta" s={{fontSize:12,fontWeight:900,color:onAc,textTransform:"uppercase",letterSpacing:"0.08em"}}>GET STARTED</T></div>
+    </div>;
+    /* v6 Gradient — animated gradient bg, shimmer sweep, dual glow shadow, pulsing accent dots */
+    return <div style={{...b,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,padding:24,display:"flex",flexDirection:"column",gap:12,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.ac}30, 0 0 60px ${p.ac}12`,animation:"tp-fadein .35s ease-out"}}>
+      <div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent 20%,${onAc}08 50%,transparent 80%)`,backgroundSize:"200% 100%",animation:"tp-shimmer-slide 3s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",top:12,right:14,width:6,height:6,borderRadius:999,background:onAc,opacity:.3,animation:"tp-pulse 2s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",bottom:16,left:14,width:4,height:4,borderRadius:999,background:onAc,opacity:.2,animation:"tp-pulse 2.5s ease-in-out .5s infinite",pointerEvents:"none"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative"}}><T k="plan" s={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:onAc,opacity:.8}}>Pro</T>{pcFeat&&<div style={{background:onAc+"22",borderRadius:999,padding:"2px 10px",border:`1px solid ${onAc}33`}}><span style={{fontSize:9,fontWeight:700,color:onAc}}>★ POPULAR</span></div>}</div>
+      <div style={{display:"flex",alignItems:"baseline",gap:2,position:"relative"}}><T k="price" s={{fontSize:36,fontWeight:800,color:onAc,letterSpacing:"-0.02em"}}>$29</T><T k="period" s={{fontSize:12,color:onAc,opacity:.6}}>/mo</T></div>
+      <div style={{height:1,background:`linear-gradient(90deg,transparent,${onAc}33,transparent)`,position:"relative"}}/>
+      <div style={{flex:1,display:"flex",flexDirection:"column",gap:8,position:"relative"}}>{features.map((ft,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,animation:`tp-slidein .3s ease-out ${.1+i*.06}s both`}}>
+        <div style={{width:14,height:14,borderRadius:999,background:onAc+"22",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:onAc}}>✓</span></div>
+        <T k={`f${i}`} s={{fontSize:12,color:onAc,opacity:.9}}>{ft}</T>
+      </div>)}</div>
+      <div style={{height:42,borderRadius:12,background:onAc,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.tx}15`,position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent 20%,${p.ac}15 50%,transparent 80%)`,backgroundSize:"200% 100%",animation:"tp-shimmer-slide 2.5s ease-in-out .5s infinite",pointerEvents:"none"}}/><T k="cta" s={{fontSize:12,fontWeight:700,color:p.ac,letterSpacing:"0.02em",position:"relative"}}>Get started</T></div>
     </div>;
   }
 
