@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 50: Self-aware humor & observational wit
+   Round 51: Response architecture variation
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1379,53 +1379,139 @@ const COMP = {
   connectors: ["Speaking of which —","Oh that reminds me —","Related to that —","On a similar note —","That actually connects to something —","You know what goes well with that?"],
 };
 
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSE ARCHITECTURE VARIATION (Round 51)
+   The composeResponse function always followed the same 5-part
+   structure: reaction → mirror → opinion → related → hook. After
+   many turns, this becomes predictable. Now the AI randomly selects
+   from distinct response "architectures" — varying not just WHAT it
+   says, but HOW it structures the response. Sometimes it leads with
+   a question, sometimes a hot take, sometimes a callback, etc.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastArchitecture = "";
+
 /* Generate a composed response for a topic with mirroring */
 function composeResponse(topic, userWords, sent, isQuestion) {
   const assoc = ASSOC[topic];
   if (!assoc) return null;
 
-  const parts = [];
+  // Pick an architecture that's different from last time
+  const architectures = ["classic","question_lead","hot_take","fact_first","callback_connect","minimal_punch","exploratory"];
+  const available = architectures.filter(a => a !== lastArchitecture);
+  const arch = pick(available);
+  lastArchitecture = arch;
 
-  // 1. Reaction (mirror sentiment)
+  const meaningfulWords = userWords.filter(w => !STOP.has(w) && w.length > 2);
+  const mirrorPhrase = meaningfulWords.length > 0 ? meaningfulWords.slice(0, 2).join(" ") : null;
   const reactionPool = sent > 1 ? COMP.reactions.positive :
                        sent < -1 ? COMP.reactions.negative :
                        isQuestion ? COMP.reactions.curious : COMP.reactions.neutral;
-  parts.push(pick(reactionPool));
 
-  // 2. Mirror user's words when possible
-  const meaningfulWords = userWords.filter(w => !STOP.has(w) && w.length > 2);
-  if (meaningfulWords.length > 0 && Math.random() > 0.4) {
-    const mirrorPhrase = meaningfulWords.slice(0, 2).join(" ");
-    parts.push(pick(COMP.bridges.mirror) + ` ${mirrorPhrase} —`);
-  }
-
-  // 3. Opinion or fact (the "body")
-  if (assoc.opinions && Math.random() > 0.3) {
-    const starter = pick(COMP.opinion_starters);
-    const connector = pick(COMP.opinion_connectors);
-    const opinion = pick(assoc.opinions);
-    parts.push(`${starter} ${topic} ${connector} ${opinion}.`);
-  } else if (assoc.facts) {
-    parts.push(pick(assoc.facts) + ".");
-  }
-
-  // 4. Bring in a related concept naturally
-  if (assoc.related && Math.random() > 0.5) {
-    const related = pick(assoc.related);
-    const relAssoc = ASSOC[related];
-    if (relAssoc) {
-      parts.push(pick(COMP.connectors) + ` ${related} ${relAssoc.opinions ? pick(relAssoc.opinions) : "is pretty interesting too"}.`);
+  switch (arch) {
+    // ── Classic: reaction → body → hook (original structure, still good) ──
+    case "classic": {
+      const parts = [pick(reactionPool)];
+      if (mirrorPhrase && Math.random() > 0.4) parts.push(pick(COMP.bridges.mirror) + ` ${mirrorPhrase} —`);
+      if (assoc.opinions && Math.random() > 0.3) {
+        parts.push(`${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
+      } else if (assoc.facts) parts.push(pick(assoc.facts) + ".");
+      if (assoc.related && Math.random() > 0.5) {
+        const rel = pick(assoc.related), ra = ASSOC[rel];
+        if (ra) parts.push(pick(COMP.connectors) + ` ${rel} ${ra.opinions ? pick(ra.opinions) : "is pretty interesting too"}.`);
+      }
+      parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
+      return parts.join(" ");
     }
-  }
 
-  // 5. End with a hook (follow-up question)
-  if (assoc.hooks && Math.random() > 0.2) {
-    parts.push(pick(assoc.hooks));
-  } else {
-    parts.push(pick(COMP.deepeners));
-  }
+    // ── Question Lead: start with a provocative question, THEN explain why ──
+    case "question_lead": {
+      const parts = [];
+      const hook = assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners);
+      parts.push(hook);
+      if (assoc.opinions) {
+        parts.push(`I ask because ${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
+      }
+      if (assoc.facts && Math.random() > 0.5) parts.push(pick(assoc.facts) + ".");
+      return parts.join(" ");
+    }
 
-  return parts.join(" ");
+    // ── Hot Take: bold opinion first with no preamble ──
+    case "hot_take": {
+      const parts = [];
+      if (assoc.opinions) {
+        const openers = ["Hot take:", "Okay here's my take —", "I'll say it:", "Unpopular opinion maybe, but", "Honestly?"];
+        parts.push(`${pick(openers)} ${pick(assoc.opinions)}.`);
+      } else if (assoc.facts) {
+        parts.push(`Here's something wild — ${pick(assoc.facts)}.`);
+      }
+      if (mirrorPhrase) parts.push(`And what you said about ${mirrorPhrase} — yeah, I'm with you on that.`);
+      parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
+      return parts.join(" ");
+    }
+
+    // ── Fact First: lead with an interesting fact, then opinionate ──
+    case "fact_first": {
+      const parts = [];
+      if (assoc.facts) {
+        const factLeads = ["Fun fact:", "Did you know —", "Here's something cool:", "Random but relevant:"];
+        parts.push(`${pick(factLeads)} ${pick(assoc.facts)}.`);
+      }
+      if (assoc.opinions && Math.random() > 0.4) {
+        parts.push(`And personally, ${pick(assoc.opinions)}.`);
+      }
+      parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
+      return parts.join(" ");
+    }
+
+    // ── Callback Connect: reference something from earlier, then connect to current topic ──
+    case "callback_connect": {
+      const parts = [];
+      const prevTopics = Object.keys(mem.topics).filter(t => t !== topic && ASSOC[t]);
+      if (prevTopics.length > 0) {
+        const prevTopic = pick(prevTopics);
+        parts.push(`This connects to what we were talking about with ${prevTopic} earlier —`);
+        if (assoc.opinions) parts.push(`${pick(assoc.opinions)}.`);
+        const bridge = ASSOC[prevTopic]?.related?.includes(topic) ? `They're definitely related.` : `Different worlds, same energy.`;
+        parts.push(bridge);
+      } else {
+        parts.push(pick(reactionPool));
+        if (assoc.opinions) parts.push(`${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
+      }
+      parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
+      return parts.join(" ");
+    }
+
+    // ── Minimal Punch: short, impactful, no filler ──
+    case "minimal_punch": {
+      if (assoc.opinions) {
+        const opinion = pick(assoc.opinions);
+        const cap = opinion.charAt(0).toUpperCase() + opinion.slice(1);
+        const hook = assoc.hooks ? " " + pick(assoc.hooks) : "";
+        return `${cap}.${hook}`;
+      }
+      if (assoc.facts) return pick(assoc.facts) + ". " + (assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
+      return pick(reactionPool) + " " + pick(COMP.deepeners);
+    }
+
+    // ── Exploratory: think out loud, weigh multiple angles ──
+    case "exploratory": {
+      const parts = [];
+      parts.push(pick(["Hmm, let me think about this...", "Okay so —", "This is interesting because", "I go back and forth on this, but"]));
+      if (assoc.opinions && assoc.opinions.length > 1) {
+        parts.push(`On one hand, ${assoc.opinions[0]}.`);
+        parts.push(`But also, ${assoc.opinions[Math.min(1, assoc.opinions.length - 1)]}.`);
+      } else if (assoc.opinions) {
+        parts.push(`${pick(assoc.opinions)}.`);
+      }
+      if (assoc.facts && Math.random() > 0.5) parts.push(`Plus, ${pick(assoc.facts).toLowerCase()}.`);
+      parts.push(assoc.hooks ? pick(assoc.hooks) : "Where do you land on this?");
+      return parts.join(" ");
+    }
+
+    default:
+      return null;
+  }
 }
 
 /* ── Input Mirroring Engine ──
@@ -9114,6 +9200,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
