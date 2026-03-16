@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 64: Emotional contagion & vibe mirroring
+   Round 65: Echo-back fragments & conversational texture
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -10661,6 +10661,174 @@ function applyVibeContagion(response, text, sent, parsed) {
   return r;
 }
 
+/* ── Conversational Texture — Echo-Back & Specificity Hooks (Round 65) ──
+ * Real humans don't just acknowledge and respond — they echo back *specific*
+ * fragments from what the user said, proving they actually listened.
+ * "React and TypeScript, huh?" / "Wait, THREE projects?" / "A bakery app — love that."
+ * This system extracts salient fragments (numbers, proper nouns, unusual words,
+ * quoted phrases, specific claims) and weaves them into the response opening.
+ * The effect is dramatic: it makes the AI feel like it's truly parsing content,
+ * not just classifying intent.
+ */
+
+let lastEchoBackTurn = 0;
+
+// Extract the most "echo-worthy" fragment from user text
+function extractEchoFragment(text, tokens) {
+  const fragments = [];
+
+  // 1. Numbers with context — "3 projects", "10 years", "$500"
+  const numMatch = text.match(/\b(\d+)\s+(projects?|years?|months?|weeks?|days?|hours?|times?|people|teams?|apps?|files?|bugs?|clients?|pages?|dollars?|percent|%|k\b|million|bucks|things?)\b/i);
+  if (numMatch) {
+    fragments.push({ text: numMatch[0], type: "number", salience: 0.9 });
+  }
+
+  // 2. Dollar amounts / prices
+  const priceMatch = text.match(/\$[\d,]+(?:\.\d{2})?|\b\d+\s*(?:bucks|dollars)\b/i);
+  if (priceMatch && !numMatch) {
+    fragments.push({ text: priceMatch[0], type: "price", salience: 0.85 });
+  }
+
+  // 3. Quoted or emphasized phrases
+  const quotedMatch = text.match(/[""]([^""]{3,30})[""]|'([^']{3,30})'|"([^"]{3,30})"/);
+  if (quotedMatch) {
+    const phrase = quotedMatch[1] || quotedMatch[2] || quotedMatch[3];
+    fragments.push({ text: `"${phrase}"`, type: "quoted", salience: 0.95 });
+  }
+
+  // 4. Proper nouns / brand names (capitalized words not at sentence start)
+  const words = text.split(/\s+/);
+  for (let i = 1; i < words.length; i++) {
+    const w = words[i].replace(/[^a-zA-Z]/g, "");
+    if (w.length >= 2 && /^[A-Z]/.test(w) && !STOP.has(w.toLowerCase()) &&
+        !/^(?:I|Im|Ive|Id|Ill|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December|The|But|And|So|Or|If|When|Then|Also|Just)$/.test(w)) {
+      fragments.push({ text: w, type: "proper", salience: 0.75 });
+    }
+  }
+
+  // 5. Specific claims or extremes — "never", "always", "first time", "best", "worst"
+  const extremeMatch = text.match(/\b(never|always|first time|best|worst|only|impossible|no one|everyone|everything|nothing|every single)\b(?:\s+\w+){0,3}/i);
+  if (extremeMatch) {
+    fragments.push({ text: extremeMatch[0].trim(), type: "extreme", salience: 0.7 });
+  }
+
+  // 6. Technical/domain terms — words not in stop list that are 6+ chars
+  const techWords = tokens.filter(w => w.length >= 6 && !STOP.has(w) && /^[a-z]+$/i.test(w));
+  if (techWords.length > 0) {
+    const best = techWords.reduce((a, b) => b.length > a.length ? b : a);
+    fragments.push({ text: best, type: "technical", salience: 0.5 });
+  }
+
+  // 7. Lists — user mentioned multiple things
+  const listMatch = text.match(/(\w+),\s+(\w+),?\s+(?:and|or)\s+(\w+)/i);
+  if (listMatch) {
+    fragments.push({ text: `${listMatch[1]}, ${listMatch[2]}, and ${listMatch[3]}`, type: "list", salience: 0.8 });
+  }
+
+  // Return highest salience fragment
+  fragments.sort((a, b) => b.salience - a.salience);
+  return fragments[0] || null;
+}
+
+function applyEchoBack(response, text, sent, topics) {
+  const turn = mem.turn;
+  if (turn < 3) return response;
+  if (turn - lastEchoBackTurn < 3) return response;
+  if (text.length < 15) return response; // nothing to echo from short messages
+  if (Math.random() > 0.35) return response; // 35% fire rate
+
+  // Don't echo if response already starts with grounding/personality prefix
+  if (/^(Oh |Hmm|Right|Wait|Gotcha|Got it|Makes sense|I hear|Good question|Actually|So |Yeah|Ooh)/i.test(response)) return response;
+
+  const tokens = tokenize(text);
+  const fragment = extractEchoFragment(text, tokens);
+  if (!fragment) return response;
+
+  lastEchoBackTurn = turn;
+  let echo = "";
+
+  switch (fragment.type) {
+    case "number": {
+      const num = fragment.text.match(/\d+/)?.[0];
+      const templates = [
+        `${fragment.text}? `, `Wait, ${fragment.text}? `,
+        `${num}, wow — `, `Hold on, ${fragment.text} — `,
+      ];
+      if (parseInt(num) >= 5) {
+        templates.push(`${num}?! That's a LOT. `);
+      }
+      echo = templates[Math.floor(Math.random() * templates.length)];
+      break;
+    }
+
+    case "price": {
+      const templates = [
+        `${fragment.text}, huh? `, `Whoa, ${fragment.text}? `,
+        `${fragment.text} — `,
+      ];
+      echo = templates[Math.floor(Math.random() * templates.length)];
+      break;
+    }
+
+    case "quoted": {
+      const templates = [
+        `${fragment.text} — I like how you put that. `,
+        `${fragment.text}, yeah. `,
+        `Ooh, ${fragment.text}. `,
+      ];
+      echo = templates[Math.floor(Math.random() * templates.length)];
+      break;
+    }
+
+    case "proper": {
+      const templates = [
+        `${fragment.text}, huh? `, `Oh, ${fragment.text}! `,
+        `${fragment.text} — nice. `,
+      ];
+      echo = templates[Math.floor(Math.random() * templates.length)];
+      break;
+    }
+
+    case "extreme": {
+      const word = fragment.text.split(/\s+/)[0].toLowerCase();
+      if (["never", "nothing", "impossible", "no one"].includes(word)) {
+        echo = sent >= 0 ? `Never? Not even once? ` : `Yeah, ${fragment.text}. I get that. `;
+      } else if (["always", "everything", "everyone", "every single"].includes(word)) {
+        echo = `Every time? `;
+      } else if (["first time", "best", "worst"].includes(word)) {
+        echo = `${fragment.text.charAt(0).toUpperCase() + fragment.text.slice(1)}, huh? `;
+      } else {
+        echo = `${fragment.text} — `;
+      }
+      break;
+    }
+
+    case "list": {
+      echo = `${fragment.text} — that's a good combo. `;
+      break;
+    }
+
+    case "technical": {
+      if (Math.random() > 0.5) {
+        echo = `${fragment.text.charAt(0).toUpperCase() + fragment.text.slice(1)}, interesting. `;
+      } else {
+        echo = `Oh, ${fragment.text}? `;
+      }
+      break;
+    }
+
+    default:
+      return response;
+  }
+
+  // Lowercase the response start and prepend echo
+  const firstChar = response.charAt(0);
+  if (/[A-Z]/.test(firstChar)) {
+    return echo + firstChar.toLowerCase() + response.slice(1);
+  }
+  return echo + response;
+}
+
 /* ── Output Polish & Deduplication (Round 58) ──
  * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
  * Runs just before output to ensure the response reads naturally regardless
@@ -11055,6 +11223,9 @@ export function getAIResponse(input) {
   // ═══ Emotional contagion: mirror user's communicative vibe (playful/serious/etc.) ═══
   response = applyVibeContagion(response, text, sent, parsed);
 
+  // ═══ Echo-back texture: echo specific fragments to prove active listening ═══
+  response = applyEchoBack(response, text, sent, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -11104,6 +11275,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
