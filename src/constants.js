@@ -41,7 +41,7 @@ export const PAL = {
 export const VARIANTS = {
   button:    ["Filled","Outline","Ghost","Pill","Brutal","Glass","Terminal"],
   card:      ["Elevated","Outlined","Filled bg","Top media","Minimal","Glass","Brutal","Terminal"],
-  "card-sm": ["Rounded","Horizontal","Tinted"],
+  "card-sm": ["Rounded","Horizontal","Tinted","Glass","Brutal"],
   hero:      ["Gradient","Centered","Bold fill","Terminal"],
   navbar:    ["Classic","Underline","Pill","Glass","Terminal"],
   tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered"],
