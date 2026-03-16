@@ -116,6 +116,14 @@ const FCOLORS = {
   'api.js':'#a6e3a1',
 };
 
+const FICONS = {
+  'main.js': 'JS', 'playground.js': 'JS',
+  'palette.js': '\uD83C\uDFA8', 'shapes.js': '\u25A1', 'fonts.js': 'Aa',
+  'variants.js': '\u2726', 'types.js': 'T', 'device.js': '\uD83D\uDCF1',
+  'layout.js': '\u2B1A', 'theme.js': '\uD83C\uDF19', 'batch.js': '\u21C6',
+  'api.js': '\uD83D\uDCD6',
+};
+
 /* Snippet content */
 const SNIPPET_LAYOUT = `// Layout Builder — create a full page structure
 // Run with \u25B6 or \u2318+Enter
@@ -307,6 +315,11 @@ const SHORTCUTS = [
   ['F2/Shift+F2', 'Next/prev bookmark'],
   ['\u2318+R', 'Rename symbol'],
   ['\u2318+E', 'Recent files'],
+  ['Ctrl+Tab', 'Next tab'],
+  ['Ctrl+Shift+Tab', 'Previous tab'],
+  ['Alt+Shift+\u2191/\u2193', 'Copy line up/down'],
+  ['\u2318+Click', 'Go to definition'],
+  ['Shift+Enter (REPL)', 'Multi-line input'],
   ['Tab (on trigger)', 'Expand snippet'],
   ['Esc', 'Close overlay'],
 ];
@@ -1069,7 +1082,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       let ln = null;
       const m = e.stack?.match(/<anonymous>:(\d+)/);
       if (m) ln = parseInt(m[1]) - 2;
-      setOutput({ logs, ms: null, err: e.message, errLn: ln });
+      // Generate fix suggestion
+      let suggest = null;
+      const msg = e.message;
+      if (msg.includes('is not defined')) {
+        const varM = msg.match(/(\w+) is not defined/);
+        if (varM) {
+          const w = varM[1];
+          if (TP_AC.some(a => a.label.startsWith(w))) suggest = `Did you mean tp.${w}()?`;
+          else if (['cosole', 'consol', 'consloe'].includes(w)) suggest = 'Did you mean console?';
+          else suggest = `"${w}" is not defined — check spelling or add a declaration`;
+        }
+      } else if (msg.includes('is not a function')) {
+        suggest = 'Check the method name — use ⌘+Space after tp. for autocomplete';
+      } else if (msg.includes('Unexpected token')) {
+        suggest = 'Syntax error — check for missing brackets, quotes, or semicolons';
+      } else if (msg.includes('Unexpected end of input')) {
+        suggest = 'Missing closing bracket } or ) — try Format Document (⌘P → Format)';
+      }
+      setOutput({ logs, ms: null, err: msg, errLn: ln, suggest });
     }
     setTimeout(() => setBusy(false), 300);
   };
@@ -1194,6 +1225,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (helpOpen) { setHelpOpen(false); return; }
       if (recentOpen) { setRecentOpen(false); return; }
       if (notifOpen) { setNotifOpen(false); return; }
+    }
+
+    /* Tab cycling: Ctrl+Tab / Ctrl+Shift+Tab */
+    if (e.key === 'Tab' && e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const idx = openTabs.indexOf(activeFile);
+      if (e.shiftKey) {
+        const prev = idx <= 0 ? openTabs.length - 1 : idx - 1;
+        setActiveFile(openTabs[prev]);
+      } else {
+        const next = idx >= openTabs.length - 1 ? 0 : idx + 1;
+        setActiveFile(openTabs[next]);
+      }
+      return;
     }
 
     /* Autocomplete navigation */
@@ -1338,6 +1383,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         const tmp = all[curLn + 1]; all[curLn + 1] = all[curLn]; all[curLn] = tmp;
         const nc = all.join('\n');
         const ns = s + tmp.length + 1;
+        setCode(nc);
+        setTimeout(() => { el.selectionStart = ns; el.selectionEnd = ns + (en - s) }, 0);
+      }
+      return;
+    }
+
+    /* Copy line up/down: Alt+Shift+Up/Down */
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.altKey && e.shiftKey) {
+      e.preventDefault();
+      if (readonly) return;
+      const [ls, le] = getLineRange(s);
+      const line = code.substring(ls, le);
+      if (e.key === 'ArrowUp') {
+        const nc = code.substring(0, ls) + line + '\n' + code.substring(ls);
+        setCode(nc);
+        // Keep cursor on original position (which moved down)
+      } else {
+        const nc = code.substring(0, le) + '\n' + line + code.substring(le);
+        const ns = s + line.length + 1;
         setCode(nc);
         setTimeout(() => { el.selectionStart = ns; el.selectionEnd = ns + (en - s) }, 0);
       }
@@ -1611,7 +1675,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       color: isActive ? '#cdd6f4' : '#777',
                       borderLeft: isActive ? '2px solid #cba6f7' : '2px solid transparent',
                     }}>
-                    <span style={{ fontSize: 6, color: FCOLORS[f.name] || (f.path.startsWith('user/') ? '#cba6f7' : '#555') }}>{'\u25CF'}</span>
+                    <span style={{ fontSize: FICONS[f.name] ? 8 : 6, color: FCOLORS[f.name] || (f.path.startsWith('user/') ? '#cba6f7' : '#555'), width: 14, textAlign: 'center', flexShrink: 0, lineHeight: 1 }}>{FICONS[f.name] || (f.path.startsWith('user/') ? 'JS' : '\u25CF')}</span>
                     {renameFile === f.path ? (
                       <input ref={renameRef} value={renameName} onChange={e => setRenameName(e.target.value)}
                         spellCheck={false} autoFocus
@@ -1877,7 +1941,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     borderLeft: dragOverTab === path && dragTab !== path ? '2px solid #cba6f7' : '2px solid transparent',
                     opacity: dragTab === path ? .4 : 1,
                   }}>
-                  <span style={{ fontSize: 6, color: FCOLORS[name] || '#555' }}>{pinnedTabs.has(path) ? '\uD83D\uDCCC' : '\u25CF'}</span>
+                  <span style={{ fontSize: pinnedTabs.has(path) ? 6 : (FICONS[name] ? 8 : 6), color: FCOLORS[name] || (path.startsWith('user/') ? '#cba6f7' : '#555'), lineHeight: 1, width: 12, textAlign: 'center', flexShrink: 0 }}>{pinnedTabs.has(path) ? '\uD83D\uDCCC' : (FICONS[name] || 'JS')}</span>
                   <span style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', fontStyle: pinnedTabs.has(path) ? 'italic' : 'normal' }}>{name}</span>
                   {isRO && <span style={{ fontSize: 7, color: '#555', opacity: .5 }}>ro</span>}
                   {pinnedTabs.has(path) ? null : openTabs.length > 1 ? (
@@ -2207,6 +2271,48 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
+          {/* Welcome tab */}
+          {!welcomeDismissed && activeFile === 'src/main.js' && !output && (
+            <div style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 24, zIndex: 12, background: '#1e1e2e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#cba6f7', letterSpacing: '-.02em' }}>Tasteprint IDE</div>
+              <div style={{ fontSize: 9, color: '#555', maxWidth: 260, textAlign: 'center', lineHeight: '1.5' }}>
+                Code your designs. The <span style={{ color: '#cba6f7' }}>tp</span> API gives you full control over the canvas — add components, change themes, and automate layouts.
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                {[
+                  { label: '\u25B6 Run main.js', action: () => { setWelcomeDismissed(true); runCode(); }, color: '#27c93f' },
+                  { label: 'Open Playground', action: () => { setWelcomeDismissed(true); openFile('src/playground.js'); }, color: '#f9e2af' },
+                  { label: 'API Docs', action: () => { setWelcomeDismissed(true); openFile('docs/api.js'); }, color: '#89b4fa' },
+                ].map(b => (
+                  <button key={b.label} onClick={b.action} onMouseDown={stop}
+                    style={{
+                      background: b.color + '18', color: b.color, border: `1px solid ${b.color}30`,
+                      borderRadius: 6, padding: '4px 12px', fontSize: 9, fontWeight: 600,
+                      cursor: 'pointer', fontFamily: MONO, transition: 'all .15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = b.color + '30'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = b.color + '18'; }}
+                  >{b.label}</button>
+                ))}
+              </div>
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3, fontSize: 8, color: '#555' }}>
+                {[
+                  ['\u2318+Enter', 'Run code'],
+                  ['\u2318+P', 'Command palette'],
+                  ['\u2318+F', 'Find in file'],
+                  ['\u2318+K', 'All shortcuts'],
+                ].map(([key, desc]) => (
+                  <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ background: '#ffffff08', padding: '1px 5px', borderRadius: 3, fontSize: 7, color: '#888', minWidth: 60, textAlign: 'center', border: '1px solid #ffffff0a' }}>{key}</span>
+                    <span>{desc}</span>
+                  </div>
+                ))}
+              </div>
+              <span onClick={() => setWelcomeDismissed(true)} onMouseDown={stop}
+                style={{ fontSize: 8, color: '#444', cursor: 'pointer', marginTop: 8 }}>Dismiss</span>
+            </div>
+          )}
+
           {/* Editor + Terminal split */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
@@ -2530,7 +2636,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     const before = code.substring(Math.max(0, pos - 30), pos);
                     const after = code.substring(pos, Math.min(code.length, pos + 30));
                     const m = (before + after).match(/tp\.(\w+)/);
-                    if (m && TP_DOCS.find(d => d.method === m[1])) {
+                    if (m && TP_DOCS[m[1]]) {
                       openFile('docs/api.js');
                       showToast(`Jumped to tp.${m[1]} docs`, 'info');
                     }
@@ -2936,6 +3042,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         <span style={{ color: '#f38ba8', fontWeight: 600 }}>{'\u2717'} Error</span>
                         {output.errLn && <span style={{ opacity: .5, marginLeft: 6 }}>line {output.errLn}</span>}
                         <div style={{ marginTop: 2, color: '#f38ba8cc' }}>{output.err}</div>
+                        {output.suggest && (
+                          <div style={{ marginTop: 4, fontSize: 8, color: '#89b4fa', background: '#89b4fa10', padding: '3px 6px', borderRadius: 3, borderLeft: '2px solid #89b4fa40' }}>
+                            {'\uD83D\uDCA1'} {output.suggest}
+                          </div>
+                        )}
                       </div>
                     )}
                     {hints.map((h, i) => (
