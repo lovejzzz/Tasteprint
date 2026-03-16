@@ -83,12 +83,12 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
   if(type==="button"){
     const bLoading=P("loading");
     const bSpin=(c,sz=12)=><div style={{width:sz,height:sz,borderRadius:999,border:`2px solid ${c}30`,borderTopColor:c,animation:"tp-spin .7s linear infinite",flexShrink:0}}/>;
-    if(v===0)return <div style={{...b,background:p.ac,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(onAc)}<T k="label" s={{color:onAc,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Get started"}</T></div>;
-    if(v===1)return <div style={{...b,background:"transparent",borderRadius:10,border:`1.5px solid ${p.ac}55`,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(p.ac)}<T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Learn more"}</T></div>;
-    if(v===2)return <div style={{...b,background:"transparent",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(p.ac)}<T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Learn more"}</T></div>;
-    if(v===3)return <div style={{...b,background:p.ac,borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(onAc)}<T k="label" s={{color:onAc,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Get started"}</T></div>;
-    if(v===4)return <div style={{...b,background:p.tx,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",border:`2px solid ${p.tx}`,gap:6,opacity:bLoading?.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(onTx)}<T k="label" s={{color:onTx,fontSize:13,fontWeight:600,letterSpacing:"0.04em"}}>{bLoading?"LOADING…":"SUBMIT"}</T></div>;
-    if(v===5)return <div style={{...b,background:`${p.ac}18`,backdropFilter:"blur(12px)",borderRadius:12,border:`1px solid ${p.ac}22`,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(p.ac)}<T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Get started"}</T></div>;
+    if(v===0)return <div style={{...b,background:p.ac,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?0.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(onAc)}<T k="label" s={{color:onAc,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Get started"}</T></div>;
+    if(v===1)return <div style={{...b,background:"transparent",borderRadius:10,border:`1.5px solid ${p.ac}55`,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?0.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(p.ac)}<T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Learn more"}</T></div>;
+    if(v===2)return <div style={{...b,background:"transparent",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?0.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(p.ac)}<T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Learn more"}</T></div>;
+    if(v===3)return <div style={{...b,background:p.ac,borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?0.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(onAc)}<T k="label" s={{color:onAc,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Get started"}</T></div>;
+    if(v===4)return <div style={{...b,background:p.tx,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",border:`2px solid ${p.tx}`,gap:6,opacity:bLoading?0.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(onTx)}<T k="label" s={{color:onTx,fontSize:13,fontWeight:600,letterSpacing:"0.04em"}}>{bLoading?"LOADING…":"SUBMIT"}</T></div>;
+    if(v===5)return <div style={{...b,background:`${p.ac}18`,backdropFilter:"blur(12px)",borderRadius:12,border:`1px solid ${p.ac}22`,display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:bLoading?0.92:1,transition:"opacity .2s"}}>{bLoading&&bSpin(p.ac)}<T k="label" s={{color:p.ac,fontSize:13,fontWeight:500}}>{bLoading?"Loading…":"Get started"}</T></div>;
     return <div style={{...b,background:"#0a0a0c",borderRadius:2,border:`1px solid ${p.ac}44`,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{bLoading?bSpin(p.ac,10):<span style={{color:p.ac,fontSize:11,fontFamily:"'JetBrains Mono',monospace",opacity:.5,animation:"tp-blink 1.2s step-end infinite"}}>$</span>}<T k="label" s={{color:p.ac,fontSize:12,fontWeight:500,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.03em"}}>{bLoading?"LOADING…":"EXECUTE"}</T></div>;
   }
 
@@ -1928,7 +1928,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       </div>})}
     </div>)}</div>}
     /* v4 Glass — frosted glassmorphism with aurora orbs, status icons, badge cards */
-    {const gcols=[{title:"To Do",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/></svg>,items:["Research competitors","Create wireframes"]},{title:"In Progress",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,items:["Build components"]},{title:"Done",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,items:["Project setup"]}];const statColors=[p.mu,p.ac,"#10B981"];return <div style={{...b,background:p.card+"e0",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:18,border:`1px solid ${p.ac}12`,padding:12,display:"flex",gap:8,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}06, inset 0 1px 0 rgba(255,255,255,0.05)`,animation:"tp-fadein .3s ease-out both"}}>
+    if(v===4){const gcols=[{title:"To Do",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/></svg>,items:["Research competitors","Create wireframes"]},{title:"In Progress",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,items:["Build components"]},{title:"Done",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,items:["Project setup"]}];const statColors=[p.mu,p.ac,"#10B981"];return <div style={{...b,background:p.card+"e0",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:18,border:`1px solid ${p.ac}12`,padding:12,display:"flex",gap:8,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}06, inset 0 1px 0 rgba(255,255,255,0.05)`,animation:"tp-fadein .3s ease-out both"}}>
       <div style={{position:"absolute",top:-20,left:"40%",width:80,height:80,borderRadius:999,background:`radial-gradient(circle,${p.ac}10,${p.ac2||p.ac}06,transparent 70%)`,pointerEvents:"none"}}/>
       {gcols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:6,position:"relative",zIndex:1}}>
         <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2,cursor:"pointer",padding:"2px 4px",borderRadius:8,background:ci===kbActive?p.ac+"10":"transparent",transition:"background .15s"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",ci)}>
@@ -1947,6 +1947,41 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
               {ci===2&&<div style={{background:"#10B98110",borderRadius:6,padding:"1px 6px",border:"1px solid #10B98115"}}><span style={{fontSize:7,color:"#10B981",fontWeight:500}}>Done</span></div>}
             </div>
             <div style={{width:14,height:14,borderRadius:999,background:`linear-gradient(135deg,${p.ac}20,${(p.ac2||p.ac)}15)`,border:`1.5px solid ${p.card}`}}/>
+          </div>
+        </div>)}
+      </div>)}
+    </div>}
+    /* v5 Brutal — thick borders, dot-grid bg, squared cards, offset shadow, uppercase bold headers */
+    if(v===5){const bcols=[{title:"TO DO",items:["RESEARCH","WIREFRAMES"]},{title:"IN PROGRESS",items:["COMPONENTS"]},{title:"DONE",items:["SETUP"]}];const dotBg=`radial-gradient(${p.tx}15 1px,transparent 1px)`;return <div style={{...b,background:p.card,backgroundImage:dotBg,backgroundSize:"12px 12px",border:`2.5px solid ${p.tx}`,borderRadius:3,padding:10,display:"flex",gap:8}}>
+      {bcols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:5}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",padding:"3px 5px",border:`2px solid ${ci===kbActive?p.ac:p.tx}`,borderRadius:2,background:ci===kbActive?p.ac+"15":"transparent",boxShadow:ci===kbActive?`2px 2px 0 ${p.ac}`:"none",transition:"all .15s"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",ci)}>
+          <T k={`h${ci}`} s={{fontSize:f(8),fontWeight:900,color:ci===kbActive?p.ac:p.tx,letterSpacing:"0.1em"}}>{col.title}</T>
+          <div style={{background:ci===kbActive?p.ac:p.tx,borderRadius:1,padding:"0 4px"}}><span style={{fontSize:7,fontWeight:800,color:ci===kbActive?onAc:p.card}}>{col.items.length}</span></div>
+        </div>
+        {col.items.map((it,ii)=><div key={ii} style={{background:p.card,border:`2.5px solid ${ci===kbActive?p.ac:p.tx}`,borderRadius:2,padding:"7px 8px",boxShadow:`3px 3px 0 ${ci===kbActive?p.ac:p.tx}`,animation:`tp-slidein .2s ease-out ${(ci*2+ii)*0.05}s both`}}>
+          <T k={`c${ci}i${ii}`} s={{fontSize:f(9),fontWeight:700,color:ci===kbActive?p.ac:p.tx,letterSpacing:"0.06em"}}>{it}</T>
+          <div style={{display:"flex",gap:3,marginTop:5}}>
+            <div style={{width:14,height:14,borderRadius:1,border:`1.5px solid ${p.tx}`,background:ci===kbActive?p.ac+"20":"transparent"}}/>
+            <div style={{width:14,height:14,borderRadius:1,border:`1.5px solid ${p.tx}`,background:"transparent",marginLeft:-3}}/>
+          </div>
+        </div>)}
+      </div>)}
+    </div>}
+    /* v6 Gradient — animated gradient headers, shimmer sweep, pulsing accent dots, glow cards */
+    {const ac2=p.ac2||p.ac;const gcols=[{title:"To Do",items:["Research","Wireframes"]},{title:"In Progress",items:["Components"]},{title:"Done",items:["Setup"]}];return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.ac}15`,padding:10,display:"flex",gap:8,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${p.ac}06,transparent 40%,${ac2}04)`,pointerEvents:"none"}}/>
+      {gcols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:6,position:"relative",zIndex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"4px 6px",borderRadius:10,background:ci===kbActive?`linear-gradient(135deg,${p.ac}18,${ac2}12)`:"transparent",transition:"background .2s"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",ci)}>
+          <div style={{width:7,height:7,borderRadius:999,background:ci===kbActive?p.ac:p.mu+"40",boxShadow:ci===kbActive?`0 0 8px ${p.ac}50`:"none",animation:ci===kbActive?"tp-pulse 2s ease-in-out infinite":"none",flexShrink:0}}/>
+          <T k={`h${ci}`} s={{fontSize:f(9),fontWeight:700,color:ci===kbActive?p.ac:p.tx,flex:1}}>{col.title}</T>
+          <div style={{background:ci===kbActive?`linear-gradient(135deg,${p.ac}20,${ac2}15)`:p.su,borderRadius:999,padding:"1px 6px",border:`1px solid ${ci===kbActive?p.ac+"25":p.bd}`}}><span style={{fontSize:8,color:ci===kbActive?p.ac:p.mu,fontWeight:600}}>{col.items.length}</span></div>
+        </div>
+        {col.items.map((it,ii)=><div key={ii} style={{background:p.card,borderRadius:12,border:`1px solid ${ci===kbActive?p.ac+"20":p.bd}`,padding:10,position:"relative",overflow:"hidden",animation:`tp-slidein .3s ease-out ${(ci*2+ii)*0.06}s both`,boxShadow:ci===kbActive?`0 2px 12px ${p.ac}12, 0 0 0 1px ${p.ac}08`:"none",transition:"box-shadow .2s"}}>
+          {ci===kbActive&&<div style={{position:"absolute",top:0,left:"-100%",width:"60%",height:"100%",background:`linear-gradient(90deg,transparent,${p.ac}08,transparent)`,animation:"tp-shimmer-slide 3s ease-in-out infinite",pointerEvents:"none"}}/>}
+          <T k={`c${ci}i${ii}`} s={{fontSize:f(10),fontWeight:500,color:p.tx,position:"relative",zIndex:1}}>{it}</T>
+          <div style={{display:"flex",gap:4,marginTop:6,position:"relative",zIndex:1}}>
+            <div style={{width:16,height:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac}25,${ac2}18)`,border:`1.5px solid ${p.card}`}}/>
+            <div style={{width:16,height:16,borderRadius:999,background:`linear-gradient(135deg,${ac2}18,${p.ac}12)`,border:`1.5px solid ${p.card}`,marginLeft:-5}}/>
           </div>
         </div>)}
       </div>)}
