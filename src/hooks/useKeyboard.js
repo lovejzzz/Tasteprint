@@ -4,7 +4,7 @@ import { uid } from "../utils";
 export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes }) {
   useEffect(() => {
     const h = e => {
-      if ((e.key === "Backspace" || e.key === "Delete") && !e.target.isContentEditable) {
+      if ((e.key === "Backspace" || e.key === "Delete") && !e.target.isContentEditable && !e.target.closest?.("[contenteditable]")) {
         e.preventDefault(); onDel();
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "z") { e.preventDefault(); redo(); return; }

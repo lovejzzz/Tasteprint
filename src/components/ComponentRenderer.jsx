@@ -46,7 +46,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     const ceProps={"data-text-key":k,contentEditable:true,suppressContentEditableWarning:true,
       onInput:e=>{onText?.(k,e.target.innerHTML)},
       onMouseDown:e=>e.stopPropagation(),
-      onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}},
+      onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}if(e.key==="Backspace"||e.key==="Delete"){e.stopPropagation()}},
       style:{...fs,outline:"none",cursor:"text",minWidth:8}};
     return hasHtml
       ?<span {...ceProps} dangerouslySetInnerHTML={{__html:sanitizeHtml(val)}}/>
