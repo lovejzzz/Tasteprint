@@ -388,7 +388,8 @@ const SHORTCUTS = [
     ['Esc', 'Close overlay'],
   ]},
   { cat: 'Editing', items: [
-    ['\u2318+/', 'Toggle comment'],
+    ['\u2318+/', 'Toggle line comment'],
+    ['\u2318+\u21E7+/', 'Toggle block comment'],
     ['\u2318+D', 'Select next occurrence'],
     ['\u2318+L', 'Select line (expandable)'],
     ['\u2318+A', 'Select all'],
@@ -1615,6 +1616,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Sort Lines Descending', key: 'sortdesc', hint: '' },
       { label: 'Remove Duplicate Lines', key: 'dedup', hint: '' },
       { label: 'Join Lines', key: 'join', hint: '' },
+      { label: 'Sort Imports', key: 'sortimports', hint: '' },
+      { label: 'Toggle Block Comment', key: 'blockcomment', hint: '\u2318+\u21E7+/' },
       { label: 'Trim Trailing Whitespace', key: 'trim', hint: '' },
       { label: 'Close All Tabs', key: 'closeall', hint: '' },
       { label: 'Close Saved Tabs', key: 'closesaved', hint: '' },
@@ -1741,6 +1744,48 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             setCode(code.substring(0, le) + ' ' + nextLine + code.substring(nextEnd));
             showToast('Line joined', 'info');
           }
+        }
+      }
+    }
+    else if (key === 'sortimports') {
+      if (readonly) return;
+      const all = code.split('\n');
+      // Find consecutive import lines at the top of the file
+      const imports = [];
+      let firstImp = -1, lastImp = -1;
+      for (let i = 0; i < all.length; i++) {
+        if (/^\s*import\s/.test(all[i])) {
+          if (firstImp === -1) firstImp = i;
+          lastImp = i;
+          imports.push(all[i]);
+        } else if (firstImp !== -1 && all[i].trim() === '') {
+          continue; // skip blank lines between imports
+        } else if (firstImp !== -1) {
+          break;
+        }
+      }
+      if (imports.length < 2) { showToast('Nothing to sort', 'warn'); return; }
+      imports.sort((a, b) => a.trim().localeCompare(b.trim()));
+      const newAll = [...all.slice(0, firstImp), ...imports, ...all.slice(lastImp + 1)];
+      setCode(newAll.join('\n'));
+      showToast(`Sorted ${imports.length} imports`, 'info');
+    }
+    else if (key === 'blockcomment') {
+      if (readonly) return;
+      const el = taRef.current;
+      if (el) {
+        const s = el.selectionStart, en = el.selectionEnd;
+        const sel = code.substring(s, en);
+        if (sel.startsWith('/*') && sel.endsWith('*/')) {
+          const inner = sel.slice(2, -2).replace(/^\s/, '').replace(/\s$/, '');
+          setCode(code.substring(0, s) + inner + code.substring(en));
+          setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + inner.length }, 0);
+        } else if (s !== en) {
+          const wrapped = `/* ${sel} */`;
+          setCode(code.substring(0, s) + wrapped + code.substring(en));
+          setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + wrapped.length }, 0);
+        } else {
+          showToast('Select code first', 'warn');
         }
       }
     }
@@ -2314,6 +2359,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Block comment toggle: Cmd+Shift+/ wraps selection in block comment */
+    if (e.key === '/' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      if (readonly) return;
+      const sel = code.substring(s, en);
+      if (sel.startsWith('/*') && sel.endsWith('*/')) {
+        // Unwrap block comment
+        const inner = sel.slice(2, -2).replace(/^\s/, '').replace(/\s$/, '');
+        setCode(code.substring(0, s) + inner + code.substring(en));
+        setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + inner.length }, 0);
+      } else {
+        const wrapped = `/* ${sel} */`;
+        setCode(code.substring(0, s) + wrapped + code.substring(en));
+        setTimeout(() => { el.selectionStart = s; el.selectionEnd = s + wrapped.length }, 0);
+      }
+      return;
+    }
     /* Toggle comment: Cmd+/ */
     if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -2582,6 +2644,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     if (')]}"\'`'.includes(e.key) && code[s] === e.key) {
       e.preventDefault(); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return;
+    }
+    /* JSX auto-close tag: typing > after <tagName inserts </tagName> */
+    if (e.key === '>' && s === en && !readonly) {
+      const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+      const before = code.substring(lineStart, s);
+      // Match <TagName or <tag-name (not self-closing, not closing tag)
+      const tagM = before.match(/<([A-Za-z][A-Za-z0-9.-]*)\s*(?:[^/]*)$/);
+      if (tagM && !before.trimEnd().endsWith('/') && !tagM[0].includes('//')) {
+        const tag = tagM[1];
+        // Don't auto-close self-closing HTML tags
+        const SELF_CLOSING = new Set(['br','hr','img','input','meta','link','area','base','col','embed','source','track','wbr']);
+        if (!SELF_CLOSING.has(tag.toLowerCase())) {
+          e.preventDefault();
+          const closing = `</${tag}>`;
+          setCode(code.substring(0, s) + '>' + closing + code.substring(s));
+          setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0);
+          return;
+        }
+      }
     }
     /* Smart semicolon: skip duplicate at end of line */
     if (e.key === ';' && s === en) {
@@ -3930,10 +4011,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       while ((idM = idRx.exec(val)) !== null) { if (idM[1].length >= 2) localIds.add(idM[1]); }
                       const locals = [...localIds].filter(id => id.toLowerCase().startsWith(partial) && id.toLowerCase() !== partial);
                       const kwFiltered = JS_KW.filter(k => k.toLowerCase().startsWith(partial) && k.toLowerCase() !== partial);
+                      // Snippet triggers matching partial
+                      const snippetMatches = Object.keys(SNIPPETS).filter(sn => sn.startsWith(partial) && sn !== partial);
                       const combined = [
                         ...locals.map(id => ({ label: id, desc: 'local', insert: id.slice(partial.length) })),
+                        ...snippetMatches.map(sn => ({ label: sn, desc: '\u2702 snippet', insert: sn.slice(partial.length) })),
                         ...kwFiltered.map(k => ({ label: k, desc: 'keyword', insert: k.slice(partial.length) })),
-                      ].slice(0, 10);
+                      ].slice(0, 12);
                       if (combined.length) {
                         setAcItems(combined);
                         setAcIdx(0); setAcOpen(true);
