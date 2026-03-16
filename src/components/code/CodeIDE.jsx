@@ -433,6 +433,8 @@ const SHORTCUTS = [
   { cat: 'View', items: [
     ['\u2318+=/\u2318+-', 'Zoom in/out'],
     ['\u2318+0', 'Reset zoom'],
+    ['\u2318+\u21E7+Z', 'Zen mode (distraction-free)'],
+    ['\u2318+\u21E7+V', 'Paste from clipboard history'],
   ]},
   { cat: 'Terminal', items: [
     ['\u2318+J', 'Toggle terminal'],
@@ -644,6 +646,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [showIndentRainbow, setShowIndentRainbow] = React.useState(true);
   const [autoSave, setAutoSave] = React.useState(true);
 
+  /* ---- Zen mode (distraction-free) ---- */
+  const [zenMode, setZenMode] = React.useState(false);
+
+  /* ---- Clipboard history ---- */
+  const clipHistory = React.useRef([]);
+  const [clipOpen, setClipOpen] = React.useState(false);
+  const [clipIdx, setClipIdx] = React.useState(0);
+
   /* ---- Editor zoom ---- */
   const [editorZoom, setEditorZoom] = React.useState(1);
 
@@ -744,6 +754,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     window.addEventListener('keyup', onUp);
     window.addEventListener('blur', onBlur);
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur); };
+  }, []);
+
+  /* ---- Clipboard history: record copies ---- */
+  React.useEffect(() => {
+    const onCopy = () => {
+      const sel = window.getSelection()?.toString();
+      if (sel && sel.trim()) {
+        clipHistory.current = [sel, ...clipHistory.current.filter(c => c !== sel)].slice(0, 10);
+      }
+    };
+    document.addEventListener('copy', onCopy);
+    document.addEventListener('cut', onCopy);
+    return () => { document.removeEventListener('copy', onCopy); document.removeEventListener('cut', onCopy); };
   }, []);
 
   /* ---- Dynamic tree (base + user files) ---- */
@@ -1633,6 +1656,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Sort Lines Descending', key: 'sortdesc', hint: '' },
       { label: 'Remove Duplicate Lines', key: 'dedup', hint: '' },
       { label: 'Join Lines', key: 'join', hint: '' },
+      { label: zenMode ? 'Exit Zen Mode' : 'Zen Mode', key: 'zen', hint: '\u2318+\u21E7+Z' },
+      { label: 'Paste from Clipboard History', key: 'cliphistory', hint: '\u2318+\u21E7+V' },
       { label: 'Sort Imports', key: 'sortimports', hint: '' },
       { label: 'Toggle Block Comment', key: 'blockcomment', hint: '\u2318+\u21E7+/' },
       { label: 'Trim Trailing Whitespace', key: 'trim', hint: '' },
@@ -1694,6 +1719,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (el && el.selectionStart !== el.selectionEnd) { setSurroundMenu({ s: el.selectionStart, en: el.selectionEnd }); }
       else showToast('Select code to surround', 'warn');
     }
+    else if (key === 'zen') { setZenMode(z => !z); showToast(zenMode ? 'Zen mode off' : 'Zen mode', zenMode ? 'info' : 'success'); }
+    else if (key === 'cliphistory') { if (clipHistory.current.length) { setClipOpen(true); setClipIdx(0); } else showToast('Clipboard empty', 'warn'); }
     else if (key === 'zoomin') setEditorZoom(z => Math.min(2, z + 0.1));
     else if (key === 'zoomout') setEditorZoom(z => Math.max(0.6, z - 0.1));
     else if (key === 'zoomreset') setEditorZoom(1);
@@ -2153,6 +2180,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     /* Escape: close overlays */
     if (e.key === 'Escape') {
       if (quickSwitch) { setQuickSwitch(null); return; }
+      if (clipOpen) { setClipOpen(false); return; }
+      if (zenMode) { setZenMode(false); return; }
       if (peekDef) { setPeekDef(null); return; }
       if (acOpen) { setAcOpen(false); return; }
       if (surroundMenu) { setSurroundMenu(null); return; }
@@ -2208,6 +2237,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     /* Toggle terminal: Cmd+J or Ctrl+` */
     if ((e.key === 'j' && (e.metaKey || e.ctrlKey) && !e.shiftKey) || (e.key === '`' && e.ctrlKey)) {
       e.preventDefault(); setTermOpen(t => !t); return;
+    }
+
+    /* Zen mode toggle: Cmd+Shift+Z */
+    if (e.key === 'z' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault(); setZenMode(z => !z);
+      showToast(zenMode ? 'Zen mode off' : 'Zen mode — press ⌘⇧Z to exit', zenMode ? 'info' : 'success');
+      return;
+    }
+
+    /* Clipboard history: Cmd+Shift+V */
+    if (e.key === 'v' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      if (readonly) return;
+      if (clipHistory.current.length) { setClipOpen(true); setClipIdx(0); }
+      else showToast('Clipboard empty', 'warn');
+      return;
     }
 
     /* Close tab: Cmd+W */
@@ -2780,7 +2825,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
 
         {/* Activity bar */}
-        {(() => {
+        {!zenMode && (() => {
           const modCount = Object.keys(editFiles).filter(p => initFiles[p] !== undefined && editFiles[p] !== initFiles[p]).length;
           return (
             <div style={{ width: 28, background: '#11111b', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4, gap: 2, flexShrink: 0, borderRight: '1px solid #ffffff06' }}>
@@ -2819,7 +2864,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         })()}
 
         {/* File tree sidebar */}
-        {sidebarMode === 'files' && <div onClick={() => setExplorerCtx(null)} style={{
+        {!zenMode && sidebarMode === 'files' && <div onClick={() => setExplorerCtx(null)} style={{
           width: explorerW, background: '#181825', borderRight: 'none',
           display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto', position: 'relative'
         }}>
@@ -2981,7 +3026,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         </div>}
 
         {/* Global search panel */}
-        {(sidebarMode === 'search' || globalSearchOpen) && <div onMouseDown={stop} style={{
+        {!zenMode && (sidebarMode === 'search' || globalSearchOpen) && <div onMouseDown={stop} style={{
           width: explorerW + 20, background: '#181825', borderRight: 'none',
           display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden'
         }}>
@@ -3020,7 +3065,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         </div>}
 
         {/* Outline sidebar */}
-        {sidebarMode === 'outline' && (
+        {!zenMode && sidebarMode === 'outline' && (
           <div onMouseDown={stop} style={{
             width: explorerW, background: '#181825', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden'
           }}>
@@ -3058,7 +3103,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         )}
 
         {/* Settings sidebar */}
-        {sidebarMode === 'settings' && (
+        {!zenMode && sidebarMode === 'settings' && (
           <div onMouseDown={stop} style={{
             width: explorerW + 10, background: '#181825', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto'
           }}>
@@ -3120,7 +3165,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         )}
 
         {/* Explorer resize handle */}
-        {sidebarMode === 'files' && <div
+        {!zenMode && sidebarMode === 'files' && <div
           onMouseDown={e => {
             e.preventDefault(); e.stopPropagation();
             explorerDrag.current = { startX: e.clientX, startW: explorerW };
@@ -3141,7 +3186,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
 
           {/* Tabs */}
-          <div data-ide-tabs onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; }} style={{ display: 'flex', borderBottom: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {!zenMode && <div data-ide-tabs onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; }} style={{ display: 'flex', borderBottom: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {openTabs.map(path => {
               const name = path.split('/').pop();
               const isActive = path === activeFile;
@@ -3189,7 +3234,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 </div>
               );
             })}
-          </div>
+          </div>}
 
           {/* Tab context menu */}
           {tabCtx && (
@@ -3228,7 +3273,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           )}
 
           {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px', background: '#1a1a2e', borderBottom: '1px solid #ffffff06', flexShrink: 0, gap: 4, position: 'relative' }}
+          {!zenMode && <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px', background: '#1a1a2e', borderBottom: '1px solid #ffffff06', flexShrink: 0, gap: 4, position: 'relative' }}
             onClick={() => setBreadcrumbDrop(null)}>
             {activeFile.split('/').map((part, i, arr) => (
               <React.Fragment key={i}>
@@ -3282,7 +3327,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .7 }}>{currentScope}()</span>
             </>}
             {readonly && <span style={{ fontSize: 7, color: '#f9e2af', opacity: .4, marginLeft: 4 }}>read-only</span>}
-          </div>
+          </div>}
 
           {/* Search bar */}
           {searchOpen && (
@@ -3309,6 +3354,65 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   <span onClick={replaceAll} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }}>All</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Clipboard history overlay */}
+          {clipOpen && clipHistory.current.length > 0 && (
+            <div onMouseDown={stop} style={{
+              position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 22,
+              background: '#181825', border: '1px solid #ffffff15', borderRadius: 8,
+              boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 260,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #ffffff08', padding: '6px 10px', gap: 6 }}>
+                <span style={{ fontSize: 9, color: '#cba6f7', fontWeight: 600 }}>Clipboard History</span>
+                <span style={{ fontSize: 7, color: '#555', marginLeft: 'auto' }}>{clipHistory.current.length} items — Enter to paste, Esc to cancel</span>
+              </div>
+              <div style={{ overflow: 'auto', maxHeight: 210 }}
+                onKeyDown={e => {
+                  e.stopPropagation();
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setClipIdx(i => Math.min(i + 1, clipHistory.current.length - 1)); }
+                  if (e.key === 'ArrowUp') { e.preventDefault(); setClipIdx(i => Math.max(i - 1, 0)); }
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const text = clipHistory.current[clipIdx];
+                    if (text) {
+                      const el = taRef.current;
+                      if (el) {
+                        const s = el.selectionStart, en = el.selectionEnd;
+                        setCode(code.substring(0, s) + text + code.substring(en));
+                        setTimeout(() => { el.selectionStart = el.selectionEnd = s + text.length; el.focus(); }, 0);
+                      }
+                    }
+                    setClipOpen(false);
+                  }
+                  if (e.key === 'Escape') setClipOpen(false);
+                }}
+                tabIndex={0} ref={el => { if (el && clipOpen) el.focus(); }}>
+                {clipHistory.current.map((text, i) => (
+                  <div key={i}
+                    onClick={() => {
+                      const el = taRef.current;
+                      if (el) {
+                        const s = el.selectionStart, en = el.selectionEnd;
+                        setCode(code.substring(0, s) + text + code.substring(en));
+                        setTimeout(() => { el.selectionStart = el.selectionEnd = s + text.length; el.focus(); }, 0);
+                      }
+                      setClipOpen(false);
+                    }}
+                    style={{
+                      padding: '4px 12px', fontSize: fs(9), fontFamily: MONO,
+                      cursor: 'pointer', whiteSpace: 'pre', overflow: 'hidden', textOverflow: 'ellipsis',
+                      maxHeight: 36, lineHeight: '14px',
+                      background: i === clipIdx ? '#cba6f718' : 'transparent',
+                      color: i === clipIdx ? '#cdd6f4' : '#a6adc8',
+                      borderLeft: i === clipIdx ? '2px solid #cba6f7' : '2px solid transparent',
+                    }}
+                    onMouseEnter={() => setClipIdx(i)}>
+                    {text.length > 80 ? text.substring(0, 80) + '...' : text}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -4903,6 +5007,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
+                          // Check if user is typing a file argument after a command
+                          const spaceIdx = val.indexOf(' ');
+                          if (spaceIdx > 0) {
+                            const cmd = val.substring(0, spaceIdx);
+                            const argPartial = val.substring(spaceIdx + 1).toLowerCase();
+                            const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find'];
+                            if (fileCmds.includes(cmd) && argPartial) {
+                              const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+                              const match = allPaths.find(p => p.toLowerCase().startsWith(argPartial) && p.toLowerCase() !== argPartial)
+                                || allPaths.find(p => p.split('/').pop().toLowerCase().startsWith(argPartial));
+                              if (match) { setTermInput(cmd + ' ' + match); return; }
+                            }
+                          }
                           const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
@@ -4941,7 +5058,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       )}
 
       {/* Status bar */}
-      {(() => {
+      {!zenMode && (() => {
         const el = taRef.current;
         const hasSel = el && el.selectionStart !== el.selectionEnd;
         const selLen = hasSel ? Math.abs(el.selectionEnd - el.selectionStart) : 0;
