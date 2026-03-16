@@ -11242,6 +11242,145 @@ function applyAnticipatoryFraming(response, text, topics, intents) {
   return response;
 }
 
+/* ── Conversational Cadence Memory & Structural Mirroring (Round 69) ──
+ * Tracks the user's conversation *structure* over time: do they write
+ * short punchy messages or long thoughtful ones? Do they ask lots of
+ * questions or make statements? Do they use lists/enumeration or
+ * stream-of-consciousness? The AI learns this profile and adapts its
+ * response structure to match — not content mirroring (covered by
+ * register/lexical), but structural/cadence mirroring.
+ *
+ * Cadence dimensions tracked:
+ * - brevity: avg word count (short <10, medium 10-30, long 30+)
+ * - questionRate: % of messages containing questions
+ * - listStyle: does user enumerate? ("1. first 2. second" or "first, second, third")
+ * - fragmentStyle: does user use sentence fragments vs complete sentences?
+ * - emojiDensity: how often do they use emoji/emoticons?
+ *
+ * Adapts response length, question inclusion, structure style.
+ */
+
+let cadenceProfile = {
+  wordCounts: [],      // last 10 message word counts
+  questionMsgs: 0,     // count of messages with "?"
+  totalMsgs: 0,
+  listCount: 0,        // messages with enumeration patterns
+  fragmentCount: 0,    // messages that are sentence fragments
+  emojiCount: 0,       // messages with emoji
+};
+let lastCadenceTurn = 0;
+
+function updateCadenceProfile(text) {
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  cadenceProfile.wordCounts.push(words.length);
+  if (cadenceProfile.wordCounts.length > 12) cadenceProfile.wordCounts.shift();
+  cadenceProfile.totalMsgs++;
+
+  if (text.includes("?")) cadenceProfile.questionMsgs++;
+  if (/(?:^|\n)\s*(?:\d+[.)]\s|[-•]\s|[a-z]\)\s)/m.test(text)) cadenceProfile.listCount++;
+  // Fragments: short messages without verbs or with trailing ellipsis
+  if (words.length <= 5 && !text.includes("?") && !/\b(is|are|was|were|do|does|did|have|has|had|can|will|would)\b/i.test(text)) {
+    cadenceProfile.fragmentCount++;
+  }
+  if (/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(text) || /[:;][)D(P]/g.test(text)) {
+    cadenceProfile.emojiCount++;
+  }
+}
+
+function getCadenceStyle() {
+  const p = cadenceProfile;
+  if (p.totalMsgs < 4) return null; // need enough data
+
+  const avgWords = p.wordCounts.length > 0
+    ? p.wordCounts.reduce((a, w) => a + w, 0) / p.wordCounts.length
+    : 15;
+  const qRate = p.questionMsgs / p.totalMsgs;
+  const listRate = p.listCount / p.totalMsgs;
+  const fragRate = p.fragmentCount / p.totalMsgs;
+  const emojiRate = p.emojiCount / p.totalMsgs;
+
+  return {
+    brevity: avgWords < 10 ? "short" : avgWords < 25 ? "medium" : "long",
+    avgWords,
+    questionHeavy: qRate > 0.5,
+    listStyle: listRate > 0.15,
+    fragmenty: fragRate > 0.3,
+    emojiUser: emojiRate > 0.25,
+  };
+}
+
+function applyCadenceMirroring(response, text) {
+  const turn = mem.turn;
+  updateCadenceProfile(text);
+
+  if (turn < 5) return response;
+  if (turn - lastCadenceTurn < 3) return response;
+  if (Math.random() > 0.35) return response; // 35% fire rate
+
+  const style = getCadenceStyle();
+  if (!style) return response;
+
+  lastCadenceTurn = turn;
+  let r = response;
+
+  // Brevity matching: if user writes short, trim AI response
+  if (style.brevity === "short") {
+    const sentences = r.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 2) {
+      // Keep 1-2 sentences max for short-style users
+      r = sentences.slice(0, 2).join(" ").trim();
+    }
+    // Remove verbose hedging that short-messagers find tedious
+    r = r.replace(/^(Well,?\s*|I mean,?\s*|You know,?\s*|So basically,?\s*)/i, "");
+    if (r.length > 0) r = r.charAt(0).toUpperCase() + r.slice(1);
+  }
+
+  // If user rarely asks questions, don't bombard them with questions
+  if (!style.questionHeavy) {
+    // If response ends with a question and user isn't question-oriented, 50% chance to convert to statement
+    if (/\?\s*$/.test(r) && Math.random() > 0.5) {
+      r = r.replace(/\?\s*$/, ".");
+      // Convert question phrasing to statement
+      r = r.replace(/\bDo you think\b/i, "I think");
+      r = r.replace(/\bWhat do you think\b/i, "That's worth thinking about");
+      r = r.replace(/\bHave you tried\b/i, "You might try");
+      r = r.replace(/\bDoes that make sense\b/i, "Hope that lands");
+    }
+  }
+
+  // Fragment style: if user uses fragments, make AI more punchy
+  if (style.fragmenty && r.length > 80) {
+    const sentences = r.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length >= 3) {
+      // Break one long sentence into a fragment + continuation
+      const first = sentences[0].trim();
+      if (first.length > 40) {
+        const breakPt = first.indexOf(",");
+        if (breakPt > 8 && breakPt < first.length - 10) {
+          const frag = first.slice(0, breakPt).trim() + ".";
+          const rest = first.slice(breakPt + 1).trim();
+          const restCap = rest.charAt(0).toUpperCase() + rest.slice(1);
+          r = frag + " " + restCap + " " + sentences.slice(1).join(" ");
+        }
+      }
+    }
+  }
+
+  // Long-form users: AI can be more expansive, add connecting tissue
+  if (style.brevity === "long" && r.length < 80) {
+    const expansions = [
+      " I could say more about this if you're interested.",
+      " There's actually a lot of nuance there.",
+      " It's one of those things that goes deeper than it looks.",
+    ];
+    if (!r.includes("?") && Math.random() > 0.5) {
+      r = r.replace(/[.!]\s*$/, ".") + expansions[Math.floor(Math.random() * expansions.length)];
+    }
+  }
+
+  return r;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -11708,6 +11847,9 @@ export function getAIResponse(input) {
   // ═══ Anticipatory framing: predict user's next move and frame accordingly ═══
   response = applyAnticipatoryFraming(response, text, currentTopics, intents);
 
+  // ═══ Cadence mirroring: match user's conversation structure (length, questions, fragments) ═══
+  response = applyCadenceMirroring(response, text);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -11757,6 +11899,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
