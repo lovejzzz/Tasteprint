@@ -1638,7 +1638,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       </div>
     </div>;
     /* v4 Gradient — bold gradient bg with centered avatar + stat pills */
-    return <div style={{...b,background:`linear-gradient(145deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
+    if(v===4)return <div style={{...b,background:`linear-gradient(145deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 60%)",pointerEvents:"none"}}/>
       <div style={{padding:"24px 20px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,position:"relative"}}>
         <div style={{width:56,height:56,borderRadius:999,border:`3px solid ${onAc}44`,padding:2,animation:"tp-fadein .4s ease-out .08s both"}}>
@@ -1661,6 +1661,71 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
           <T k="cta" s={{fontSize:f(11),fontWeight:700,color:p.ac}}>Follow</T>
         </div>
         <div style={{width:36,height:36,borderRadius:10,background:onAc+"22",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",border:`1px solid ${onAc}22`}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+      </div>
+    </div>;
+    /* v5 Brutal — neo-brutalist with thick borders, hard offset shadow, squared avatar, dot-grid bg, bold uppercase */
+    if(v===5)return <div style={{...b,background:p.card,borderRadius:3,border:`2.5px solid ${p.tx}`,boxShadow:`5px 5px 0 ${p.ac}`,padding:0,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative"}}>
+      <div style={{position:"absolute",inset:0,opacity:.04,backgroundImage:`radial-gradient(${p.tx} 1.2px, transparent 1.2px)`,backgroundSize:"10px 10px",pointerEvents:"none"}}/>
+      <div style={{height:50,background:p.ac,borderBottom:`2.5px solid ${p.tx}`,position:"relative",display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 12px"}}>
+        <div style={{background:p.tx,borderRadius:2,padding:"2px 8px"}}><span style={{fontSize:f(8),fontWeight:900,color:p.card,textTransform:"uppercase",letterSpacing:"0.08em"}}>DESIGNER</span></div>
+      </div>
+      <div style={{padding:"0 16px 14px",marginTop:-22,display:"flex",flexDirection:"column",gap:8,position:"relative"}}>
+        <div style={{position:"relative",width:48,cursor:"pointer"}} onClick={()=>cProp?.("online",!pcOnline)}>
+          <Img k="avatar" s={{width:48,height:48,borderRadius:3,background:p.su,border:`2.5px solid ${p.tx}`,boxShadow:`3px 3px 0 ${p.tx}`}}/>
+          <div style={{position:"absolute",bottom:-2,right:-2,width:14,height:14,borderRadius:2,background:statusColor,border:`2.5px solid ${p.tx}`}}/>
+        </div>
+        <div>
+          <T k="name" s={{fontSize:f(15),fontWeight:900,color:p.tx,textTransform:"uppercase",letterSpacing:"0.03em",display:"block"}}>Jane Doe</T>
+          <T k="role" s={{fontSize:f(9),color:p.mu,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",display:"block"}}>Product Designer</T>
+        </div>
+        <T k="bio" s={{fontSize:f(10),color:p.mu,fontWeight:500,lineHeight:1.5}}>Crafting interfaces that feel alive.</T>
+        <div style={{display:"flex",gap:6}}>
+          {[{v:"142",l:"POSTS"},{v:"2.4K",l:"FLLW"},{v:"318",l:"FLLWG"}].map((s,i)=><div key={i} style={{flex:1,textAlign:"center",padding:"6px 0",borderRadius:2,border:`2px solid ${p.tx}`,background:i===1?p.ac+"15":"transparent"}}>
+            <T k={`s${i}`} s={{fontSize:f(12),fontWeight:900,color:p.tx,display:"block"}}>{s.v}</T>
+            <span style={{fontSize:f(7),color:p.mu,fontWeight:700,letterSpacing:"0.06em"}}>{s.l}</span>
+          </div>)}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <div style={{flex:1,height:32,borderRadius:2,background:p.ac,border:`2.5px solid ${p.tx}`,boxShadow:`3px 3px 0 ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .1s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translate(-1px,-1px)";e.currentTarget.style.boxShadow=`4px 4px 0 ${p.tx}`}} onMouseLeave={e=>{e.currentTarget.style.transform="translate(0,0)";e.currentTarget.style.boxShadow=`3px 3px 0 ${p.tx}`}}>
+            <T k="cta" s={{fontSize:f(10),fontWeight:900,color:onAc,textTransform:"uppercase",letterSpacing:"0.06em"}}>Follow</T>
+          </div>
+          <div style={{width:32,height:32,borderRadius:2,border:`2.5px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background=p.ac;e.currentTarget.style.color=onAc}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=p.tx}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>;
+    /* v6 Gradient glow — animated gradient bg, shimmer sweep, glowing avatar ring, pulsing accent dots */
+    return <div style={{...b,background:`linear-gradient(145deg,${p.ac},${p.ac2||p.ac})`,borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",boxShadow:`0 4px 24px ${p.ac}30, 0 8px 40px ${p.ac}15`}}>
+      <div style={{position:"absolute",inset:0,background:`linear-gradient(110deg,transparent 30%,${onAc}12 50%,transparent 70%)`,backgroundSize:"200% 100%",animation:"tp-shimmer-slide 3s ease-in-out infinite",pointerEvents:"none"}}/>
+      {[{top:10,right:10},{bottom:14,left:14},{top:"40%",right:"20%"}].map((pos,i)=><div key={i} style={{position:"absolute",...pos,width:5+i*2,height:5+i*2,borderRadius:999,background:onAc,opacity:.25,animation:`tp-pulse ${2+i*0.5}s ease-in-out infinite ${i*0.4}s`,pointerEvents:"none"}}/>)}
+      <div style={{padding:"22px 20px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,position:"relative"}}>
+        <div style={{position:"relative"}}>
+          <div style={{width:62,height:62,borderRadius:999,padding:3,background:`linear-gradient(135deg,${onAc}60,${onAc}20)`,boxShadow:`0 0 20px ${p.ac}40, 0 0 40px ${p.ac}20`,display:"flex",alignItems:"center",justifyContent:"center",animation:"tp-fadein .4s ease-out .08s both"}}>
+            <Img k="avatar" s={{width:56,height:56,borderRadius:999,background:onAc+"18",border:`2px solid ${onAc}30`}}/>
+          </div>
+          <div style={{position:"absolute",bottom:2,right:2,width:14,height:14,borderRadius:999,background:statusColor,border:`2.5px solid ${p.ac}`,boxShadow:`0 0 8px ${statusColor}80`,cursor:"pointer"}} onClick={()=>cProp?.("online",!pcOnline)}/>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <T k="name" s={{fontSize:f(16),fontWeight:800,color:onAc,display:"block",letterSpacing:"-0.02em",textShadow:`0 1px 8px ${p.ac}40`}}>Jane Doe</T>
+          <T k="role" s={{fontSize:f(10),color:onAc,display:"block",marginTop:3,opacity:.75}}>Product Designer</T>
+        </div>
+        <T k="bio" s={{fontSize:f(10),color:onAc,opacity:.6,lineHeight:1.5,textAlign:"center"}}>Crafting beautiful user experiences</T>
+        <div style={{display:"flex",gap:8,marginTop:2}}>
+          {[{v:"142",l:"posts"},{v:"2.4k",l:"followers"},{v:"318",l:"following"}].map((s,i)=><div key={i} style={{background:onAc+"15",borderRadius:999,padding:"4px 12px",display:"flex",alignItems:"center",gap:4,border:`1px solid ${onAc}15`,backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)"}}>
+            <T k={`s${i}`} s={{fontSize:f(11),fontWeight:700,color:onAc}}>{s.v}</T>
+            <span style={{fontSize:f(9),color:onAc,opacity:.55}}>{s.l}</span>
+          </div>)}
+        </div>
+      </div>
+      <div style={{padding:"0 20px 16px",display:"flex",gap:8}}>
+        <div style={{flex:1,height:36,borderRadius:10,background:onAc,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.ac}50`,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",inset:0,background:`linear-gradient(110deg,transparent 30%,${p.ac}15 50%,transparent 70%)`,backgroundSize:"200% 100%",animation:"tp-shimmer-slide 2.5s ease-in-out infinite",pointerEvents:"none"}}/>
+          <T k="cta" s={{fontSize:f(11),fontWeight:700,color:p.ac,position:"relative"}}>Follow</T>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:onAc+"18",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",border:`1px solid ${onAc}20`}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
         </div>
       </div>

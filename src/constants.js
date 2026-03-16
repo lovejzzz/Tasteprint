@@ -88,7 +88,7 @@ export const VARIANTS = {
   timeline:  ["Left","Centered","Minimal","Card","Activity","Brutal","Gradient"],
   chat:      ["Bubble","Thread","Terminal","Glass","Gradient"],
   "media-player":["Minimal","Full","Terminal","Glass","Vinyl","Brutal","Gradient"],
-  "profile-card":["Standard","Compact","Terminal","Glass","Gradient"],
+  "profile-card":["Standard","Compact","Terminal","Glass","Gradient","Brutal","Gradient glow"],
   "code-block":["Dark","Light","Terminal","Live IDE","Typewriter","Diff","Notebook","Review","Minimap","ASCII Art","Benchmark"],
   notification:["List","Compact","Dot","Card","Glass","Brutal","Gradient"],
   "tag-input":["Rounded","Square","Outlined","Colorful","Input"],
