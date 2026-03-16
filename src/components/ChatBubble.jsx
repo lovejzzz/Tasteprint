@@ -1,124 +1,22 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { getAIResponse } from "./chatAI";
 
-/* ── Tiny client-side AI ── */
-const GREETINGS = /^(hi|hey|hello|yo|sup|howdy|hola|what'?s up)/i;
-const THANKS = /^(thanks|thank you|thx|ty|cheers|appreciate)/i;
-const HOW_ARE = /(how are you|how('?s| is) it going|how do you do|what'?s good)/i;
-const HELP = /(help|assist|support|how do i|how can i|can you)/i;
-const JOKE = /(joke|funny|laugh|humor|make me laugh)/i;
-const BYE = /^(bye|goodbye|see ya|later|cya|peace|ttyl)/i;
-const WEATHER = /(weather|temperature|rain|sunny|cold|hot|forecast)/i;
-const CODE = /(code|programming|javascript|react|python|css|html|bug|error)/i;
-const DESIGN = /(design|ui|ux|color|font|layout|style|figma)/i;
-const TIME = /(time|date|today|tomorrow|clock|schedule)/i;
-const FOOD = /(food|eat|restaurant|cook|recipe|hungry|lunch|dinner)/i;
-const MUSIC = /(music|song|playlist|spotify|listen|band|album)/i;
-
-const RESPONSES = {
-  greeting: [
-    "Hey there! 👋 How can I help?",
-    "Hi! What's on your mind?",
-    "Hello! Ready to chat 😊",
-    "Hey! Good to hear from you!",
-  ],
-  thanks: [
-    "You're welcome! 😊",
-    "Anytime! Happy to help.",
-    "No problem at all!",
-    "Glad I could help! ✨",
-  ],
-  howAre: [
-    "I'm doing great, thanks for asking! How about you?",
-    "Pretty good! Just here helping out. What's up?",
-    "All good on my end! 🚀 What can I do for you?",
-  ],
-  help: [
-    "Of course! I'd love to help. What do you need?",
-    "Sure thing! Tell me more about what you're working on.",
-    "I'm here for you! What's the challenge?",
-  ],
-  joke: [
-    "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
-    "I told my computer I needed a break... now it won't stop sending me vacation ads 🏖️",
-    "Why did the CSS developer go broke? Because they lost their margin! 😄",
-    "A SQL query walks into a bar, sees two tables and asks... Can I JOIN you?",
-  ],
-  bye: [
-    "See you later! 👋",
-    "Take care! Come back anytime.",
-    "Bye! Have a great one! ✌️",
-  ],
-  weather: [
-    "I wish I could check the weather for you! ☀️ Try looking out the window? 😄",
-    "I'm an indoor AI — I never see the weather! But I hope it's nice out there 🌤️",
-  ],
-  code: [
-    "Oh nice, coding talk! 🧑‍💻 What are you building?",
-    "I love talking code! What language are you working with?",
-    "Code is my favorite topic! Tell me about the project.",
-    "Debugging? My condolences 😅 What's the error?",
-  ],
-  design: [
-    "Design is everything! 🎨 What are you working on?",
-    "Oh I love design discussions! Tell me more about the project.",
-    "Great taste in topics! What's the design challenge?",
-  ],
-  time: [
-    `It's ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} right now! ⏰`,
-    "Time flies when you're chatting! What do you need to plan?",
-  ],
-  food: [
-    "Now you're talking! 🍕 What are you in the mood for?",
-    "Food is always a good topic! What's your go-to meal?",
-    "I can't eat, but I can definitely recommend trying something new! 🍜",
-  ],
-  music: [
-    "Great taste! 🎵 What genre are you into?",
-    "Music makes everything better! What are you listening to?",
-    "I'd recommend some lo-fi beats for coding sessions! 🎧",
-  ],
-  fallback: [
-    "That's interesting! Tell me more about that.",
-    "Hmm, I'm thinking about that... 🤔 Can you elaborate?",
-    "Cool! What else is on your mind?",
-    "I hear you! What would you like to explore?",
-    "That's a great point. What do you think about it?",
-    "Interesting thought! I'd love to hear more.",
-  ],
-};
-
-function getAIResponse(input) {
-  const text = input.trim();
-  if (!text) return "I'm listening... 👂";
-  if (GREETINGS.test(text)) return pick(RESPONSES.greeting);
-  if (THANKS.test(text)) return pick(RESPONSES.thanks);
-  if (BYE.test(text)) return pick(RESPONSES.bye);
-  if (HOW_ARE.test(text)) return pick(RESPONSES.howAre);
-  if (JOKE.test(text)) return pick(RESPONSES.joke);
-  if (HELP.test(text)) return pick(RESPONSES.help);
-  if (WEATHER.test(text)) return pick(RESPONSES.weather);
-  if (CODE.test(text)) return pick(RESPONSES.code);
-  if (DESIGN.test(text)) return pick(RESPONSES.design);
-  if (TIME.test(text)) return pick(RESPONSES.time);
-  if (FOOD.test(text)) return pick(RESPONSES.food);
-  if (MUSIC.test(text)) return pick(RESPONSES.music);
-
-  /* Echo-aware fallback — reference what they said */
-  const words = text.split(/\s+/);
-  if (words.length > 3) {
-    const topic = words.slice(0, 3).join(" ");
-    const extras = [
-      `"${topic}..." — that's fascinating! Tell me more.`,
-      `Interesting you mention "${topic}"! What made you think of that?`,
-      `I like where this is going with "${topic}" — keep going!`,
-    ];
-    return pick(extras);
-  }
-  return pick(RESPONSES.fallback);
-}
-
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+/* ── Editable message bubble ── */
+function EditableMsg({ text, style, onEdit }) {
+  const ref = useRef(null);
+  return (
+    <span
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={e => { const t = e.target.textContent; if (t !== text) onEdit(t); }}
+      onMouseDown={e => e.stopPropagation()}
+      onKeyDown={e => { if (e.key === "Backspace" || e.key === "Delete") e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
+      style={{ ...style, outline: "none", cursor: "text", minWidth: 8 }}
+    >
+      {text}
+    </span>
+  );
 }
 
 /* ── Typing indicator component ── */
@@ -149,7 +47,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   ]);
   const [inputVal, setInputVal] = useState("");
   const [typing, setTyping] = useState(false);
-  const [sending, setSending] = useState(null); // id of message being sent
+  const [sending, setSending] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const idRef = useRef(3);
@@ -162,6 +60,10 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   useEffect(() => { scrollToBottom(); }, [messages, typing, scrollToBottom]);
 
+  const editMessage = useCallback((id, newText) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, text: newText } : m));
+  }, []);
+
   const sendMessage = useCallback(() => {
     const text = inputVal.trim();
     if (!text) return;
@@ -172,7 +74,6 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     setMessages(prev => [...prev, myMsg]);
     setInputVal("");
 
-    /* Animate send, then show typing, then AI responds */
     setTimeout(() => {
       setSending(null);
       setTyping(true);
@@ -199,7 +100,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       {/* Header — draggable */}
       <div data-ide-drag style={{ padding: "8px 14px", borderBottom: `1px solid ${p.bd}`, display: "flex", alignItems: "center", gap: 8, cursor: "grab" }}>
         <div style={{ width: 8, height: 8, borderRadius: 999, background: "#4CAF50", boxShadow: "0 0 6px #4CAF5060" }} />
-        <span style={{ fontSize: 11, fontWeight: 600, color: p.tx }}>Tasteprint AI</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: p.tx }}>Chat</span>
         <span style={{ fontSize: 9, color: p.mu, marginLeft: "auto" }}>online</span>
       </div>
 
@@ -223,9 +124,11 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
               background: m.from === "me" ? p.ac : p.su,
               boxShadow: m.from === "me" ? `0 2px 8px ${p.ac}20` : "none",
             }}>
-              <span style={{ fontSize: 11, color: m.from === "me" ? onAc : p.tx, lineHeight: "1.45", wordBreak: "break-word" }}>
-                {m.text}
-              </span>
+              <EditableMsg
+                text={m.text}
+                onEdit={t => editMessage(m.id, t)}
+                style={{ fontSize: 11, color: m.from === "me" ? onAc : p.tx, lineHeight: "1.45", wordBreak: "break-word" }}
+              />
             </div>
           </div>
         ))}
@@ -279,8 +182,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       {/* Drag handle */}
       <div data-ide-drag style={{ padding: "6px 8px", display: "flex", alignItems: "center", gap: 6, cursor: "grab", borderBottom: `1px solid ${p.bd}` }}>
         <div style={{ width: 6, height: 6, borderRadius: 999, background: "#4CAF50" }} />
-        <span style={{ fontSize: 10, fontWeight: 600, color: p.tx }}>Thread</span>
-        <span style={{ fontSize: 9, color: p.mu, marginLeft: "auto" }}>3+ messages</span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: p.tx }}>Chat</span>
+        <span style={{ fontSize: 9, color: p.mu, marginLeft: "auto" }}>{messages.length} messages</span>
       </div>
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", minHeight: 0, padding: "4px 0" }}>
@@ -302,11 +205,15 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: p.tx }}>
-                {m.from === "me" ? "You" : "Tasteprint AI"}
+                {m.from === "me" ? "You" : "Chat AI"}
               </span>
               <span style={{ fontSize: 9, color: p.mu, marginLeft: 6, opacity: 0.5 }}>now</span>
-              <div style={{ fontSize: 11, color: p.mu, marginTop: 1, lineHeight: "1.45", wordBreak: "break-word" }}>
-                {m.text}
+              <div style={{ marginTop: 1 }}>
+                <EditableMsg
+                  text={m.text}
+                  onEdit={t => editMessage(m.id, t)}
+                  style={{ fontSize: 11, color: p.mu, lineHeight: "1.45", wordBreak: "break-word" }}
+                />
               </div>
             </div>
           </div>
@@ -320,7 +227,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       </div>
 
       {/* Input */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 0 2px" }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 4px 2px" }}>
         <input
           ref={inputRef}
           value={inputVal}
@@ -358,7 +265,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       {/* Header — draggable */}
       <div data-ide-drag style={{ padding: "4px 10px", borderBottom: `1px solid ${p.ac}15`, display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
         <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
-        <span style={{ fontSize: 9, color: p.ac, opacity: 0.6, letterSpacing: "0.06em" }}>TASTEPRINT_AI v1.0</span>
+        <span style={{ fontSize: 9, color: p.ac, opacity: 0.6, letterSpacing: "0.06em" }}>CHAT_AI v1.0</span>
       </div>
 
       {/* Messages */}
@@ -374,9 +281,11 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             <span style={{ fontSize: 9, color: m.from === "me" ? p.ac : "#666", opacity: 0.6, flexShrink: 0 }}>
               {m.from === "me" ? "YOU>" : "AI >"}
             </span>
-            <span style={{ fontSize: 10, color: m.from === "me" ? p.ac : "#999", lineHeight: "1.45", wordBreak: "break-word" }}>
-              {m.text}
-            </span>
+            <EditableMsg
+              text={m.text}
+              onEdit={t => editMessage(m.id, t)}
+              style={{ fontSize: 10, color: m.from === "me" ? p.ac : "#999", lineHeight: "1.45", wordBreak: "break-word" }}
+            />
           </div>
         ))}
         {typing && (
