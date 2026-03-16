@@ -3392,6 +3392,106 @@ function offerTopicRescue() {
   return pickNew(rescues);
 }
 
+/* ── Adaptive Conversation Strategy ──
+ * Tracks what kinds of AI responses get engagement (long user replies)
+ * vs. disengagement (short "ok" / "yeah" replies). Adjusts strategy
+ * dynamically within the conversation — a form of meta-learning.
+ *
+ * Key insight: if the user keeps giving short replies to our questions,
+ * we should stop asking so many questions and share more. If they respond
+ * well to opinions, lean into that. If humor lands, use more humor.
+ */
+
+const strategyScores = {
+  questions: 0,   // asking the user questions
+  opinions: 0,    // sharing opinions/takes
+  facts: 0,       // sharing knowledge/facts
+  humor: 0,       // jokes/playful responses
+  empathy: 0,     // empathetic/supportive
+  stories: 0,     // anecdotes/stories
+};
+let lastAIStrategyType = "questions"; // what the last AI response was "about"
+
+// Classify what type of response the AI just gave
+function classifyAIStrategy(response) {
+  if (/\?$/.test(response.trim()) || /\?[^.]*$/.test(response)) return "questions";
+  if (/I think|honestly|in my|my take|my opinion/i.test(response)) return "opinions";
+  if (/fun fact|did you know|actually,? .+ is|was created/i.test(response)) return "facts";
+  if (/haha|😂|😄|lol|joke|funny|lmao/i.test(response)) return "humor";
+  if (/I hear you|that'?s tough|I understand|I feel|sorry to/i.test(response)) return "empathy";
+  if (response.length > 120) return "stories";
+  return "opinions"; // default
+}
+
+// After the user responds, score how well our last strategy worked
+function scoreLastStrategy(userResponse) {
+  if (mem.turn < 3) return; // too early to score
+
+  const len = userResponse.length;
+  const isEngaged = len > 30; // decent-length response
+  const isShort = len < 15;   // "ok", "yeah", "sure", "cool"
+  const isEnthusiastic = /!|😊|😄|haha|lol|love|awesome|amazing|great/i.test(userResponse);
+
+  // Score: positive for engagement, negative for disengagement
+  let score = 0;
+  if (isEnthusiastic) score = 2;
+  else if (isEngaged) score = 1;
+  else if (isShort) score = -1;
+
+  // Apply score to last strategy type (with decay toward 0)
+  strategyScores[lastAIStrategyType] = strategyScores[lastAIStrategyType] * 0.7 + score;
+}
+
+// Get the best strategy to try next based on accumulated scores
+function getBestStrategy() {
+  const entries = Object.entries(strategyScores);
+  const best = entries.reduce((a, b) => a[1] > b[1] ? a : b);
+  const worst = entries.reduce((a, b) => a[1] < b[1] ? a : b);
+
+  return { best: best[0], worst: worst[0], scores: { ...strategyScores } };
+}
+
+// Adjust a response based on adaptive strategy learning
+function adaptiveAdjust(response) {
+  const strategy = getBestStrategy();
+
+  // If questions consistently fail (score < -1.5), strip trailing questions
+  if (strategy.scores.questions < -1.5 && lastAIStrategyType === "questions") {
+    const lastQ = response.lastIndexOf("?");
+    if (lastQ > 20) {
+      // Find the sentence boundary before the question
+      const beforeQ = response.lastIndexOf(". ", lastQ);
+      if (beforeQ > 10) {
+        response = response.substring(0, beforeQ + 1);
+      }
+    }
+  }
+
+  // If opinions score well (> 1.5), and current response is generic, add an opinion
+  if (strategy.scores.opinions > 1.5 && !/I think|honestly|my take/i.test(response)) {
+    const opinionBoosters = [
+      " Honestly, I find this stuff fascinating.",
+      " My take? It's one of those things that just clicks once you get into it.",
+      " I genuinely think this is worth diving into.",
+    ];
+    if (Math.random() > 0.6 && response.length < 150) {
+      response += pick(opinionBoosters);
+    }
+  }
+
+  // If humor scores well (> 1.5), and response is too dry, lighten it
+  if (strategy.scores.humor > 1.5 && !/haha|😊|😄|!/i.test(response)) {
+    if (Math.random() > 0.7) {
+      response = response.replace(/\.$/, "! 😊");
+    }
+  }
+
+  // Track what strategy this response represents
+  lastAIStrategyType = classifyAIStrategy(response);
+
+  return response;
+}
+
 /* ── Discourse Coherence & Response Planning ──
  * The pipeline has many independent post-processing stages (personality,
  * humor, style, phase, proactive callbacks) that can clash. This system:
@@ -3547,6 +3647,9 @@ export function getAIResponse(input) {
   const text = input.trim();
   if (!text) return { text: "I'm listening... 👂", typingMs: 400, pause: null };
 
+  // ═══ Adaptive strategy: score how user reacted to our last response ═══
+  scoreLastStrategy(text);
+
   // Parse for personality application
   const parsed = parseSentence(text);
   const sent = sentiment(text);
@@ -3618,6 +3721,9 @@ export function getAIResponse(input) {
   // World model personalization
   response = personalizeResponse(response);
 
+  // ═══ Adaptive strategy: adjust based on what's working ═══
+  response = adaptiveAdjust(response);
+
   // ═══ Discourse coherence: add natural transition markers ═══
   response = addDiscourseMarker(response, plan.flavor);
 
@@ -3640,6 +3746,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
