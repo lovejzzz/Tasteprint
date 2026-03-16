@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 48: Implicit need detection & experience context awareness
+   Round 49: Belief tracking & contradiction/surprise detection
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -4093,6 +4093,218 @@ function respondToExperienceContext(exp, text, sent, topics) {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   BELIEF TRACKING & CONTRADICTION/SURPRISE DETECTION (Round 49)
+   Tracks user stances (likes, dislikes, positions) over the
+   conversation. When a user contradicts a previous stance
+   ("I love React" → "I'm done with React"), the AI notices and
+   responds with genuine curiosity about the shift. When the user
+   drops a high-significance revelation ("I quit my job"), the AI
+   gives it appropriate weight instead of treating it as filler.
+   ══════════════════════════════════════════════════════════════════ */
+
+// Belief store: { subject: { stance: "positive"|"negative"|"neutral", text: string, turn: number } }
+const beliefStore = {};
+let lastBeliefTurn = 0;
+
+const POSITIVE_STANCE_PATS = [
+  /i (?:love|adore|really like|am into|enjoy|appreciate|dig|am a fan of|am obsessed with|am passionate about) (.+?)(?:\.|!|,|$)/i,
+  /(.+?) is (?:my favorite|the best|amazing|awesome|incredible|great|fantastic|my go-to|so good)/i,
+  /i (?:prefer|choose|always use|swear by|recommend|stan) (.+?)(?:\.|!|,|$)/i,
+];
+
+const NEGATIVE_STANCE_PATS = [
+  /i (?:hate|can't stand|dislike|despise|am sick of|am tired of|am done with|am over|am frustrated with) (.+?)(?:\.|!|,|$)/i,
+  /(.+?) is (?:terrible|the worst|awful|garbage|trash|overrated|dead|dying|broken|frustrating)/i,
+  /i (?:stopped using|quit|dropped|abandoned|gave up on|moved away from|switched from) (.+?)(?:\.|!|,|$)/i,
+];
+
+const NEUTRAL_STANCE_PATS = [
+  /i'?m (?:not sure about|on the fence about|undecided about|mixed on|ambivalent about) (.+?)(?:\.|!|,|$)/i,
+  /(.+?) (?:is okay|is fine|is alright|has pros and cons|is decent)/i,
+];
+
+// High-significance life event patterns
+const REVELATION_PATS = [
+  { pat: /i (?:just )?(?:quit|left|resigned from) (?:my )?(?:job|company|position|role)/i, type: "career_change", weight: "heavy" },
+  { pat: /i (?:just )?(?:got|received|landed) (?:a |an )?(?:new )?(?:job|offer|position|role|promotion)/i, type: "career_win", weight: "celebration" },
+  { pat: /i'?m (?:moving|relocating|emigrating) (?:to|from|out of)/i, type: "relocation", weight: "heavy" },
+  { pat: /i (?:just )?(?:moved|relocated) (?:to|from)/i, type: "relocation", weight: "heavy" },
+  { pat: /i'?m (?:getting )?(?:married|engaged)/i, type: "relationship_milestone", weight: "celebration" },
+  { pat: /(?:we'?re|i'?m) (?:having|expecting) (?:a )?(?:baby|child|kid)/i, type: "family_milestone", weight: "celebration" },
+  { pat: /i (?:just )?(?:graduated|finished school|got my degree|defended my thesis)/i, type: "education_milestone", weight: "celebration" },
+  { pat: /i (?:just )?(?:got|was) (?:accepted|admitted) (?:to|into|at)/i, type: "education_win", weight: "celebration" },
+  { pat: /i'?m (?:starting|launching|founding|building) (?:my own |a )?(?:company|startup|business)/i, type: "entrepreneurship", weight: "heavy" },
+  { pat: /i (?:just )?(?:broke up|split up|ended|divorced|separated)/i, type: "relationship_end", weight: "empathy" },
+  { pat: /i'?m (?:going through|dealing with) (?:a )?(?:breakup|divorce|separation)/i, type: "relationship_end", weight: "empathy" },
+  { pat: /i (?:just )?(?:lost|said goodbye to) (?:my )?(?:dad|mom|mother|father|parent|grandma|grandpa|friend|pet|dog|cat)/i, type: "loss", weight: "deep_empathy" },
+  { pat: /i'?m (?:switching|changing|transitioning) (?:my )?(?:career|field|industry|profession)/i, type: "career_pivot", weight: "heavy" },
+  { pat: /i (?:just )?(?:got|received|was given) (?:my )?(?:diagnosis|test results)/i, type: "health_news", weight: "empathy" },
+];
+
+function extractStance(text) {
+  for (const pat of POSITIVE_STANCE_PATS) {
+    const m = text.match(pat);
+    if (m) {
+      const subject = (m[1] || "").replace(/^(a|an|the|my|this|that)\s+/i, "").trim().toLowerCase();
+      if (subject.length >= 2 && subject.length < 30) return { subject, stance: "positive", raw: m[0] };
+    }
+  }
+  for (const pat of NEGATIVE_STANCE_PATS) {
+    const m = text.match(pat);
+    if (m) {
+      const subject = (m[1] || "").replace(/^(a|an|the|my|this|that)\s+/i, "").trim().toLowerCase();
+      if (subject.length >= 2 && subject.length < 30) return { subject, stance: "negative", raw: m[0] };
+    }
+  }
+  for (const pat of NEUTRAL_STANCE_PATS) {
+    const m = text.match(pat);
+    if (m) {
+      const subject = (m[1] || "").replace(/^(a|an|the|my|this|that)\s+/i, "").trim().toLowerCase();
+      if (subject.length >= 2 && subject.length < 30) return { subject, stance: "neutral", raw: m[0] };
+    }
+  }
+  return null;
+}
+
+function trackBelief(text) {
+  const stance = extractStance(text);
+  if (!stance) return null;
+
+  const key = stance.subject.split(/\s+/).slice(0, 3).join("_");
+  const prev = beliefStore[key];
+
+  beliefStore[key] = { stance: stance.stance, text: stance.raw, turn: mem.turn, subject: stance.subject };
+
+  // Check for contradiction
+  if (prev && prev.stance !== stance.stance && mem.turn - prev.turn >= 2) {
+    // Real contradiction: positive→negative or negative→positive
+    const isFlip = (prev.stance === "positive" && stance.stance === "negative") ||
+                   (prev.stance === "negative" && stance.stance === "positive");
+    if (isFlip) {
+      return { type: "contradiction", subject: stance.subject, from: prev.stance, to: stance.stance, prevTurn: prev.turn, prevText: prev.text };
+    }
+    // Softening: strong→neutral or neutral→strong
+    return { type: "shift", subject: stance.subject, from: prev.stance, to: stance.stance, prevTurn: prev.turn };
+  }
+  return null;
+}
+
+function detectRevelation(text, lower) {
+  for (const { pat, type, weight } of REVELATION_PATS) {
+    if (pat.test(text) || pat.test(lower)) {
+      return { type, weight };
+    }
+  }
+  return null;
+}
+
+function respondToContradiction(change) {
+  const sub = change.subject;
+  if (change.type === "contradiction") {
+    const fromWord = change.from === "positive" ? "were into" : "weren't a fan of";
+    const toWord = change.to === "positive" ? "coming around to" : "moving away from";
+    const responses = [
+      `Wait — didn't you say you ${fromWord} ${sub} earlier? What changed? I'm genuinely curious.`,
+      `Oh interesting shift! Earlier it sounded like you ${fromWord} ${sub}, and now you're ${toWord} it. What happened?`,
+      `Hold on — that's a 180 on ${sub}! Not judging at all, but I'd love to hear what flipped your perspective.`,
+      `Ha, I noticed the ${sub} plot twist! You seemed to feel differently about it a bit ago. What's the story there?`,
+    ];
+    return pick(responses);
+  }
+  // Shift (softening)
+  const responses = [
+    `Sounds like your feelings on ${sub} are evolving — that's natural. What's shifting for you?`,
+    `I notice your take on ${sub} is different from earlier. Has something changed?`,
+    `Your ${sub} stance seems to be in flux! What are you seeing that's changing your mind?`,
+  ];
+  return pick(responses);
+}
+
+function respondToRevelation(rev, text) {
+  switch (rev.weight) {
+    case "celebration": {
+      const reactions = {
+        career_win: [
+          "Wait — congratulations!! That's HUGE news! Tell me everything — what's the role?",
+          "No way, that's amazing! You must be thrilled. What sealed the deal?",
+          "YES! That deserves a celebration! 🎉 How are you feeling about it?",
+        ],
+        relationship_milestone: [
+          "Oh my gosh, congratulations!! That's incredible news! 💙 How did it happen?",
+          "That is AMAZING! I'm genuinely happy for you! What's the story?",
+          "Congratulations!! That's such a big deal! How are you feeling about it all?",
+        ],
+        family_milestone: [
+          "Congratulations!! That's the most exciting kind of news! How are you both doing?",
+          "That's WONDERFUL news! You must be over the moon! How far along?",
+          "Oh wow — life-changing in the best way! Congratulations! 🎉 How are you feeling?",
+        ],
+        education_milestone: [
+          "You DID it! That's a massive accomplishment — you should be so proud! 🎓 What's next?",
+          "Congratulations!! All that hard work paid off! How does it feel?",
+          "That's incredible — seriously, well done! What an achievement! What are your plans now?",
+        ],
+        education_win: [
+          "Oh my gosh, congratulations!! You got in! That's amazing! Are you excited?",
+          "YES! You earned that! What are you most looking forward to?",
+          "That's huge news — congratulations! All your hard work paid off!",
+        ],
+      };
+      return pick(reactions[rev.type] || reactions.career_win);
+    }
+    case "heavy": {
+      const reactions = {
+        career_change: [
+          "Wow, that's a big move. How are you feeling about it? That takes real courage.",
+          "That's a major decision. Are you relieved, nervous, or both? I imagine it's a mix.",
+          "Whoa — that's huge. What led you to make that call? I want to hear the story.",
+        ],
+        relocation: [
+          "That's a big life change! Are you excited about it or is it bittersweet?",
+          "Moving is one of life's biggest transitions. How are you feeling about the change?",
+          "Wow, that's a major move — literally! What's pulling you in that direction?",
+        ],
+        entrepreneurship: [
+          "That's incredibly brave! What are you building? I want to hear the vision.",
+          "Starting something of your own — that's a big leap! What's the idea?",
+          "Wow, founder life! That's exciting and terrifying in equal measure. What's the plan?",
+        ],
+        career_pivot: [
+          "That's a significant shift! What's drawing you to the new direction?",
+          "Career pivots take real courage. What made you decide it was time?",
+          "Interesting — changing paths is a big deal. What sparked the move?",
+        ],
+      };
+      return pick(reactions[rev.type] || reactions.career_change);
+    }
+    case "empathy": {
+      const reactions = {
+        relationship_end: [
+          "I'm sorry to hear that. Breakups are genuinely hard, no matter the circumstances. How are you holding up?",
+          "That's rough — I'm sorry. Take whatever time you need. Is it fresh or have you had some time to process?",
+          "I hear you. That kind of thing takes a real toll. How are you doing with it all?",
+        ],
+        health_news: [
+          "That sounds like a lot to process. How are you feeling about everything?",
+          "I hope you're doing okay. That kind of news can be overwhelming. Want to talk about it?",
+          "That must be weighing on you. Whatever you're feeling right now is completely valid.",
+        ],
+      };
+      return pick(reactions[rev.type] || reactions.relationship_end);
+    }
+    case "deep_empathy": {
+      return pick([
+        "I'm so sorry. That's one of the hardest things a person can go through. I'm here if you want to talk about it, or if you just want a distraction. Either way.",
+        "I don't even have the right words for that. I'm truly sorry. Whatever you need right now — whether it's to talk or not — that's okay.",
+        "I'm really sorry for your loss. There's nothing I can say that would be enough, but I want you to know I'm here. 💙",
+      ]);
+    }
+    default:
+      return null;
+  }
+}
+
 // Main pragmatic inference — called early in generateResponse
 function inferPragmatics(text, lower, parsed, topics) {
   // 1. Indirect requests ("can you explain X?" → explain X)
@@ -4154,6 +4366,25 @@ function generateResponse(text) {
   if (topics.length > 0 && mem.turn > 5) {
     const topicReturn = handleTopicReturn(topics);
     if (topicReturn) return topicReturn;
+  }
+
+  // ═══ -0.4. Belief tracking & contradiction/surprise detection ═══
+  // Track stances and detect when user flips position or drops a revelation
+  const beliefChange = trackBelief(text);
+  if (beliefChange && mem.turn - lastBeliefTurn >= 3) {
+    const contradictionResp = respondToContradiction(beliefChange);
+    if (contradictionResp) {
+      lastBeliefTurn = mem.turn;
+      return contradictionResp;
+    }
+  }
+  const revelation = detectRevelation(text, parsed.lower || text.toLowerCase());
+  if (revelation) {
+    const revResp = respondToRevelation(revelation, text);
+    if (revResp) {
+      lastBeliefTurn = mem.turn;
+      return revResp;
+    }
   }
 
   // ═══ -1. Remember/recall commands — "what do you remember about me?" ═══
@@ -8741,6 +8972,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
