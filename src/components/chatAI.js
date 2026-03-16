@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 77: Conversational scaffolding & progressive understanding
+   Round 82: Conversational digression & self-correction
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -13391,6 +13391,128 @@ function findSurpriseForTopics(topics) {
   return null;
 }
 
+/* ── Conversational Digression & Self-Correction (Round 82) ──
+ * Humans don't think in straight lines — they tangent. Mid-response,
+ * something triggers an association and they start a side thought,
+ * then catch themselves: "Oh wait, that's a whole tangent — anyway..."
+ *
+ * This creates the most human-feeling pattern in chat: the AI briefly
+ * wanders into a related thought triggered by the user's words, then
+ * self-corrects back to the main thread. It proves associative thinking
+ * (not just pattern matching) and makes the AI feel like it has a
+ * genuinely wandering mind.
+ *
+ * Tangent triggers: topic associations (ASSOC.related), semantic echoes
+ * from memory, and keyword-sparked mini-thoughts.
+ * 10% fire rate, 8-turn cooldown, never on short/emotional responses.
+ */
+
+let lastDigressionTurn = 0;
+
+// Tangent fragments — brief associative side-thoughts by topic area
+const TANGENT_SEEDS = {
+  tech: [
+    { trigger: ["react","vue","svelte","framework"], thought: "frameworks keep reinventing the same patterns with slightly different syntax", returnPhrase: "point is" },
+    { trigger: ["api","backend","server","endpoint"], thought: "every API is basically just a fancy translator between two systems that refuse to speak the same language", returnPhrase: "but yeah" },
+    { trigger: ["css","style","design","layout"], thought: "CSS has this weird thing where the more you learn, the less you feel like you know", returnPhrase: "anyway" },
+    { trigger: ["database","sql","query","postgres","mongo"], thought: "someone once told me every app is just a fancy skin on a database and I've never recovered", returnPhrase: "but back to" },
+    { trigger: ["bug","error","debug","crash","fix"], thought: "there's a special kind of satisfaction when you fix a bug that's been haunting you for days", returnPhrase: "anyway" },
+    { trigger: ["typescript","types","interface"], thought: "I sometimes wonder if types are guardrails or speed bumps — probably depends on the day", returnPhrase: "point being" },
+    { trigger: ["deploy","production","ship","release"], thought: "deploying on a Friday is technically not illegal but it should be", returnPhrase: "regardless" },
+  ],
+  design: [
+    { trigger: ["color","palette","theme"], thought: "choosing colors is one of those things that sounds simple until you actually have to do it", returnPhrase: "but yeah" },
+    { trigger: ["font","typography","text"], thought: "fonts carry so much personality — like, Helvetica and Comic Sans could not be more different people", returnPhrase: "anyway" },
+    { trigger: ["animation","motion","transition"], thought: "good animation is invisible and bad animation is VERY visible — there's no in-between", returnPhrase: "point is" },
+    { trigger: ["responsive","mobile","screen"], thought: "we live in this wild world where the same content has to look good on a watch AND a TV", returnPhrase: "but back to" },
+  ],
+  life: [
+    { trigger: ["coffee","caffeine","morning"], thought: "there's a theory that civilization advances at the speed of caffeine and I fully believe it", returnPhrase: "anyway" },
+    { trigger: ["music","song","playlist","spotify"], thought: "why does the right song at the right moment hit SO different than the same song any other time", returnPhrase: "but yeah" },
+    { trigger: ["food","cooking","recipe","pizza"], thought: "cooking is honestly just chemistry you get to eat", returnPhrase: "point being" },
+    { trigger: ["sleep","tired","rest","night"], thought: "sleep is that thing we all know we need more of and somehow never prioritize", returnPhrase: "anyway" },
+    { trigger: ["book","reading","article"], thought: "there are books that literally rearrange the furniture in your brain", returnPhrase: "but back to" },
+    { trigger: ["travel","trip","flight","city"], thought: "travel is the only thing you buy that makes you richer — someone said that and it stuck with me", returnPhrase: "but yeah" },
+  ],
+  meta: [
+    { trigger: ["ai","chatbot","gpt","model","llm"], thought: "it's wild that we've reached the point where AIs are talking about AIs", returnPhrase: "anyway" },
+    { trigger: ["learn","study","practice","course"], thought: "learning something new has that exact same feeling as your brain buffering at 60%", returnPhrase: "point is" },
+    { trigger: ["productivity","workflow","tools","efficient"], thought: "half of productivity culture is just people finding elaborate ways to procrastinate on the hard thing", returnPhrase: "but yeah" },
+    { trigger: ["project","build","create","make"], thought: "starting a project is easy — it's the middle 80% that tests you", returnPhrase: "anyway" },
+  ],
+};
+
+function findDigressionSeed(text, topics) {
+  const lower = text.toLowerCase();
+  const allSeeds = [...TANGENT_SEEDS.tech, ...TANGENT_SEEDS.design, ...TANGENT_SEEDS.life, ...TANGENT_SEEDS.meta];
+
+  // Score each seed by how many triggers match the user's text or current topics
+  let bestSeed = null;
+  let bestScore = 0;
+
+  for (const seed of allSeeds) {
+    let score = 0;
+    for (const trig of seed.trigger) {
+      if (lower.includes(trig)) score += 2;
+      else if (topics.some(t => stem(t) === stem(trig))) score += 1.5;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestSeed = seed;
+    }
+  }
+
+  return bestScore >= 1.5 ? bestSeed : null;
+}
+
+function applyDigression(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 5) return response; // let conversation settle
+  if (turn - lastDigressionTurn < 8) return response; // 8-turn cooldown
+  if (response.length < 40 || response.length > 250) return response; // not on very short or very long
+  if (Math.random() > 0.10) return response; // 10% fire rate
+  // Don't digress on emotional or repair responses
+  if (/^(sorry|I hear you|that sounds|ouch|hey,? I)/i.test(response)) return response;
+
+  const seed = findDigressionSeed(text, topics);
+  if (!seed) return response;
+
+  lastDigressionTurn = turn;
+
+  // Split response into sentences to insert the digression naturally
+  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+  if (sentences.length < 1) return response;
+
+  // Build the digression fragment
+  const openers = [
+    "Oh — that reminds me, ",
+    "Wait, side thought: ",
+    "This is a tangent but — ",
+    "Random aside — ",
+    "Okay brief tangent: ",
+  ];
+  const closers = [
+    `${seed.returnPhrase} — `,
+    `${seed.returnPhrase}, `,
+    `But ${seed.returnPhrase} — `,
+  ];
+
+  const opener = openers[Math.floor(Math.random() * openers.length)];
+  const closer = closers[Math.floor(Math.random() * closers.length)];
+  const digression = `${opener}${seed.thought}. ${closer}`;
+
+  // Insert after first sentence (or before last sentence if only 2)
+  if (sentences.length === 1) {
+    return response + " " + opener + seed.thought + ".";
+  }
+
+  const insertIdx = Math.min(1, sentences.length - 1);
+  const before = sentences.slice(0, insertIdx).join("").trim();
+  const after = sentences.slice(insertIdx).join("").trim();
+
+  return before + " " + digression + after;
+}
+
 function applySurpriseInsight(response, topics) {
   const turn = mem.turn;
   if (turn < 4) return response; // let conversation warm up
@@ -13889,6 +14011,9 @@ export function getAIResponse(input) {
   // ═══ Temporal callback: circle back to earlier user claims with "I just realized..." moments ═══
   response = applyTemporalCallback(response, text, currentTopics);
 
+  // ═══ Digression & self-correction: brief tangent then catch-self for natural wandering mind ═══
+  response = applyDigression(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -13941,6 +14066,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
