@@ -11381,6 +11381,217 @@ function applyCadenceMirroring(response, text) {
   return r;
 }
 
+/* ── Conversational Repair & Misunderstanding Recovery (Round 70) ──
+ * Detects when the user signals the AI missed the point — "what?",
+ * "no I meant...", "that's not what I asked", "huh?", repeating
+ * their original question, etc. When detected, the AI:
+ *   1. Acknowledges the miss naturally (not robotically)
+ *   2. Re-reads the previous user message with fresh eyes
+ *   3. Attempts a better interpretation using context clues
+ *   4. Generates a corrective response that feels self-aware
+ *
+ * Also tracks repair frequency — if multiple repairs happen in a
+ * short span, the AI becomes more cautious and clarifying.
+ *
+ * Repair signals detected:
+ * - Explicit confusion: "what?", "huh?", "??", "I don't get it"
+ * - Correction: "no I meant", "I was asking about", "not that"
+ * - Repetition: user restates their previous message (high overlap)
+ * - Frustration: "you're not listening", "that's not what I said"
+ * - Redirect: "forget that", "never mind", "let me rephrase"
+ */
+
+let repairHistory = [];       // timestamps of recent repairs
+let lastRepairTurn = 0;
+let consecutiveRepairs = 0;   // how many repairs in a row
+
+// Detect if user is signaling a misunderstanding
+function detectRepairSignal(text, prevUserMsg) {
+  const lower = text.toLowerCase().trim();
+  const signals = [];
+
+  // Explicit confusion markers
+  if (/^(what|huh|wha)\??$/i.test(lower) || /^\?{2,}$/.test(lower.replace(/\s/g, ""))) {
+    signals.push({ type: "confusion", strength: 0.9 });
+  }
+  if (/\b(i don'?t (get|understand)|what do you mean|makes no sense|doesn'?t make sense)\b/i.test(lower)) {
+    signals.push({ type: "confusion", strength: 0.8 });
+  }
+
+  // Correction signals
+  if (/\b(no[,.]?\s*(i|what i)\s*(meant|mean|was asking|asked)|i was asking about|not what i (asked|meant|said))\b/i.test(lower)) {
+    signals.push({ type: "correction", strength: 0.95 });
+  }
+  if (/^(no[,.]?\s)/i.test(lower) && lower.length > 5) {
+    signals.push({ type: "correction", strength: 0.6 });
+  }
+
+  // Redirect / rephrase
+  if (/\b(forget (that|it)|never\s?mind|let me (rephrase|try again|reword)|in other words)\b/i.test(lower)) {
+    signals.push({ type: "redirect", strength: 0.85 });
+  }
+
+  // Frustration with AI
+  if (/\b(you'?re not (listening|understanding|getting)|that'?s not what i (said|meant)|did you (even )?read)\b/i.test(lower)) {
+    signals.push({ type: "frustration", strength: 0.95 });
+  }
+
+  // Repetition detection: user restating their previous message
+  if (prevUserMsg && prevUserMsg.length > 10) {
+    const prevWords = new Set(prevUserMsg.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    const currWords = lower.split(/\s+/).filter(w => w.length > 3);
+    if (prevWords.size > 0 && currWords.length > 0) {
+      const overlap = currWords.filter(w => prevWords.has(w)).length / Math.max(currWords.length, 1);
+      if (overlap > 0.6 && currWords.length >= 3) {
+        signals.push({ type: "repetition", strength: 0.7 + overlap * 0.2 });
+      }
+    }
+  }
+
+  if (signals.length === 0) return null;
+
+  // Return strongest signal
+  signals.sort((a, b) => b.strength - a.strength);
+  return signals[0];
+}
+
+// Get the previous user message from memory for re-interpretation
+function getPreviousUserMessage() {
+  const msgs = mem.msgs;
+  let userMsgCount = 0;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === "user") {
+      userMsgCount++;
+      if (userMsgCount === 2) return msgs[i].text; // second-to-last user msg
+    }
+  }
+  return null;
+}
+
+// Generate a natural repair acknowledgment
+function generateRepairAck(signalType) {
+  const acks = {
+    confusion: [
+      "Oh wait, I think I went off track there —",
+      "Hmm, let me back up —",
+      "Right, sorry — that wasn't clear of me.",
+      "Ah, I think I misread that.",
+    ],
+    correction: [
+      "Oh, gotcha — my bad.",
+      "Ah right, I see what you mean now.",
+      "Right right, let me correct myself —",
+      "Oh I see, I misunderstood.",
+    ],
+    redirect: [
+      "Sure, let's reset.",
+      "Okay, fresh start on this.",
+      "Got it — scratch that.",
+      "Alright, different angle.",
+    ],
+    frustration: [
+      "You're right, I wasn't tracking. Let me actually listen this time.",
+      "Fair — I missed the point there. Here's what I think you're getting at:",
+      "Sorry about that. Let me try again properly.",
+      "My bad — I hear you now.",
+    ],
+    repetition: [
+      "Right, I didn't really answer that — let me try again.",
+      "Let me actually address what you asked.",
+      "Okay, focusing on what you actually said this time —",
+    ],
+  };
+
+  const options = acks[signalType] || acks.confusion;
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+// Re-interpret the original message with repair context
+function reinterpretWithRepair(currentText, prevText, signalType) {
+  // For corrections, the current message often contains the clarification
+  if (signalType === "correction" || signalType === "redirect") {
+    // Strip the correction prefix and use the rest as the real question
+    const cleaned = currentText
+      .replace(/^(no[,.]?\s*(i|what i)\s*(meant|mean|was asking)|i was asking about|not what i (asked|meant|said)|forget (that|it)|never\s?mind|let me (rephrase|try again)|in other words)[,:.]?\s*/i, "")
+      .trim();
+    if (cleaned.length > 5) return cleaned;
+  }
+
+  // For repetition/confusion, fall back to the previous message
+  if (prevText && (signalType === "repetition" || signalType === "confusion")) {
+    return prevText;
+  }
+
+  return currentText;
+}
+
+// Apply repair to the response pipeline — runs early in getAIResponse
+function applyConversationalRepair(text, response, topics) {
+  const prevUserMsg = getPreviousUserMessage();
+  const signal = detectRepairSignal(text, prevUserMsg);
+
+  if (!signal) {
+    // No repair needed — reset consecutive counter
+    if (consecutiveRepairs > 0) consecutiveRepairs = Math.max(0, consecutiveRepairs - 1);
+    return { response, repaired: false, reinterpretedText: null };
+  }
+
+  const turn = mem.turn;
+  repairHistory.push(turn);
+  // Keep only last 10 repairs
+  if (repairHistory.length > 10) repairHistory.shift();
+  lastRepairTurn = turn;
+  consecutiveRepairs++;
+
+  const ack = generateRepairAck(signal.type);
+  const reinterpreted = reinterpretWithRepair(text, prevUserMsg, signal.type);
+
+  // If many recent repairs, add a meta-acknowledgment
+  let metaNote = "";
+  if (consecutiveRepairs >= 3) {
+    const metaOptions = [
+      " I keep missing the mark — tell me plainly what you need and I'll do my best.",
+      " I'm clearly struggling with this one. What would be most helpful right now?",
+      " Okay I need to be more careful here.",
+    ];
+    metaNote = metaOptions[Math.floor(Math.random() * metaOptions.length)];
+  }
+
+  // Build repair prefix
+  const prefix = ack + (metaNote ? metaNote : "");
+
+  return {
+    response: prefix + " " + response,
+    repaired: true,
+    reinterpretedText: reinterpreted !== text ? reinterpreted : null,
+    signalType: signal.type,
+  };
+}
+
+// Caution mode: if repairs are frequent, make AI more tentative
+function shouldBeCautious() {
+  const recentRepairs = repairHistory.filter(t => mem.turn - t < 8).length;
+  return recentRepairs >= 2 || consecutiveRepairs >= 2;
+}
+
+function applyCautionMode(response) {
+  if (!shouldBeCautious()) return response;
+
+  // Add hedging/checking to show awareness
+  if (Math.random() > 0.5 && !response.includes("?") && response.length > 30) {
+    const checks = [
+      " — am I on the right track this time?",
+      " Does that land better?",
+      " Let me know if I'm still off base.",
+      " — is that closer to what you meant?",
+    ];
+    const check = checks[Math.floor(Math.random() * checks.length)];
+    // Append to end, replacing trailing period
+    response = response.replace(/\.\s*$/, "") + check;
+  }
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -11700,6 +11911,22 @@ export function getAIResponse(input) {
     response = ambiguous;
   }
 
+  // ═══ Conversational repair: detect misunderstanding signals & self-correct ═══
+  const repair = applyConversationalRepair(text, response, currentTopics);
+  if (repair.repaired) {
+    response = repair.response;
+    // If we reinterpreted the user's intent, regenerate a better response
+    if (repair.reinterpretedText) {
+      const reResponse = generateResponse(repair.reinterpretedText);
+      if (reResponse && reResponse.length > 10) {
+        // Keep repair acknowledgment + use regenerated response
+        const ackMatch = response.match(/^[^.!—]+[.!—]/);
+        const ackPart = ackMatch ? ackMatch[0] : "";
+        response = (ackPart ? ackPart + " " : "") + reResponse;
+      }
+    }
+  }
+
   // ═══ Conversation repair: repetition guard ═══
   const repeated = detectRepetition(response);
   if (repeated) {
@@ -11873,6 +12100,9 @@ export function getAIResponse(input) {
   // ═══ Discourse coherence: add natural transition markers ═══
   response = addDiscourseMarker(response, plan.flavor);
 
+  // ═══ Repair caution mode: add confirmation-seeking when frequently misunderstanding ═══
+  response = applyCautionMode(response);
+
   // ═══ Discourse coherence: guard against tonal clashes from pipeline ═══
   response = guardCoherence(response, plan);
 
@@ -11899,6 +12129,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
