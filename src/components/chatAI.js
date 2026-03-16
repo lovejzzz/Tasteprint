@@ -13587,6 +13587,116 @@ function applyTemporalCallback(response, text, topics) {
   return response + " " + timeFrame;
 }
 
+/* ── Emotional Memory Callback (Round 93) ──
+ * Remembers emotional context tied to topics from earlier in the conversation.
+ * When a topic resurfaces, references the user's prior emotional state about it,
+ * creating "I remember you felt X about Y" continuity moments.
+ */
+
+let emotionalMemoryBank = []; // [{ emotion, topic, turn, sentiment }]
+let lastEmoMemTurn = 0;
+let usedEmoMemTopics = new Set();
+
+const EMOTION_EXTRACT_PATTERNS = [
+  { pattern: /\b(?:frustrated|annoyed|irritated|pissed)\b/i, emotion: "frustrated" },
+  { pattern: /\b(?:excited|thrilled|pumped|stoked|hyped)\b/i, emotion: "excited" },
+  { pattern: /\b(?:worried|anxious|nervous|concerned)\b/i, emotion: "worried" },
+  { pattern: /\b(?:happy|glad|pleased|delighted|thrilled)\b/i, emotion: "happy" },
+  { pattern: /\b(?:confused|lost|puzzled|baffled)\b/i, emotion: "confused" },
+  { pattern: /\b(?:sad|disappointed|bummed|down|upset)\b/i, emotion: "sad" },
+  { pattern: /\b(?:proud|accomplished|satisfied)\b/i, emotion: "proud" },
+  { pattern: /\b(?:stressed|overwhelmed|burned out)\b/i, emotion: "stressed" },
+];
+
+const EMO_CALLBACK_TEMPLATES = {
+  frustrated: [
+    "I remember you were frustrated about {topic} earlier — has that shifted at all?",
+    "You seemed pretty frustrated with {topic} before. How's that sitting now?",
+  ],
+  excited: [
+    "You were really excited about {topic} earlier — still feeling that energy?",
+    "I remember the enthusiasm about {topic}! That's coming back around.",
+  ],
+  worried: [
+    "Earlier you seemed worried about {topic}. Has anything changed on that front?",
+    "I noticed you were concerned about {topic} before — still weighing on you?",
+  ],
+  happy: [
+    "You were in a great mood about {topic} earlier — love that it's coming back up.",
+    "I remember how happy {topic} made you! Still feeling good about it?",
+  ],
+  confused: [
+    "You were confused about {topic} before — do things make more sense now?",
+    "I remember {topic} was tricky earlier. Are we in a better spot now?",
+  ],
+  sad: [
+    "I know {topic} was tough earlier. How are you feeling about it now?",
+    "You seemed down about {topic} before — hope things are looking up.",
+  ],
+  proud: [
+    "You were proud of {topic} earlier — and honestly, you should be!",
+    "I remember how good you felt about {topic}. That energy's still here.",
+  ],
+  stressed: [
+    "You were pretty stressed about {topic} earlier — any relief since then?",
+    "I remember {topic} had you overwhelmed. How's the pressure now?",
+  ],
+};
+
+function trackEmotionalContext(text, topics) {
+  for (const pat of EMOTION_EXTRACT_PATTERNS) {
+    if (pat.pattern.test(text) && topics.length > 0) {
+      const topic = topics[0];
+      // Don't double-store same topic+emotion
+      const exists = emotionalMemoryBank.find(m => m.topic === topic && m.emotion === pat.emotion);
+      if (!exists) {
+        emotionalMemoryBank.push({ emotion: pat.emotion, topic, turn: mem.turn });
+        if (emotionalMemoryBank.length > 12) emotionalMemoryBank.shift();
+      }
+      break;
+    }
+  }
+}
+
+function applyEmotionalMemoryCallback(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 8) return response;
+  if (turn - lastEmoMemTurn < 8) return response; // 8-turn cooldown
+  if (Math.random() > 0.10) return response; // 10% fire rate
+  if (response.length > 200) return response;
+
+  // Track current emotional context
+  trackEmotionalContext(text, topics);
+
+  // Find a stored emotional memory that matches current topics
+  let bestMatch = null;
+  for (const topic of topics) {
+    const mem_entry = emotionalMemoryBank.find(m =>
+      m.topic === topic && m.turn < turn - 3 && !usedEmoMemTopics.has(topic)
+    );
+    if (mem_entry) { bestMatch = mem_entry; break; }
+  }
+
+  if (!bestMatch) return response;
+
+  const templates = EMO_CALLBACK_TEMPLATES[bestMatch.emotion];
+  if (!templates) return response;
+
+  const template = templates[Math.floor(Math.random() * templates.length)];
+  const callback = template.replace("{topic}", bestMatch.topic);
+
+  lastEmoMemTurn = turn;
+  usedEmoMemTopics.add(bestMatch.topic);
+  if (usedEmoMemTopics.size > 10) {
+    const first = usedEmoMemTopics.values().next().value;
+    usedEmoMemTopics.delete(first);
+  }
+
+  // Append or prepend
+  if (Math.random() > 0.5) return callback + " " + response;
+  return response + " " + callback;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -15306,6 +15416,9 @@ export function getAIResponse(input) {
   // ═══ Temporal callback: circle back to earlier user claims with "I just realized..." moments ═══
   response = applyTemporalCallback(response, text, currentTopics);
 
+  // ═══ Emotional memory callback: reference user's prior emotional state about recurring topics ═══
+  response = applyEmotionalMemoryCallback(response, text, currentTopics);
+
   // ═══ Digression & self-correction: brief tangent then catch-self for natural wandering mind ═══
   response = applyDigression(response, text, currentTopics);
 
@@ -15385,6 +15498,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
