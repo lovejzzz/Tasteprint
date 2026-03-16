@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 16: Conversation threading & topic management
+   Round 22: Implicit meaning & subtext detection
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -156,6 +156,256 @@ function similarity(a, b) {
   let overlap = 0;
   for (const w of sa) if (sb.has(w)) overlap++;
   return overlap / Math.max(sa.size, sb.size);
+}
+
+/* ── Subtext Detection Engine ── */
+/*
+ * Reads between the lines: detects what users MEAN vs what they SAY.
+ * Hedging ("I guess"), false agreement ("sure whatever"), understated
+ * praise ("not bad"), passive aggression ("fine."), reluctance, etc.
+ * Returns a subtext object that modifies how the AI responds.
+ */
+
+const SUBTEXT_PATTERNS = {
+  hedging: {
+    patterns: [
+      /\b(i guess|i suppose|kind of|sort of|kinda|sorta|maybe|perhaps|i think so|if you say so)\b/i,
+      /\b(not sure|not really|not exactly|i mean|well\.{2,})\b/i,
+      /\b(could be|might be|possibly|arguably|in a way)\b/i,
+    ],
+    meaning: "uncertain",
+    valence: -0.3,
+  },
+  reluctantAgreement: {
+    patterns: [
+      /\b(sure|okay|fine|alright|whatever|if you (say|think) so)\b.*$/i,
+      /^(sure|okay|fine|alright|yeah sure|ok then|i guess so)\s*[.…]*$/i,
+      /\b(i (mean|guess) (it's |that's )?(fine|okay|alright|whatever))\b/i,
+    ],
+    meaning: "reluctant",
+    valence: -0.5,
+  },
+  passiveAggressive: {
+    patterns: [
+      /^(fine|okay|cool|great|nice|wonderful|perfect|awesome)\s*\.+$/i,
+      /\b(no,?\s*(it's |that's )?(fine|okay)|never\s*mind|forget it|don't worry about it)\b/i,
+      /\b(do what(ever)? you want|it('s| is) not like|i didn't (say|ask))\b/i,
+      /\b(clearly|obviously|apparently)\b/i,
+    ],
+    meaning: "passiveAggressive",
+    valence: -0.7,
+  },
+  understatedPraise: {
+    patterns: [
+      /\b(not bad|not terrible|could be worse|decent|alright actually|fair enough)\b/i,
+      /\b(that('s| is) actually (pretty |quite )?(good|nice|cool|helpful))\b/i,
+      /\b(huh,? (that's |that |)(actually |)(works|makes sense|interesting|cool))\b/i,
+      /\b(i('ll| will) (admit|give you that))\b/i,
+    ],
+    meaning: "impressed",
+    valence: 0.4,
+  },
+  dismissive: {
+    patterns: [
+      /^(ok|k|sure|mhm|uh huh|right|yep|yup|yeah)\s*$/i,
+      /\b(doesn't matter|who cares|not really|don't care|meh|idc)\b/i,
+      /\b(anyways?|anyway|moving on|so anyway|next)\b/i,
+    ],
+    meaning: "disengaged",
+    valence: -0.4,
+  },
+  enthusiasm: {
+    patterns: [
+      /\b(wait (really|what|actually)|no way|oh my (god|gosh)|seriously\?!)\b/i,
+      /\b(that's (so |really |actually )?(amazing|awesome|incredible|insane|wild))\b/i,
+      /\b(i (need|have) to (try|check|see|do) (this|that))\b/i,
+      /\b(tell me (more|everything)|i('m| am) (so |)(hooked|sold|in|interested|obsessed))\b/i,
+    ],
+    meaning: "genuinelyExcited",
+    valence: 0.8,
+  },
+  deflection: {
+    patterns: [
+      /\b(i (don't|do not) (want to |wanna )?(talk|think|discuss) about (it|that|this))\b/i,
+      /\b(can we (just |)(change|move on|talk about|skip))\b/i,
+      /\b(let's (just |)(move on|change|not|drop))\b/i,
+      /\b(that's (not |)what i (meant|asked|said))\b/i,
+    ],
+    meaning: "avoidant",
+    valence: -0.3,
+  },
+  selfDeprecating: {
+    patterns: [
+      /\b(i('m| am) (so |)(bad|terrible|stupid|dumb|hopeless|lost|clueless) at)\b/i,
+      /\b(i (probably |)(shouldn't have|messed up|screwed up|broke it))\b/i,
+      /\b(i have no (idea|clue)|i('m| am) an idiot|my brain)\b/i,
+    ],
+    meaning: "seekingReassurance",
+    valence: -0.2,
+  },
+  fishing: {
+    patterns: [
+      /\b(do you (even |)(like|enjoy) (talking|chatting) (to|with) me)\b/i,
+      /\b(am i (being |)(annoying|boring|weird|too much))\b/i,
+      /\b(you (probably |)(don't|do not) (even |)(care|remember))\b/i,
+      /\b(i bet you (say|tell) that to everyone)\b/i,
+    ],
+    meaning: "seekingValidation",
+    valence: -0.2,
+  },
+};
+
+// Sentence-ending cues that modify interpretation
+const PUNCTUATION_SUBTEXT = {
+  "...": { modifier: "trailing", weight: 0.3 },      // trailing off = uncertainty or passive
+  ".": { modifier: "curt", weight: 0.2 },             // single sentence + period = curt
+  "!": { modifier: "emphatic", weight: 0.1 },
+};
+
+function detectSubtext(text, sent) {
+  const lower = text.toLowerCase().trim();
+  const detected = [];
+  let totalValence = 0;
+
+  // Check each subtext pattern
+  for (const [type, config] of Object.entries(SUBTEXT_PATTERNS)) {
+    for (const pattern of config.patterns) {
+      if (pattern.test(lower)) {
+        detected.push({ type, meaning: config.meaning, valence: config.valence });
+        totalValence += config.valence;
+        break; // one match per type
+      }
+    }
+  }
+
+  // Punctuation-based cues
+  const trimmed = text.trim();
+  if (trimmed.endsWith("...") || trimmed.endsWith("…")) {
+    detected.push({ type: "trailingOff", meaning: "uncertain", valence: -0.15 });
+  } else if (/^[^!?]{4,30}\.$/.test(trimmed) && sent <= 0) {
+    // Short statement ending in period + non-positive sentiment = curt
+    detected.push({ type: "curtResponse", meaning: "curt", valence: -0.2 });
+  }
+
+  // Contradiction detection: positive words + negative signals
+  if (sent > 0 && detected.some(d => d.valence < -0.3)) {
+    detected.push({ type: "contradiction", meaning: "sayingOneThingMeaningAnother", valence: -0.4 });
+  }
+
+  // "Interesting" without elaboration is often underwhelmed
+  if (/^(that's |)(interesting|neat|cool)\s*[.…]*$/i.test(lower)) {
+    detected.push({ type: "underwhelmed", meaning: "politelyBored", valence: -0.3 });
+  }
+
+  // Compute primary subtext
+  const primary = detected.length > 0
+    ? detected.reduce((a, b) => Math.abs(b.valence) > Math.abs(a.valence) ? b : a)
+    : null;
+
+  return {
+    detected,
+    primary,
+    totalValence,
+    hasSubtext: detected.length > 0,
+    isCongruent: !detected.some(d => d.type === "contradiction"),
+  };
+}
+
+// Subtext-aware response adjustments
+const SUBTEXT_RESPONSES = {
+  reluctant: [
+    "I'm getting a 'not fully sold' vibe — what would actually work better for you?",
+    "You don't sound super convinced. What's your gut telling you?",
+    "I sense some hesitation — want to explore other options?",
+    "Hmm, I feel like there's a 'but' coming. What's on your mind?",
+  ],
+  passiveAggressive: [
+    "Okay, I think I might have missed the mark there. What were you actually looking for?",
+    "I'm picking up that something's off — want to reset? What do you actually need?",
+    "Fair enough. Let me try a different approach. What would be more helpful?",
+    "I feel like we might be talking past each other. Can we start fresh on this?",
+  ],
+  impressed: [
+    "I'll take that as high praise coming from you 😊",
+    "Coming from someone who doesn't throw compliments around easily — thanks! 😄",
+    "Haha, I think that's the closest to a compliment I'm getting — I'll take it! 😊",
+    "See? I have my moments! What else can I surprise you with?",
+  ],
+  disengaged: [
+    "Hmm, I feel like I might be boring you. What would you actually want to talk about?",
+    "I sense the vibe shifting — should we switch topics? What sounds interesting?",
+    "Fair, I'll stop rambling about that. What's on your mind instead?",
+  ],
+  genuinelyExcited: [
+    "Your excitement is making MY circuits happy! 😄 Tell me more!",
+    "I love when something genuinely clicks! What's got you so fired up?",
+    "THIS is the energy! Let's ride this wave — what else do you want to know?",
+  ],
+  avoidant: [
+    "Totally fair, we don't have to go there. What would you rather talk about?",
+    "Noted — topic changed! What else is on your mind?",
+    "No problem at all. Let's shift gears. What sounds good?",
+  ],
+  seekingReassurance: [
+    "Hey, don't be so hard on yourself — everyone starts somewhere! What specifically are you stuck on?",
+    "Trust me, asking questions means you're on the right track. What part is confusing?",
+    "Nah, you're doing better than you think! Let's break it down together.",
+    "The fact that you're trying already puts you ahead. What can I help with?",
+  ],
+  seekingValidation: [
+    "Are you kidding? I genuinely enjoy our conversations! What made you think otherwise?",
+    "Hey — you're literally making my day more interesting. Don't sell yourself short!",
+    "I'm a tiny AI that gets excited about good conversation, and you're bringing it 😊",
+    "Absolutely not annoying! I'm here because I want to be. What's up?",
+  ],
+  uncertain: [
+    "Sounds like you're not 100% sure — want to think it through together?",
+    "I hear some uncertainty. What's making you hesitate?",
+    "No need to commit — let's explore the options first.",
+  ],
+  politelyBored: [
+    "I feel like 'interesting' is doing a lot of heavy lifting there 😄 What would you ACTUALLY want to talk about?",
+    "That's 'polite interesting' isn't it? 😄 Tell me what would genuinely grab your attention.",
+    "I can feel the enthusiasm radiating through the screen 😄 Seriously though, what topics light you up?",
+  ],
+  sayingOneThingMeaningAnother: [
+    "Your words say yes but something tells me you're not fully feeling it. What's up?",
+    "I'm getting mixed signals here — what do you actually think?",
+    "Hmm, I sense there's more to it than that. Want to be straight with me?",
+  ],
+  curt: [
+    "Short and sweet! Anything else on your mind or should I pick a topic?",
+  ],
+};
+
+function getSubtextResponse(subtext) {
+  if (!subtext.primary) return null;
+  const pool = SUBTEXT_RESPONSES[subtext.primary.meaning];
+  if (!pool || pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Track subtext history for pattern detection
+let subtextHistory = [];
+const MAX_SUBTEXT_HISTORY = 8;
+
+function trackSubtext(subtext) {
+  if (subtext.hasSubtext) {
+    subtextHistory.push({ meaning: subtext.primary?.meaning, valence: subtext.totalValence, turn: mem?.turn || 0 });
+    if (subtextHistory.length > MAX_SUBTEXT_HISTORY) subtextHistory.shift();
+  }
+}
+
+function getSubtextTrend() {
+  if (subtextHistory.length < 2) return "stable";
+  const recent = subtextHistory.slice(-3);
+  const avgValence = recent.reduce((s, h) => s + h.valence, 0) / recent.length;
+  if (avgValence < -0.4) return "withdrawing";   // user is pulling away
+  if (avgValence > 0.3) return "warming";          // user is opening up
+  // Check for repeated disengagement
+  const disengagedCount = recent.filter(h => h.meaning === "disengaged" || h.meaning === "reluctant").length;
+  if (disengagedCount >= 2) return "losing_interest";
+  return "stable";
 }
 
 /* ── Emotion-Aware Response Pools ── */
@@ -3504,10 +3754,72 @@ function adaptiveAdjust(response) {
 // Track the last AI message's discourse "flavor" to vary transitions
 let lastDiscourseMove = "neutral"; // neutral, empathetic, playful, informative, curious
 
-function planResponseIntent(text, parsed, sent, emo) {
+function planResponseIntent(text, parsed, sent, emo, subtext) {
   // Decide the high-level intent: what should this response DO?
-  // Returns { acknowledge, body, engage } flags + discourse flavor
-  const plan = { acknowledge: false, body: "inform", engage: "question", flavor: "neutral" };
+  // Returns { acknowledge, body, engage } flags + discourse flavor + subtext info
+  const plan = { acknowledge: false, body: "inform", engage: "question", flavor: "neutral", subtext: null };
+
+  // ── Subtext-first: if user's words don't match meaning, respond to the meaning ──
+  if (subtext && subtext.hasSubtext && subtext.primary) {
+    plan.subtext = subtext.primary.meaning;
+
+    // User is disengaging or losing interest → back off questions, pivot topic
+    if (subtext.primary.meaning === "disengaged" || subtext.primary.meaning === "politelyBored") {
+      plan.acknowledge = false;
+      plan.body = "pivot";
+      plan.engage = "gentle-q";
+      plan.flavor = "curious";
+      return plan;
+    }
+    // User is reluctant/passive-aggressive → address the tension, don't barrel forward
+    if (subtext.primary.meaning === "reluctant" || subtext.primary.meaning === "passiveAggressive") {
+      plan.acknowledge = true;
+      plan.body = "address";
+      plan.engage = "open-ended";
+      plan.flavor = "empathetic";
+      return plan;
+    }
+    // User is deflecting/avoidant → respect boundary, change topic
+    if (subtext.primary.meaning === "avoidant") {
+      plan.acknowledge = false;
+      plan.body = "pivot";
+      plan.engage = "question";
+      plan.flavor = "playful";
+      return plan;
+    }
+    // User seeking reassurance → validate, encourage
+    if (subtext.primary.meaning === "seekingReassurance" || subtext.primary.meaning === "seekingValidation") {
+      plan.acknowledge = true;
+      plan.body = "validate";
+      plan.engage = "gentle-q";
+      plan.flavor = "empathetic";
+      return plan;
+    }
+    // Genuine excitement → match energy
+    if (subtext.primary.meaning === "genuinelyExcited") {
+      plan.acknowledge = true;
+      plan.body = "react";
+      plan.engage = "question";
+      plan.flavor = "playful";
+      return plan;
+    }
+    // Understated praise → acknowledge with humor
+    if (subtext.primary.meaning === "impressed") {
+      plan.acknowledge = true;
+      plan.body = "react";
+      plan.engage = "question";
+      plan.flavor = "playful";
+      return plan;
+    }
+    // Mixed signals → gently surface the disconnect
+    if (subtext.primary.meaning === "sayingOneThingMeaningAnother") {
+      plan.acknowledge = true;
+      plan.body = "clarify";
+      plan.engage = "open-ended";
+      plan.flavor = "curious";
+      return plan;
+    }
+  }
 
   // Strong emotion → acknowledge first, engage gently
   if (emo && emo.confidence >= 0.5 && emo.emotion !== "neutral") {
@@ -3641,6 +3953,47 @@ function guardCoherence(response, plan) {
   return response.trim();
 }
 
+/* ── Subtext Tone Adjustment (post-processing) ── */
+// For weaker subtext signals that didn't override the response,
+// this adjusts the generated response's tone to be more appropriate.
+
+function adjustForSubtext(response, subtext) {
+  if (!subtext || !subtext.hasSubtext || !subtext.primary) return response;
+  const meaning = subtext.primary.meaning;
+
+  // If user is hedging/uncertain, strip overly enthusiastic language
+  if (meaning === "uncertain" || meaning === "reluctant") {
+    response = response.replace(/!{2,}/g, "!").replace(/🔥|🚀|✨|💯/g, "");
+    // Replace "amazing" / "awesome" with softer words
+    response = response.replace(/\b(amazing|awesome|incredible)\b/gi, "solid");
+  }
+
+  // If user seems disengaged, shorten the response
+  if (meaning === "disengaged" || meaning === "politelyBored") {
+    const sentences = response.split(/(?<=[.!?])\s+/);
+    if (sentences.length > 2) {
+      response = sentences.slice(0, 2).join(" ");
+    }
+  }
+
+  // If user gave understated praise, don't overreact
+  if (meaning === "impressed") {
+    response = response.replace(/!{2,}/g, "!");
+  }
+
+  // If user is self-deprecating, don't agree — always encourage
+  if (meaning === "seekingReassurance") {
+    response = response.replace(/\byeah (that's |it's )(tough|hard|tricky)\b/gi, "that can feel challenging, but you've got this");
+  }
+
+  // If user is being passive-aggressive, don't match their energy
+  if (meaning === "passiveAggressive") {
+    response = response.replace(/!{1,}/g, ".").replace(/haha|lol|😄|😂/gi, "");
+  }
+
+  return response;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -3655,8 +4008,27 @@ export function getAIResponse(input) {
   const sent = sentiment(text);
   const emo = detectEmotion(text, sent, parsed);
 
-  // ═══ Plan response intent BEFORE generating ═══
-  const plan = planResponseIntent(text, parsed, sent, emo);
+  // ═══ Subtext detection: read between the lines ═══
+  const subtext = detectSubtext(text, sent);
+  trackSubtext(subtext);
+
+  // ═══ Plan response intent BEFORE generating (now subtext-aware) ═══
+  const plan = planResponseIntent(text, parsed, sent, emo, subtext);
+
+  // ═══ Subtext override: if strong subtext detected, respond to meaning not words ═══
+  // Only fires when subtext is high-confidence (strong pattern match + not congruent)
+  if (subtext.hasSubtext && subtext.primary && Math.abs(subtext.primary.valence) >= 0.4) {
+    const subtextResp = getSubtextResponse(subtext);
+    if (subtextResp && Math.random() > 0.3) {
+      // ~70% chance to respond to subtext for strong signals
+      mem.add("user", text, [], [], sent);
+      mem.add("ai", subtextResp);
+      trackAIQuestion(subtextResp);
+      lastDiscourseMove = plan.flavor;
+      const typingMs = calcTypingMs(subtextResp, sent, parsed);
+      return { text: subtextResp, typingMs, pause: calcTypingPause(typingMs) };
+    }
+  }
 
   // ═══ Conversation repair: detect confusion BEFORE generating response ═══
   const confusion = detectConfusion(text);
@@ -3724,6 +4096,17 @@ export function getAIResponse(input) {
   // ═══ Adaptive strategy: adjust based on what's working ═══
   response = adaptiveAdjust(response);
 
+  // ═══ Subtext-aware tone adjustment: soften/adjust based on what user actually means ═══
+  response = adjustForSubtext(response, subtext);
+
+  // ═══ Subtext trend: if user is withdrawing over multiple turns, acknowledge it ═══
+  const trend = getSubtextTrend();
+  if (trend === "losing_interest" && Math.random() > 0.6) {
+    response = response.replace(/\?[^?]*$/, ".") + " But hey — what would you actually want to talk about?";
+  } else if (trend === "withdrawing" && Math.random() > 0.7) {
+    response = "Hey, I want to make sure I'm being helpful here. " + response;
+  }
+
   // ═══ Discourse coherence: add natural transition markers ═══
   response = addDiscourseMarker(response, plan.flavor);
 
@@ -3746,6 +4129,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
