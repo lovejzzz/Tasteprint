@@ -966,9 +966,57 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
   /* ---- TAG INPUT ---- */
   if(type==="tag-input"){
     const tags=["React","TypeScript","Design"];
-    if(v===0)return <div style={{...b,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>{tags.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,background:p.ac+"14",borderRadius:999,padding:"4px 10px",animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}><T k={`t${i}`} s={{fontSize:11,color:p.ac,fontWeight:500}}>{t}</T><span style={{fontSize:10,color:p.ac,opacity:.4,cursor:"pointer"}}>×</span></div>)}<div style={{display:"flex",alignItems:"center",gap:4,opacity:.4}}><span style={{fontSize:11,color:p.mu}}>+</span><T k="ph" s={{fontSize:11,color:p.mu}}>Add tag</T></div></div>;
-    if(v===1)return <div style={{...b,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>{tags.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,background:p.su,borderRadius:4,padding:"4px 8px",animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}><T k={`t${i}`} s={{fontSize:11,color:p.tx,fontWeight:500}}>{t}</T><span style={{fontSize:10,color:p.mu,opacity:.4}}>×</span></div>)}</div>;
-    return <div style={{...b,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>{tags.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,border:`1px solid ${p.ac}30`,borderRadius:999,padding:"3px 10px",animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}><T k={`t${i}`} s={{fontSize:11,color:p.ac,fontWeight:500}}>{t}</T><span style={{fontSize:10,color:p.ac,opacity:.3}}>×</span></div>)}</div>;
+    const xIcon=(c,op=.4)=><svg width="10" height="10" viewBox="0 0 10 10" stroke={c} strokeWidth="1.5" strokeLinecap="round" style={{opacity:op,cursor:"pointer",flexShrink:0}}><line x1="2.5" y1="2.5" x2="7.5" y2="7.5"/><line x1="7.5" y1="2.5" x2="2.5" y2="7.5"/></svg>;
+    /* v0 Rounded — accent-tinted pills with add placeholder */
+    if(v===0)return <div style={{...b,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+      {tags.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,background:p.ac+"14",borderRadius:999,padding:"4px 8px 4px 10px",animation:`tp-fadein .2s ease-out ${i*0.08}s both`,transition:"background .15s"}}>
+        <T k={`t${i}`} s={{fontSize:f(11),color:p.ac,fontWeight:500}}>{t}</T>
+        {xIcon(p.ac)}
+      </div>)}
+      <div style={{display:"flex",alignItems:"center",gap:4,opacity:.4}}>
+        <svg width="12" height="12" viewBox="0 0 12 12" stroke={p.mu} strokeWidth="1.5" strokeLinecap="round"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg>
+        <T k="ph" s={{fontSize:f(11),color:p.mu}}>Add tag</T>
+      </div>
+    </div>;
+    /* v1 Square — surface-bg square chips */
+    if(v===1)return <div style={{...b,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+      {tags.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,background:p.su,borderRadius:4,padding:"4px 7px 4px 8px",animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}>
+        <T k={`t${i}`} s={{fontSize:f(11),color:p.tx,fontWeight:500}}>{t}</T>
+        {xIcon(p.mu,.35)}
+      </div>)}
+    </div>;
+    /* v2 Outlined — accent-border pills */
+    if(v===2)return <div style={{...b,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+      {tags.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:5,border:`1px solid ${p.ac}30`,borderRadius:999,padding:"3px 8px 3px 10px",animation:`tp-fadein .2s ease-out ${i*0.08}s both`}}>
+        <T k={`t${i}`} s={{fontSize:f(11),color:p.ac,fontWeight:500}}>{t}</T>
+        {xIcon(p.ac,.3)}
+      </div>)}
+    </div>;
+    /* v3 Colorful — each tag gets a unique color, with dot indicator */
+    if(v===3){const colors=["#E05050","#5B8DB8","#6B9E7C","#A864D4","#E8589C"];
+    return <div style={{...b,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+      {tags.map((t,i)=>{const c=colors[i%colors.length];return <div key={i} style={{display:"flex",alignItems:"center",gap:5,background:c+"14",borderRadius:999,padding:"4px 8px 4px 10px",animation:`tp-badge-pop .35s cubic-bezier(.34,1.56,.64,1) ${i*0.1}s both`}}>
+        <div style={{width:6,height:6,borderRadius:999,background:c,flexShrink:0,animation:`tp-fadein .3s ease-out ${i*0.1+0.15}s both`}}/>
+        <T k={`t${i}`} s={{fontSize:f(11),color:c,fontWeight:600}}>{t}</T>
+        {xIcon(c,.45)}
+      </div>})}
+      <div style={{width:22,height:22,borderRadius:999,border:`1.5px dashed ${p.mu}30`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",animation:"tp-fadein .3s ease-out .35s both"}}>
+        <svg width="10" height="10" viewBox="0 0 10 10" stroke={p.mu} strokeWidth="1.5" strokeLinecap="round" style={{opacity:.4}}><line x1="5" y1="1.5" x2="5" y2="8.5"/><line x1="1.5" y1="5" x2="8.5" y2="5"/></svg>
+      </div>
+    </div>}
+    /* v4 Input — embedded tags inside a bordered input field with cursor */
+    return <div style={{...b,background:p.card,borderRadius:10,border:`1.5px solid ${p.ac}35`,padding:"6px 10px",display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",boxShadow:`0 0 0 3px ${p.ac}08`,animation:"tp-fadein .3s ease-out"}}>
+      {tags.map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,background:p.ac+"12",borderRadius:6,padding:"2px 6px 2px 8px",animation:`tp-badge-pop .3s cubic-bezier(.34,1.56,.64,1) ${i*0.08}s both`}}>
+        <T k={`t${i}`} s={{fontSize:f(10),color:p.ac,fontWeight:600}}>{t}</T>
+        <div style={{width:14,height:14,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",background:p.ac+"10",cursor:"pointer"}}>
+          <svg width="7" height="7" viewBox="0 0 10 10" stroke={p.ac} strokeWidth="2" strokeLinecap="round" style={{opacity:.5}}><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>
+        </div>
+      </div>)}
+      <div style={{display:"flex",alignItems:"center",gap:0,flex:1,minWidth:60}}>
+        <T k="ph" s={{fontSize:f(11),color:p.mu,opacity:.4}}>Add more...</T>
+        <div style={{width:1.5,height:14,background:p.ac,borderRadius:1,marginLeft:2,animation:"tp-blink 1s ease infinite"}}/>
+      </div>
+    </div>;
   }
 
   /* ---- KANBAN ---- */
