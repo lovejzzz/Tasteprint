@@ -11937,6 +11937,128 @@ function applyDepthScaling(response, text, topics) {
   }
 }
 
+/* ── Conversational Micro-Storytelling (Round 73) ──
+ * Humans explain abstract ideas through tiny vivid scenarios:
+ * "It's like when you're at a coffee shop and...", "Imagine you're..."
+ * This module detects when the AI is making an abstract point and
+ * occasionally replaces or augments it with a micro-story — a 1-2
+ * sentence scenario that makes the idea concrete and memorable.
+ *
+ * Story templates are keyed to common topic domains. The system
+ * picks a scenario that matches the current topic, fills in
+ * contextual details, and weaves it naturally into the response.
+ *
+ * Triggers: abstract statements, explanations, comparisons.
+ * Avoids: questions, emotional support, greetings, short responses.
+ */
+
+let lastStoryTurn = 0;
+let storyCount = 0;
+
+// Micro-story templates by domain — each has a setup and a punchline
+const MICRO_STORIES = {
+  tech: [
+    { setup: "It's like building a house", bridge: "— you can't just start with the roof.", punchline: "You need the foundation first, even if it's boring." },
+    { setup: "Think of it like a recipe", bridge: "— you have all the ingredients,", punchline: "but the order you add them completely changes the dish." },
+    { setup: "It's like learning to drive", bridge: "— at first you're thinking about every single step,", punchline: "then one day your hands just know what to do." },
+    { setup: "Imagine you're untangling headphones", bridge: "— pulling one knot tight just creates another somewhere else.", punchline: "Sometimes you have to loosen everything first." },
+    { setup: "It's like organizing a closet", bridge: "— you have to make a bigger mess before it gets clean.", punchline: "That messy middle phase is actually progress." },
+  ],
+  design: [
+    { setup: "Picture walking into a room", bridge: "— you don't notice the paint color first, you notice how it *feels*.", punchline: "Good design works the same way." },
+    { setup: "It's like a good outfit", bridge: "— you notice the person, not the clothes.", punchline: "When design disappears, it's working." },
+    { setup: "Think of a really good waiter", bridge: "— they refill your glass before you notice it's empty.", punchline: "That's what great UX feels like." },
+    { setup: "It's like jazz", bridge: "— the notes you don't play matter as much as the ones you do.", punchline: "Whitespace is the silence between the music." },
+  ],
+  work: [
+    { setup: "It's like being in a band", bridge: "— you can all be incredible musicians,", punchline: "but if no one's listening to each other, it's just noise." },
+    { setup: "Think of it like a garden", bridge: "— you plant seeds now and most of the work is invisible.", punchline: "But in three months, you'll know exactly which ones you watered." },
+    { setup: "It's like packing for a trip", bridge: "— you always think you need more than you do.", punchline: "The best trips usually have the lightest bags." },
+  ],
+  life: [
+    { setup: "It's like standing in line for a rollercoaster", bridge: "— the anxiety is always worse than the ride.", punchline: "Once you're on it, you're just... on it." },
+    { setup: "Think of learning to swim", bridge: "— no amount of reading about it replaces getting in the water.", punchline: "At some point you just have to get wet." },
+    { setup: "It's like a good playlist", bridge: "— the transitions between songs matter as much as the songs.", punchline: "Life's kind of like that too — the in-between moments count." },
+    { setup: "Imagine you're lost in a new city", bridge: "— scary at first,", punchline: "but that's how you find the best hidden spots." },
+  ],
+  general: [
+    { setup: "It's like trying to catch a word on the tip of your tongue", bridge: "— the harder you chase it, the further it runs.", punchline: "Stop thinking about it and it just... appears." },
+    { setup: "Think of it like a puzzle", bridge: "— you don't see the picture until the last few pieces click.", punchline: "Everything before that is just trusting the box." },
+    { setup: "It's like that moment when you're reading a book", bridge: "and suddenly you realize you've been staring at the page but thinking about something else entirely.", punchline: "Your brain was doing something more important." },
+  ],
+};
+
+// Map topics to story domains
+function getStoryDomain(topics) {
+  const techWords = ["code", "programming", "software", "app", "web", "react", "javascript", "api", "database", "algorithm", "debug", "deploy", "server", "framework", "ai", "machine", "data", "computer", "tech", "developer"];
+  const designWords = ["design", "ui", "ux", "color", "layout", "font", "visual", "style", "brand", "interface", "pixel", "graphic", "creative", "art", "aesthetic"];
+  const workWords = ["work", "team", "project", "meeting", "deadline", "career", "job", "manage", "lead", "collaborate", "productivity", "office", "remote"];
+
+  for (const topic of topics) {
+    const lower = topic.toLowerCase();
+    if (techWords.some(w => lower.includes(w))) return "tech";
+    if (designWords.some(w => lower.includes(w))) return "design";
+    if (workWords.some(w => lower.includes(w))) return "work";
+  }
+
+  // Check the most recent user message for domain hints
+  const lastMsg = mem.msgs.length > 0 ? mem.msgs[mem.msgs.length - 1].text?.toLowerCase() || "" : "";
+  if (techWords.some(w => lastMsg.includes(w))) return "tech";
+  if (designWords.some(w => lastMsg.includes(w))) return "design";
+  if (workWords.some(w => lastMsg.includes(w))) return "work";
+
+  return Math.random() > 0.5 ? "life" : "general";
+}
+
+// Detect if response contains an abstract statement worth illustrating
+function isAbstractStatement(response) {
+  // Look for abstract language patterns
+  return /\b(important|the key is|the thing is|basically|essentially|in general|the point is|what matters|the idea|concept|approach|strategy|principle)\b/i.test(response)
+    && response.length > 40
+    && !response.includes("?")  // not a question
+    && !/^(Oh|Hey|Ha|Wow|Nice|Sure|Yeah|Right)/i.test(response); // not a reaction
+}
+
+function applyMicroStory(response, text, topics) {
+  const turn = mem.turn;
+
+  if (turn < 5) return response;
+  if (turn - lastStoryTurn < 6) return response;  // min 6-turn gap
+  if (response.length > 200) return response;       // don't bloat
+  if (response.length < 30) return response;         // too short to augment
+  if (Math.random() > 0.18) return response;          // 18% fire rate — rare
+
+  if (!isAbstractStatement(response)) return response;
+
+  const domain = getStoryDomain(topics);
+  const stories = MICRO_STORIES[domain] || MICRO_STORIES.general;
+  const story = stories[Math.floor(Math.random() * stories.length)];
+
+  lastStoryTurn = turn;
+  storyCount++;
+
+  // Pick insertion style
+  const roll = Math.random();
+
+  if (roll < 0.4) {
+    // Replace: story replaces the abstract part, response becomes the "takeaway"
+    const sentences = response.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length >= 2) {
+      return `${story.setup} ${story.bridge} ${story.punchline} ${sentences.slice(-1)[0].trim()}`;
+    }
+  }
+
+  if (roll < 0.7) {
+    // Append: response first, then "it's kind of like..."
+    const connectors = ["Kind of like — ", "It's a bit like — ", "Like, ", "Sort of like how "];
+    const connector = connectors[Math.floor(Math.random() * connectors.length)];
+    return `${response.replace(/[.!]\s*$/, ".")} ${connector}${story.setup.replace(/^It's like /i, "").replace(/^Think of /i, "")} ${story.bridge} ${story.punchline}`;
+  }
+
+  // Inline: story as prefix, response as the "real point"
+  return `${story.setup} ${story.bridge} ${story.punchline} And honestly, ${response.charAt(0).toLowerCase() + response.slice(1)}`;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -12428,6 +12550,9 @@ export function getAIResponse(input) {
   // ═══ Depth scaling: progressively deeper engagement on recurring topics ═══
   response = applyDepthScaling(response, text, currentTopics);
 
+  // ═══ Micro-storytelling: replace abstract statements with vivid mini-scenarios ═══
+  response = applyMicroStory(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -12480,6 +12605,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
