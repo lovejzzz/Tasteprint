@@ -1818,6 +1818,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return map;
   }, [lines, readonly]);
 
+  /* ---- Line change indicators (modified/added vs original) ---- */
+  const lineChanges = React.useMemo(() => {
+    const changes = {};
+    const origContent = initFiles[activeFile];
+    if (origContent !== undefined && origContent !== code) {
+      const origLines = origContent.split('\n');
+      for (let li = 0; li < lines.length; li++) {
+        if (li >= origLines.length) changes[li] = 'added';
+        else if (lines[li] !== origLines[li]) changes[li] = 'modified';
+      }
+    }
+    return changes;
+  }, [lines, activeFile, code, initFiles]);
+
   /* ---- Memoized line offsets for O(1) position lookup ---- */
   const lineOffsets = React.useMemo(() => {
     const offsets = [];
@@ -3632,6 +3646,28 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
         return;
       }
+      /* JSDoc generation: Enter after /** on line before a function */
+      if (trimmedLine === '/**') {
+        const nextLine = lines[activeLn]; // line after current (0-indexed activeLn = current+1)
+        if (nextLine) {
+          const fnMatch = nextLine.match(/(?:(?:async\s+)?function\s+\w+|(?:const|let|var)\s+\w+\s*=\s*(?:async\s+)?\(?)\s*\(([^)]*)\)/);
+          if (fnMatch) {
+            e.preventDefault();
+            const params = fnMatch[1] ? fnMatch[1].split(',').map(p => p.trim().replace(/\s*=.*$/, '').replace(/^\.{3}/, '...')).filter(Boolean) : [];
+            const tab = ' '.repeat(tabSize);
+            const jsdoc = [
+              '',
+              indent + ' * ${0:description}',
+              ...params.map(p => indent + ` * @param {*} ${p}`),
+              indent + ' * @returns {*}',
+              indent + ' */',
+            ].join('\n');
+            setCode(code.substring(0, s) + jsdoc + code.substring(en));
+            setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 + indent.length + 3; el.focus(); }, 0);
+            return;
+          }
+        }
+      }
       /* Auto-continue line comments */
       const commentMatch = currentLine.match(/^(\s*\/\/\s?)/);
       if (commentMatch && trimmedLine !== '//' && trimmedLine !== '// ') {
@@ -5074,16 +5110,6 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               {/* Line numbers with fold arrows */}
               {showLineNumbers && (() => {
                 const gutterW = lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36;
-                // Compute line change indicators (modified/added vs original)
-                const lineChanges = {};
-                const origContent = initFiles[activeFile];
-                if (origContent !== undefined && origContent !== code) {
-                  const origLines = origContent.split('\n');
-                  for (let li = 0; li < lines.length; li++) {
-                    if (li >= origLines.length) lineChanges[li] = 'added';
-                    else if (lines[li] !== origLines[li]) lineChanges[li] = 'modified';
-                  }
-                }
                 // Compute selection range for gutter highlight
                 const selGutter = {};
                 const el = taRef.current;
@@ -5663,6 +5689,87 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       const filtered = [...prefix, ...contains];
                       if (filtered.length) { setAcItems(filtered); setAcIdx(0); setAcOpen(true); }
                       else setAcOpen(false);
+                    }
+                  } else if (before.match(/\.(\w*)$/) && !before.match(/tp\.\w*$/)) {
+                    // Dot-accessor autocomplete: suggest common methods
+                    const dotM = before.match(/\.(\w*)$/);
+                    const partial = (dotM?.[1] || '').toLowerCase();
+                    const COMMON_METHODS = [
+                      { label: 'map', desc: 'Array', insert: 'map(' },
+                      { label: 'filter', desc: 'Array', insert: 'filter(' },
+                      { label: 'forEach', desc: 'Array', insert: 'forEach(' },
+                      { label: 'reduce', desc: 'Array', insert: 'reduce(' },
+                      { label: 'find', desc: 'Array', insert: 'find(' },
+                      { label: 'findIndex', desc: 'Array', insert: 'findIndex(' },
+                      { label: 'some', desc: 'Array', insert: 'some(' },
+                      { label: 'every', desc: 'Array', insert: 'every(' },
+                      { label: 'includes', desc: 'Array/String', insert: 'includes(' },
+                      { label: 'indexOf', desc: 'Array/String', insert: 'indexOf(' },
+                      { label: 'slice', desc: 'Array/String', insert: 'slice(' },
+                      { label: 'concat', desc: 'Array/String', insert: 'concat(' },
+                      { label: 'join', desc: 'Array', insert: "join('')" },
+                      { label: 'push', desc: 'Array', insert: 'push(' },
+                      { label: 'pop', desc: 'Array', insert: 'pop()' },
+                      { label: 'shift', desc: 'Array', insert: 'shift()' },
+                      { label: 'unshift', desc: 'Array', insert: 'unshift(' },
+                      { label: 'splice', desc: 'Array', insert: 'splice(' },
+                      { label: 'sort', desc: 'Array', insert: 'sort(' },
+                      { label: 'reverse', desc: 'Array', insert: 'reverse()' },
+                      { label: 'flat', desc: 'Array', insert: 'flat()' },
+                      { label: 'flatMap', desc: 'Array', insert: 'flatMap(' },
+                      { label: 'length', desc: 'Array/String', insert: 'length' },
+                      { label: 'keys', desc: 'Object', insert: 'keys(' },
+                      { label: 'values', desc: 'Object', insert: 'values(' },
+                      { label: 'entries', desc: 'Object', insert: 'entries(' },
+                      { label: 'assign', desc: 'Object', insert: 'assign(' },
+                      { label: 'toString', desc: 'any', insert: 'toString()' },
+                      { label: 'toLowerCase', desc: 'String', insert: 'toLowerCase()' },
+                      { label: 'toUpperCase', desc: 'String', insert: 'toUpperCase()' },
+                      { label: 'trim', desc: 'String', insert: 'trim()' },
+                      { label: 'split', desc: 'String', insert: "split(" },
+                      { label: 'replace', desc: 'String', insert: 'replace(' },
+                      { label: 'replaceAll', desc: 'String', insert: 'replaceAll(' },
+                      { label: 'startsWith', desc: 'String', insert: 'startsWith(' },
+                      { label: 'endsWith', desc: 'String', insert: 'endsWith(' },
+                      { label: 'substring', desc: 'String', insert: 'substring(' },
+                      { label: 'padStart', desc: 'String', insert: 'padStart(' },
+                      { label: 'padEnd', desc: 'String', insert: 'padEnd(' },
+                      { label: 'match', desc: 'String', insert: 'match(' },
+                      { label: 'matchAll', desc: 'String', insert: 'matchAll(' },
+                      { label: 'charAt', desc: 'String', insert: 'charAt(' },
+                      { label: 'charCodeAt', desc: 'String', insert: 'charCodeAt(' },
+                      { label: 'repeat', desc: 'String', insert: 'repeat(' },
+                      { label: 'then', desc: 'Promise', insert: 'then(' },
+                      { label: 'catch', desc: 'Promise', insert: 'catch(' },
+                      { label: 'finally', desc: 'Promise', insert: 'finally(' },
+                      { label: 'log', desc: 'console', insert: 'log(' },
+                      { label: 'error', desc: 'console', insert: 'error(' },
+                      { label: 'warn', desc: 'console', insert: 'warn(' },
+                      { label: 'stringify', desc: 'JSON', insert: 'stringify(' },
+                      { label: 'parse', desc: 'JSON', insert: 'parse(' },
+                      { label: 'addEventListener', desc: 'DOM', insert: "addEventListener('" },
+                      { label: 'removeEventListener', desc: 'DOM', insert: "removeEventListener('" },
+                      { label: 'querySelector', desc: 'DOM', insert: "querySelector('" },
+                      { label: 'querySelectorAll', desc: 'DOM', insert: "querySelectorAll('" },
+                      { label: 'createElement', desc: 'DOM', insert: "createElement('" },
+                      { label: 'getElementById', desc: 'DOM', insert: "getElementById('" },
+                      { label: 'setAttribute', desc: 'DOM', insert: "setAttribute('" },
+                      { label: 'className', desc: 'DOM', insert: 'className' },
+                      { label: 'style', desc: 'DOM', insert: 'style' },
+                      { label: 'textContent', desc: 'DOM', insert: 'textContent' },
+                      { label: 'innerHTML', desc: 'DOM', insert: 'innerHTML' },
+                    ];
+                    const filtered = partial
+                      ? COMMON_METHODS.filter(m => m.label.toLowerCase().startsWith(partial))
+                      : COMMON_METHODS;
+                    if (filtered.length && filtered.length < COMMON_METHODS.length) {
+                      setAcItems(filtered.slice(0, 12));
+                      setAcIdx(0);
+                      setAcOpen(true);
+                    } else if (!partial) {
+                      setAcOpen(false); // Don't show all methods on bare dot
+                    } else {
+                      setAcOpen(false);
                     }
                   } else if (before.match(/(?:import|from)\s+.*?['"]([^'"]*)$/)) {
                     // Import path autocomplete: suggest file paths
