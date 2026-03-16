@@ -34,8 +34,9 @@ const ANIM_STYLE = `
 `;
 
 function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1}){
-  const f=FONTS[font]?.family||FONTS[0].family;
-  const b={width:"100%",height:"100%",fontFamily:f,overflow:"hidden"};
+  const ff=FONTS[font]?.family||FONTS[0].family;
+  const f=(size)=>Math.round(size*fsize);
+  const b={width:"100%",height:"100%",fontFamily:ff,overflow:"hidden"};
   const dp=DEFAULT_PROPS[type]||{};
   const P=(k)=>props[k]!==undefined?props[k]:dp[k];
   /* When editable (selected), disable prop changes from inline clicks so text editing works.
