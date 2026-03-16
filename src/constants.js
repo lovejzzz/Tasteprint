@@ -44,7 +44,7 @@ export const VARIANTS = {
   "card-sm": ["Rounded","Horizontal","Tinted","Glass","Brutal"],
   hero:      ["Gradient","Centered","Bold fill","Terminal","Glass","Brutal"],
   navbar:    ["Classic","Underline","Pill","Glass","Terminal"],
-  tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered"],
+  tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered","Brutal","Gradient"],
   heading:   ["Clean","Accent bar","Overline","Gradient","Badge"],
   "stat-card":["Outlined","Tinted icon","Left accent","Inverted","Terminal"],
   "dash-panel":["Telemetry","Signal","Minimal","Gradient","Glass"],
