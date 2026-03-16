@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 24: Knowledge synthesis engine
+   Round 25: Conversational grounding & active listening
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -4393,6 +4393,135 @@ function adjustForSubtext(response, subtext) {
   return response;
 }
 
+/* ── Conversational Grounding & Active Listening ──
+ * Humans constantly signal they're tracking conversation:
+ * - Micro-acknowledgments: "Right", "Gotcha", "Mm-hmm"
+ * - Paraphrasing back: "So you're into React and..."
+ * - Validating: "That makes sense", "I can see that"
+ * - Connecting: "Oh so that ties into what you said about..."
+ *
+ * This system adds natural grounding cues before the main response,
+ * making the AI feel like it's genuinely listening, not just processing.
+ */
+
+// Micro-acks — tiny signals that show we're tracking
+const MICRO_ACKS = {
+  positive: ["Gotcha! ", "Makes sense! ", "Oh nice — ", "Right, right — ", "Got it! ", "Love that — ", "Okay yeah — "],
+  negative: ["I hear you. ", "Gotcha. ", "That's fair. ", "Understood. ", "Yeah, that's tough. ", "I get it. "],
+  neutral: ["Mm-hmm, ", "Right — ", "Gotcha — ", "Okay — ", "Sure — ", "Got it — ", "Noted — "],
+  question: ["Good question! ", "Ooh — ", "Let me think... ", "Hmm! ", "Great question — "],
+  long: ["Okay, a lot to unpack there! ", "Alright, let me address that — ", "Okay so — "],
+};
+
+// Paraphrase templates — show we understood the content
+const PARAPHRASE_TEMPLATES = [
+  "So you're {verb} {topic} — ",
+  "So {topic} — ",
+  "Ah, {topic}! ",
+  "Oh, so it's about {topic} — ",
+];
+
+const PARAPHRASE_VERBS = {
+  question: ["asking about", "curious about", "wondering about"],
+  sharing: ["into", "working with", "interested in", "exploring"],
+  opinion: ["thinking about", "considering", "feeling about"],
+  general: ["talking about", "mentioning", "bringing up"],
+};
+
+// Validation phrases — affirm the user's point
+const VALIDATIONS = [
+  "That makes total sense. ",
+  "I can see where you're coming from. ",
+  "That's a really good point. ",
+  "Yeah, that tracks. ",
+  "Totally valid. ",
+  "I can see that. ",
+];
+
+let lastGroundingTurn = 0;
+let lastGroundingType = "";
+
+function addGrounding(response, userText, parsed, sent, topics) {
+  // Don't ground every response — ~35% of the time, varying by context
+  // Skip grounding on very early turns (let the conversation warm up)
+  if (mem.turn < 3) return response;
+  // Don't ground consecutive turns
+  if (mem.turn - lastGroundingTurn < 2) return response;
+  // Don't modify very short or already-grounded responses
+  if (response.length < 20) return response;
+  if (/^(gotcha|right|mm|okay|got it|makes sense|I hear|good question|let me think)/i.test(response)) return response;
+  // Don't stack on top of personality openers
+  if (/^(hmm|ooh|actually|oh —|wait|so |honestly|real talk)/i.test(response)) return response;
+
+  // Determine grounding type based on input characteristics
+  const inputLen = userText.length;
+  const hasTopic = topics.length > 0;
+  const isQuestion = !!parsed.qType;
+  const isSharing = parsed.preferences?.length > 0;
+  const isLong = inputLen > 80;
+
+  // Decide what type of grounding to use
+  let groundingType = null;
+  let grounding = null;
+
+  // Strategy 1: Micro-ack — short signal (most common, ~20%)
+  if (Math.random() < 0.2) {
+    groundingType = "micro-ack";
+    const pool = isQuestion ? MICRO_ACKS.question :
+                 sent >= 2 ? MICRO_ACKS.positive :
+                 sent <= -1 ? MICRO_ACKS.negative :
+                 isLong ? MICRO_ACKS.long :
+                 MICRO_ACKS.neutral;
+    grounding = pick(pool);
+  }
+
+  // Strategy 2: Paraphrase — reflect back the topic (~10%, needs topic)
+  else if (hasTopic && Math.random() < 0.15 && lastGroundingType !== "paraphrase") {
+    groundingType = "paraphrase";
+    const topic = topics[0];
+    const verbPool = isQuestion ? PARAPHRASE_VERBS.question :
+                     isSharing ? PARAPHRASE_VERBS.sharing :
+                     PARAPHRASE_VERBS.general;
+    const verb = pick(verbPool);
+    const template = pick(PARAPHRASE_TEMPLATES);
+    grounding = template.replace("{verb}", verb).replace("{topic}", topic);
+  }
+
+  // Strategy 3: Validation — affirm what they said (~8%, needs longer input)
+  else if (inputLen > 40 && sent >= 0 && Math.random() < 0.12 && lastGroundingType !== "validation") {
+    groundingType = "validation";
+    grounding = pick(VALIDATIONS);
+  }
+
+  // Strategy 4: Connection grounding — tie to previous conversation (~7%)
+  else if (mem.turn > 5 && hasTopic && Math.random() < 0.1 && lastGroundingType !== "connection") {
+    // Check if this topic was mentioned before
+    const topicCount = mem.topics[topics[0]] || 0;
+    if (topicCount > 1) {
+      groundingType = "connection";
+      const connectionPhrases = [
+        `Oh we keep coming back to ${topics[0]} — `,
+        `${topics[0]} again! I like the pattern here — `,
+        `Right, this ties back to ${topics[0]} — `,
+      ];
+      grounding = pick(connectionPhrases);
+    }
+  }
+
+  if (!grounding) return response;
+
+  // Avoid repetition of the same grounding type
+  lastGroundingTurn = mem.turn;
+  lastGroundingType = groundingType;
+
+  // Prepend grounding, lowercase first char of response if needed
+  const firstChar = response.charAt(0);
+  if (firstChar === firstChar.toUpperCase() && /[A-Z]/.test(firstChar)) {
+    return grounding + firstChar.toLowerCase() + response.slice(1);
+  }
+  return grounding + response;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -4482,6 +4611,9 @@ export function getAIResponse(input) {
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
 
+  // ═══ Conversational grounding: show active listening before responding ═══
+  response = addGrounding(response, text, parsed, sent, currentTopics);
+
   // Contextual humor injection (coherence guard will strip if inappropriate)
   response = injectHumor(response, currentTopics);
 
@@ -4532,6 +4664,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
