@@ -317,6 +317,7 @@ const SHORTCUTS = [
     ['\u2318+R', 'Rename symbol'],
     ['\u2318+Shift+S', 'Surround with...'],
     ['Tab (on trigger)', 'Expand snippet'],
+    ['\u2318+Shift+\\', 'Jump to matching bracket'],
   ]},
   { cat: 'Search', items: [
     ['\u2318+F', 'Find'],
@@ -332,6 +333,7 @@ const SHORTCUTS = [
     ['Ctrl+Tab', 'Next tab'],
     ['Ctrl+Shift+Tab', 'Previous tab'],
     ['\u2318+W', 'Close tab'],
+    ['\u2318+Shift+O', 'Go to symbol'],
   ]},
   { cat: 'View', items: [
     ['\u2318+=/\u2318+-', 'Zoom in/out'],
@@ -607,6 +609,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Welcome tab ---- */
   const [welcomeDismissed, setWelcomeDismissed] = React.useState(false);
+
+  /* ---- Go to Symbol ---- */
+  const [symbolOpen, setSymbolOpen] = React.useState(false);
+  const [symbolQuery, setSymbolQuery] = React.useState('');
+  const [symbolIdx, setSymbolIdx] = React.useState(0);
+  const symbolRef = React.useRef(null);
 
   /* ---- Breadcrumb dropdown ---- */
   const [breadcrumbDrop, setBreadcrumbDrop] = React.useState(null);
@@ -974,21 +982,6 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return vis;
   }, [lines, foldedLines, foldableRanges]);
 
-  /* ---- Sticky scroll: enclosing scope when scrolled past its declaration ---- */
-  const stickyScope = React.useMemo(() => {
-    if (scrollTop < 30) return null;
-    const lineH = Math.round(16 * zf);
-    const topVisibleLine = Math.floor(scrollTop / lineH);
-    // Find the nearest enclosing scope that started above the viewport
-    for (let i = topVisibleLine; i >= 0; i--) {
-      const m = lines[i]?.match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async|\(?\s*\w)|(\w+)\s*\(.*\)\s*\{)/);
-      if (m && foldableRanges[i] !== undefined && foldableRanges[i] >= topVisibleLine) {
-        return { name: m[1] || m[2] || m[3], line: i, text: lines[i] };
-      }
-    }
-    return null;
-  }, [scrollTop, lines, fsize, foldableRanges]);
-
   /* ---- Global search results ---- */
   const globalSearchResults = React.useMemo(() => {
     if (!globalSearchTerm || !globalSearchOpen) return [];
@@ -1192,6 +1185,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Unfold All', key: 'unfoldall', hint: '' },
       { label: 'Go to Line...', key: 'goto', hint: 'Ctrl+G' },
       { label: 'Toggle Minimap', key: 'minimap', hint: '' },
+      { label: 'Go to Symbol...', key: 'symbol', hint: '\u2318+\u21E7+O' },
       { label: 'Toggle Bookmark', key: 'bookmark', hint: '\u2318+B' },
       { label: 'Next Bookmark', key: 'nextbm', hint: 'F2' },
       { label: 'Previous Bookmark', key: 'prevbm', hint: 'Shift+F2' },
@@ -1207,7 +1201,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     ];
     if (!cmdQuery) return cmds;
     const q = cmdQuery.toLowerCase();
-    return cmds.filter(c => c.label.toLowerCase().includes(q));
+    // Fuzzy match: characters must appear in order
+    const fuzzy = (str, query) => {
+      let qi = 0;
+      for (let i = 0; i < str.length && qi < query.length; i++) {
+        if (str[i] === query[qi]) qi++;
+      }
+      return qi === query.length;
+    };
+    // Score: prefer exact includes > prefix > fuzzy
+    const scored = cmds.filter(c => fuzzy(c.label.toLowerCase(), q)).map(c => {
+      const ll = c.label.toLowerCase();
+      const score = ll.startsWith(q) ? 0 : ll.includes(q) ? 1 : 2;
+      return { ...c, score };
+    });
+    scored.sort((a, b) => a.score - b.score);
+    return scored;
   }, [cmdQuery, ALL_FILES]);
 
   const runCommand = (key) => {
@@ -1229,6 +1238,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'unfoldall') { setFoldedLines(new Set()); showToast('All unfolded', 'info'); }
     else if (key === 'goto') { setGotoOpen(true); setGotoVal(''); setTimeout(() => gotoRef.current?.focus(), 50); }
     else if (key === 'minimap') setShowMinimap(m => !m);
+    else if (key === 'symbol') { setSymbolOpen(true); setSymbolQuery(''); setSymbolIdx(0); setTimeout(() => symbolRef.current?.focus(), 50); }
     else if (key === 'bookmark') { toggleBookmark(activeLn); showToast(bookmarks.has(activeLn) ? 'Bookmark removed' : 'Bookmark added', 'info'); }
     else if (key === 'nextbm') jumpBookmark(1);
     else if (key === 'prevbm') jumpBookmark(-1);
@@ -1484,6 +1494,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (helpOpen) { setHelpOpen(false); return; }
       if (recentOpen) { setRecentOpen(false); return; }
       if (notifOpen) { setNotifOpen(false); return; }
+      if (symbolOpen) { setSymbolOpen(false); return; }
     }
 
     /* Tab cycling: Ctrl+Tab / Ctrl+Shift+Tab */
@@ -1498,6 +1509,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setActiveFile(openTabs[next]);
       }
       return;
+    }
+
+    /* Jump to matching bracket: Cmd+Shift+\ */
+    if (e.key === '\\' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      if (matchBracket) {
+        const [a, b] = matchBracket;
+        const target = s === a || s === a + 1 ? b : a;
+        setTimeout(() => { el.selectionStart = el.selectionEnd = target; updateCursor(el); }, 0);
+      }
+      return;
+    }
+
+    /* Go to Symbol: Cmd+Shift+O */
+    if (e.key === 'o' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault(); setSymbolOpen(o => !o); setSymbolQuery(''); setSymbolIdx(0);
+      setTimeout(() => symbolRef.current?.focus(), 50); return;
     }
 
     /* Toggle terminal: Cmd+J or Ctrl+` */
@@ -2654,6 +2682,61 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
+          {/* Go to Symbol */}
+          {symbolOpen && (() => {
+            const q = symbolQuery.toLowerCase();
+            const filtered = q ? outlineSymbols.filter(s => s.name.toLowerCase().includes(q)) : outlineSymbols;
+            return (
+              <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 260 }}>
+                <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #ffffff08', padding: '0 10px', gap: 4 }}>
+                  <span style={{ fontSize: 10, color: '#cba6f7', flexShrink: 0 }}>@</span>
+                  <input ref={symbolRef} value={symbolQuery} onChange={e => { setSymbolQuery(e.target.value); setSymbolIdx(0); }}
+                    placeholder="Go to symbol..." spellCheck={false}
+                    onKeyDown={e => {
+                      e.stopPropagation();
+                      if (e.key === 'Escape') { setSymbolOpen(false); taRef.current?.focus(); }
+                      if (e.key === 'ArrowDown') { e.preventDefault(); setSymbolIdx(i => Math.min(i + 1, filtered.length - 1)); }
+                      if (e.key === 'ArrowUp') { e.preventDefault(); setSymbolIdx(i => Math.max(i - 1, 0)); }
+                      if (e.key === 'Enter' && filtered.length) {
+                        const sym = filtered[Math.min(symbolIdx, filtered.length - 1)];
+                        setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
+                        const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
+                        setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                        setSymbolOpen(false);
+                      }
+                    }}
+                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '6px 0', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                </div>
+                <div style={{ maxHeight: 210, overflow: 'auto' }}>
+                  {filtered.slice(0, 15).map((sym, i) => (
+                    <div key={`${sym.name}-${sym.line}`} onClick={() => {
+                      setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
+                      const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
+                      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                      setSymbolOpen(false);
+                    }}
+                      onMouseEnter={() => setSymbolIdx(i)}
+                      style={{
+                        display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9, gap: 6,
+                        color: i === symbolIdx ? '#cdd6f4' : '#a6adc8', cursor: 'pointer',
+                        background: i === symbolIdx ? '#ffffff10' : 'transparent',
+                      }}>
+                      <span style={{
+                        width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderRadius: 3, fontSize: 7, fontWeight: 700, flexShrink: 0,
+                        background: sym.kind === 'fn' ? '#cba6f712' : sym.kind === 'class' ? '#f9e2af12' : '#89b4fa12',
+                        color: sym.kind === 'fn' ? '#cba6f7' : sym.kind === 'class' ? '#f9e2af' : '#89b4fa',
+                      }}>{sym.kind === 'fn' ? 'F' : sym.kind === 'class' ? 'C' : 'V'}</span>
+                      <span style={{ flex: 1, fontWeight: i === symbolIdx ? 600 : 400 }}>{sym.name}</span>
+                      <span style={{ fontSize: 7, color: '#555' }}>:{sym.line}</span>
+                    </div>
+                  ))}
+                  {filtered.length === 0 && <div style={{ padding: '8px 10px', fontSize: 9, color: '#555' }}>No symbols found</div>}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Diff view */}
           {diffOpen && diffLines && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 24, zIndex: 18, background: '#1e1e2e', overflow: 'auto', padding: '8px 0' }}>
@@ -2685,22 +2768,6 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               <span style={{ fontSize: 9, color: '#27c93f' }}>{'\u2713'} No changes</span>
               <span style={{ fontSize: 8, color: '#555' }}>File matches original</span>
               <span onClick={() => setDiffOpen(false)} style={{ fontSize: 8, color: '#cba6f7', cursor: 'pointer', marginTop: 4 }}>Close</span>
-            </div>
-          )}
-
-          {/* Sticky scroll — shows enclosing scope */}
-          {stickyScope && (
-            <div onClick={() => {
-              setActiveLn(stickyScope.line + 1); setCursor({ ln: stickyScope.line + 1, col: 1 });
-              const pos = code.split('\n').slice(0, stickyScope.line).join('\n').length + (stickyScope.line > 0 ? 1 : 0);
-              setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.scrollTop = stickyScope.line * Math.round(16 * zf); el.focus(); } }, 0);
-            }} style={{
-              padding: '1px 10px 1px 46px', background: '#181825ee', borderBottom: '1px solid #ffffff08',
-              fontSize: fs(9), lineHeight: lh, fontFamily: MONO, color: '#a6adc860', whiteSpace: 'pre',
-              cursor: 'pointer', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis',
-              backdropFilter: 'blur(4px)',
-            }}>
-              <HighlightLine text={stickyScope.text} />
             </div>
           )}
 
