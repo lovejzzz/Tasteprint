@@ -52,7 +52,7 @@ export const VARIANTS = {
   "avatar-row":["Circular","Small tight","Rounded sq","Glass","Gradient ring"],
   "list-item":["Card row","Divider","Tinted","Glass","Settings"],
   input:     ["Outlined","Labeled","Filled","Underline","Glass","Brutal","Gradient"],
-  search:    ["Bordered","Pill kbd","Underline","Glass","AI"],
+  search:    ["Bordered","Pill kbd","Underline","Glass","AI","Brutal","Gradient"],
   toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass"],
   badge:     ["Tinted","Solid","Outline","Glass","Brutal"],
   toast:     ["Card","Dark snack","Accent bar","Glass","Brutal","Gradient"],
