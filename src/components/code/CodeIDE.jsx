@@ -725,6 +725,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  wc <f>     — Count lines in file' },
         { t: 'log', v: '  env        — Show environment variables' },
         { t: 'log', v: '  time <e>   — Benchmark an expression' },
+        { t: 'log', v: '  open <f>   — Open a file in editor' },
+        { t: 'log', v: '  diff       — Show changes vs original' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -842,6 +844,42 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             { t: 'err', v: `  ${e.message} (${ms}ms)` },
           ], ms: null, err: null, errLn: null }));
         }
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('open ')) {
+      const path = cmd.slice(5).trim();
+      const f = getFile(path);
+      if (f) { openFile(path); setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F open ${path}` }, { t: 'log', v: `Opened ${path}` }], ms: null, err: null, errLn: null })); }
+      else {
+        // Try fuzzy match
+        const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+        const match = allPaths.find(p => p.includes(path) || p.split('/').pop().startsWith(path));
+        if (match) { openFile(match); setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F open ${path}` }, { t: 'log', v: `Opened ${match}` }], ms: null, err: null, errLn: null })); }
+        else setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `File not found: ${path}` }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd === 'diff') {
+      const orig = initFiles[activeFile];
+      if (!orig) {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F diff' }, { t: 'log', v: `  No original for ${activeFile}` }], ms: null, err: null, errLn: null }));
+      } else {
+        const origLines = orig.split('\n'), currLines = code.split('\n');
+        const diffs = [];
+        const maxLen = Math.max(origLines.length, currLines.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (origLines[i] !== currLines[i]) {
+            if (origLines[i] !== undefined && currLines[i] === undefined) diffs.push({ t: 'err', v: `- ${i + 1}: ${origLines[i]}` });
+            else if (origLines[i] === undefined) diffs.push({ t: 'log', v: `+ ${i + 1}: ${currLines[i]}` });
+            else { diffs.push({ t: 'err', v: `- ${i + 1}: ${origLines[i]}` }); diffs.push({ t: 'log', v: `+ ${i + 1}: ${currLines[i]}` }); }
+          }
+        }
+        setOutput(prev => ({ logs: [...(prev?.logs || []),
+          { t: 'log', v: `\u276F diff (${activeFile})` },
+          ...(diffs.length ? diffs.slice(0, 40) : [{ t: 'log', v: '  No changes' }]),
+          ...(diffs.length > 40 ? [{ t: 'log', v: `  ... and ${diffs.length - 40} more` }] : []),
+        ], ms: null, err: null, errLn: null }));
       }
       setTermInput(''); return;
     }
@@ -1425,6 +1463,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       e.preventDefault();
       tp?.save();
       showToast('State saved!', 'success');
+      return;
+    }
+
+    /* New file: Cmd+N */
+    if (e.key === 'n' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault();
+      setNewFileInput(true); setSidebarMode('files'); setNewFileName('');
+      setTimeout(() => newFileRef.current?.focus(), 100);
       return;
     }
 
@@ -3650,6 +3696,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         if (l.length > 120 && !l.trim().startsWith('//')) hints.push({ ln: i + 1, msg: `Line too long (${l.length} chars)`, sev: 'info' });
                         if (/;\s*;/.test(l)) hints.push({ ln: i + 1, msg: 'Double semicolon', sev: 'warn' });
                         if (/\{\}/.test(l) && !/\(\)/.test(l)) hints.push({ ln: i + 1, msg: 'Empty block statement', sev: 'info' });
+                        if (/\beval\s*\(/.test(l)) hints.push({ ln: i + 1, msg: 'Avoid eval() — security risk', sev: 'warn' });
+                        if (/\bdebugger\b/.test(trimmed)) hints.push({ ln: i + 1, msg: 'Debugger statement left in code', sev: 'warn' });
+                        if (/,\s*[}\]]/.test(l) && !/\/\//.test(l.substring(0, l.indexOf(',')))) { /* trailing comma OK */ }
+                        if (/\bnew\s+Array\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use [] instead of new Array()', sev: 'info' });
+                        if (/\bnew\s+Object\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use {} instead of new Object()', sev: 'info' });
                       });
                       return hints.length > 0 || output?.err ? (<>
                         {output?.err && (
@@ -3741,10 +3792,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
@@ -3790,7 +3841,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           }}>
             <span style={{ fontSize: fs(8), color: output?.err ? '#f38ba8' : '#27c93f' }}>{'\u25CF'}</span>
             <span style={{ fontSize: fs(8), color: '#555' }}>Ln {cursor.ln}, Col {cursor.col}</span>
-            {hasSel && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .6 }}>({selLen} chars, {selLines} lines)</span>}
+            {hasSel && (() => {
+              const selText = code.substring(Math.min(el.selectionStart, el.selectionEnd), Math.max(el.selectionStart, el.selectionEnd));
+              const words = selText.trim().split(/\s+/).filter(Boolean).length;
+              return <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .6 }}>({selLen} chars, {words} words, {selLines} lines)</span>;
+            })()}
             <span style={{ fontSize: fs(8), color: '#555' }}>{lines.length} lines</span>
             {readonly && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }}>Read-only</span>}
             {output?.ms && <span style={{ fontSize: fs(8), color: '#27c93f', opacity: .5 }} title="Last execution time">{output.ms}ms</span>}
@@ -3807,6 +3862,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             <span style={{ fontSize: fs(8), color: '#555' }}>
               {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
             </span>
+            <span style={{ fontSize: fs(8), color: '#555' }}>{code.length > 1024 ? `${(code.length / 1024).toFixed(1)}KB` : `${code.length}B`}</span>
             <span style={{ fontSize: fs(8), color: '#555' }}>UTF-8</span>
             <span onClick={() => setNotifOpen(n => !n)} onMouseDown={stop} style={{ position: 'relative' }}>
               <span style={{ fontSize: fs(8), color: notifHistory.length ? '#cba6f7' : '#555', cursor: 'pointer', opacity: .6 }}
