@@ -76,7 +76,7 @@ export const VARIANTS = {
   "promo-banner":["Gradient","Pill","Countdown","Glass","Social Proof"],
   "order-summary":["Card","Compact","Discount","Itemized","Glass"],
   rating:["Stars","Compact","Review"],
-  receipt:["Dashed","Clean"],
+  receipt:["Dashed","Clean","Digital","Thermal","Glass"],
   "sub-toggle":["Cards","Switch"],
   tooltip:   ["Light","Dark","Arrow"],
   breadcrumb:["Slash","Arrow","Dots"],
