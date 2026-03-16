@@ -450,9 +450,12 @@ const SHORTCUTS = [
     ['Type ( [ { on sel', 'Wrap selection'],
     ['< on selection', 'Wrap with JSX tag'],
     ['</ after <tag>', 'Auto-close tag'],
+    ['\u2318+D', 'Select next occurrence'],
     ['\u2318+Shift+\\', 'Jump to matching bracket'],
     ['\u2318+Shift+[', 'Fold at cursor'],
     ['\u2318+Shift+]', 'Unfold at cursor'],
+    ['\u2318+\u21E7+\u2325+[', 'Fold all'],
+    ['\u2318+\u21E7+\u2325+]', 'Unfold all'],
     ['\u2318+Shift+Space', 'Expand selection to brackets'],
     ['Alt+Shift+\u2191', 'Expand selection (enclosing scope)'],
     ['Alt+Shift+\u2193', 'Shrink selection'],
@@ -2792,6 +2795,36 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Cmd+D: select next occurrence of word (VS Code style) */
+    if (e.key === 'd' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      e.preventDefault();
+      const word = s !== en ? code.substring(s, en) : (() => {
+        const bef = code.substring(0, s).match(/(\w+)$/)?.[1] || '';
+        const aft = code.substring(s).match(/^(\w*)/)?.[1] || '';
+        return bef + aft;
+      })();
+      if (!word) return;
+      if (s === en) {
+        // First Cmd+D: select the word under cursor
+        const wStart = s - (code.substring(0, s).match(/(\w+)$/)?.[1]?.length || 0);
+        const wEnd = s + (code.substring(s).match(/^(\w*)/)?.[1]?.length || 0);
+        setTimeout(() => { el.selectionStart = wStart; el.selectionEnd = wEnd; el.focus(); }, 0);
+        setSelectedWord(word);
+      } else {
+        // Subsequent Cmd+D: find and jump to next occurrence
+        const nextIdx = code.indexOf(word, en);
+        const wrapIdx = nextIdx >= 0 ? nextIdx : code.indexOf(word);
+        if (wrapIdx >= 0 && wrapIdx !== s) {
+          setTimeout(() => { el.selectionStart = wrapIdx; el.selectionEnd = wrapIdx + word.length; el.focus(); }, 0);
+          setSelectedWord(/^\w+$/.test(word) ? word : '');
+          showToast(`Next: line ${code.substring(0, wrapIdx).split('\n').length}`, 'info');
+        } else {
+          showToast('No more occurrences', 'info');
+        }
+      }
+      return;
+    }
+
     /* Global search: Cmd+Shift+F */
     if (e.key === 'f' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
       e.preventDefault(); setGlobalSearchOpen(true); setSidebarMode('search'); setGlobalSearchTerm('');
@@ -3598,6 +3631,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
           return;
         }
+      }
+      /* Smart indent after control flow without braces: if(), for(), while(), else */
+      if (/^\s*(if\s*\(.*\)|else\s*if\s*\(.*\)|for\s*\(.*\)|while\s*\(.*\)|else)\s*$/.test(currentLine) && code[s] !== '{') {
+        e.preventDefault();
+        const tab = ' '.repeat(tabSize);
+        setCode(code.substring(0, s) + '\n' + indent + tab + code.substring(en));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
+        return;
       }
       /* Auto-continue line comments */
       const commentMatch = currentLine.match(/^(\s*\/\/\s?)/);
@@ -5789,7 +5830,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       }
                     }
 
-                    // 3. Symbol navigation: find definition in all files
+                    // 3. Symbol navigation: Cmd+Click jumps directly to definition
                     const wordBefore = before.match(/(\w+)$/)?.[1] || '';
                     const wordAfter = after.match(/^(\w*)/)?.[1] || '';
                     const word = wordBefore + wordAfter;
@@ -5800,26 +5841,20 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       if (localMatch) {
                         const defLn = code.substring(0, localMatch.index).split('\n').length;
                         if (defLn !== activeLn) {
-                          // Show peek definition with surrounding context
-                          const defLines = code.split('\n');
-                          const startLn = Math.max(0, defLn - 2);
-                          const endLn = Math.min(defLines.length, defLn + 5);
-                          const defCode = defLines.slice(startLn, endLn);
-                          setPeekDef({ symbol: word, defLine: defLn, defCode, startLn: startLn + 1, file: activeFile, line: activeLn });
+                          goToLine(defLn);
+                          showToast(`\u2192 ${word} — line ${defLn}`, 'info');
                           return;
                         }
                       }
-                      // Search other files
+                      // Search other files — jump directly
                       for (const [path, content] of Object.entries(editFiles)) {
                         if (path === activeFile) continue;
                         const m = content.match(defRx);
                         if (m) {
                           const ln = content.substring(0, m.index).split('\n').length;
-                          const defLines = content.split('\n');
-                          const startLn = Math.max(0, ln - 2);
-                          const endLn = Math.min(defLines.length, ln + 5);
-                          const defCode = defLines.slice(startLn, endLn);
-                          setPeekDef({ symbol: word, defLine: ln, defCode, startLn: startLn + 1, file: path, line: activeLn });
+                          openFile(path);
+                          setTimeout(() => goToLine(ln), 50);
+                          showToast(`\u2192 ${word} in ${path.split('/').pop()}:${ln}`, 'info');
                           return;
                         }
                       }
@@ -5828,14 +5863,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         const m = content.match(defRx);
                         if (m) {
                           const ln = content.substring(0, m.index).split('\n').length;
-                          const defLines = content.split('\n');
-                          const startLn = Math.max(0, ln - 2);
-                          const endLn = Math.min(defLines.length, ln + 5);
-                          const defCode = defLines.slice(startLn, endLn);
-                          setPeekDef({ symbol: word, defLine: ln, defCode, startLn: startLn + 1, file: path, line: activeLn });
+                          openFile(path);
+                          setTimeout(() => goToLine(ln), 50);
+                          showToast(`\u2192 ${word} in ${path.split('/').pop()}:${ln}`, 'info');
                           return;
                         }
                       }
+                      showToast(`No definition found for '${word}'`, 'warn');
                     }
                   }
                 }}
@@ -7063,6 +7097,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               title="Toggle word wrap">{wordWrap ? 'Wrap: On' : 'Wrap: Off'}</span>
             <span onClick={() => setTabSize(t => t === 2 ? 4 : 2)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }} title="Toggle tab size">Spaces: {tabSize}</span>
+            <span style={{ fontSize: fs(8), color: '#555' }}>UTF-8</span>
+            <span onClick={() => setLineEnding(le => le === 'LF' ? 'CRLF' : 'LF')} onMouseDown={stop}
+              style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }} title="Toggle line ending">{lineEnding}</span>
+            <span style={{ fontSize: fs(8), color: '#89b4fa', opacity: .5 }}>{activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx') ? 'JSX' : activeFile.endsWith('.js') || activeFile.endsWith('.ts') ? 'JavaScript' : activeFile.endsWith('.md') ? 'Markdown' : activeFile.endsWith('.css') ? 'CSS' : activeFile.endsWith('.json') ? 'JSON' : 'Plain Text'}</span>
             {editorZoom !== 1 && <span onClick={() => setEditorZoom(1)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: '#89b4fa', cursor: 'pointer', opacity: .7 }}
               title="Reset zoom (⌘0)">{Math.round(editorZoom * 100)}%</span>}
