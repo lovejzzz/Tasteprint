@@ -60,7 +60,7 @@ export const VARIANTS = {
   modal:     ["Card","Minimal","Sheet","Glass","Destructive","Brutal","Gradient"],
   sidebar:   ["Full","Minimal","Grouped","Glass","Brutal","Gradient"],
   table:     ["Striped","Bordered","Minimal","Terminal","Glass","Gradient"],
-  accordion: ["Bordered","Card","Minimal","Glass","Accent"],
+  accordion: ["Bordered","Card","Minimal","Glass","Accent","Brutal","Gradient"],
   footer:    ["Columns","Simple","Dark","Branded","Glass"],
   "bento-grid":["Even","Featured","Mixed","Gradient","Glass"],
   dropdown:  ["Bordered","Minimal","Rounded","Glass","Grouped"],
