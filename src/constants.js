@@ -51,7 +51,7 @@ export const VARIANTS = {
   "image-placeholder":["Subtle","Gradient","Dashed","Glass","Brutal"],
   "avatar-row":["Circular","Small tight","Rounded sq","Glass","Gradient ring"],
   "list-item":["Card row","Divider","Tinted","Glass","Settings"],
-  input:     ["Outlined","Labeled","Filled","Underline","Glass"],
+  input:     ["Outlined","Labeled","Filled","Underline","Glass","Brutal","Gradient"],
   search:    ["Bordered","Pill kbd","Underline","Glass","AI"],
   toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass"],
   badge:     ["Tinted","Solid","Outline","Glass","Brutal"],

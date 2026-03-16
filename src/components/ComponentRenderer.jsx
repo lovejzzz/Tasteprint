@@ -299,7 +299,27 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     /* v3 Underline — Material Design style with animated bottom border */
     if(v===3)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:0}}><T k="label" s={{fontSize:9,fontWeight:500,color:p.ac,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6,animation:"tp-slidein .3s ease"}}>Email address</T><div style={{display:"flex",alignItems:"center",gap:8,paddingBottom:8,position:"relative"}}><span style={{fontSize:13,opacity:.3}}>✉</span><T k="ph" s={{fontSize:13,color:p.mu,opacity:.45,flex:1}}>you@example.com</T><div style={{position:"absolute",bottom:0,left:0,right:0,height:1,background:p.bd}}/><div style={{position:"absolute",bottom:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${p.ac},${p.ac2})`,borderRadius:1,transformOrigin:"center",animation:"tp-fill .4s ease-out forwards"}}/></div></div>;
     /* v4 Glass — frosted glass with glow */
-    return <div style={{...b,background:p.card+"90",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderRadius:12,border:`1px solid ${p.ac}25`,padding:"0 14px",display:"flex",alignItems:"center",gap:8,boxShadow:`0 0 20px ${p.ac}08, inset 0 1px 0 rgba(255,255,255,0.08)`,transition:"box-shadow .25s, border-color .25s"}}><span style={{fontSize:13,opacity:.35}}>✉</span><T k="ph" s={{fontSize:13,color:p.mu,opacity:.5,flex:1}}>Enter your email...</T><div style={{width:6,height:6,borderRadius:999,background:p.ac,opacity:.4,animation:"tp-pulse 2s ease infinite"}}/></div>;
+    if(v===4)return <div style={{...b,background:p.card+"90",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderRadius:12,border:`1px solid ${p.ac}25`,padding:"0 14px",display:"flex",alignItems:"center",gap:8,boxShadow:`0 0 20px ${p.ac}08, inset 0 1px 0 rgba(255,255,255,0.08)`,transition:"box-shadow .25s, border-color .25s"}}><span style={{fontSize:13,opacity:.35}}>✉</span><T k="ph" s={{fontSize:13,color:p.mu,opacity:.5,flex:1}}>Enter your email...</T><div style={{width:6,height:6,borderRadius:999,background:p.ac,opacity:.4,animation:"tp-pulse 2s ease infinite"}}/></div>;
+    /* v5 Brutal — neubrutalist: thick border, hard offset shadow, bold label, squared cursor block */
+    if(v===5)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:4}}>
+      <T k="label" s={{fontSize:f(10),fontWeight:800,color:p.tx,textTransform:"uppercase",letterSpacing:"0.1em"}}>Email<span style={{color:p.ac,marginLeft:3}}>*</span></T>
+      <div style={{border:`2.5px solid ${p.tx}`,borderRadius:3,padding:"0 12px",height:34,display:"flex",alignItems:"center",gap:8,background:p.card,boxShadow:`3px 3px 0 ${p.ac}`,transition:"transform .1s, box-shadow .1s"}}>
+        <span style={{fontSize:12,opacity:.4}}>✉</span>
+        <T k="ph" s={{fontSize:13,color:p.mu,opacity:.45,flex:1,fontWeight:500}}>you@example.com</T>
+        <div style={{width:2,height:16,background:p.tx,opacity:.6,animation:"tp-pulse 1.2s ease-in-out infinite",borderRadius:0}}/>
+      </div>
+    </div>;
+    /* v6 Gradient — animated gradient border with glow, accent-tinted background */
+    return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:5}}>
+      <T k="label" s={{fontSize:f(9),fontWeight:600,color:p.ac,letterSpacing:"0.04em"}}>Email address</T>
+      <div style={{position:"relative",borderRadius:10,padding:1.5,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac},${p.ac})`,backgroundSize:"200% 200%",animation:"tp-shimmer 3s ease infinite",boxShadow:`0 0 12px ${p.ac}20, 0 0 24px ${p.ac}10`}}>
+        <div style={{borderRadius:8.5,background:p.card,padding:"0 12px",height:32,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:12,color:p.ac,opacity:.5}}>✉</span>
+          <T k="ph" s={{fontSize:13,color:p.mu,opacity:.45,flex:1}}>you@example.com</T>
+          <div style={{width:5,height:5,borderRadius:99,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,boxShadow:`0 0 6px ${p.ac}50`,animation:"tp-pulse 2s ease-in-out infinite"}}/>
+        </div>
+      </div>
+    </div>;
   }
 
   /* ---- SEARCH ---- */
