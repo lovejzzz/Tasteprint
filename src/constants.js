@@ -65,7 +65,7 @@ export const VARIANTS = {
   "bento-grid":["Even","Featured","Mixed"],
   dropdown:  ["Bordered","Minimal","Rounded","Glass","Grouped"],
   select:    ["Outlined","Pill","Underline","Glass","Grouped"],
-  checkbox:  ["Square","Round","Toggle row"],
+  checkbox:  ["Square","Round","Toggle row","Card","Chip"],
   slider:    ["Round","Thin","Stepped","Gradient","Glass"],
   alert:     ["Tinted","Card","Banner","Glass"],
   pagination:["Numbered","Dots","Minimal"],
