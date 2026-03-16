@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 12: Conversation repair & graceful degradation
+   Round 13: Style matching & conversation phase awareness
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1996,6 +1996,11 @@ function calcTypingMs(response, userSent, parsed) {
   }
   if (parsed?.qType === "about_ai") base *= 1.15;
 
+  // Conversation phase — established conversations feel snappier
+  const phase = getConversationPhase();
+  if (phase === "established") base *= 0.85;
+  if (phase === "opening") base *= 1.08;
+
   // Short replies are snappy
   if (len < 20) base = 300 + Math.random() * 300;
 
@@ -2106,6 +2111,177 @@ function tryProactiveCallback(response, currentTopics) {
   }
 
   return response;
+}
+
+/* ── Style Matching & Conversation Phase Awareness ──
+ * Two interconnected systems that make the AI feel adaptive:
+ *
+ * 1. Style Matching: mirrors the user's communication style — if they write
+ *    short casual messages, the AI responds short and casual. If they write
+ *    long thoughtful paragraphs, the AI matches with depth. Tracks vocabulary
+ *    complexity, message length, formality, and emoji usage.
+ *
+ * 2. Conversation Phase: adjusts behavior based on where we are in the
+ *    conversation — early (warm intros, establishing rapport), mid (deeper
+ *    engagement, follow-ups), late (callbacks, warmth, summary reflections).
+ */
+
+function analyzeUserStyle() {
+  const userMsgs = mem.history.filter(h => h.role === "user");
+  if (userMsgs.length < 2) return { length: "medium", formality: "casual", emoji: false, complexity: "simple" };
+
+  const recent = userMsgs.slice(-5);
+
+  // Average message length
+  const avgLen = recent.reduce((sum, m) => sum + m.text.length, 0) / recent.length;
+  const length = avgLen < 25 ? "short" : avgLen > 100 ? "long" : "medium";
+
+  // Formality detection: contractions, slang, lowercase = casual; full words, punctuation = formal
+  const allText = recent.map(m => m.text).join(" ");
+  const lower = allText.toLowerCase();
+  const casualSignals = (lower.match(/\b(gonna|wanna|gotta|kinda|sorta|lol|haha|omg|idk|tbh|ngl|fr|bruh|bro|dude|chill|vibe|lowkey|highkey|nah|yep|yeah)\b/g) || []).length;
+  const formalSignals = (allText.match(/\b(would|could|shall|perhaps|however|therefore|regarding|furthermore|additionally|specifically)\b/gi) || []).length;
+  const hasProperPunctuation = recent.filter(m => /[.!?]$/.test(m.text.trim())).length > recent.length * 0.6;
+  const formality = formalSignals > casualSignals + 1 || (hasProperPunctuation && casualSignals === 0) ? "formal" : casualSignals > 2 ? "very-casual" : "casual";
+
+  // Emoji usage
+  const emojiCount = (allText.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu) || []).length;
+  const emoji = emojiCount > recent.length * 0.3;
+
+  // Vocabulary complexity: long unique words suggest sophistication
+  const words = tokenize(allText);
+  const uniqueLong = new Set(words.filter(w => w.length > 7));
+  const complexity = uniqueLong.size > words.length * 0.15 ? "complex" : "simple";
+
+  return { length, formality, emoji, complexity };
+}
+
+function getConversationPhase() {
+  const turn = mem.turn;
+  if (turn <= 3) return "opening";      // first few exchanges — build rapport
+  if (turn <= 8) return "exploring";    // getting to know each other's interests
+  if (turn <= 16) return "engaged";     // deep conversation, substantive exchanges
+  return "established";                  // long conversation, high familiarity
+}
+
+function adaptToStyle(response, style) {
+  let r = response;
+
+  // ── Length matching ──
+  if (style.length === "short" && r.length > 80) {
+    // Trim to one strong sentence — find the first sentence end
+    const firstEnd = r.search(/[.!?]\s/);
+    if (firstEnd > 15 && firstEnd < 80) {
+      r = r.slice(0, firstEnd + 1);
+    }
+  }
+  if (style.length === "long" && r.length < 50 && mem.turn > 3) {
+    // Pad with a thoughtful follow-up for users who write longer messages
+    const expansions = [
+      " I'd love to hear more about your perspective on this.",
+      " There's a lot of nuance there worth exploring.",
+      " What's the thinking behind that?",
+      " I find that there's usually an interesting story behind that kind of thing.",
+    ];
+    r += pick(expansions);
+  }
+
+  // ── Formality matching ──
+  if (style.formality === "very-casual") {
+    // Inject casual markers if the response is too stiff
+    if (!/\b(lol|haha|ngl|tbh|fr|vibe|lowkey)\b/i.test(r) && Math.random() < 0.3) {
+      const casualizers = [" tbh", " ngl", " fr"];
+      // Insert before the last sentence or at the end
+      const lastPeriod = r.lastIndexOf(".");
+      if (lastPeriod > 20) {
+        r = r.slice(0, lastPeriod) + pick(casualizers) + r.slice(lastPeriod);
+      }
+    }
+    // Lowercase the first letter if response starts with a capital (casual style)
+    if (/^[A-Z][a-z]/.test(r) && Math.random() < 0.25) {
+      r = r.charAt(0).toLowerCase() + r.slice(1);
+    }
+  }
+  if (style.formality === "formal") {
+    // Remove overly casual elements
+    r = r.replace(/\b(tbh|ngl|fr|lowkey|highkey)\b/gi, "").replace(/\s{2,}/g, " ");
+    // Remove emoji from formal conversations (occasionally)
+    if (Math.random() < 0.5) {
+      r = r.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").trim();
+    }
+  }
+
+  // ── Emoji matching ──
+  if (!style.emoji && Math.random() < 0.4) {
+    // User doesn't use emoji — strip some from response
+    r = r.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s{2,}/g, " ").trim();
+  }
+
+  // ── Complexity matching ──
+  if (style.complexity === "complex" && r.length > 40) {
+    // Don't dumb down responses for sophisticated users — this is a no-op
+    // but we could enhance with richer vocabulary in future rounds
+  }
+
+  return r.trim();
+}
+
+function phaseAwareAdjust(response, phase) {
+  let r = response;
+
+  switch (phase) {
+    case "opening":
+      // Early conversation: be warm and inviting, ask getting-to-know-you questions
+      if (!r.includes("?") && Math.random() < 0.4) {
+        const openers = [
+          " What brings you here today?",
+          " What are you working on?",
+          " What's on your mind?",
+        ];
+        r += pick(openers);
+      }
+      break;
+
+    case "exploring":
+      // Mid-early: show interest in their topics, build on what they share
+      if (mem.topics && Object.keys(mem.topics).length > 0 && Math.random() < 0.25) {
+        const topTopic = mem.topTopic();
+        if (topTopic && !r.toLowerCase().includes(topTopic)) {
+          const bridges = [
+            ` By the way, I'm enjoying our ${topTopic} conversation.`,
+            ` You clearly know your stuff about ${topTopic}.`,
+          ];
+          r += pick(bridges);
+        }
+      }
+      break;
+
+    case "engaged":
+      // Deep conversation: less fluff, more substance, reference earlier points
+      // Remove trailing filler questions that add no value
+      if (r.endsWith("What do you think?") && Math.random() < 0.3) {
+        r = r.replace(/\s*What do you think\?$/, ".");
+      }
+      break;
+
+    case "established":
+      // Long conversation: warm familiarity, occasional reflection
+      if (Math.random() < 0.12 && mem.turn % 8 === 0) {
+        const reflections = [
+          `You know, I've really enjoyed this conversation.`,
+          `This has been a great chat — you're fun to talk to.`,
+          `I feel like we've covered a lot of ground together.`,
+        ];
+        r = pick(reflections) + " " + r;
+      }
+      // Use name more frequently in established phase
+      if (mem.userName && Math.random() < 0.15 && !r.includes(mem.userName)) {
+        r = r.replace(/^(\w)/, `${mem.userName}, $1`.replace(/^./, c => c));
+      }
+      break;
+  }
+
+  return r;
 }
 
 /* ── Conversation Repair System ──
@@ -2337,6 +2513,14 @@ export function getAIResponse(input) {
 
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
+
+  // Style matching — mirror the user's communication style
+  const userStyle = analyzeUserStyle();
+  response = adaptToStyle(response, userStyle);
+
+  // Conversation phase — adjust for where we are in the conversation
+  const phase = getConversationPhase();
+  response = phaseAwareAdjust(response, phase);
 
   // Track questions the AI asks for answer-linking
   trackAIQuestion(response);
