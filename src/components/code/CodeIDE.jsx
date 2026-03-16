@@ -1431,6 +1431,53 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return null;
   }, [lines, activeLn, foldableRanges]);
 
+  /* ---- Memoized bracket colorization map ---- */
+  const bracketColorMap = React.useMemo(() => {
+    const map = {};
+    let depth = 0;
+    for (let li = 0; li < lines.length; li++) {
+      const entries = [];
+      for (let ci = 0; ci < lines[li].length; ci++) {
+        const ch = lines[li][ci];
+        if (ch === '(' || ch === '[' || ch === '{') {
+          entries.push({ col: ci, color: BRACKET_COLORS[depth % BRACKET_COLORS.length] });
+          depth++;
+        } else if (ch === ')' || ch === ']' || ch === '}') {
+          depth = Math.max(0, depth - 1);
+          entries.push({ col: ci, color: BRACKET_COLORS[depth % BRACKET_COLORS.length] });
+        }
+      }
+      if (entries.length) map[li] = entries;
+    }
+    return map;
+  }, [lines]);
+
+  /* ---- Memoized lint map ---- */
+  const lintMap = React.useMemo(() => {
+    const map = {};
+    if (readonly) return map;
+    lines.forEach((ll, li) => {
+      if (/^\s*\/\//.test(ll)) return;
+      if (/\bvar\b/.test(ll)) map[li] = { msg: 'Prefer const/let', sev: 'warn' };
+      else if (/==(?!=)/.test(ll) && !/===/.test(ll)) map[li] = { msg: 'Use === instead of ==', sev: 'warn' };
+      else if (/\beval\s*\(/.test(ll)) map[li] = { msg: 'Avoid eval()', sev: 'warn' };
+      else if (/\bdebugger\b/.test(ll.trim())) map[li] = { msg: 'Debugger statement', sev: 'warn' };
+      else if (/\balert\s*\(/.test(ll)) map[li] = { msg: 'Avoid alert()', sev: 'warn' };
+    });
+    return map;
+  }, [lines, readonly]);
+
+  /* ---- Memoized line offsets for O(1) position lookup ---- */
+  const lineOffsets = React.useMemo(() => {
+    const offsets = [];
+    let off = 0;
+    for (let li = 0; li < lines.length; li++) {
+      offsets[li] = off;
+      off += lines[li].length + 1;
+    }
+    return offsets;
+  }, [lines]);
+
   /* ---- Global search results ---- */
   const globalSearchResults = React.useMemo(() => {
     if (!globalSearchTerm || !globalSearchOpen) return [];
@@ -3873,10 +3920,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     borderRight: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'hidden'
                   }}>
                     <div style={{ transform: `translateY(-${scrollTop}px)` }}>
-                      {visibleLines.map((i) => {
+                      {/* Viewport culling for gutter */}
+                      {(() => {
+                        const lineH = Math.round(16 * zf);
+                        const gVpStart = Math.max(0, Math.floor(scrollTop / lineH) - 3);
+                        const gVpEnd = Math.min(visibleLines.length - 1, Math.ceil((scrollTop + 400) / lineH) + 3);
+                        const bracketLn1 = matchBracket ? code.substring(0, matchBracket[0]).split('\n').length : -1;
+                        const bracketLn2 = matchBracket ? code.substring(0, matchBracket[1]).split('\n').length : -1;
+                        return <>
+                          {gVpStart > 0 && <div style={{ height: visibleLines[gVpStart] * lineH }} />}
+                          {visibleLines.filter((_, idx) => idx >= gVpStart && idx <= gVpEnd).map((i) => {
                         const isBracketLine = matchBracket && (
-                          code.substring(0, matchBracket[0]).split('\n').length === i + 1 ||
-                          code.substring(0, matchBracket[1]).split('\n').length === i + 1
+                          bracketLn1 === i + 1 || bracketLn2 === i + 1
                         );
                         const isInSel = selGutter[i + 1];
                         const isFoldable = foldableRanges[i] !== undefined;
@@ -3934,6 +3989,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           </div>
                         );
                       })}
+                          {gVpEnd < visibleLines.length - 1 && <div style={{ height: (visibleLines.length - gVpEnd - 1) * Math.round(16 * zf) }} />}
+                        </>;
+                      })()}
                     </div>
                   </div>
                 );
@@ -3953,39 +4011,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   bracketLines[ln1] = col1;
                   bracketLines[ln2] = col2;
                 }
-                // Precompute bracket colorization depths per line
-                // Precompute inline lint hints for error-lens display
-                const lintMap = {};
-                if (!readonly) {
-                  lines.forEach((ll, li) => {
-                    if (/^\s*\/\//.test(ll)) return;
-                    if (/\bvar\b/.test(ll)) lintMap[li] = { msg: 'Prefer const/let', sev: 'warn' };
-                    else if (/==(?!=)/.test(ll) && !/===/.test(ll)) lintMap[li] = { msg: 'Use === instead of ==', sev: 'warn' };
-                    else if (/\beval\s*\(/.test(ll)) lintMap[li] = { msg: 'Avoid eval()', sev: 'warn' };
-                    else if (/\bdebugger\b/.test(ll.trim())) lintMap[li] = { msg: 'Debugger statement', sev: 'warn' };
-                    else if (/\balert\s*\(/.test(ll)) lintMap[li] = { msg: 'Avoid alert()', sev: 'warn' };
-                  });
-                }
-                const bracketColorMap = {}; // { lineIdx: [{ col, color }] }
-                let depth = 0;
-                for (let li = 0; li < lines.length; li++) {
-                  const entries = [];
-                  for (let ci = 0; ci < lines[li].length; ci++) {
-                    const ch = lines[li][ci];
-                    if (ch === '(' || ch === '[' || ch === '{') {
-                      entries.push({ col: ci, color: BRACKET_COLORS[depth % BRACKET_COLORS.length] });
-                      depth++;
-                    } else if (ch === ')' || ch === ']' || ch === '}') {
-                      depth = Math.max(0, depth - 1);
-                      entries.push({ col: ci, color: BRACKET_COLORS[depth % BRACKET_COLORS.length] });
-                    }
-                  }
-                  if (entries.length) bracketColorMap[li] = entries;
-                }
+                // bracketColorMap and lintMap are now memoized above
+                // lineOffsets, bracketColorMap, lintMap are memoized hooks above
+                // Viewport culling: only render lines visible in the viewport + buffer
+                const lineH = Math.round(16 * zf);
+                const viewportStart = Math.max(0, Math.floor(scrollTop / lineH) - 5);
+                const viewportEnd = Math.min(visibleLines.length - 1, Math.ceil((scrollTop + 400) / lineH) + 5);
+                const viewportLines = visibleLines.filter((vi, idx) => idx >= viewportStart && idx <= viewportEnd);
                 return (
                   <div ref={hlRef} style={{ position: 'absolute', left: gutterW + 1, top: 0, right: 0, bottom: 0, padding: 8, pointerEvents: 'none', overflow: 'hidden' }}>
                     <div style={{ transform: `translateY(-${scrollTop}px)` }}>
-                    {visibleLines.map((i) => {
+                    {/* Spacer for lines above viewport */}
+                    {viewportStart > 0 && <div style={{ height: visibleLines[viewportStart] * lineH }} />}
+                    {viewportLines.map((i) => {
                       const l = lines[i];
                       const isFolded = foldedLines.has(i) && foldableRanges[i] !== undefined;
                       /* Indent guides */
@@ -4007,7 +4045,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       /* Search match highlighting */
                       let searchHighlights = null;
                       if (searchOpen && searchTerm) {
-                        const lineStart = i === 0 ? 0 : code.split('\n').slice(0, i).join('\n').length + 1;
+                        const lineStart = lineOffsets[i] || 0;
                         const lineMatches = searchMatches.filter(m => m.pos >= lineStart && m.pos < lineStart + l.length);
                         if (lineMatches.length) {
                           const parts = [];
@@ -4143,6 +4181,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         </div>
                       );
                     })}
+                    {/* Spacer for lines below viewport */}
+                    {viewportEnd < visibleLines.length - 1 && <div style={{ height: (visibleLines.length - viewportEnd - 1) * lineH }} />}
                     </div>
                   </div>
                 );
@@ -4558,7 +4598,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     const lineIdx = Math.min(lines.length - 1, Math.max(0, Math.floor(pct * lines.length)));
                     setActiveLn(lineIdx + 1);
                     setCursor({ ln: lineIdx + 1, col: 1 });
-                    const pos = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0);
+                    const pos = lineOffsets[lineIdx] || 0;
                     setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
                   }}
                   style={{
@@ -4573,8 +4613,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       const searchMatchLines = new Set();
                       if (searchOpen && searchMatches.length) {
                         for (const m of searchMatches) {
-                          const ln = code.substring(0, m.pos).split('\n').length;
-                          searchMatchLines.add(ln);
+                          // Binary search lineOffsets for O(log n) instead of O(n)
+                          let lo = 0, hi = lineOffsets.length - 1;
+                          while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (lineOffsets[mid] <= m.pos) lo = mid; else hi = mid - 1; }
+                          searchMatchLines.add(lo + 1);
                         }
                       }
                       // Precompute word occurrence lines for minimap
@@ -4586,20 +4628,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       const selRange = {};
                       const el = taRef.current;
                       if (el && el.selectionStart !== el.selectionEnd) {
-                        const selStartLn = code.substring(0, Math.min(el.selectionStart, el.selectionEnd)).split('\n').length;
-                        const selEndLn = code.substring(0, Math.max(el.selectionStart, el.selectionEnd)).split('\n').length;
+                        const ss = Math.min(el.selectionStart, el.selectionEnd);
+                        const se = Math.max(el.selectionStart, el.selectionEnd);
+                        // Use lineOffsets for O(log n) lookup
+                        let lo1 = 0, hi1 = lineOffsets.length - 1;
+                        while (lo1 < hi1) { const mid = (lo1 + hi1 + 1) >> 1; if (lineOffsets[mid] <= ss) lo1 = mid; else hi1 = mid - 1; }
+                        let lo2 = 0, hi2 = lineOffsets.length - 1;
+                        while (lo2 < hi2) { const mid = (lo2 + hi2 + 1) >> 1; if (lineOffsets[mid] <= se) lo2 = mid; else hi2 = mid - 1; }
+                        const selStartLn = lo1 + 1;
+                        const selEndLn = lo2 + 1;
                         for (let sl = selStartLn; sl <= selEndLn; sl++) selRange[sl] = true;
                       }
-                      // Precompute lint warning lines for minimap
-                      const lintLines = new Set();
-                      lines.forEach((ll, li) => {
-                        if (/^\s*\/\//.test(ll)) return;
-                        if (/\bvar\b/.test(ll) || (/==(?!=)/.test(ll) && !/===/.test(ll)) || /\beval\s*\(/.test(ll) || /\bdebugger\b/.test(ll.trim())) lintLines.add(li + 1);
-                      });
+                      // Use memoized lintMap for minimap lint indicators
                       return lines.map((l, i) => {
                         const trimLen = Math.min(l.trimStart().length, 36);
                         const isErr = output?.errLn === i + 1;
-                        const isLint = lintLines.has(i + 1);
+                        const isLint = !!lintMap[i];
                         const isActive = i + 1 === activeLn;
                         const isSearch = searchMatchLines.has(i + 1);
                         const isWordMatch = wordMatchLines.has(i + 1);
@@ -5082,8 +5126,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             {output?.ms && <span style={{ fontSize: fs(8), color: '#27c93f', opacity: .5 }} title="Last execution time">{output.ms}ms</span>}
             {output?.err && <span onClick={() => { setTermOpen(true); setTermTab('problems'); }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#f38ba8', cursor: 'pointer', opacity: .6 }} title="Click to see error">{'\u2717'} 1</span>}
             {(() => {
-              let lintCount = 0;
-              lines.forEach(l => { if (!/^\s*\/\//.test(l) && (/\bvar\b/.test(l) || (/==(?!=)/.test(l) && !/===/.test(l)) || /\beval\s*\(/.test(l) || /\bdebugger\b/.test(l.trim()) || /\balert\s*\(/.test(l))) lintCount++; });
+              const lintCount = Object.keys(lintMap).length;
               return lintCount > 0 ? <span onClick={() => { setTermOpen(true); setTermTab('problems'); }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#f9e2af', cursor: 'pointer', opacity: .6 }} title="Click to see warnings">{'\u26A0'} {lintCount}</span> : null;
             })()}
             {tp && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .4 }}>tp</span>}
