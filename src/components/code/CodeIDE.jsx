@@ -448,6 +448,7 @@ const SHORTCUTS = [
     ['Ctrl+Shift+U', 'Lowercase selection'],
     ['Tab (on trigger)', 'Expand snippet / Emmet'],
     ['Type ( [ { on sel', 'Wrap selection'],
+    ['< on selection', 'Wrap with JSX tag'],
     ['</ after <tag>', 'Auto-close tag'],
     ['\u2318+Shift+\\', 'Jump to matching bracket'],
     ['\u2318+Shift+[', 'Fold at cursor'],
@@ -3429,8 +3430,26 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTimeout(() => { el.selectionStart = s + 1; el.selectionEnd = s + 1 + sel.length }, 0);
       return;
     }
+    /* Wrap selection with JSX tag: typing < on selected text wraps with <tag>selection</tag> */
+    if (e.key === '<' && s !== en && !readonly && (activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx'))) {
+      e.preventDefault();
+      const sel = code.substring(s, en);
+      const wrapped = '<div>' + sel + '</div>';
+      setCode(code.substring(0, s) + wrapped + code.substring(en));
+      // Select "div" in the opening tag so user can type the tag name
+      setTimeout(() => { el.selectionStart = s + 1; el.selectionEnd = s + 4 }, 0);
+      return;
+    }
     if (')]}"\'`'.includes(e.key) && code[s] === e.key) {
       e.preventDefault(); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return;
+    }
+    /* Skip over > if next char is > (from auto-close) */
+    if (e.key === '>' && code[s] === '>' && s === en) {
+      // Check if this looks like the end of a self-closing tag or attribute
+      const before = code.substring(Math.max(0, s - 30), s);
+      if (/<[A-Za-z]/.test(before)) {
+        e.preventDefault(); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return;
+      }
     }
     /* JSX auto-close tag: typing > after <tagName inserts </tagName> */
     if (e.key === '>' && s === en && !readonly) {
@@ -3490,6 +3509,24 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (PAIRS[ch] && code[s] === PAIRS[ch]) {
         e.preventDefault(); setCode(code.substring(0, s - 1) + code.substring(s + 1));
         setTimeout(() => { el.selectionStart = el.selectionEnd = s - 1 }, 0); return;
+      }
+      // Smart backspace for JSX: delete empty tag pair <div>|</div> → |
+      if (code[s - 1] === '>' && code[s] === '<' && code[s + 1] === '/') {
+        const openEnd = s; // position after >
+        // Find the opening tag start
+        let ob = openEnd - 1;
+        while (ob > 0 && code[ob] !== '<') ob--;
+        const openTag = code.substring(ob, openEnd);
+        const openM = openTag.match(/^<([A-Za-z][A-Za-z0-9.-]*)\s*[^/]*>$/);
+        if (openM) {
+          const closeM = code.substring(s).match(/^<\/([A-Za-z][A-Za-z0-9.-]*)>/);
+          if (closeM && closeM[1] === openM[1]) {
+            e.preventDefault();
+            setCode(code.substring(0, ob) + code.substring(s + closeM[0].length));
+            setTimeout(() => { el.selectionStart = el.selectionEnd = ob }, 0);
+            return;
+          }
+        }
       }
       // Smart unindent: if cursor is right after leading spaces, remove one indent level
       const lineStart = code.lastIndexOf('\n', s - 1) + 1;
@@ -3930,8 +3967,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         {/* Editor area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
 
-          {/* Tabs */}
-          {!zenMode && <div data-ide-tabs onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; }} style={{ display: 'flex', borderBottom: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {/* Tabs with overflow indicators */}
+          {!zenMode && <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, position: 'relative' }}>
+            {/* Scroll left indicator */}
+            {openTabs.length > 3 && <div onClick={e => { const tabs = e.currentTarget.parentElement.querySelector('[data-ide-tabs]'); if (tabs) tabs.scrollBy({ left: -120, behavior: 'smooth' }); }} onMouseDown={stop}
+              style={{ width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, color: '#555', fontSize: 9, background: '#16162a', zIndex: 2, borderRight: '1px solid #ffffff08' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#cba6f7'}
+              onMouseLeave={e => e.currentTarget.style.color = '#555'}
+              title="Scroll tabs left">{'\u25C0'}</div>}
+            <div data-ide-tabs onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; }} style={{ display: 'flex', flex: 1, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {openTabs.map(path => {
               const name = path.split('/').pop();
               const isActive = path === activeFile;
@@ -3980,6 +4024,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 </div>
               );
             })}
+          </div>
+            {/* Scroll right indicator */}
+            {openTabs.length > 3 && <div onClick={e => { const tabs = e.currentTarget.parentElement.querySelector('[data-ide-tabs]'); if (tabs) tabs.scrollBy({ left: 120, behavior: 'smooth' }); }} onMouseDown={stop}
+              style={{ width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, color: '#555', fontSize: 9, background: '#16162a', zIndex: 2, borderLeft: '1px solid #ffffff08' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#cba6f7'}
+              onMouseLeave={e => e.currentTarget.style.color = '#555'}
+              title="Scroll tabs right">{'\u25B6'}</div>}
+            {/* Tab count badge */}
+            {openTabs.length > 1 && <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px', fontSize: 7, color: '#555', flexShrink: 0, background: '#16162a', borderLeft: '1px solid #ffffff08' }}>{openTabs.length}</div>}
           </div>}
 
           {/* Tab context menu */}
@@ -4803,6 +4856,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                                 } else if (/;\s*;/.test(ll)) {
                                   const all = code.split('\n'); all[i] = all[i].replace(/;\s*;/g, ';'); setCode(all.join('\n'));
                                   showToast('Fixed: double semicolon', 'success');
+                                } else if (/\bnew\s+Array\s*\(\s*\)/.test(ll)) {
+                                  const all = code.split('\n'); all[i] = all[i].replace(/\bnew\s+Array\s*\(\s*\)/, '[]'); setCode(all.join('\n'));
+                                  showToast('Fixed: new Array() → []', 'success');
+                                } else if (/\bnew\s+Object\s*\(\s*\)/.test(ll)) {
+                                  const all = code.split('\n'); all[i] = all[i].replace(/\bnew\s+Object\s*\(\s*\)/, '{}'); setCode(all.join('\n'));
+                                  showToast('Fixed: new Object() → {}', 'success');
                                 } else {
                                   showToast(lintMap[i].msg, 'info');
                                 }
@@ -5069,6 +5128,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     })}
                     {/* Spacer for lines below viewport */}
                     {viewportEnd < visibleLines.length - 1 && <div style={{ height: (visibleLines.length - viewportEnd - 1) * lineH }} />}
+                    {/* Scroll-past-end padding (50% of viewport height) */}
+                    <div style={{ height: '50vh', minHeight: 100 }} />
                     </div>
                   </div>
                 );
@@ -5602,7 +5663,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 style={{
                   flex: 1, background: 'transparent', color: 'transparent',
                   caretColor: readonly ? 'transparent' : '#cba6f7',
-                  border: 'none', outline: 'none', resize: 'none', padding: 8,
+                  border: 'none', outline: 'none', resize: 'none', padding: '8px 8px 50vh 8px',
                   fontSize: fs(10), lineHeight: lh, fontFamily: MONO,
                   tabSize: tabSize, whiteSpace: wordWrap ? 'pre-wrap' : 'pre', wordBreak: wordWrap ? 'break-all' : 'normal', overflow: 'auto', minWidth: 0,
                   position: 'relative', zIndex: 1, cursor: readonly ? 'default' : cmdHeld ? 'pointer' : 'text',
