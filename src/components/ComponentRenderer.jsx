@@ -410,7 +410,52 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     };
     if(v===0)return <div style={{...b,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 1fr",gap:8}}>{cell({},0)}{cell({},1)}{cell({},2)}{cell({},3)}</div>;
     if(v===1)return <div style={{...b,display:"grid",gridTemplateColumns:"1.4fr 1fr",gridTemplateRows:"1fr 1fr",gap:8}}>{cell({gridRow:"1/3"},0)}{cell({},1)}{cell({},2)}</div>;
-    return <div style={{...b,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gridTemplateRows:"1fr 1fr",gap:8}}>{cell({gridColumn:"1/3"},0)}{cell({},1)}{cell({},2)}{cell({gridColumn:"2/4"},3)}</div>;
+    if(v===2)return <div style={{...b,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gridTemplateRows:"1fr 1fr",gap:8}}>{cell({gridColumn:"1/3"},0)}{cell({},1)}{cell({},2)}{cell({gridColumn:"2/4"},3)}</div>;
+    /* v3 Gradient — rich gradient-accented cards with SVG icons and stats */
+    const bentoIcons=[
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>,
+    ];
+    const bentoLabels=["Analytics","Performance","Uptime","Growth"];
+    const bentoValues=["2.4k","98%","99.9%","↑ 24%"];
+    const bentoDescs=["Active users this week","Lighthouse score","Last 30 days","Month over month"];
+    const gCell=(gridStyle,idx)=>{
+      const isHero=gridStyle.gridRow==="1/3"||gridStyle.gridColumn==="1/3";
+      return <div style={{background:isHero?`linear-gradient(135deg,${p.ac}12,${p.ac2||p.ac}08)`:p.card,borderRadius:14,border:`1px solid ${isHero?p.ac+"22":p.bd}`,padding:isHero?16:12,display:"flex",flexDirection:"column",gap:isHero?10:6,position:"relative",overflow:"hidden",animation:`tp-fadein .35s ease-out ${idx*.08}s both`,...gridStyle}}>
+        {isHero&&<div style={{position:"absolute",top:-20,right:-20,width:80,height:80,borderRadius:999,background:`radial-gradient(circle,${p.ac}15,transparent 70%)`,pointerEvents:"none"}}/>}
+        <div style={{width:28,height:28,borderRadius:8,background:p.ac+"12",border:`1px solid ${p.ac}18`,display:"flex",alignItems:"center",justifyContent:"center",color:p.ac}}>{bentoIcons[idx]}</div>
+        <T k={`t${idx}`} s={{fontSize:f(isHero?11:10),color:p.mu,fontWeight:500}}>{bentoLabels[idx]}</T>
+        <span style={{fontSize:f(isHero?22:18),fontWeight:800,color:p.tx,letterSpacing:"-0.02em",lineHeight:1}}>{bentoValues[idx]}</span>
+        <T k={`d${idx}`} s={{fontSize:f(9),color:p.mu,opacity:.7,lineHeight:1.3}}>{bentoDescs[idx]}</T>
+        {isHero&&<div style={{display:"flex",gap:2,marginTop:"auto"}}>{[40,65,45,80,55,70,35,60,75,50].map((h,i)=><div key={i} style={{flex:1,height:h*.4,borderRadius:2,background:i>=7?p.ac:`${p.ac}25`,transformOrigin:"bottom",animation:`tp-bar-grow .4s ease-out ${i*.04}s both`}}/>)}</div>}
+      </div>;
+    };
+    if(v===3)return <div style={{...b,display:"grid",gridTemplateColumns:"1.3fr 1fr",gridTemplateRows:"1fr 1fr",gap:8}}>
+      {gCell({gridRow:"1/3"},0)}{gCell({},1)}{gCell({},2)}
+    </div>;
+    /* v4 Glass — frosted glassmorphism with varied content types */
+    const glassCell=(gridStyle,idx)=>{
+      const isWide=gridStyle.gridColumn==="1/3";
+      return <div style={{background:p.card+"cc",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:16,border:`1px solid ${p.bd}`,padding:isWide?14:12,display:"flex",flexDirection:isWide?"row":"column",gap:isWide?14:6,position:"relative",overflow:"hidden",boxShadow:`0 4px 16px ${p.tx}06, inset 0 1px 0 ${p.card}88`,animation:`tp-slidein .35s ease-out ${idx*.08}s both`,alignItems:isWide?"center":"flex-start",...gridStyle}}>
+        {idx===0&&<div style={{position:"absolute",top:-25,right:-25,width:80,height:80,borderRadius:999,background:`radial-gradient(circle,${p.ac}15,transparent 70%)`,pointerEvents:"none"}}/>}
+        {idx===2&&<div style={{position:"absolute",bottom:-20,left:-20,width:70,height:70,borderRadius:999,background:`radial-gradient(circle,${(p.ac2||p.ac)}12,transparent 70%)`,pointerEvents:"none"}}/>}
+        <div style={{width:isWide?36:26,height:isWide?36:26,borderRadius:isWide?10:7,background:`linear-gradient(135deg,${p.ac}18,${(p.ac2||p.ac)}12)`,border:`1px solid ${p.ac}20`,display:"flex",alignItems:"center",justifyContent:"center",color:p.ac,flexShrink:0}}>{bentoIcons[idx]}</div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:3}}>
+          <T k={`t${idx}`} s={{fontSize:f(isWide?12:10),fontWeight:600,color:p.tx}}>{bentoLabels[idx]}</T>
+          <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+            <span style={{fontSize:f(isWide?20:16),fontWeight:800,color:p.tx,letterSpacing:"-0.02em"}}>{bentoValues[idx]}</span>
+            {isWide&&<span style={{fontSize:f(9),color:p.ac,fontWeight:600}}>↑ 12%</span>}
+          </div>
+          {isWide&&<T k={`d${idx}`} s={{fontSize:f(9),color:p.mu,lineHeight:1.3}}>{bentoDescs[idx]}</T>}
+        </div>
+        {isWide&&<div style={{display:"flex",gap:2,alignItems:"flex-end",height:28,alignSelf:"center"}}>{[5,8,12,7,10,14,9,6,11,8,13,10].map((h,i)=><div key={i} style={{width:4,height:h*1.8,borderRadius:2,background:i>=8?p.ac:`${p.ac}30`,transformOrigin:"bottom",animation:`tp-bar-grow .35s ease-out ${i*.03}s both`}}/>)}</div>}
+      </div>;
+    };
+    return <div style={{...b,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"auto auto",gap:8}}>
+      {glassCell({gridColumn:"1/3"},0)}{glassCell({},1)}{glassCell({},2)}{glassCell({gridColumn:"1/3"},3)}
+    </div>;
   }
 
   /* ---- DROPDOWN ---- */

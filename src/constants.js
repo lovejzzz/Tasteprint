@@ -62,7 +62,7 @@ export const VARIANTS = {
   table:     ["Striped","Bordered","Minimal","Terminal"],
   accordion: ["Bordered","Card","Minimal","Glass","Accent"],
   footer:    ["Columns","Simple","Dark","Branded","Glass"],
-  "bento-grid":["Even","Featured","Mixed"],
+  "bento-grid":["Even","Featured","Mixed","Gradient","Glass"],
   dropdown:  ["Bordered","Minimal","Rounded","Glass","Grouped"],
   select:    ["Outlined","Pill","Underline","Glass","Grouped"],
   checkbox:  ["Square","Round","Toggle row","Card","Chip"],
