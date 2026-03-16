@@ -2840,8 +2840,8 @@ function answerQuestion(text, parsed, intents, topics) {
     return "Great question! I try my best. What's on your mind?";
   }
 
-  // "Can you" questions
-  if (/^can you\b/i.test(lower)) {
+  // "Can you" — generic ability questions only (specific requests handled by pragmatic inference)
+  if (/^can you\b/i.test(lower) && !/^can you (?:explain|tell|help|describe|teach|show|talk)/i.test(lower)) {
     return "I'll do my best! I'm a simple chat AI, but I'm great at conversations. What do you need?";
   }
 
@@ -3518,6 +3518,219 @@ function handleMultiSentence(text) {
   return parts.join(" ");
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   PRAGMATIC INFERENCE — Indirect Speech Acts & Implicature
+   Humans rarely say exactly what they mean. "Can you explain React?"
+   is a request, not a yes/no question. "I don't know CSS" is an
+   implicit request for explanation. "It's getting late" is a farewell.
+   This engine infers the INTENDED action behind indirect forms
+   and rewrites/reroutes them before the main pipeline processes them.
+   ══════════════════════════════════════════════════════════════════ */
+
+// Detect indirect requests disguised as questions about ability
+// "Can you explain X?" → explain X (not "yes I can")
+// "Could you tell me about X?" → tell me about X
+// "Would you mind explaining X?" → explain X
+function detectIndirectRequest(text, lower, topics) {
+  // "Can/could/would you [verb] X?" → extract the actual request
+  const abilityMatch = lower.match(/^(?:can|could|would) you (?:please )?(tell me about|explain|help (?:me )?(?:with|understand)?|describe|teach me(?: about)?|show me|talk about|give me (?:info|information) (?:on|about))\s+(.+?)(?:\?|$)/);
+  if (abilityMatch) {
+    const subject = abilityMatch[2].replace(/\?$/, "").trim();
+    return { type: "request_info", subject, topics: extractTopics(tokenize(subject)) };
+  }
+
+  // "Do you know about X?" → treat as "tell me about X"
+  const knowMatch = lower.match(/^do you (?:know|have info) (?:about|anything about|much about)\s+(.+?)(?:\?|$)/);
+  if (knowMatch) {
+    return { type: "request_info", subject: knowMatch[1].trim(), topics: extractTopics(tokenize(knowMatch[1])) };
+  }
+
+  // "Would you mind...?" → polite request
+  const mindMatch = lower.match(/^would you mind\s+(.+?)(?:\?|$)/);
+  if (mindMatch) {
+    const action = mindMatch[1].replace(/^(explaining|telling me about|helping (?:me )?(?:with )?|describing)\s*/, "").trim();
+    return { type: "request_info", subject: action, topics: extractTopics(tokenize(action)) };
+  }
+
+  return null;
+}
+
+// Detect implicit knowledge gaps — user admitting they don't know something
+// "I don't know much about X" → offer to explain X
+// "I'm new to X" / "I'm a beginner at X" → explain X at a basic level
+// "I've never used X" → intro to X
+function detectKnowledgeGap(text, lower, topics) {
+  const gapPatterns = [
+    { pat: /i (?:don'?t|do not) (?:really )?(?:know|understand|get) (?:much about |anything about |about )?(.+?)(?:\.|$)/i, level: "basic" },
+    { pat: /i'?m (?:new|a (?:beginner|newbie|noob)) (?:to|at|with|in) (.+?)(?:\.|$)/i, level: "intro" },
+    { pat: /i'?ve never (?:used|tried|learned|worked with|touched) (.+?)(?:\.|$)/i, level: "intro" },
+    { pat: /i (?:don'?t|do not) (?:really )?understand (.+?)(?:\.|$)/i, level: "basic" },
+    { pat: /(.+?) (?:is |are )?(?:confusing|hard|difficult|tricky|complicated|overwhelming) (?:for me|to me)?/i, level: "basic" },
+    { pat: /i (?:struggle|have trouble|have difficulty|have a hard time) with (.+?)(?:\.|$)/i, level: "basic" },
+    { pat: /i wish i (?:knew|understood|could (?:use|do|figure out)) (.+?)(?:\.|$)/i, level: "basic" },
+    { pat: /(?:what (?:exactly )?is|what are|what'?s) (.+?)(?:\?|\s*$)/i, level: "explain" },
+  ];
+
+  for (const { pat, level } of gapPatterns) {
+    const m = lower.match(pat);
+    if (m) {
+      const subject = m[1].replace(/\?$/, "").trim();
+      // Filter out very short or stop-word-only matches
+      if (subject.length < 2 || /^(it|that|this|a|the|my|your)$/i.test(subject)) continue;
+      return { type: "knowledge_gap", subject, level, topics: extractTopics(tokenize(subject)) };
+    }
+  }
+  return null;
+}
+
+// Detect implicit farewell signals — user signaling departure without saying "bye"
+function detectImplicitFarewell(text, lower) {
+  const farewellSignals = [
+    /\b(?:it'?s|its) (?:getting |)late\b/i,
+    /\bi (?:should|gotta|need to|have to|better) (?:go|head out|get going|run|leave|sleep|bounce)\b/i,
+    /\bi'?m (?:heading|going) (?:to (?:bed|sleep)|out|off|away)\b/i,
+    /\b(?:talk|chat|catch up) (?:later|tomorrow|next time|soon)\b/i,
+    /\bi'?m (?:done|finished|good) (?:for (?:now|today))\b/i,
+    /\b(?:that'?s all|that'?s it) (?:for (?:now|today)|i (?:need|got))\b/i,
+    /\btime (?:for me )?to (?:go|head out|call it|wrap up)\b/i,
+  ];
+  return farewellSignals.some(p => p.test(lower));
+}
+
+// Detect implicit topic teasers — user hinting at something without stating it
+function detectTopicTeaser(text, lower) {
+  const teasers = [
+    { pat: /i'?ve been (?:working on|building|making|creating|developing) (?:something|a project|a thing|an app)/i, type: "project_tease" },
+    { pat: /i'?ve been (?:thinking about|considering|looking into|exploring) (?:something|a (?:new|different) )/i, type: "thought_tease" },
+    { pat: /(?:something|a thing) (?:interesting|cool|weird|strange|funny) happened/i, type: "story_tease" },
+    { pat: /i (?:have|got) (?:a )?(?:question|something to ask|something on my mind)/i, type: "question_tease" },
+    { pat: /can i (?:ask|tell) you something/i, type: "question_tease" },
+    { pat: /guess what/i, type: "story_tease" },
+    { pat: /you (?:know|won'?t believe) what/i, type: "story_tease" },
+  ];
+  for (const { pat, type } of teasers) {
+    if (pat.test(lower)) return type;
+  }
+  return null;
+}
+
+// Build a response for knowledge gap detection
+function respondToKnowledgeGap(gap) {
+  const subject = gap.subject;
+  const topic = gap.topics[0] || subject;
+
+  // Try EXPLAIN for deep knowledge
+  const explainer = lookupExplainer(`what is ${subject}`);
+  if (explainer) {
+    const openers = [
+      `Oh, ${subject} is actually really cool — let me break it down! `,
+      `No worries, ${subject} trips up a lot of people at first! `,
+      `${subject.charAt(0).toUpperCase() + subject.slice(1)} — great thing to learn about! `,
+      `Totally understandable — ${subject} can seem complex at first. `,
+    ];
+    const depth = gap.level === "intro" ? explainer.brief : explainer.deep;
+    const hooks = [
+      ` Want me to go deeper on any part of that?`,
+      ` Does that help? Happy to elaborate on any piece.`,
+      ` What specifically about ${subject} trips you up?`,
+    ];
+    return pick(openers) + depth + pick(hooks);
+  }
+
+  // Try ASSOC for topic knowledge
+  if (ASSOC[topic]) {
+    const a = ASSOC[topic];
+    const openers = [
+      `Hey, everyone starts somewhere with ${topic}! `,
+      `No shame in being new to ${topic} — it's a journey! `,
+      `${topic.charAt(0).toUpperCase() + topic.slice(1)} is worth learning about. `,
+    ];
+    let resp = pick(openers);
+    if (a.facts?.length) resp += pick(a.facts) + " ";
+    if (a.opinions?.length) resp += "Personally, I think " + pick(a.opinions) + ". ";
+    if (a.hooks?.length) resp += pick(a.hooks);
+    return resp;
+  }
+
+  // Generic encouragement
+  const generics = [
+    `${subject} is definitely worth exploring! I don't have deep knowledge of it specifically, but I find that starting with the basics and building up from there works best. What aspect interests you most?`,
+    `Totally fair — ${subject} has a learning curve. What specifically about it are you curious about? I can try to help!`,
+    `No worries about not knowing ${subject} yet — that's what learning is for! What part would you like to start with?`,
+  ];
+  return pick(generics);
+}
+
+// Build responses for topic teasers
+function respondToTeaser(teaserType) {
+  const responses = {
+    project_tease: [
+      "Ooh, now I'm curious! What are you building? 👀",
+      "Tell me more! I love hearing about projects people are working on.",
+      "A project? I'm all ears — what's it about?",
+      "Now you've got my attention! What kind of project?",
+    ],
+    thought_tease: [
+      "Ooh, what's been on your mind?",
+      "I'm curious — what have you been thinking about?",
+      "Tell me! I love exploring new ideas.",
+      "What's got your attention? I'm intrigued!",
+    ],
+    story_tease: [
+      "Oh? I'm listening! Tell me everything 👀",
+      "Now you've got me curious — what happened?",
+      "Go on! I'm all ears 😊",
+      "Tell me tell me! What happened?",
+    ],
+    question_tease: [
+      "Of course! Ask away 😊",
+      "Go for it! I'm an open book.",
+      "Sure thing! What's on your mind?",
+      "Ask me anything! Well, within my tiny-AI abilities 😄",
+    ],
+  };
+  return pickNew(responses[teaserType] || responses.question_tease);
+}
+
+// Implicit farewell responses
+function respondToImplicitFarewell() {
+  const tf = timeFarewell();
+  const responses = [
+    "No worries, go do your thing! It was fun chatting 😊",
+    "Totally — catch you later! Thanks for hanging out.",
+    "Alright, take care! Come back anytime you want to chat.",
+    "Go get some rest! Or whatever you're off to. Was great talking!",
+    "Good call — sometimes you just gotta go. See you around! 👋",
+  ];
+  let resp = pickNew(responses);
+  if (tf && Math.random() > 0.5) resp = tf;
+  if (mem.userName) resp = resp.replace(/!/, `, ${mem.userName}!`);
+  return resp;
+}
+
+// Main pragmatic inference — called early in generateResponse
+function inferPragmatics(text, lower, parsed, topics) {
+  // 1. Indirect requests ("can you explain X?" → explain X)
+  const indirect = detectIndirectRequest(text, lower, topics);
+  if (indirect) {
+    const resp = respondToKnowledgeGap({ ...indirect, level: "explain" });
+    if (resp) return resp;
+  }
+
+  // 2. Knowledge gaps ("I don't know X" → offer to explain)
+  const gap = detectKnowledgeGap(text, lower, topics);
+  if (gap) return respondToKnowledgeGap(gap);
+
+  // 3. Implicit farewells ("it's getting late" → farewell)
+  if (detectImplicitFarewell(text, lower)) return respondToImplicitFarewell();
+
+  // 4. Topic teasers ("I've been working on something" → probe)
+  const teaser = detectTopicTeaser(text, lower);
+  if (teaser) return respondToTeaser(teaser);
+
+  return null;
+}
+
 /* ── The Brain: Main Response Generator ── */
 
 function generateResponse(text) {
@@ -3589,6 +3802,14 @@ function generateResponse(text) {
     const turnResponse = handleTurnSignal(turnSignal);
     if (turnResponse) return turnResponse;
   }
+
+  // ═══ 0.8. Pragmatic inference — indirect speech acts & implicature ═══
+  // "Can you explain React?" → explain React (not "yes I can")
+  // "I don't know CSS" → offer to explain CSS
+  // "It's getting late" → farewell
+  // "Guess what" → probe for story
+  const pragmatic = inferPragmatics(text, parsed.lower || text.toLowerCase(), parsed, topics);
+  if (pragmatic) return pragmatic;
 
   // ═══ 1. Name introduction ═══
   const nameMatch = text.match(/(?:i'?m|i am|name is|call me|they call me)\s+([A-Z][a-z]{1,15})/);
