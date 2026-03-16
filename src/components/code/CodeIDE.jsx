@@ -337,6 +337,7 @@ const SHORTCUTS = [
     ['\u2318+0', 'Reset zoom'],
   ]},
   { cat: 'Terminal', items: [
+    ['\u2318+J', 'Toggle terminal'],
     ['Shift+Enter (REPL)', 'Multi-line input'],
   ]},
 ];
@@ -1299,7 +1300,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (!trimmed) return '';
       // Decrease indent for closing brackets
       if (/^[}\])]/.test(trimmed)) indent = Math.max(0, indent - 1);
-      const result = '  '.repeat(indent) + trimmed;
+      const result = ' '.repeat(tabSize).repeat(indent) + trimmed;
       // Increase indent for opening brackets
       const opens = (trimmed.match(/[{[(]/g) || []).length;
       const closes = (trimmed.match(/[}\])]/g) || []).length;
@@ -1345,7 +1346,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     const el = e.target;
     const s = el.selectionStart, en = el.selectionEnd;
 
-    /* Run: Cmd+Enter */
+    /* Run: Cmd+Enter / Insert line above: Cmd+Shift+Enter */
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      if (readonly) return;
+      const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+      const currentIndent = code.substring(lineStart, s).match(/^(\s*)/)[0];
+      const nc = code.substring(0, lineStart) + currentIndent + '\n' + code.substring(lineStart);
+      setCode(nc);
+      setTimeout(() => { el.selectionStart = el.selectionEnd = lineStart + currentIndent.length }, 0);
+      return;
+    }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runCode(); return; }
 
     /* Save: Cmd+S */
@@ -1375,6 +1386,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         if (after !== -1) {
           setTimeout(() => { el.selectionStart = after; el.selectionEnd = after + sel.length; }, 0);
         }
+      }
+      return;
+    }
+
+    /* Select all occurrences: Cmd+Shift+L */
+    if (e.key === 'l' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      if (s !== en) {
+        const sel = code.substring(s, en);
+        // Select the last occurrence (native textarea can't do multi-cursor, so we select all text matching)
+        setSelectedWord(/^\w+$/.test(sel) ? sel : '');
+        const count = code.split(sel).length - 1;
+        showToast(`${count} occurrences highlighted`, 'info');
+      } else if (selectedWord) {
+        const count = code.split(selectedWord).length - 1;
+        showToast(`${count} occurrences of "${selectedWord}"`, 'info');
       }
       return;
     }
@@ -1433,6 +1460,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setActiveFile(openTabs[next]);
       }
       return;
+    }
+
+    /* Toggle terminal: Cmd+J or Ctrl+` */
+    if ((e.key === 'j' && (e.metaKey || e.ctrlKey) && !e.shiftKey) || (e.key === '`' && e.ctrlKey)) {
+      e.preventDefault(); setTermOpen(t => !t); return;
     }
 
     /* Autocomplete navigation */
@@ -1856,7 +1888,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           style={{ fontSize: 11, color: sidebarMode === 'files' ? '#cba6f7' : '#555', cursor: 'pointer', marginLeft: 4, lineHeight: 1 }}
           title="Toggle explorer">{sidebarMode === 'files' ? '\u25E7' : '\u2630'}</span>
         <span style={{ fontSize: fs(9), color: '#666', flex: 1, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          tasteprint <span style={{ color: '#444' }}>/</span> {activeFile}
+          tasteprint <span style={{ color: '#444' }}>/</span> {activeFile}{editFiles.hasOwnProperty(activeFile) && initFiles[activeFile] !== undefined && editFiles[activeFile] !== initFiles[activeFile] && <span style={{ color: '#f9e2af', marginLeft: 3, fontSize: 7 }} title="Modified">{'\u25CF'}</span>}
         </span>
         <span onClick={() => { setCmdOpen(o => !o); setCmdQuery(''); setTimeout(() => cmdRef.current?.focus(), 50); }} onMouseDown={stop}
           style={{ fontSize: 9, color: cmdOpen ? '#cba6f7' : '#555', cursor: 'pointer', lineHeight: 1, padding: '1px 4px', borderRadius: 3, background: '#ffffff06' }} title="Command palette (Cmd+P)">{'\u2318P'}</span>
@@ -2791,8 +2823,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       const indent = l.match(/^(\s*)/)[0].length;
                       const INDENT_COLORS = ['#cba6f718', '#89b4fa18', '#a6e3a118', '#f9e2af18', '#fab38718', '#f38ba818'];
                       const guides = [];
-                      for (let g = 2; g <= indent; g += 2) {
-                        const depthIdx = Math.floor((g - 2) / 2);
+                      for (let g = tabSize; g <= indent; g += tabSize) {
+                        const depthIdx = Math.floor((g - tabSize) / tabSize);
                         guides.push(
                           <span key={`g${g}`} style={{
                             position: 'absolute', left: (g - 1) * charW, top: 0, bottom: 0, width: 1,
