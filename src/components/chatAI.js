@@ -6415,6 +6415,123 @@ function addBreath(response, text, energy) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   VOCABULARY ENRICHMENT & EXPRESSIVE WORD CHOICE
+   Overused words ("good", "really", "very", "nice", "interesting")
+   make responses feel flat and generic. This engine swaps bland
+   words for vivid, contextually appropriate alternatives.
+   - Adjective upgrades: "good" → "solid/stellar/sharp"
+   - Intensifier variety: "really" → "genuinely/seriously/honestly"
+   - Filler reduction: strips "just", "basically", "literally" overuse
+   - Context-aware: tech topics get different words than casual chat
+   Fire rate: ~30% per eligible word, max 3 swaps per response.
+   ══════════════════════════════════════════════════════════════════ */
+
+// Word swap pools — each overused word maps to vivid alternatives
+// Organized by register: casual → slightly elevated (never pretentious)
+const WORD_SWAPS = {
+  // Adjective upgrades
+  "good":        ["solid","great","sharp","strong","legit"],
+  "bad":         ["rough","tough","painful","brutal","messy"],
+  "nice":        ["lovely","sweet","clean","slick","smooth"],
+  "cool":        ["sick","rad","stellar","fire","dope"],
+  "interesting": ["fascinating","wild","compelling","intriguing","gnarly"],
+  "important":   ["crucial","key","essential","vital","huge"],
+  "hard":        ["tricky","intense","demanding","gnarly","steep"],
+  "easy":        ["smooth","painless","breeze","straightforward","trivial"],
+  "big":         ["massive","huge","major","significant","enormous"],
+  "small":       ["tiny","minor","subtle","modest","compact"],
+  "great":       ["fantastic","stellar","brilliant","outstanding","killer"],
+  "amazing":     ["incredible","mind-blowing","insane","phenomenal","wild"],
+  "awesome":     ["fantastic","brilliant","killer","phenomenal","stellar"],
+  "different":   ["distinct","unique","fresh","novel","separate"],
+  "simple":      ["clean","elegant","minimal","lean","streamlined"],
+  "complex":     ["nuanced","layered","involved","deep","intricate"],
+  "fast":        ["blazing","snappy","lightning","rapid","zippy"],
+  "slow":        ["sluggish","glacial","crawling","laggy","dragging"],
+  "old":         ["classic","vintage","legacy","tried-and-true","seasoned"],
+  "new":         ["fresh","cutting-edge","bleeding-edge","modern","shiny"],
+  "pretty":      ["fairly","reasonably","quite","decently","notably"],
+  // Intensifier variety
+  "really":      ["genuinely","honestly","seriously","truly","absolutely"],
+  "very":        ["incredibly","remarkably","exceptionally","super","wildly"],
+  // Verb upgrades
+  "think":       ["feel like","reckon","believe","suspect","figure"],
+  "like":        ["dig","appreciate","vibe with","enjoy","am into"],
+  "use":         ["leverage","rock","rely on","work with","run with"],
+  "make":        ["craft","build","spin up","put together","whip up"],
+  "get":         ["land","snag","grab","pick up","score"],
+  "know":        ["get","grasp","follow","see","track"],
+  "want":        ["crave","need","am after","am itching for","would love"],
+  "try":         ["experiment with","take a crack at","give a shot","test out","explore"],
+};
+
+// Words that are fine in moderation but get stale when overused
+const FILLER_WORDS = new Set(["just","basically","literally","actually","honestly","definitely","absolutely","totally"]);
+
+let lastEnrichTurn = 0;
+
+function enrichVocabulary(response, topics) {
+  if (response.length < 30 || response.length > 300) return response;
+  if (mem.turn - lastEnrichTurn < 2) return response; // 2-turn cooldown
+  if (/^(hi|hey|hello|bye|goodbye|thanks|thank)/i.test(response)) return response;
+
+  let r = response;
+  let swapCount = 0;
+  const maxSwaps = 3;
+
+  // ── Step 1: Swap bland words for vivid alternatives (~30% per word) ──
+  for (const [bland, alternatives] of Object.entries(WORD_SWAPS)) {
+    if (swapCount >= maxSwaps) break;
+    // Match as whole word, case-insensitive, but preserve surrounding context
+    const regex = new RegExp(`\\b${bland}\\b`, "i");
+    if (regex.test(r) && Math.random() < 0.3) {
+      const match = r.match(regex);
+      if (match) {
+        const replacement = pick(alternatives);
+        // Preserve capitalization of original
+        const final = match[0][0] === match[0][0].toUpperCase()
+          ? replacement.charAt(0).toUpperCase() + replacement.slice(1)
+          : replacement;
+        r = r.replace(regex, final);
+        swapCount++;
+      }
+    }
+  }
+
+  // ── Step 2: Reduce filler word repetition ──
+  // If the same filler appears 2+ times, remove the second occurrence
+  for (const filler of FILLER_WORDS) {
+    const fillerRegex = new RegExp(`\\b${filler}\\b`, "gi");
+    const matches = r.match(fillerRegex);
+    if (matches && matches.length >= 2) {
+      // Remove the second occurrence
+      let count = 0;
+      r = r.replace(fillerRegex, (m) => {
+        count++;
+        return count >= 2 ? "" : m;
+      });
+      // Clean up any double spaces left behind
+      r = r.replace(/\s{2,}/g, " ").trim();
+    }
+  }
+
+  // ── Step 3: Avoid starting consecutive responses with the same word ──
+  const lastAI = mem.history.filter(h => h.role === "ai").slice(-1)[0];
+  if (lastAI) {
+    const lastFirstWord = lastAI.text.split(/\s/)[0]?.toLowerCase();
+    const currentFirstWord = r.split(/\s/)[0]?.toLowerCase();
+    if (lastFirstWord && currentFirstWord === lastFirstWord && r.length > 40) {
+      // Prepend a varied opener
+      const openers = ["So — ","Well — ","Okay, ","See, ","Look — ","Here's the thing — "];
+      r = pick(openers) + r.charAt(0).toLowerCase() + r.slice(1);
+    }
+  }
+
+  if (swapCount > 0) lastEnrichTurn = mem.turn;
+  return r;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CONVERSATIONAL DISFLUENCY — Natural Speech Patterns
    Real humans don't produce perfect prose. They self-correct,
    restart mid-thought, hedge, and think out loud. This engine
@@ -6807,6 +6924,9 @@ export function getAIResponse(input) {
   // ═══ Rhythm variation & breath: structural variance to break monotony ═══
   response = addBreath(response, text, inputEnergy);
 
+  // ═══ Vocabulary enrichment: swap bland words for vivid alternatives ═══
+  response = enrichVocabulary(response, currentTopics);
+
   // ═══ Conversational disfluency: natural speech patterns (self-correction, false starts) ═══
   response = addDisfluency(response);
 
@@ -6846,6 +6966,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
