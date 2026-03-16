@@ -206,6 +206,8 @@ export const DEFAULT_PROPS = {
   receipt:       { tip: 0 },
   "order-summary":{ discount: false },
   "promo-banner":{ dismissed: false },
+  table:         { highlight: 0 },
+  "stat-card":   { trend: 0 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));

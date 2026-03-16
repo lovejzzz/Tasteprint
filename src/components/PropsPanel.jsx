@@ -81,7 +81,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("highlight" in defaults) {
     const hl = G("highlight");
     const bars = G("bars") || defaults.bars;
-    const hlCount = bars ? bars.length : ({ "feature-table": 4 }[type] || 4);
+    const hlCount = bars ? bars.length : ({ "feature-table": 4, table: 3 }[type] || 4);
     controls.push(<React.Fragment key="hl"><span style={label}>{bars ? "Highlight" : "Row"}</span>
       {Array.from({ length: hlCount }, (_, i) => <button key={i} style={{ ...btn(hl === i), width: 18, height: 18, fontSize: 8 }} onMouseDown={stop} onClick={() => onProp("highlight", i)}>{i + 1}</button>)}
     </React.Fragment>);
@@ -211,6 +211,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
       <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#4CAF50" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("discount", !on)}>
         <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
       </button>
+    </React.Fragment>);
+  }
+
+  /* Trend direction (stat-card) */
+  if ("trend" in defaults) {
+    const trend = G("trend");
+    const trendIcons = ["▲", "▼", "→"];
+    const trendLabels = ["Up", "Down", "Flat"];
+    controls.push(<React.Fragment key="trend"><span style={label}>Trend</span>
+      {trendIcons.map((ic, i) => <button key={i} style={{ ...btn(trend === i), fontSize: 10, minWidth: 24, height: 20 }} onMouseDown={stop} onClick={() => onProp("trend", i)} title={trendLabels[i]}>{ic}</button>)}
     </React.Fragment>);
   }
 
