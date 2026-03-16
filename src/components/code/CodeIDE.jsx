@@ -337,6 +337,7 @@ const SHORTCUTS = [
     ['Ctrl+Tab', 'Next tab'],
     ['Ctrl+Shift+Tab', 'Previous tab'],
     ['\u2318+W', 'Close tab'],
+    ['\u2318+Shift+T', 'Reopen closed tab'],
     ['\u2318+Shift+O', 'Go to symbol'],
   ]},
   { cat: 'View', items: [
@@ -617,6 +618,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [symbolIdx, setSymbolIdx] = React.useState(0);
   const symbolRef = React.useRef(null);
 
+  /* ---- Recently closed tabs ---- */
+  const closedTabs = React.useRef([]);
+
   /* ---- Breadcrumb dropdown ---- */
   const [breadcrumbDrop, setBreadcrumbDrop] = React.useState(null);
 
@@ -737,6 +741,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  rm <f>     — Delete a user-created file' },
         { t: 'log', v: '  export     — Copy canvas state to clipboard' },
         { t: 'log', v: '  find <n>   — Find files by name' },
+        { t: 'log', v: "  tail [n] f — Show last n lines of file" },
+        { t: 'log', v: "  sed 's/p/r/' f — Find and replace in file" },
+        { t: 'log', v: '  cp <f> <t> — Copy a file' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -973,6 +980,66 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       }
       setTermInput(''); return;
     }
+    if (cmd.startsWith('tail ')) {
+      const args = cmd.slice(5).trim().split(/\s+/);
+      const n = args.length > 1 && /^\d+$/.test(args[0]) ? parseInt(args[0]) : 10;
+      const path = args.length > 1 ? args[1] : args[0];
+      const f = getFile(path);
+      if (f) {
+        const allLines = f.content.split('\n');
+        const tailLines = allLines.slice(-n);
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F tail ${cmd.slice(5).trim()}` },
+          ...(allLines.length > n ? [{ t: 'log', v: `  ... (${allLines.length - n} lines above)` }] : []),
+          ...tailLines.map(l => ({ t: 'log', v: l })),
+        ], ms: null, err: null, errLn: null }));
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `tail: ${path}: No such file` }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('sed ')) {
+      const m = cmd.match(/^sed\s+'s\/(.+?)\/(.+?)\/([gi]*)'\s+(.+)$/);
+      if (m) {
+        const [, pattern, replacement, flags, path] = m;
+        const f = getFile(path);
+        if (f && !f.readonly) {
+          try {
+            const rx = new RegExp(pattern, flags);
+            const result = f.content.replace(rx, replacement);
+            setEditFiles(prev => ({ ...prev, [path]: result }));
+            const changes = f.content.split('\n').filter((l, i) => l !== result.split('\n')[i]).length;
+            setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F ${cmd}` }, { t: 'log', v: `${changes} line(s) changed in ${path}` }], ms: null, err: null, errLn: null }));
+          } catch (e) {
+            setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `sed: ${e.message}` }], ms: null, err: null, errLn: null }));
+          }
+        } else if (f?.readonly) {
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `sed: ${path}: Read-only file` }], ms: null, err: null, errLn: null }));
+        } else {
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `sed: ${path}: No such file` }], ms: null, err: null, errLn: null }));
+        }
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: "Usage: sed 's/pattern/replacement/flags' <file>" }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('cp ')) {
+      const args = cmd.slice(3).trim().split(/\s+/);
+      if (args.length === 2) {
+        const [from, to] = args;
+        const f = getFile(from);
+        if (f) {
+          const destPath = to.includes('/') ? to : 'user/' + to;
+          setEditFiles(prev => ({ ...prev, [destPath]: f.content }));
+          setOpenFolders(prev => ({ ...prev, user: true }));
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F cp ${from} ${to}` }, { t: 'log', v: `Copied to ${destPath}` }], ms: null, err: null, errLn: null }));
+        } else {
+          setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `cp: ${from}: No such file` }], ms: null, err: null, errLn: null }));
+        }
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: 'Usage: cp <source> <dest>' }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
     const logs = [];
     const fc = {
       log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
@@ -1106,6 +1173,42 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return vis;
   }, [lines, foldedLines, foldableRanges]);
 
+  /* ---- Active scope guide: find enclosing bracket pair at cursor ---- */
+  const activeScope = React.useMemo(() => {
+    if (!code) return null;
+    const pos = taRef.current?.selectionStart ?? 0;
+    const opens = '({[', closes = ')}]';
+    // Walk backward from cursor to find unmatched opening bracket
+    const depth = [0, 0, 0]; // (, {, [
+    for (let i = pos - 1; i >= 0; i--) {
+      const oi = opens.indexOf(code[i]);
+      const ci = closes.indexOf(code[i]);
+      if (ci !== -1) depth[ci]++;
+      if (oi !== -1) {
+        if (depth[oi] > 0) depth[oi]--;
+        else {
+          // Found unmatched open — find its close
+          let d = 1, j = i + 1;
+          while (j < code.length && d > 0) {
+            if (code[j] === opens[oi]) d++;
+            if (code[j] === closes[oi]) d--;
+            j++;
+          }
+          if (d === 0) {
+            const startLn = code.substring(0, i).split('\n').length;
+            const endLn = code.substring(0, j - 1).split('\n').length;
+            if (endLn > startLn) {
+              const indent = lines[startLn - 1]?.match(/^(\s*)/)?.[0]?.length || 0;
+              return { startLn, endLn, indent };
+            }
+          }
+          break;
+        }
+      }
+    }
+    return null;
+  }, [code, activeLn, lines]);
+
   /* ---- Global search results ---- */
   const globalSearchResults = React.useMemo(() => {
     if (!globalSearchTerm || !globalSearchOpen) return [];
@@ -1217,6 +1320,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (pinnedTabs.has(path)) return; // cannot close pinned tabs
     const next = openTabs.filter(t => t !== path);
     if (next.length === 0) return;
+    closedTabs.current = [...closedTabs.current, path].slice(-20);
     setOpenTabs(next);
     if (activeFile === path) setActiveFile(next[next.length - 1]);
   };
@@ -1330,6 +1434,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Remove Duplicate Lines', key: 'dedup', hint: '' },
       { label: 'Join Lines', key: 'join', hint: '' },
       { label: 'Trim Trailing Whitespace', key: 'trim', hint: '' },
+      { label: 'Close All Tabs', key: 'closeall', hint: '' },
+      { label: 'Close Saved Tabs', key: 'closesaved', hint: '' },
+      { label: 'Reopen Closed Tab', key: 'reopentab', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -1460,6 +1567,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       const diff = code.length - trimmed.length;
       setCode(trimmed);
       showToast(diff ? `Trimmed ${diff} chars` : 'No trailing whitespace', diff ? 'info' : 'warn');
+    }
+    else if (key === 'closeall') {
+      closedTabs.current = [...closedTabs.current, ...openTabs].slice(-20);
+      setOpenTabs(['src/main.js']); setActiveFile('src/main.js');
+      showToast('All tabs closed', 'info');
+    }
+    else if (key === 'closesaved') {
+      const unsaved = openTabs.filter(t => editFiles.hasOwnProperty(t) && initFiles[t] !== undefined && editFiles[t] !== initFiles[t]);
+      const toKeep = unsaved.length ? unsaved : ['src/main.js'];
+      closedTabs.current = [...closedTabs.current, ...openTabs.filter(t => !toKeep.includes(t))].slice(-20);
+      setOpenTabs(toKeep); if (!toKeep.includes(activeFile)) setActiveFile(toKeep[0]);
+      showToast('Saved tabs closed', 'info');
+    }
+    else if (key === 'reopentab') {
+      const last = closedTabs.current.pop();
+      if (last) { openFile(last); showToast(`Reopened ${last.split('/').pop()}`, 'info'); }
+      else showToast('No closed tabs', 'warn');
     }
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
@@ -1792,6 +1916,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (e.key === 'w' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
       e.preventDefault();
       if (openTabs.length > 1) closeTab(activeFile, e);
+      return;
+    }
+    /* Cmd+Shift+T: reopen last closed tab */
+    if (e.key === 't' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      const last = closedTabs.current.pop();
+      if (last) { openFile(last); showToast(`Reopened ${last.split('/').pop()}`, 'info'); }
       return;
     }
 
@@ -3397,7 +3528,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         <div key={i} style={{
                           fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
                           height: Math.round(16 * zf), position: 'relative',
-                          background: i + 1 === activeLn ? '#ffffff04' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : 'transparent',
+                          background: i + 1 === activeLn ? '#ffffff08' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : 'transparent',
+                          borderLeft: i + 1 === activeLn ? '2px solid #cba6f730' : '2px solid transparent',
                         }}>
                           {guides}
                           {searchHighlights || wordHighlights || <HighlightLine text={l} />}
@@ -3407,6 +3539,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               padding: '0 4px', fontSize: 8, color: '#cba6f7', cursor: 'pointer', marginLeft: 4,
                               pointerEvents: 'auto', position: 'relative', zIndex: 3,
                             }}>{`... ${foldableRanges[i] - i} lines`}</span>
+                          )}
+                          {/* Active scope guide line */}
+                          {activeScope && i + 1 > activeScope.startLn && i + 1 < activeScope.endLn && (
+                            <span style={{
+                              position: 'absolute', left: activeScope.indent * charW + Math.floor(charW / 2), top: 0, bottom: 0,
+                              width: 1, background: '#cba6f720', pointerEvents: 'none', zIndex: 1,
+                            }} />
                           )}
                           {/* Bracket pair colorization */}
                           {showBracketColors && bracketColorMap[i]?.map((b, bi) => (
@@ -4167,10 +4306,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'rm', 'export', 'find'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'rm', 'find'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'l' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setOutput(null); }
