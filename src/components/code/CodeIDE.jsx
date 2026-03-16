@@ -430,6 +430,7 @@ const SHORTCUTS = [
     ['\u2318+B', 'Toggle bookmark'],
     ['F3/Shift+F3', 'Next/prev search match'],
     ['F2/Shift+F2', 'Next/prev bookmark'],
+    ['Alt+F5/Shift+Alt+F5', 'Next/prev change'],
     ['Ctrl+Tab', 'Next tab'],
     ['Ctrl+Shift+Tab', 'Previous tab'],
     ['\u2318+W', 'Close tab'],
@@ -1743,6 +1744,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Next Bookmark', key: 'nextbm', hint: 'F2' },
       { label: 'Previous Bookmark', key: 'prevbm', hint: 'Shift+F2' },
       { label: 'Clear All Bookmarks', key: 'clearbm', hint: '' },
+      { label: 'Next Change', key: 'nextchange', hint: 'Alt+F5' },
+      { label: 'Previous Change', key: 'prevchange', hint: 'Shift+Alt+F5' },
       { label: 'Keyboard Shortcuts', key: 'help', hint: '\u2318+K' },
       { label: showBracketColors ? 'Disable Bracket Colors' : 'Enable Bracket Colors', key: 'bracketcolor', hint: '' },
       { label: showIndentRainbow ? 'Disable Indent Rainbow' : 'Enable Indent Rainbow', key: 'indentrainbow', hint: '' },
@@ -1829,6 +1832,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'nextbm') jumpBookmark(1);
     else if (key === 'prevbm') jumpBookmark(-1);
     else if (key === 'clearbm') { setBookmarks(new Set()); showToast('Bookmarks cleared', 'info'); }
+    else if (key === 'nextchange' || key === 'prevchange') {
+      const origContent = initFiles[activeFile];
+      if (origContent === undefined || origContent === code) { showToast('No changes in file', 'info'); return; }
+      const origLines = origContent.split('\n');
+      const changedLines = [];
+      for (let li = 0; li < lines.length; li++) {
+        if (li >= origLines.length || lines[li] !== origLines[li]) changedLines.push(li + 1);
+      }
+      if (!changedLines.length) { showToast('No changes', 'info'); return; }
+      const cur = activeLn;
+      const dir = key === 'nextchange' ? 1 : -1;
+      let target;
+      if (dir > 0) { target = changedLines.find(l => l > cur) || changedLines[0]; }
+      else { target = changedLines.filter(l => l < cur).pop() || changedLines[changedLines.length - 1]; }
+      goToLine(target);
+      showToast(`Change ${changedLines.indexOf(target) + 1}/${changedLines.length}`, 'info');
+    }
     else if (key === 'help') setHelpOpen(h => !h);
     else if (key === 'bracketcolor') setShowBracketColors(v => !v);
     else if (key === 'indentrainbow') setShowIndentRainbow(v => !v);
@@ -2607,6 +2627,29 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Next/prev git change: Alt+F5 / Shift+Alt+F5 */
+    if (e.key === 'F5' && e.altKey && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      const origContent = initFiles[activeFile];
+      if (origContent === undefined || origContent === code) { showToast('No changes in file', 'info'); return; }
+      const origLines = origContent.split('\n');
+      const changedLines = [];
+      for (let li = 0; li < lines.length; li++) {
+        if (li >= origLines.length || lines[li] !== origLines[li]) changedLines.push(li + 1);
+      }
+      if (!changedLines.length) { showToast('No changes', 'info'); return; }
+      const cur = activeLn;
+      let target;
+      if (e.shiftKey) {
+        target = changedLines.filter(l => l < cur).pop() || changedLines[changedLines.length - 1];
+      } else {
+        target = changedLines.find(l => l > cur) || changedLines[0];
+      }
+      goToLine(target);
+      showToast(`Change ${changedLines.indexOf(target) + 1}/${changedLines.length}`, 'info');
+      return;
+    }
+
     /* Toggle bookmark: Cmd+B */
     if (e.key === 'b' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
       e.preventDefault(); toggleBookmark(activeLn);
@@ -3022,6 +3065,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         @keyframes fadeInLine { from { background: #cba6f718; } to { background: transparent; } }
         @keyframes navPulse { 0% { background: #cba6f730; } 100% { background: transparent; } }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes ghostPulse { 0%,100% { opacity: .4; } 50% { opacity: .6; } }
       `}</style>
 
       {/* Title bar — drag handle for moving IDE on canvas */}
@@ -4237,7 +4281,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               }}>{i + 1}</span>
                             {isFolded && <span style={{ position: 'absolute', right: -2, fontSize: 6, color: '#cba6f760' }}>...</span>}
                             {bookmarks.has(i + 1) && <span style={{ position: 'absolute', left: 0, top: 0, fontSize: 7, color: '#89b4fa', lineHeight: lh }}>{'\u25CF'}</span>}
-                            {lineChanges[i] && <span style={{ position: 'absolute', right: -1, top: 2, bottom: 2, width: 2, borderRadius: 1, background: lineChanges[i] === 'added' ? '#27c93f' : '#89b4fa' }} />}
+                            {lineChanges[i] && <span onClick={e => { e.stopPropagation(); setDiffOpen(true); }} style={{ position: 'absolute', right: -1, top: 2, bottom: 2, width: 2, borderRadius: 1, background: lineChanges[i] === 'added' ? '#27c93f' : '#89b4fa', cursor: 'pointer' }} title={lineChanges[i] === 'added' ? 'Added line' : 'Modified line'} />}
                             {/* Quick fix lightbulb on active line with lint issues */}
                             {i + 1 === activeLn && lintMap[i] && (
                               <span onClick={e => {
@@ -5453,8 +5497,50 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   </>)}
                 </div>
                 {/* REPL input */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', padding: '2px 10px 4px', borderTop: '1px solid #ffffff06', gap: 4, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', padding: '2px 10px 4px', borderTop: '1px solid #ffffff06', gap: 4, flexShrink: 0, position: 'relative' }}>
                   <span style={{ fontSize: fs(9), color: '#cba6f7', flexShrink: 0, lineHeight: Math.round(15 * zf) + 'px', paddingTop: 2 }}>{termInput.includes('\n') ? '\u22EE' : '\u276F'}</span>
+                  {/* Ghost suggestion overlay */}
+                  {termInput && !termInput.includes('\n') && (() => {
+                    const val = termInput;
+                    let ghost = '';
+                    const dotMatch = val.match(/tp\.(\w*)$/);
+                    if (dotMatch) {
+                      const partial = dotMatch[1].toLowerCase();
+                      const methods = TP_AC.map(a => a.label.replace(/\(.*/, ''));
+                      const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
+                      if (match) ghost = match.substring(dotMatch[1].length) + '(';
+                    } else {
+                      const spaceIdx = val.indexOf(' ');
+                      if (spaceIdx > 0) {
+                        const cmd = val.substring(0, spaceIdx);
+                        const argPartial = val.substring(spaceIdx + 1).toLowerCase();
+                        const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find'];
+                        if (fileCmds.includes(cmd) && argPartial) {
+                          const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+                          const match = allPaths.find(p => p.toLowerCase().startsWith(argPartial) && p.toLowerCase() !== argPartial)
+                            || allPaths.find(p => p.split('/').pop().toLowerCase().startsWith(argPartial));
+                          if (match) ghost = match.substring(argPartial.length);
+                        }
+                      } else {
+                        const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias'];
+                        const partial = val.toLowerCase();
+                        const match = cmds.find(c => c.startsWith(partial) && c !== partial);
+                        if (match) ghost = match.substring(val.length);
+                      }
+                    }
+                    if (!ghost) return null;
+                    return (
+                      <span style={{
+                        position: 'absolute', left: 0, top: 2, right: 0, padding: '0 10px 0 24px',
+                        pointerEvents: 'none', fontSize: fs(9), fontFamily: MONO, lineHeight: Math.round(15 * zf) + 'px',
+                        color: 'transparent', whiteSpace: 'pre',
+                      }}>
+                        <span style={{ visibility: 'hidden' }}>{val}</span>
+                        <span style={{ color: '#555', opacity: .5 }}>{ghost}</span>
+                        <span style={{ color: '#444', fontSize: 7, marginLeft: 4 }}>Tab</span>
+                      </span>
+                    );
+                  })()}
                   <textarea ref={termInputRef} value={termInput}
                     onChange={e => setTermInput(e.target.value)}
                     placeholder="tp.shapes()..."
@@ -5539,7 +5625,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             borderTop: '1px solid #ffffff08', gap: 8, flexShrink: 0, background: '#181825'
           }}>
             <span style={{ fontSize: fs(8), color: output?.err ? '#f38ba8' : '#27c93f' }}>{'\u25CF'}</span>
-            <span style={{ fontSize: fs(8), color: '#555' }}>Ln {cursor.ln}, Col {cursor.col}</span>
+            <span onClick={() => { setGotoOpen(true); setGotoVal(''); setTimeout(() => gotoRef.current?.focus(), 50); }} onMouseDown={stop}
+              style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }}
+              title="Go to Line (Ctrl+G)">Ln {cursor.ln}, Col {cursor.col}</span>
             {cursorScope && <span style={{ fontSize: fs(8), color: '#89b4fa', opacity: .5 }} title="Current scope">{cursorScope}()</span>}
             {hasSel && (() => {
               const selText = code.substring(Math.min(el.selectionStart, el.selectionEnd), Math.max(el.selectionStart, el.selectionEnd));
@@ -5564,7 +5652,32 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             {editorZoom !== 1 && <span onClick={() => setEditorZoom(1)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: '#89b4fa', cursor: 'pointer', opacity: .7 }}
               title="Reset zoom (⌘0)">{Math.round(editorZoom * 100)}%</span>}
-            <span style={{ fontSize: fs(8), color: '#555' }}>
+            {(() => {
+              const origContent = initFiles[activeFile];
+              if (origContent !== undefined && origContent !== code) {
+                const origLines = origContent.split('\n');
+                let added = 0, modified = 0;
+                for (let li = 0; li < lines.length; li++) {
+                  if (li >= origLines.length) added++;
+                  else if (lines[li] !== origLines[li]) modified++;
+                }
+                const removed = Math.max(0, origLines.length - lines.length);
+                return (
+                  <span onClick={() => setDiffOpen(d => !d)} onMouseDown={stop}
+                    style={{ fontSize: fs(8), cursor: 'pointer', display: 'flex', gap: 3, alignItems: 'center' }}
+                    title="View changes (Alt+F5 to navigate)">
+                    {added > 0 && <span style={{ color: '#27c93f' }}>+{added}</span>}
+                    {modified > 0 && <span style={{ color: '#f9e2af' }}>~{modified}</span>}
+                    {removed > 0 && <span style={{ color: '#f38ba8' }}>-{removed}</span>}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+            <span onClick={() => {
+              const lang = activeFile.endsWith('.jsx') ? 'React JSX' : activeFile.endsWith('.tsx') ? 'React TSX' : activeFile.endsWith('.ts') ? 'TypeScript' : activeFile.endsWith('.js') ? 'JavaScript' : activeFile.endsWith('.json') ? 'JSON' : activeFile.endsWith('.css') ? 'CSS' : activeFile.endsWith('.md') ? 'Markdown' : 'Text';
+              showToast(`${lang} | ${lines.length} lines | ${code.length > 1024 ? (code.length / 1024).toFixed(1) + 'KB' : code.length + 'B'}`, 'info');
+            }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }} title="File info">
               {activeFile.endsWith('.jsx') ? 'React JSX' : activeFile.endsWith('.tsx') ? 'React TSX' : activeFile.endsWith('.ts') ? 'TypeScript' : activeFile.endsWith('.js') ? 'JavaScript' : activeFile.endsWith('.json') ? 'JSON' : activeFile.endsWith('.css') ? 'CSS' : activeFile.endsWith('.md') ? 'Markdown' : 'Text'}
             </span>
             <span style={{ fontSize: fs(8), color: '#555' }}>{code.length > 1024 ? `${(code.length / 1024).toFixed(1)}KB` : `${code.length}B`}</span>
