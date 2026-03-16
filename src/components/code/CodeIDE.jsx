@@ -427,6 +427,7 @@ const SHORTCUTS = [
     ['\u2318+/', 'Toggle line comment'],
     ['\u2318+\u21E7+/', 'Toggle block comment'],
     ['\u2318+D', 'Select next occurrence'],
+    ['\u2318+\u21E7+L', 'Find all occurrences'],
     ['\u2318+L', 'Select line (expandable)'],
     ['\u2318+A', 'Select all'],
     ['\u2318+Shift+D', 'Duplicate line'],
@@ -922,6 +923,46 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     setTermHistory(prev => [...prev.slice(-50), input]);
     setTermHistIdx(-1);
     const cmd = input.trim();
+    // Pipe support: cmd1 | cmd2 — run cmd1, capture output, feed to cmd2
+    if (cmd.includes(' | ') && !cmd.startsWith('echo ')) {
+      const parts = cmd.split(' | ').map(p => p.trim());
+      let pipedInput = '';
+      for (let pi = 0; pi < parts.length; pi++) {
+        const pcmd = parts[pi] + (pipedInput ? ' ' + pipedInput : '');
+        // Capture output of this command
+        const capturedLogs = [];
+        const origOutput = output;
+        const origSetOutput = setOutput;
+        // Run the sub-command and capture its text output
+        const getSubOutput = (subcmd) => {
+          if (subcmd === 'ls') return [...Object.keys(editFiles), ...Object.keys(GEN_FILES)].join('\n');
+          if (subcmd.startsWith('cat ')) { const f = getFile(subcmd.slice(4).trim()); return f ? f.content : ''; }
+          if (subcmd === 'pwd') return activeFile;
+          if (subcmd === 'date') return new Date().toString();
+          if (subcmd.startsWith('echo ')) return subcmd.slice(5);
+          if (subcmd === 'history') return termHistory.join('\n');
+          if (subcmd.startsWith('grep ')) {
+            const term = subcmd.slice(5).trim();
+            const results = [];
+            const allFiles = { ...editFiles, ...Object.fromEntries(Object.keys(GEN_FILES).map(k => [k, GEN_FILES[k]])) };
+            for (const [p, c] of Object.entries(allFiles)) {
+              const content = typeof c === 'function' ? '' : c;
+              content.split('\n').forEach((l, li) => { if (l.toLowerCase().includes(term.toLowerCase())) results.push(`${p}:${li + 1}: ${l.trim()}`); });
+            }
+            return results.join('\n');
+          }
+          if (subcmd.startsWith('sort')) { return pipedInput.split('\n').sort().join('\n'); }
+          if (subcmd.startsWith('uniq')) { const lines = pipedInput.split('\n'); return lines.filter((l, i) => i === 0 || l !== lines[i - 1]).join('\n'); }
+          if (subcmd.startsWith('head')) { const n = parseInt(subcmd.match(/\d+/)?.[0]) || 10; return pipedInput.split('\n').slice(0, n).join('\n'); }
+          if (subcmd.startsWith('tail')) { const n = parseInt(subcmd.match(/\d+/)?.[0]) || 10; return pipedInput.split('\n').slice(-n).join('\n'); }
+          if (subcmd.startsWith('wc')) { const lns = pipedInput.split('\n'); return `${lns.length} lines, ${pipedInput.length} chars`; }
+          return pipedInput; // passthrough
+        };
+        pipedInput = getSubOutput(parts[pi].trim() === 'sort' || parts[pi].trim() === 'uniq' || parts[pi].trim().startsWith('head') || parts[pi].trim().startsWith('tail') || parts[pi].trim().startsWith('wc') ? parts[pi].trim() : pcmd);
+      }
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F ${cmd}` }, { t: 'log', v: pipedInput }], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
     // Built-in terminal commands
     if (cmd === 'clear') { setOutput(null); setTermInput(''); return; }
     if (cmd === 'help') {
@@ -955,6 +996,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  man <m>    — Show docs for tp method' },
         { t: 'log', v: '  which <m>  — Show docs for tp method' },
         { t: 'log', v: '  alias      — Show terminal shortcuts' },
+        { t: 'log', v: '  cmd | cmd  — Pipe output between commands' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -1429,15 +1471,42 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return occ;
   }, [code, selectedWord]);
 
-  /* ---- Breadcrumb scope detection ---- */
-  const currentScope = React.useMemo(() => {
+  /* ---- Breadcrumb scope detection (nested chain) ---- */
+  const scopeChain = React.useMemo(() => {
+    const chain = [];
     const upTo = lines.slice(0, activeLn);
-    for (let i = upTo.length - 1; i >= 0; i--) {
-      const m = upTo[i].match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async)|(\w+)\s*\(.*\)\s*\{)/);
-      if (m) return m[1] || m[2] || m[3];
+    let braceDepth = 0;
+    const depths = [];
+    // Track brace depth at each scope start
+    for (let i = 0; i < upTo.length; i++) {
+      const m = upTo[i].match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async)|class\s+(\w+)|(\w+)\s*\(.*\)\s*\{)/);
+      if (m) {
+        const name = m[1] || m[2] || m[3] || m[4];
+        const kind = m[3] ? 'class' : 'fn';
+        chain.push({ name, kind, line: i + 1, depth: braceDepth });
+      }
+      for (const ch of upTo[i]) {
+        if (ch === '{') braceDepth++;
+        else if (ch === '}') {
+          braceDepth--;
+          // Remove scopes that have ended
+          while (chain.length && chain[chain.length - 1].depth >= braceDepth) {
+            // Check if this scope's brace was closed
+            if (chain[chain.length - 1].depth >= braceDepth) {
+              // Keep the scope if we're still inside it
+              const lastScope = chain[chain.length - 1];
+              // Check if there's a foldable range that extends past activeLn
+              const foldEnd = foldableRanges[lastScope.line - 1];
+              if (foldEnd !== undefined && foldEnd + 1 >= activeLn) break;
+              chain.pop();
+            } else break;
+          }
+        }
+      }
     }
-    return null;
-  }, [lines, activeLn]);
+    return chain.length ? chain : null;
+  }, [lines, activeLn, foldableRanges]);
+  const currentScope = scopeChain ? scopeChain[scopeChain.length - 1]?.name : null;
 
   /* ---- Outline: extract symbols from code ---- */
   const outlineSymbols = React.useMemo(() => {
@@ -2393,6 +2462,27 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Select all occurrences: Cmd+Shift+L — opens search with word, highlights all */
+    if (e.key === 'l' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      let word;
+      if (s !== en) {
+        word = code.substring(s, en);
+      } else {
+        let ws = s, we = s;
+        while (ws > 0 && /\w/.test(code[ws - 1])) ws--;
+        while (we < code.length && /\w/.test(code[we])) we++;
+        word = code.substring(ws, we);
+      }
+      if (word && word.length >= 2 && !word.includes('\n')) {
+        setSearchOpen(true); setShowReplace(true); setSearchTerm(word); setSearchWholeWord(true);
+        const count = (code.match(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g')) || []).length;
+        showToast(`${count} occurrence${count !== 1 ? 's' : ''} — use Replace All to rename`, 'info');
+        setTimeout(() => searchRef.current?.focus(), 50);
+      }
+      return;
+    }
+
     /* Select current line: Cmd+L */
     if (e.key === 'l' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
       e.preventDefault();
@@ -3198,6 +3288,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         }
       }
     }
+    /* Auto-close </tag> — typing / after < inserts the matching closing tag */
+    if (e.key === '/' && s === en && !readonly && s > 0 && code[s - 1] === '<') {
+      // Find the nearest unclosed open tag before cursor
+      const before = code.substring(0, s - 1);
+      const tagStack = [];
+      const tagRx = /<\/?([A-Za-z][A-Za-z0-9.-]*)\b[^>]*?\/?>/g;
+      let tm;
+      while ((tm = tagRx.exec(before)) !== null) {
+        const isSelfClose = tm[0].endsWith('/>');
+        const isClose = tm[0].startsWith('</');
+        if (isSelfClose) continue;
+        if (isClose) { if (tagStack.length && tagStack[tagStack.length - 1] === tm[1]) tagStack.pop(); }
+        else tagStack.push(tm[1]);
+      }
+      if (tagStack.length) {
+        const tag = tagStack[tagStack.length - 1];
+        e.preventDefault();
+        const closing = `/${tag}>`;
+        setCode(code.substring(0, s) + closing + code.substring(s));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + closing.length }, 0);
+        return;
+      }
+    }
+
     /* Smart semicolon: skip duplicate at end of line */
     if (e.key === ';' && s === en) {
       const lineEnd = code.indexOf('\n', s);
@@ -3789,10 +3903,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 </span>
               </React.Fragment>
             ))}
-            {currentScope && <>
-              <span style={{ fontSize: 7, color: '#444' }}>{'\u203A'}</span>
-              <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .7 }}>{currentScope}()</span>
-            </>}
+            {scopeChain && scopeChain.map((scope, si) => (
+              <React.Fragment key={si}>
+                <span style={{ fontSize: 7, color: '#444' }}>{'\u203A'}</span>
+                <span onClick={e => { e.stopPropagation(); goToLine(scope.line); }} onMouseDown={stop}
+                  style={{ fontSize: fs(8), color: si === scopeChain.length - 1 ? '#cba6f7' : '#888', opacity: si === scopeChain.length - 1 ? .8 : .5, cursor: 'pointer' }}
+                  title={`Go to ${scope.name} (line ${scope.line})`}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = si === scopeChain.length - 1 ? '.8' : '.5'}>
+                  {scope.kind === 'class' ? scope.name : `${scope.name}()`}
+                </span>
+              </React.Fragment>
+            ))}
             {readonly && <span style={{ fontSize: 7, color: '#f9e2af', opacity: .4, marginLeft: 4 }}>read-only</span>}
             {!readonly && editFiles[activeFile] !== initFiles[activeFile] && <span style={{ fontSize: 6, color: '#f9e2af', marginLeft: 2 }} title="Modified">{'\u25CF'}</span>}
           </div>}
