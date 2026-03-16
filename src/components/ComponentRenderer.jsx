@@ -885,7 +885,84 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     const bars=P("bars");const ring=P("ring");
     if(v===0)return <div style={{...b,background:"#0c0c0e",borderRadius:4,border:`1px solid ${p.ac}20`,padding:14,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><T k="title" s={{fontSize:10,color:p.ac,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em"}}>TELEMETRY</T><div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:5,height:5,borderRadius:999,background:"#4CAF50",animation:"tp-pulse 2s ease infinite"}}/><T k="status" s={{fontSize:8,color:"#4CAF50",letterSpacing:"0.05em"}}>LIVE</T></div></div><div style={{display:"flex",gap:3,alignItems:"flex-end",flex:1,padding:"8px 0"}}>{bars.map((h,i)=><div key={i} style={{flex:1,background:p.ac,opacity:i===bars.length-1?.8:.3,borderRadius:1,height:`${h}%`,transformOrigin:"bottom",animation:`tp-bar-grow .6s ease-out ${i*0.08}s both`}}/>)}</div><div style={{display:"flex",justifyContent:"space-between"}}><T k="metric1" s={{fontSize:9,color:"#666"}}>PKT: 2,847</T><T k="metric2" s={{fontSize:9,color:"#666"}}>LAT: 12ms</T></div></div>;
     if(v===1)return <div style={{...b,background:"#0c0c0e",borderRadius:4,border:`1px solid ${p.ac}20`,padding:14,display:"flex",flexDirection:"column",gap:10,fontFamily:"'JetBrains Mono',monospace"}}><T k="title" s={{fontSize:10,color:p.ac,fontWeight:600,letterSpacing:"0.06em"}}>SIGNAL CAPTURE</T><div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{position:"relative",width:90,height:90}}><svg width="90" height="90" viewBox="0 0 90 90"><circle cx="45" cy="45" r="38" fill="none" stroke={p.ac+"15"} strokeWidth="4"/><circle cx="45" cy="45" r="38" fill="none" stroke={p.ac} strokeWidth="4" strokeDasharray={`${ring/100*238} ${238}`} strokeLinecap="round" transform="rotate(-90 45 45)" style={{animation:"tp-ring 1s ease-out forwards"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><T k="value" s={{fontSize:18,fontWeight:600,color:p.ac}}>{ring}%</T><T k="sub" s={{fontSize:8,color:"#555"}}>SIGNAL</T></div></div></div><div style={{display:"flex",gap:8}}>{[{l:"IN",v:"1.2K"},{l:"OUT",v:"847"},{l:"ERR",v:"3"}].map((m,i)=><div key={i} style={{flex:1,padding:"4px 0",borderTop:`1px solid ${p.ac}15`,textAlign:"center"}}><div style={{fontSize:7,color:"#555",letterSpacing:"0.08em"}}>{m.l}</div><T k={`m${i}`} s={{fontSize:10,color:i===2?"#E05050":p.ac,opacity:.8}}>{m.v}</T></div>)}</div></div>;
-    return <div style={{...b,background:"#0c0c0e",borderRadius:4,border:`1px solid ${p.ac}15`,padding:14,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><T k="title" s={{fontSize:10,color:"#888",fontWeight:500}}>System</T><T k="value" s={{fontSize:28,fontWeight:600,color:p.ac,letterSpacing:"-0.02em",animation:"tp-count .5s ease-out"}}>847ms</T><div style={{flex:1,display:"flex",alignItems:"flex-end"}}><svg style={{width:"100%",height:"100%"}} viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M0,35 Q10,30 20,28 T40,20 T60,25 T80,15 T100,18" fill="none" stroke={p.ac+"50"} strokeWidth="1.5" style={{strokeDasharray:200,animation:"tp-draw 1.2s ease-out forwards"}}/><path d="M0,35 Q10,30 20,28 T40,20 T60,25 T80,15 T100,18 L100,40 L0,40 Z" fill={p.ac+"08"} style={{animation:"tp-fadein .8s ease-out .4s both"}}/></svg></div><T k="sub" s={{fontSize:9,color:"#555"}}>avg response · last 24h</T></div>;
+    if(v===2)return <div style={{...b,background:"#0c0c0e",borderRadius:4,border:`1px solid ${p.ac}15`,padding:14,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><T k="title" s={{fontSize:10,color:"#888",fontWeight:500}}>System</T><T k="value" s={{fontSize:28,fontWeight:600,color:p.ac,letterSpacing:"-0.02em",animation:"tp-count .5s ease-out"}}>847ms</T><div style={{flex:1,display:"flex",alignItems:"flex-end"}}><svg style={{width:"100%",height:"100%"}} viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M0,35 Q10,30 20,28 T40,20 T60,25 T80,15 T100,18" fill="none" stroke={p.ac+"50"} strokeWidth="1.5" style={{strokeDasharray:200,animation:"tp-draw 1.2s ease-out forwards"}}/><path d="M0,35 Q10,30 20,28 T40,20 T60,25 T80,15 T100,18 L100,40 L0,40 Z" fill={p.ac+"08"} style={{animation:"tp-fadein .8s ease-out .4s both"}}/></svg></div><T k="sub" s={{fontSize:9,color:"#555"}}>avg response · last 24h</T></div>;
+    /* v3 Gradient — modern data panel with gradient header, KPI metrics, mini sparkline, trend badges */
+    if(v===3){const sparkPts=bars.map((h,i)=>[i*(60/(bars.length-1)),20-h*0.18]);const sparkPath="M"+sparkPts.map(([x,y])=>`${x},${y}`).join(" L");const isUp=bars[bars.length-1]>bars[0];return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",animation:"tp-fadein .4s ease-out both"}}>
+      <div style={{background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac+"cc"})`,padding:"14px 16px 12px",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-20,right:-20,width:80,height:80,borderRadius:999,background:"rgba(255,255,255,0.08)",pointerEvents:"none"}}/>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></div>
+            <T k="title" s={{fontSize:f(11),color:"#fff",fontWeight:600,opacity:.9}}>Analytics</T>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,255,255,0.12)",borderRadius:999,padding:"3px 8px"}}>
+            <div style={{width:5,height:5,borderRadius:999,background:"#4ADE80",animation:"tp-pulse 2s ease infinite"}}/>
+            <span style={{fontSize:9,color:"#fff",opacity:.8}}>Live</span>
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:12,flex:1}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+          <div>
+            <T k="value" s={{fontSize:f(24),fontWeight:700,color:p.tx,lineHeight:1,letterSpacing:"-0.02em"}}>2,847</T>
+            <T k="sub" s={{fontSize:f(9),color:p.mu,display:"block",marginTop:3}}>Total events</T>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:3,background:isUp?"#10B98112":"#EF444412",borderRadius:999,padding:"3px 8px"}}>
+            <svg width="8" height="8" viewBox="0 0 10 10"><path d={isUp?"M2 7L5 3L8 7":"M2 3L5 7L8 3"} fill="none" stroke={isUp?"#10B981":"#EF4444"} strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <span style={{fontSize:f(9),fontWeight:600,color:isUp?"#10B981":"#EF4444"}}>18.2%</span>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,flex:1,alignItems:"flex-end"}}>
+          {bars.map((h,i)=><div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            <div style={{width:"100%",height:`${h}%`,minHeight:3,background:i===bars.length-1?`linear-gradient(180deg,${p.ac},${p.ac}80)`:p.ac+"18",borderRadius:4,transformOrigin:"bottom",animation:`tp-bar-grow .5s ease-out ${i*0.07}s both`,transition:"background .2s"}}/>
+          </div>)}
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",borderTop:`1px solid ${p.bd}`,paddingTop:8}}>
+          {[{l:"Avg",v:"342ms"},{l:"P99",v:"1.2s"},{l:"Err",v:"0.3%",c:"#EF4444"}].map((m,i)=><div key={i} style={{textAlign:"center",animation:`tp-fadein .3s ease-out ${.4+i*.1}s both`}}>
+            <div style={{fontSize:f(8),color:p.mu,textTransform:"uppercase",letterSpacing:".06em"}}>{m.l}</div>
+            <T k={`m${i}`} s={{fontSize:f(11),fontWeight:600,color:m.c||p.tx,marginTop:1}}>{m.v}</T>
+          </div>)}
+        </div>
+      </div>
+    </div>}
+    /* v4 Glass — frosted glassmorphism panel with aurora orb, ring gauge, sparkline, staggered stats */
+    {const sparkPts=bars.map((h,i)=>[i*(80/(bars.length-1)),24-h*0.2]);const sparkPath="M"+sparkPts.map(([x,y])=>`${x},${y}`).join(" L");return <div style={{...b,background:p.card+"e0",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,border:`1px solid ${p.ac}15`,padding:16,display:"flex",flexDirection:"column",gap:12,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 rgba(255,255,255,0.06)`,animation:"tp-fadein .4s ease-out both"}}>
+      <div style={{position:"absolute",top:-30,right:-30,width:100,height:100,borderRadius:999,background:`radial-gradient(circle,${p.ac}15,${p.ac2||p.ac}08,transparent 70%)`,pointerEvents:"none"}}/>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:30,height:30,borderRadius:10,background:`linear-gradient(135deg,${p.ac}20,${p.ac2||p.ac}15)`,display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid ${p.ac}15`}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <div><T k="title" s={{fontSize:f(11),fontWeight:600,color:p.tx}}>Performance</T><div style={{fontSize:f(8),color:p.mu,marginTop:1}}>Real-time</div></div>
+        </div>
+        <div style={{fontSize:f(9),color:p.mu,background:p.su,borderRadius:8,padding:"3px 8px",border:`1px solid ${p.bd}`}}>24h</div>
+      </div>
+      <div style={{display:"flex",gap:14,alignItems:"center",position:"relative",zIndex:1}}>
+        <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
+          <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke={p.ac+"12"} strokeWidth="5"/><circle cx="32" cy="32" r="26" fill="none" stroke={p.ac} strokeWidth="5" strokeDasharray={`${ring/100*163} ${163}`} strokeLinecap="round" transform="rotate(-90 32 32)" style={{animation:"tp-ring 1s ease-out forwards",filter:`drop-shadow(0 0 4px ${p.ac}40)`}}/></svg>
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <T k="ring" s={{fontSize:f(14),fontWeight:700,color:p.tx,lineHeight:1}}>{ring}%</T>
+            <span style={{fontSize:7,color:p.mu}}>uptime</span>
+          </div>
+        </div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>
+          <div>
+            <T k="value" s={{fontSize:f(18),fontWeight:700,color:p.tx,lineHeight:1}}>1,247</T>
+            <T k="sub" s={{fontSize:f(8),color:p.mu,display:"block",marginTop:2}}>requests/min</T>
+          </div>
+          <svg width="80" height="24" viewBox="0 0 80 24" style={{overflow:"visible"}}>
+            <defs><linearGradient id="dpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={p.ac} stopOpacity=".15"/><stop offset="100%" stopColor={p.ac} stopOpacity="0"/></linearGradient></defs>
+            <path d={sparkPath+" L80,24 L0,24 Z"} fill="url(#dpg)" style={{animation:"tp-fadein .5s ease-out .3s both"}}/>
+            <path d={sparkPath} fill="none" stroke={p.ac} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{strokeDasharray:200,animation:"tp-draw 1s ease-out forwards"}}/>
+            <circle cx={sparkPts[sparkPts.length-1][0]} cy={sparkPts[sparkPts.length-1][1]} r="2" fill={p.ac} style={{animation:"tp-fadein .3s ease-out .8s both"}}/>
+          </svg>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:6,position:"relative",zIndex:1}}>
+        {[{l:"Latency",v:"12ms",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},{l:"Errors",v:"0.1%",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>},{l:"Throughput",v:"98%",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}].map((m,i)=><div key={i} style={{flex:1,background:p.su+"80",borderRadius:10,padding:"8px 10px",border:`1px solid ${p.bd}`,animation:`tp-fadein .3s ease-out ${.3+i*.1}s both`,display:"flex",flexDirection:"column",gap:3}}>
+          <div style={{display:"flex",alignItems:"center",gap:4,color:p.mu}}>{m.icon}<span style={{fontSize:f(8),textTransform:"uppercase",letterSpacing:".04em"}}>{m.l}</span></div>
+          <T k={`s${i}`} s={{fontSize:f(11),fontWeight:600,color:p.tx}}>{m.v}</T>
+        </div>)}
+      </div>
+    </div>}
   }
 
   /* ---- CHART ---- */

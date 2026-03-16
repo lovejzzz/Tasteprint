@@ -47,7 +47,7 @@ export const VARIANTS = {
   tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered"],
   heading:   ["Clean","Accent bar","Overline","Gradient","Badge"],
   "stat-card":["Outlined","Tinted icon","Left accent","Inverted","Terminal"],
-  "dash-panel":["Telemetry","Signal","Minimal"],
+  "dash-panel":["Telemetry","Signal","Minimal","Gradient","Glass"],
   "image-placeholder":["Subtle","Gradient","Dashed"],
   "avatar-row":["Circular","Small tight","Rounded sq"],
   "list-item":["Card row","Divider","Tinted","Glass","Settings"],
