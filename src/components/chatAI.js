@@ -12757,6 +12757,219 @@ function applyScaffolding(response, text, topics) {
   return response;
 }
 
+/* ── Calibrated Agreement & Nuanced Stance (Round 78) ──
+ * The biggest chatbot tell: unconditional agreement with everything
+ * the user says. Real humans have a spectrum of agreement:
+ *
+ * 1. Strong agree — "Yes! Exactly." / "100%" / "That's exactly it"
+ * 2. Warm agree — "Yeah, that tracks" / "I think so too"
+ * 3. Partial agree — "Hmm, sort of — I'd add that..." / "Mostly, but..."
+ * 4. Neutral/curious — "Interesting take" / "I hadn't thought of it that way"
+ * 5. Gentle pushback — "I see what you mean, though..." / "Hmm not sure I'd go that far"
+ *
+ * The system detects user claims/opinions, scores them on a confidence
+ * axis (strong claim vs. tentative), checks if the AI has a prior stance
+ * on the topic, and produces calibrated agreement with natural variance.
+ *
+ * 20% fire rate, 4-turn cooldown. Only triggers on opinion-bearing input.
+ */
+
+let lastAgreeTurn = 0;
+let lastAgreeLevel = "";   // track last level to avoid repeating same tier
+let agreementHistory = []; // last 5 agreement levels for distribution tracking
+
+// Detect if user input contains a claim or opinion worth responding to
+function detectUserClaim(text) {
+  const lower = text.toLowerCase();
+  const words = lower.split(/\s+/);
+  if (words.length < 4) return null; // too short to be a real claim
+
+  // Strong opinion markers
+  const strongPatterns = [
+    /\b(?:i think|i believe|in my (?:opinion|experience)|i'm (?:pretty |fairly )?sure|i feel like|honestly|i'd say)\b/,
+    /\b(?:obviously|clearly|definitely|absolutely|without a doubt|no question)\b/,
+    /\b(?:the best|the worst|always|never|everyone knows|nobody|you should)\b/,
+    /\b(?:overrated|underrated|overhyped|game.?changer|trash|amazing|terrible)\b/,
+  ];
+
+  // Tentative opinion markers
+  const tentativePatterns = [
+    /\b(?:maybe|perhaps|i guess|i suppose|kind of|sort of|not sure but|i wonder if)\b/,
+    /\b(?:could be|might be|seems like|i dunno|idk|probably)\b/,
+  ];
+
+  // Extract the claim content
+  const claimExtract = [
+    /(?:i think|i believe|i feel like|i'd say)\s+(.{8,80}?)(?:\.|!|,|\?|$)/i,
+    /(?:honestly|imo|in my opinion),?\s*(.{8,80}?)(?:\.|!|,|\?|$)/i,
+    /(.{8,60})\s+is\s+(?:overrated|underrated|the best|the worst|terrible|amazing|great|bad|trash)/i,
+  ];
+
+  let claimText = null;
+  for (const pat of claimExtract) {
+    const m = lower.match(pat);
+    if (m) { claimText = m[1].trim(); break; }
+  }
+
+  let confidence = 0; // -1 to 1: tentative → strong
+  for (const pat of strongPatterns) {
+    if (pat.test(lower)) { confidence += 0.35; }
+  }
+  for (const pat of tentativePatterns) {
+    if (pat.test(lower)) { confidence -= 0.3; }
+  }
+
+  // Exclamation marks and caps boost confidence
+  if ((text.match(/!/g) || []).length >= 2) confidence += 0.2;
+  if (/[A-Z]{3,}/.test(text)) confidence += 0.15;
+  // Question marks reduce it
+  if (text.includes("?") && !text.includes("!")) confidence -= 0.2;
+
+  confidence = Math.max(-1, Math.min(1, confidence));
+
+  // Must have SOME opinion signal to trigger
+  const hasOpinion = strongPatterns.some(p => p.test(lower)) || tentativePatterns.some(p => p.test(lower))
+    || /\b(?:is|are|was)\s+(?:so |really |pretty |super |incredibly |way too )/.test(lower)
+    || /\b(?:love|hate|can't stand|adore|despise)\b/.test(lower);
+
+  if (!hasOpinion) return null;
+
+  return { confidence, claim: claimText, isQuestion: text.trim().endsWith("?") };
+}
+
+// Determine agreement level (1-5) based on multiple signals
+function computeAgreementLevel(claim, topics) {
+  // Base: slight lean toward agreement (humans do agree more than disagree in casual chat)
+  let score = 0.6; // 0=strong disagree, 1=strong agree
+
+  // Check if AI has a prior opinion on this topic
+  const topic = topics[0] || "";
+  const prior = aiSelfModel.opinions[topic];
+  if (prior) {
+    // If AI has expressed a strong opinion before, lean toward consistency
+    if (prior.stance === "positive" && claim.confidence > 0) score += 0.15;
+    if (prior.stance === "negative" && claim.confidence > 0) score -= 0.15;
+  }
+
+  // Very confident claims get slightly less agreement (contrarian instinct)
+  if (claim.confidence > 0.6) score -= 0.1;
+  // Tentative claims get warmer agreement (encouraging)
+  if (claim.confidence < -0.3) score += 0.15;
+
+  // Questions get neutral/curious rather than strong agree/disagree
+  if (claim.isQuestion) score = 0.5 + (score - 0.5) * 0.3;
+
+  // Add natural variance — humans aren't perfectly calibrated
+  score += (Math.random() - 0.5) * 0.25;
+  score = Math.max(0, Math.min(1, score));
+
+  // Prevent too many same-level agreements in a row
+  if (agreementHistory.length >= 3) {
+    const recent = agreementHistory.slice(-3);
+    const allSame = recent.every(l => l === recent[0]);
+    if (allSame) {
+      // Force a different level
+      score += (Math.random() > 0.5 ? 0.2 : -0.2);
+      score = Math.max(0, Math.min(1, score));
+    }
+  }
+
+  // Map score to 5 levels
+  if (score >= 0.8) return "strong_agree";
+  if (score >= 0.6) return "warm_agree";
+  if (score >= 0.4) return "partial";
+  if (score >= 0.2) return "curious";
+  return "pushback";
+}
+
+// Generate agreement prefix for each level
+function getAgreementPrefix(level, claim) {
+  const prefixes = {
+    strong_agree: [
+      "Yes — exactly.",
+      "100%.",
+      "That's exactly it.",
+      "Hard agree.",
+      "This. Right here.",
+      "Couldn't have said it better.",
+    ],
+    warm_agree: [
+      "Yeah, that tracks.",
+      "I think so too.",
+      "Mm, fair point.",
+      "Yeah — I'd go along with that.",
+      "That makes sense to me.",
+      "Solid take.",
+    ],
+    partial: [
+      "Hmm, mostly — though I'd add that",
+      "Sort of? I think there's a nuance —",
+      "I see where you're coming from, but",
+      "Partly, yeah — though",
+      "Interesting — I'd tweak that a bit:",
+      "Close — with one caveat though.",
+    ],
+    curious: [
+      "Huh, I hadn't thought about it that way.",
+      "Interesting take —",
+      "That's a perspective I don't hear often.",
+      "Hmm, maybe? Let me think on that.",
+      "I can see how you'd land there.",
+      "That's a spicy take — tell me more.",
+    ],
+    pushback: [
+      "Hmm, I'm not sure I'd go that far —",
+      "Interesting, though I might push back a little:",
+      "See, I'd actually argue the opposite —",
+      "Respectfully... not sure about that one.",
+      "Hmm, that's where we'd diverge a bit.",
+      "I hear you, but —",
+    ],
+  };
+
+  const pool = prefixes[level] || prefixes.warm_agree;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function applyCalibratedAgreement(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 3) return response; // let conversation warm up
+  if (turn - lastAgreeTurn < 4) return response; // 4-turn cooldown
+  if (response.length > 220) return response; // don't bloat long responses
+  if (Math.random() > 0.20) return response; // 20% fire rate
+
+  const claim = detectUserClaim(text);
+  if (!claim) return response;
+
+  const level = computeAgreementLevel(claim, topics);
+
+  // Don't repeat same agreement level twice in a row
+  if (level === lastAgreeLevel && Math.random() > 0.3) return response;
+
+  const prefix = getAgreementPrefix(level, claim);
+  lastAgreeTurn = turn;
+  lastAgreeLevel = level;
+  agreementHistory.push(level);
+  if (agreementHistory.length > 5) agreementHistory.shift();
+
+  // For partial/pushback, the prefix flows INTO the response
+  if (level === "partial" || level === "pushback") {
+    // Remove any existing agreement marker at start of response
+    const cleaned = response.replace(/^(?:yeah|yes|sure|right|exactly|totally|definitely)[,!.]?\s*/i, "");
+    return prefix + " " + cleaned;
+  }
+
+  // For strong/warm agree, prefix stands alone before the response
+  if (level === "strong_agree" || level === "warm_agree") {
+    // Don't double up — if response already starts with agreement, skip
+    if (/^(?:yeah|yes|exactly|totally|right|agreed|true)/i.test(response)) return response;
+    return prefix + " " + response;
+  }
+
+  // Curious — prefix + response
+  return prefix + " " + response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -13263,6 +13476,9 @@ export function getAIResponse(input) {
   // ═══ Scaffolding: reflect growing understanding when user explains over multiple turns ═══
   response = applyScaffolding(response, text, currentTopics);
 
+  // ═══ Calibrated agreement: nuanced agree/disagree instead of yes-man chatbot ═══
+  response = applyCalibratedAgreement(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -13315,6 +13531,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
