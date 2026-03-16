@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 65: Echo-back fragments & conversational texture
+   Round 66: Counterintuitive knowledge & surprise insights
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -10829,6 +10829,137 @@ function applyEchoBack(response, text, sent, topics) {
   return echo + response;
 }
 
+/* ── Counterintuitive Knowledge & Surprise Insights (Round 66) ──
+ * Real humans occasionally surprise you — "wait, did you know...?"
+ * This system stores compact counterintuitive facts by topic and
+ * injects them as mid-conversation "knowledge drops" that make the AI
+ * feel genuinely interesting. Uses "most people think X, but actually Y"
+ * patterns. Tracks used surprises to never repeat. Only fires ~12%
+ * of the time when topics are known, creating a rare delight effect.
+ */
+
+const SURPRISE_FACTS = {
+  design: [
+    { myth: "good design is subjective", truth: "there are measurable usability principles — Fitts's law, Hick's law — that predict what works", short: "design has math behind it" },
+    { myth: "more options are better", truth: "too many choices actually paralyze people — the jam study showed 10x fewer purchases with 24 options vs 6", short: "fewer choices = more action" },
+    { myth: "white space is wasted space", truth: "studies show increasing whitespace around text improves comprehension by up to 20%", short: "blank space helps reading" },
+    { myth: "users read web pages", truth: "eye-tracking shows people scan in an F-pattern and only read about 20% of the text on a page", short: "people barely read online" },
+  ],
+  code: [
+    { myth: "more code means more features", truth: "the best engineers often DELETE code — the most legendary commit in Git history was negative 45,000 lines", short: "less code is usually better" },
+    { myth: "bugs come from complex code", truth: "most production outages come from simple config changes, not complex logic — a missing semicolon took down Amazon for hours once", short: "simple mistakes cause the biggest crashes" },
+    { myth: "programming is all logic", truth: "studies show developers spend 58% of their time just UNDERSTANDING code, not writing it", short: "reading code > writing code" },
+    { myth: "you need to be good at math", truth: "a Cambridge study found programming ability correlates more with language learning aptitude than math skills", short: "coding is more like language than math" },
+  ],
+  tech: [
+    { myth: "the internet is in the cloud", truth: "99% of international data travels through underwater cables — there are over 550 of them, and sharks bite them sometimes", short: "the internet is mostly underwater cables" },
+    { myth: "AI is new", truth: "the term 'artificial intelligence' was coined in 1956 — the field is almost 70 years old, it just recently got fast enough to be useful", short: "AI is actually decades old" },
+    { myth: "more data is always better", truth: "Google found that a simple algorithm with lots of data often beats a sophisticated algorithm with less data — but past a point, data quality matters way more than quantity", short: "data quality beats data quantity" },
+  ],
+  music: [
+    { myth: "vinyl sounds better than digital", truth: "in blind tests, audio engineers can't reliably tell 320kbps MP3 from uncompressed audio — vinyl warmth is mostly nostalgia", short: "vinyl vs digital is mostly placebo" },
+    { myth: "Mozart makes babies smarter", truth: "the 'Mozart effect' study was done on college students, lasted 15 minutes, and has never been successfully replicated", short: "the Mozart effect is a myth" },
+  ],
+  food: [
+    { myth: "sushi means raw fish", truth: "sushi actually refers to the vinegared rice — you can have sushi with no fish at all. Sashimi is the raw fish", short: "sushi = rice, not fish" },
+    { myth: "spicy food damages your stomach", truth: "capsaicin actually has anti-inflammatory properties and cultures that eat the most spicy food have LOWER rates of stomach issues", short: "spicy food is actually protective" },
+  ],
+  science: [
+    { myth: "we only use 10% of our brain", truth: "brain scans show we use virtually all of our brain — even during sleep, most areas show some activity", short: "we use all of our brain" },
+    { myth: "lightning never strikes the same place twice", truth: "the Empire State Building gets struck about 25 times per year, and some people have been struck 7+ times", short: "lightning LOVES hitting the same spot" },
+    { myth: "goldfish have a 3-second memory", truth: "goldfish can actually remember things for months and can be trained to push levers and navigate mazes", short: "goldfish have months-long memory" },
+  ],
+  psychology: [
+    { myth: "multitasking makes you productive", truth: "your brain is actually rapid-switching, not parallel processing — it costs 40% more time and drops accuracy significantly", short: "multitasking is a 40% time tax" },
+    { myth: "we have 5 senses", truth: "humans have at least 9 and possibly up to 21 senses — including proprioception, thermoception, and interoception", short: "we have way more than 5 senses" },
+    { myth: "it takes 21 days to form a habit", truth: "that number came from a 1960 plastic surgeon's observations — real research puts it at 18 to 254 days, with an average of 66", short: "habits actually take ~66 days" },
+  ],
+  work: [
+    { myth: "brainstorming in groups produces more ideas", truth: "research consistently shows individuals brainstorming alone generate more AND better ideas than groups — social pressure kills creativity", short: "solo brainstorming beats group sessions" },
+    { myth: "open offices improve collaboration", truth: "a Harvard study found open offices actually DECREASED face-to-face interaction by 70% as people retreated to headphones and chat", short: "open offices reduce real collaboration" },
+  ],
+  learn: [
+    { myth: "people have fixed learning styles", truth: "the visual/auditory/kinesthetic learning styles theory has never been supported by evidence — the original researchers have disowned it", short: "learning styles are a myth" },
+    { myth: "practice makes perfect", truth: "deliberate practice with feedback improves performance, but mindless repetition can actually make you worse by reinforcing bad habits", short: "mindless practice makes you worse" },
+  ],
+};
+
+// Map topic stems to surprise categories
+const SURPRISE_TOPIC_MAP = {
+  design: "design", ui: "design", ux: "design", css: "design", color: "design", layout: "design", typograph: "design", font: "design",
+  code: "code", program: "code", develop: "code", software: "code", debug: "code", bug: "code", engineer: "code", javascript: "code", python: "code", react: "code", typescript: "code",
+  tech: "tech", comput: "tech", internet: "tech", ai: "tech", data: "tech", machin: "tech", algorithm: "tech", robot: "tech",
+  music: "music", song: "music", band: "music", vinyl: "music", audio: "music", playlist: "music",
+  food: "food", cook: "food", eat: "food", recip: "food", sushi: "food", spic: "food", restaur: "food",
+  science: "science", brain: "science", space: "science", phys: "science", biolog: "science", chemist: "science",
+  psycholog: "psychology", mind: "psychology", habit: "psychology", memory: "psychology", focus: "psychology", attention: "psychology", product: "psychology", stress: "psychology", multitask: "psychology",
+  work: "work", office: "work", team: "work", meeting: "work", brainstorm: "work", collabor: "work", manage: "work",
+  learn: "learn", study: "learn", practic: "learn", educat: "learn", teach: "learn", skill: "learn", school: "learn",
+};
+
+const usedSurprises = new Set();
+let lastSurpriseTurn = 0;
+
+function findSurpriseForTopics(topics) {
+  for (const topic of topics) {
+    const stemmed = stem(topic);
+    // Check direct match and prefix match
+    for (const [key, category] of Object.entries(SURPRISE_TOPIC_MAP)) {
+      if (stemmed.startsWith(key) || key.startsWith(stemmed)) {
+        const facts = SURPRISE_FACTS[category];
+        if (facts) {
+          const unused = facts.filter((_, i) => !usedSurprises.has(`${category}-${i}`));
+          if (unused.length > 0) {
+            const idx = facts.indexOf(unused[Math.floor(Math.random() * unused.length)]);
+            return { fact: facts[idx], category, idx };
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function applySurpriseInsight(response, topics) {
+  const turn = mem.turn;
+  if (turn < 4) return response; // let conversation warm up
+  if (turn - lastSurpriseTurn < 6) return response; // min 6-turn gap
+  if (response.length > 200) return response; // don't bloat long responses
+  if (Math.random() > 0.12) return response; // 12% fire rate — rare delight
+
+  const match = findSurpriseForTopics(topics);
+  if (!match) return response;
+
+  const { fact, category, idx } = match;
+  usedSurprises.add(`${category}-${idx}`);
+  lastSurpriseTurn = turn;
+
+  // Pick a framing pattern
+  const roll = Math.random();
+  let insight;
+
+  if (roll < 0.3) {
+    // "Most people think X, but actually Y"
+    insight = `Most people think ${fact.myth}, but actually ${fact.truth}.`;
+  } else if (roll < 0.55) {
+    // "Did you know" style
+    insight = `Oh random thing — ${fact.truth}. Kind of wild.`;
+  } else if (roll < 0.75) {
+    // Short punchy
+    insight = `Fun fact: ${fact.short}. Weird, right?`;
+  } else {
+    // Conversational weave
+    insight = `Actually wait — ${fact.short}. ${fact.truth.charAt(0).toUpperCase() + fact.truth.slice(1)}.`;
+  }
+
+  // Append after first sentence of response, or at end
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length >= 2 && Math.random() > 0.4) {
+    return sentences[0].trim() + " " + insight + " " + sentences.slice(1).join(" ").trim();
+  }
+  return response + " " + insight;
+}
+
 /* ── Output Polish & Deduplication (Round 58) ──
  * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
  * Runs just before output to ensure the response reads naturally regardless
@@ -11226,6 +11357,9 @@ export function getAIResponse(input) {
   // ═══ Echo-back texture: echo specific fragments to prove active listening ═══
   response = applyEchoBack(response, text, sent, currentTopics);
 
+  // ═══ Surprise insights: rare counterintuitive knowledge drops ═══
+  response = applySurpriseInsight(response, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -11275,6 +11409,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
