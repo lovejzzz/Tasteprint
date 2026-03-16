@@ -61,7 +61,7 @@ export const VARIANTS = {
   sidebar:   ["Full","Minimal","Grouped","Glass"],
   table:     ["Striped","Bordered","Minimal","Terminal"],
   accordion: ["Bordered","Card","Minimal","Glass","Accent"],
-  footer:    ["Columns","Simple","Dark"],
+  footer:    ["Columns","Simple","Dark","Branded","Glass"],
   "bento-grid":["Even","Featured","Mixed"],
   dropdown:  ["Bordered","Minimal","Rounded","Glass","Grouped"],
   select:    ["Outlined","Pill","Underline","Glass","Grouped"],
