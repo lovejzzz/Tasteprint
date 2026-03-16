@@ -66,7 +66,7 @@ export const VARIANTS = {
   dropdown:  ["Bordered","Minimal","Rounded"],
   select:    ["Outlined","Pill","Underline"],
   checkbox:  ["Square","Round","Toggle row"],
-  slider:    ["Round","Thin","Stepped"],
+  slider:    ["Round","Thin","Stepped","Gradient","Glass"],
   alert:     ["Info","Warning","Success","Error"],
   pagination:["Numbered","Dots","Minimal"],
   "pricing-card":["Clean","Featured","Minimal"],
