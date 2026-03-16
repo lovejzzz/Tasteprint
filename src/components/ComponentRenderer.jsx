@@ -29,6 +29,7 @@ const ANIM_STYLE = `
 @keyframes tp-msg-send{0%{opacity:0;transform:scale(.85) translateY(8px)}60%{transform:scale(1.03) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes tp-underline-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes tp-badge-pop{0%{opacity:0;transform:scale(.5)}60%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+@keyframes tp-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes tp-typing-dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:.9}}
 `;
 
@@ -983,7 +984,74 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     const prog=P("pct");
     if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",gap:10}}><div style={{display:"flex",alignItems:"center",gap:12}}><Img k="cover" s={{width:48,height:48,borderRadius:10,background:p.su,flexShrink:0}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}><T k="title" s={{fontSize:12,fontWeight:600,color:p.tx}}>Signal Wave</T><T k="artist" s={{fontSize:10,color:p.mu}}>Neon Pulse</T></div><div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:16,color:p.mu,opacity:.4}}>⏮</span><div style={{width:32,height:32,borderRadius:999,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:onAc,fontSize:11,marginLeft:2}}>▶</span></div><span style={{fontSize:16,color:p.mu,opacity:.4}}>⏭</span></div></div><div style={{display:"flex",alignItems:"center",gap:8}}><T k="cur" s={{fontSize:9,color:p.mu}}>1:47</T><div style={{flex:1,height:4,borderRadius:999,background:p.su}}><div style={{width:`${prog}%`,height:"100%",borderRadius:999,background:p.ac,animation:"tp-fill .8s ease-out forwards"}}/></div><T k="dur" s={{fontSize:9,color:p.mu}}>4:12</T></div></div>;
     if(v===1)return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><Img k="cover" s={{height:"55%",background:`linear-gradient(135deg,${p.ac}20,${p.ac2}20)`}}/><div style={{padding:12,display:"flex",flexDirection:"column",gap:8,flex:1}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><T k="title" s={{fontSize:13,fontWeight:600,color:p.tx}}>Signal Wave</T><T k="artist" s={{fontSize:10,color:p.mu,display:"block"}}>Neon Pulse</T></div><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:14,color:p.mu}}>⏮</span><div style={{width:30,height:30,borderRadius:999,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:onAc,fontSize:10,marginLeft:1}}>▶</span></div><span style={{fontSize:14,color:p.mu}}>⏭</span></div></div><div style={{height:3,borderRadius:999,background:p.su}}><div style={{width:`${prog}%`,height:"100%",borderRadius:999,background:p.ac,animation:"tp-fill .8s ease-out forwards"}}/></div></div></div>;
-    return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:999,background:p.ac,animation:"tp-pulse 2s ease infinite"}}/><T k="title" s={{fontSize:10,color:p.ac,fontWeight:600,letterSpacing:"0.04em"}}>SIGNAL_WAVE.WAV</T></div><T k="artist" s={{fontSize:9,color:"#555"}}>NEON_PULSE</T></div><div style={{display:"flex",gap:2,alignItems:"flex-end",height:24}}>{[4,8,12,6,10,14,8,5,11,7,13,9,6,10,8,12,5,9,14,7].map((h,i)=><div key={i} style={{flex:1,height:h,background:i<8?p.ac:p.ac+"30",borderRadius:1,transformOrigin:"bottom",animation:`tp-bar-grow .4s ease-out ${i*0.03}s both`}}/>)}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><T k="cur" s={{fontSize:8,color:"#555"}}>01:47</T><div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:9,color:"#555"}}>⏮</span><span style={{fontSize:11,color:p.ac}}>■</span><span style={{fontSize:9,color:"#555"}}>⏭</span></div><T k="dur" s={{fontSize:8,color:"#555"}}>04:12</T></div></div>;
+    if(v===2)return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:999,background:p.ac,animation:"tp-pulse 2s ease infinite"}}/><T k="title" s={{fontSize:10,color:p.ac,fontWeight:600,letterSpacing:"0.04em"}}>SIGNAL_WAVE.WAV</T></div><T k="artist" s={{fontSize:9,color:"#555"}}>NEON_PULSE</T></div><div style={{display:"flex",gap:2,alignItems:"flex-end",height:24}}>{[4,8,12,6,10,14,8,5,11,7,13,9,6,10,8,12,5,9,14,7].map((h,i)=><div key={i} style={{flex:1,height:h,background:i<8?p.ac:p.ac+"30",borderRadius:1,transformOrigin:"bottom",animation:`tp-bar-grow .4s ease-out ${i*0.03}s both`}}/>)}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><T k="cur" s={{fontSize:8,color:"#555"}}>01:47</T><div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:9,color:"#555"}}>⏮</span><span style={{fontSize:11,color:p.ac}}>■</span><span style={{fontSize:9,color:"#555"}}>⏭</span></div><T k="dur" s={{fontSize:8,color:"#555"}}>04:12</T></div></div>;
+    /* v3 Glass — frosted glassmorphism with waveform + SVG controls */
+    const playIcon=<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>;
+    const skipBack=<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>;
+    const skipFwd=<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>;
+    const heartIcon=<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>;
+    const shuffleIcon=<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>;
+    const bars=[5,9,14,7,11,16,9,6,12,8,15,10,7,12,9,14,6,10,16,8,13,11,7,10];
+    if(v===3)return <div style={{...b,background:p.card+"dd",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,border:`1px solid ${p.bd}`,padding:16,display:"flex",flexDirection:"column",gap:10,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}88`,animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"absolute",top:-30,left:-30,width:100,height:100,borderRadius:999,background:`radial-gradient(circle,${p.ac}18,transparent 70%)`,pointerEvents:"none"}}/>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <div style={{position:"relative",flexShrink:0}}>
+          <Img k="cover" s={{width:52,height:52,borderRadius:12,background:`linear-gradient(135deg,${p.ac}25,${p.ac2||p.ac}25)`}}/>
+          <div style={{position:"absolute",inset:0,borderRadius:12,boxShadow:`0 4px 16px ${p.ac}20`}}/>
+        </div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}>
+          <T k="title" s={{fontSize:f(13),fontWeight:700,color:p.tx,letterSpacing:"-0.01em"}}>Signal Wave</T>
+          <T k="artist" s={{fontSize:f(10),color:p.mu}}>Neon Pulse</T>
+        </div>
+        <div style={{color:p.ac,opacity:.6,cursor:"pointer"}}>{heartIcon}</div>
+      </div>
+      <div style={{display:"flex",gap:1.5,alignItems:"flex-end",height:20,padding:"0 2px"}}>
+        {bars.map((h,i)=><div key={i} style={{flex:1,height:h,borderRadius:1,background:i<Math.floor(bars.length*prog/100)?p.ac:`${p.ac}25`,transformOrigin:"bottom",animation:`tp-bar-grow .35s ease-out ${i*.02}s both`,transition:"background .2s"}}/>)}
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <T k="cur" s={{fontSize:f(9),color:p.mu,minWidth:24}}>1:47</T>
+        <div style={{flex:1,height:3,borderRadius:999,background:p.su,position:"relative"}}>
+          <div style={{width:`${prog}%`,height:"100%",borderRadius:999,background:`linear-gradient(90deg,${p.ac},${p.ac2||p.ac})`,transition:"width .3s"}}/>
+          <div style={{position:"absolute",top:-3,left:`${prog}%`,width:9,height:9,borderRadius:999,background:p.ac,border:`2px solid ${p.card}`,boxShadow:`0 0 6px ${p.ac}40`,transform:"translateX(-50%)"}}/>
+        </div>
+        <T k="dur" s={{fontSize:f(9),color:p.mu,minWidth:24,textAlign:"right"}}>4:12</T>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16}}>
+        <div style={{color:p.mu,opacity:.4,cursor:"pointer"}}>{shuffleIcon}</div>
+        <div style={{color:p.mu,cursor:"pointer"}}>{skipBack}</div>
+        <div style={{width:36,height:36,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 12px ${p.ac}30`,color:onAc,paddingLeft:2}}>{playIcon}</div>
+        <div style={{color:p.mu,cursor:"pointer"}}>{skipFwd}</div>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" style={{opacity:.4,cursor:"pointer"}}><polyline points="17 1 4 12 17 23 17 1"/><line x1="20" y1="1" x2="20" y2="23"/></svg>
+      </div>
+    </div>;
+    /* v4 Vinyl — retro record aesthetic with spinning disc */
+    return <div style={{...b,background:`linear-gradient(145deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 60%)",pointerEvents:"none"}}/>
+      <div style={{padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:14,position:"relative"}}>
+        <div style={{position:"relative",width:54,height:54,flexShrink:0}}>
+          <div style={{width:54,height:54,borderRadius:999,background:`conic-gradient(from 0deg, ${onAc}15, ${onAc}08, ${onAc}15, ${onAc}08, ${onAc}15)`,border:`2px solid ${onAc}22`,display:"flex",alignItems:"center",justifyContent:"center",animation:"tp-spin 4s linear infinite"}}>
+            <div style={{width:28,height:28,borderRadius:999,background:`radial-gradient(circle at 40% 40%,${onAc}20,transparent 60%),linear-gradient(135deg,${p.ac}cc,${p.ac2||p.ac}cc)`,border:`1px solid ${onAc}18`}}/>
+            <div style={{position:"absolute",width:8,height:8,borderRadius:999,background:onAc+"40",border:`1px solid ${onAc}25`}}/>
+          </div>
+        </div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:3}}>
+          <T k="title" s={{fontSize:f(14),fontWeight:800,color:onAc,letterSpacing:"-0.02em"}}>Signal Wave</T>
+          <T k="artist" s={{fontSize:f(10),color:onAc,opacity:.65}}>Neon Pulse</T>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+            <T k="cur" s={{fontSize:f(9),color:onAc,opacity:.5}}>1:47</T>
+            <div style={{flex:1,height:3,borderRadius:999,background:onAc+"20"}}>
+              <div style={{width:`${prog}%`,height:"100%",borderRadius:999,background:onAc,opacity:.7,transition:"width .3s"}}/>
+            </div>
+            <T k="dur" s={{fontSize:f(9),color:onAc,opacity:.5}}>4:12</T>
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"0 16px 14px",display:"flex",alignItems:"center",justifyContent:"center",gap:20,position:"relative"}}>
+        <div style={{color:onAc,opacity:.5,cursor:"pointer"}}>{skipBack}</div>
+        <div style={{width:38,height:38,borderRadius:999,background:onAc,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.ac}40`,color:p.ac,paddingLeft:2}}>{playIcon}</div>
+        <div style={{color:onAc,opacity:.5,cursor:"pointer"}}>{skipFwd}</div>
+      </div>
+    </div>;
   }
 
   /* ---- PROFILE CARD ---- */
