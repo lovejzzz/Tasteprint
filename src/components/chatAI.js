@@ -10900,6 +10900,168 @@ const SURPRISE_TOPIC_MAP = {
 const usedSurprises = new Set();
 let lastSurpriseTurn = 0;
 
+/* ── Conversational Momentum & Flow State Detection (Round 67) ──
+ * Reads the conversation's overall trajectory by combining multiple signals
+ * (energy curve, message length trend, topic depth, timing, rapport) into a
+ * single "momentum" score. Unlike individual systems that react to the current
+ * message, this detects flow states — when a conversation is catching fire,
+ * cruising, or winding down — and makes holistic adjustments.
+ *
+ * Flow states:
+ * - "igniting"  — conversation is ramping up (growing engagement signals)
+ * - "flow"      — deep engaged exchange (high sustained engagement)
+ * - "cruising"  — comfortable steady state
+ * - "coasting"  — engagement slowly declining
+ * - "closing"   — conversation winding down (short messages, long gaps)
+ */
+
+let momentumHistory = [];  // [{ score, state, turn }]
+let lastMomentumTurn = 0;
+let currentFlowState = "cruising";
+
+function computeMomentum() {
+  let score = 0.5; // neutral baseline
+
+  // Signal 1: Energy curve trend (are recent messages more/less energetic?)
+  if (energyCurve.length >= 3) {
+    const recent = energyCurve.slice(-3);
+    const older = energyCurve.slice(-6, -3);
+    if (older.length >= 2) {
+      const recentAvg = recent.reduce((a, e) => a + e, 0) / recent.length;
+      const olderAvg = older.reduce((a, e) => a + e, 0) / older.length;
+      score += (recentAvg - olderAvg) * 0.8; // rising energy = positive momentum
+    }
+  }
+
+  // Signal 2: Message length trend (are messages getting longer or shorter?)
+  if (messageLengthHistory.length >= 3) {
+    const recent = messageLengthHistory.slice(-3);
+    const older = messageLengthHistory.slice(-6, -3);
+    if (older.length >= 2) {
+      const recentAvg = recent.reduce((a, l) => a + l, 0) / recent.length;
+      const olderAvg = older.reduce((a, l) => a + l, 0) / older.length;
+      const lengthRatio = recentAvg / Math.max(olderAvg, 1);
+      if (lengthRatio > 1.3) score += 0.15;      // messages growing
+      else if (lengthRatio < 0.5) score -= 0.2;   // messages shrinking
+    }
+  }
+
+  // Signal 3: Timing acceleration/deceleration
+  if (messageTimings.length >= 3) {
+    const recent = messageTimings.slice(-3);
+    const avgGap = recent.reduce((a, t) => a + t.gap, 0) / recent.length;
+    if (avgGap < 5000) score += 0.15;         // rapid exchanges
+    else if (avgGap > 60000) score -= 0.15;   // long pauses
+  }
+
+  // Signal 4: Topic depth (deep threads = engagement)
+  const maxDepth = Object.values(topicDepth).reduce((m, d) => Math.max(m, d), 0);
+  if (maxDepth >= 4) score += 0.1;
+  if (maxDepth >= 7) score += 0.1;
+
+  // Signal 5: Rapport level (higher rapport = more flow potential)
+  if (rapportLevel >= 3) score += 0.08;
+  if (rapportLevel >= 5) score += 0.07;
+
+  // Signal 6: Question frequency (questions = engaged)
+  const history = mem.history || [];
+  const recentUser = history.filter(h => h.role === "user").slice(-4);
+  const qCount = recentUser.filter(m => (m.text || "").includes("?")).length;
+  score += qCount * 0.05;
+
+  return Math.max(0, Math.min(1, score));
+}
+
+function classifyFlowState(score) {
+  // Use momentum history for hysteresis (avoid rapid state flickering)
+  const prev = currentFlowState;
+  const recentScores = momentumHistory.slice(-3).map(h => h.score);
+  const avgScore = recentScores.length > 0
+    ? (recentScores.reduce((a, s) => a + s, 0) + score) / (recentScores.length + 1)
+    : score;
+
+  if (avgScore >= 0.75) return "flow";
+  if (avgScore >= 0.62 && (prev === "cruising" || prev === "igniting")) return "igniting";
+  if (avgScore >= 0.62 && prev === "flow") return "flow"; // hysteresis: stay in flow
+  if (avgScore <= 0.25) return "closing";
+  if (avgScore <= 0.38 && prev !== "igniting" && prev !== "flow") return "coasting";
+  return "cruising";
+}
+
+function applyMomentumAwareness(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 5) return response; // need history to measure momentum
+  if (turn - lastMomentumTurn < 3) return response; // don't fire every turn
+
+  const score = computeMomentum();
+  const state = classifyFlowState(score);
+  momentumHistory.push({ score, state, turn });
+  if (momentumHistory.length > 15) momentumHistory.shift();
+  currentFlowState = state;
+
+  // Only adjust on notable states, and not every time
+  if (Math.random() > 0.40) return response; // 40% fire rate
+
+  lastMomentumTurn = turn;
+
+  if (state === "flow") {
+    // In flow: trim filler, keep momentum, match the energy
+    // Remove hedging prefixes that slow down a flowing conversation
+    const hedges = /^(Well,?\s*|I think\s+|I mean,?\s*|So basically,?\s*|You know,?\s*)/i;
+    let r = response.replace(hedges, "");
+    // Capitalize first letter after hedge removal
+    if (r.length > 0) r = r.charAt(0).toUpperCase() + r.slice(1);
+    // If response is long, keep it tight — trim to strongest sentences
+    const sentences = r.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 3) {
+      r = sentences.slice(0, 3).join(" ").trim();
+    }
+    return r;
+  }
+
+  if (state === "igniting") {
+    // Igniting: fan the flame — add forward energy without being overbearing
+    const igniters = [
+      "I love where this is going. ",
+      "Oh this is getting good — ",
+      "Yes, keep going with this — ",
+    ];
+    if (Math.random() > 0.5 && !response.match(/^(Oh|Yes|I love|This is)/i)) {
+      return igniters[Math.floor(Math.random() * igniters.length)] + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+    return response;
+  }
+
+  if (state === "coasting") {
+    // Coasting: gently re-energize — offer a new angle or callback
+    const reEnergize = [
+      " Actually, circling back — what made you first get into this?",
+      " I'm curious what your take on the bigger picture is here.",
+      " What's the part of this that excites you most?",
+    ];
+    if (Math.random() > 0.5 && !response.includes("?")) {
+      return response.replace(/[.!]\s*$/, ".") + reEnergize[Math.floor(Math.random() * reEnergize.length)];
+    }
+    return response;
+  }
+
+  if (state === "closing") {
+    // Closing: don't fight it — warm, open, no pressure
+    const sentences = response.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 2) {
+      // Keep it brief and warm
+      response = sentences.slice(0, 2).join(" ").trim();
+    }
+    // Remove aggressive follow-up questions that feel pushy when winding down
+    response = response.replace(/\s*(?:What do you think\??|What about you\??|Thoughts\??)\s*$/i, ".");
+    // Clean trailing double periods
+    response = response.replace(/\.{2,}/, ".");
+    return response;
+  }
+
+  return response; // "cruising" — no adjustment needed
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -11360,6 +11522,9 @@ export function getAIResponse(input) {
   // ═══ Surprise insights: rare counterintuitive knowledge drops ═══
   response = applySurpriseInsight(response, currentTopics);
 
+  // ═══ Momentum awareness: detect flow state and adjust holistically ═══
+  response = applyMomentumAwareness(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -11409,6 +11574,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
