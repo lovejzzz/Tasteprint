@@ -356,6 +356,10 @@ const SNIPPETS = {
   'tpa': "const id = tp.add('${1:type}', { x: ${2:50}, y: ${3:100}, w: ${4:200}, h: ${5:48} });",
   'tpf': "const ids = tp.find('${0:type}');",
   'tps': "tp.shapes().forEach(s => {\n  ${0}\n});",
+  'cll': "console.log('${1:debug}', ${0});",
+  'tern': '${1:cond} ? ${2:a} : ${0:b}',
+  'desc': "// ${0:description}",
+  'iife': '(() => {\n  ${0}\n})();',
 };
 
 /* Parameter hints for tp methods */
@@ -503,6 +507,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Editor state ---- */
   const [cursor, setCursor] = React.useState({ ln: 1, col: 1 });
   const [activeLn, setActiveLn] = React.useState(1);
+  const [navPulseLn, setNavPulseLn] = React.useState(null);
   const [scrollTop, setScrollTop] = React.useState(0);
   const taRef = React.useRef(null);
   const lnRef = React.useRef(null);
@@ -1730,7 +1735,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
-    const q = cmdQuery.toLowerCase();
+    // ">" prefix = commands only, no files
+    const isCommandMode = cmdQuery.startsWith('>');
+    const q = (isCommandMode ? cmdQuery.slice(1).trimStart() : cmdQuery).toLowerCase();
+    const pool = isCommandMode ? cmds.filter(c => !c.key.startsWith('file:')) : cmds;
+    if (!q) return pool;
     // Fuzzy match: characters must appear in order
     const fuzzy = (str, query) => {
       let qi = 0;
@@ -1739,11 +1748,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       }
       return qi === query.length;
     };
-    // Score: prefer exact includes > prefix > fuzzy
-    const scored = cmds.filter(c => fuzzy(c.label.toLowerCase(), q)).map(c => {
+    // Score: prefer exact includes > prefix > fuzzy; files rank lower in mixed mode
+    const scored = pool.filter(c => fuzzy(c.label.toLowerCase(), q)).map(c => {
       const ll = c.label.toLowerCase();
+      const isFile = c.key.startsWith('file:');
       const score = ll.startsWith(q) ? 0 : ll.includes(q) ? 1 : 2;
-      return { ...c, score };
+      return { ...c, score: score + (isFile && !isCommandMode ? 0 : 0) };
     });
     scored.sort((a, b) => a.score - b.score);
     return scored;
@@ -2125,6 +2135,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     setActiveLn(ln); setCursor({ ln, col: 1 });
     const pos = lineOffsets[ln - 1] ?? 0;
     scrollToLine(ln);
+    setNavPulseLn(ln);
+    setTimeout(() => setNavPulseLn(null), 800);
     setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
   };
 
@@ -2243,9 +2255,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTimeout(() => searchRef.current?.focus(), 50); return;
     }
 
-    /* Command palette: Cmd+P or Cmd+Shift+P */
+    /* Command palette: Cmd+P (files) or Cmd+Shift+P (commands) */
     if (e.key === 'p' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault(); setCmdOpen(o => !o); setCmdQuery('');
+      e.preventDefault(); setCmdOpen(o => !o); setCmdQuery(e.shiftKey ? '>' : '');
       setTimeout(() => cmdRef.current?.focus(), 50); return;
     }
 
@@ -2784,6 +2796,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
         return;
       }
+      /* Smart enter after arrow function: => or => { at end of line */
+      const trimmedLine = currentLine.trimEnd();
+      if (trimmedLine.endsWith('=>') || trimmedLine.endsWith('=> {')) {
+        e.preventDefault();
+        const tab = ' '.repeat(tabSize);
+        const nc = code.substring(0, s) + '\n' + indent + tab + code.substring(en);
+        setCode(nc);
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + tabSize + 1 }, 0);
+        return;
+      }
+      /* Auto-continue line comments */
+      const commentMatch = currentLine.match(/^(\s*\/\/\s?)/);
+      if (commentMatch && trimmedLine !== '//' && trimmedLine !== '// ') {
+        e.preventDefault();
+        const prefix = commentMatch[1];
+        setCode(code.substring(0, s) + '\n' + prefix + code.substring(en));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + prefix.length + 1 }, 0);
+        return;
+      }
       if (indent) { e.preventDefault(); setCode(code.substring(0, s) + '\n' + indent + code.substring(en)); setTimeout(() => { el.selectionStart = el.selectionEnd = s + indent.length + 1 }, 0); return; }
     }
     if (')]}"\'`'.includes(e.key) && code[s] === e.key) {
@@ -2854,6 +2885,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
         @keyframes fadeInLine { from { background: #cba6f718; } to { background: transparent; } }
+        @keyframes navPulse { 0% { background: #cba6f730; } 100% { background: transparent; } }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
@@ -3534,9 +3566,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {cmdOpen && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 260 }}>
               <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #ffffff08', padding: '0 10px', gap: 4 }}>
-                <span style={{ fontSize: 10, color: '#cba6f7', flexShrink: 0 }}>{'\u2318'}</span>
+                <span style={{ fontSize: 10, color: '#cba6f7', flexShrink: 0 }}>{cmdQuery.startsWith('>') ? '\u25B8' : '\u2318'}</span>
                 <input ref={cmdRef} value={cmdQuery} onChange={e => { setCmdQuery(e.target.value); setCmdIdx(0); }}
-                  placeholder="Type a command or file..." spellCheck={false}
+                  placeholder={cmdQuery.startsWith('>') ? "Type a command..." : "Type > for commands, or search files..."} spellCheck={false}
                   onKeyDown={e => {
                     e.stopPropagation();
                     if (e.key === 'Escape') { setCmdOpen(false); taRef.current?.focus(); }
@@ -4128,6 +4160,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           height: Math.round(16 * zf), position: 'relative',
                           background: i + 1 === activeLn ? '#ffffff08' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : 'transparent',
                           borderLeft: i + 1 === activeLn ? '2px solid #cba6f730' : '2px solid transparent',
+                          animation: navPulseLn === i + 1 ? 'navPulse .8s ease-out' : 'none',
                         }}>
                           {guides}
                           {searchHighlights || wordHighlights || (() => {
@@ -4293,7 +4326,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       const snippetMatches = Object.keys(SNIPPETS).filter(sn => sn.startsWith(partial) && sn !== partial);
                       const combined = [
                         ...locals.map(id => ({ label: id, desc: 'local', insert: id.slice(partial.length) })),
-                        ...snippetMatches.map(sn => ({ label: sn, desc: '\u2702 snippet', insert: sn.slice(partial.length) })),
+                        ...snippetMatches.map(sn => ({ label: sn, desc: '\u2702 ' + SNIPPETS[sn].replace(/\$\{\d+:?([^}]*)}/g, '$1').split('\n')[0].substring(0, 30), insert: sn.slice(partial.length) })),
                         ...kwFiltered.map(k => ({ label: k, desc: 'keyword', insert: k.slice(partial.length) })),
                       ].slice(0, 12);
                       if (combined.length) {
