@@ -723,7 +723,67 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     const hst={fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"};
     if(v===0)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{display:"flex",borderBottom:`1px solid ${p.bd}`}}><div style={{flex:1.5,padding:"8px 12px"}}><span style={{...hst,color:p.mu}}>Feature</span></div>{tiers.map((t,i)=><div key={i} style={{flex:1,padding:"8px 8px",textAlign:"center"}}><T k={`t${i}`} s={{...hst,color:i===1?p.ac:p.mu}}>{t}</T></div>)}</div>{feats.map((f,fi)=><div key={fi} style={{display:"flex",borderBottom:fi<3?`1px solid ${p.bd}`:"none"}}><div style={{flex:1.5,padding:"6px 12px"}}><T k={`f${fi}`} s={{fontSize:11,color:p.tx}}>{f}</T></div>{vals[fi].map((val,vi)=><div key={vi} style={{flex:1,padding:"6px 8px",textAlign:"center"}}><span style={{fontSize:11,color:val==="✓"?"#4CAF50":val==="—"?p.mu:p.tx}}>{val}</span></div>)}</div>)}</div>;
     if(v===1)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{display:"flex",borderBottom:`1px solid ${p.bd}`}}><div style={{flex:1.5,padding:"8px 12px"}}></div>{tiers.map((t,i)=><div key={i} style={{flex:1,padding:"8px 8px",textAlign:"center",background:i===1?p.ac+"0a":"transparent"}}><T k={`t${i}`} s={{...hst,color:i===1?p.ac:p.mu}}>{t}</T></div>)}</div>{feats.map((f,fi)=><div key={fi} style={{display:"flex",borderBottom:fi<3?`1px solid ${p.bd}`:"none"}}><div style={{flex:1.5,padding:"6px 12px"}}><T k={`f${fi}`} s={{fontSize:11,color:p.tx}}>{f}</T></div>{vals[fi].map((val,vi)=><div key={vi} style={{flex:1,padding:"6px 8px",textAlign:"center",background:vi===1?p.ac+"0a":"transparent"}}><span style={{fontSize:11,color:val==="✓"?"#4CAF50":val==="—"?p.mu:p.tx}}>{val}</span></div>)}</div>)}</div>;
-    return <div style={{...b,display:"flex",flexDirection:"column"}}><div style={{display:"flex",borderBottom:`1px solid ${p.bd}`,paddingBottom:6}}><div style={{flex:1.5}}></div>{tiers.map((t,i)=><div key={i} style={{flex:1,textAlign:"center"}}><T k={`t${i}`} s={{fontSize:11,fontWeight:600,color:p.tx}}>{t}</T></div>)}</div>{feats.map((f,fi)=><div key={fi} style={{display:"flex",padding:"5px 0"}}><div style={{flex:1.5}}><T k={`f${fi}`} s={{fontSize:11,color:p.mu}}>{f}</T></div>{vals[fi].map((val,vi)=><div key={vi} style={{flex:1,textAlign:"center"}}><span style={{fontSize:11,color:val==="✓"?p.ac:val==="—"?p.mu+"60":p.tx}}>{val}</span></div>)}</div>)}</div>;
+    if(v===2)return <div style={{...b,display:"flex",flexDirection:"column"}}><div style={{display:"flex",borderBottom:`1px solid ${p.bd}`,paddingBottom:6}}><div style={{flex:1.5}}></div>{tiers.map((t,i)=><div key={i} style={{flex:1,textAlign:"center"}}><T k={`t${i}`} s={{fontSize:11,fontWeight:600,color:p.tx}}>{t}</T></div>)}</div>{feats.map((f,fi)=><div key={fi} style={{display:"flex",padding:"5px 0"}}><div style={{flex:1.5}}><T k={`f${fi}`} s={{fontSize:11,color:p.mu}}>{f}</T></div>{vals[fi].map((val,vi)=><div key={vi} style={{flex:1,textAlign:"center"}}><span style={{fontSize:11,color:val==="✓"?p.ac:val==="—"?p.mu+"60":p.tx}}>{val}</span></div>)}</div>)}</div>;
+    /* v3 Gradient — SaaS-style with gradient recommended column, SVG icons, staggered rows */
+    if(v===3){const ck=<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;const xx=<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.mu+"50"} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;const icons=[[ck,ck,ck],[xx,ck,ck],[xx,ck,ck],[xx,xx,ck]];return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",animation:"tp-fadein .3s ease-out both"}}>
+      <div style={{display:"flex",borderBottom:`1px solid ${p.bd}`}}>
+        <div style={{flex:1.5,padding:"12px 14px"}}><span style={{...hst,color:p.mu,fontSize:9}}>Features</span></div>
+        {tiers.map((t,i)=><div key={i} style={{flex:1,padding:"10px 8px",textAlign:"center",background:i===1?`linear-gradient(180deg,${p.ac}12,${p.ac}05)`:"transparent",position:"relative"}}>
+          {i===1&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${p.ac},transparent)`}}/>}
+          <T k={`t${i}`} s={{fontSize:f(10),fontWeight:700,color:i===1?p.ac:p.tx,letterSpacing:".02em"}}>{t}</T>
+          {i===1&&<div style={{fontSize:7,color:p.ac,fontWeight:600,background:p.ac+"12",borderRadius:999,padding:"1px 6px",display:"inline-block",marginTop:2}}>POPULAR</div>}
+        </div>)}
+      </div>
+      {feats.map((ft,fi)=><div key={fi} style={{display:"flex",borderBottom:fi<3?`1px solid ${p.bd}`:"none",animation:`tp-fadein .25s ease-out ${fi*0.06}s both`}}>
+        <div style={{flex:1.5,padding:"8px 14px",display:"flex",alignItems:"center"}}><T k={`f${fi}`} s={{fontSize:f(11),color:p.tx,fontWeight:500}}>{ft}</T></div>
+        {vals[fi].map((val,vi)=><div key={vi} style={{flex:1,padding:"8px 8px",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",background:vi===1?p.ac+"06":"transparent"}}>
+          {val==="✓"||val==="—"?icons[fi][vi]:<span style={{fontSize:f(11),color:vi===1?p.ac:p.tx,fontWeight:vi===1?600:400}}>{val}</span>}
+        </div>)}
+      </div>)}
+      <div style={{display:"flex",borderTop:`1px solid ${p.bd}`,padding:"10px 0"}}>
+        <div style={{flex:1.5}}/>
+        {tiers.map((t,i)=><div key={i} style={{flex:1,display:"flex",justifyContent:"center"}}>
+          <div style={{height:28,borderRadius:8,padding:"0 14px",display:"flex",alignItems:"center",justifyContent:"center",background:i===1?p.ac:p.su,cursor:"pointer",transition:"transform .15s"}}>
+            <span style={{fontSize:f(9),fontWeight:600,color:i===1?onAc:p.tx}}>{i===0?"Start free":i===1?"Get Pro":"Contact"}</span>
+          </div>
+        </div>)}
+      </div>
+    </div>}
+    /* v4 Glass — frosted glass with aurora orb, glowing accent column, animated rows */
+    {return <div style={{...b,background:p.card+"e0",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:18,border:`1px solid ${p.ac}12`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 rgba(255,255,255,0.06)`,animation:"tp-fadein .3s ease-out both"}}>
+      <div style={{position:"absolute",top:-30,right:20,width:80,height:80,borderRadius:999,background:`radial-gradient(circle,${p.ac}12,${p.ac2||p.ac}08,transparent 70%)`,pointerEvents:"none"}}/>
+      <div style={{display:"flex",borderBottom:`1px solid ${p.ac}10`,position:"relative",zIndex:1}}>
+        <div style={{flex:1.5,padding:"14px 16px"}}><span style={{fontSize:9,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>Compare</span></div>
+        {tiers.map((t,i)=><div key={i} style={{flex:1,padding:"12px 8px",textAlign:"center",position:"relative"}}>
+          {i===2&&<div style={{position:"absolute",inset:0,background:`linear-gradient(180deg,${p.ac}10,transparent)`,pointerEvents:"none"}}/>}
+          <div style={{width:24,height:24,borderRadius:8,background:i===2?`linear-gradient(135deg,${p.ac}25,${p.ac2||p.ac}20)`:p.su,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 4px",border:`1px solid ${i===2?p.ac+"25":p.bd}`}}>
+            {i===0?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/></svg>
+            :i===1?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.tx} strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
+            :<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
+          </div>
+          <T k={`t${i}`} s={{fontSize:f(10),fontWeight:i===2?700:600,color:i===2?p.ac:p.tx}}>{t}</T>
+        </div>)}
+      </div>
+      {feats.map((ft,fi)=><div key={fi} style={{display:"flex",borderBottom:fi<3?`1px solid ${p.ac}08`:"none",position:"relative",zIndex:1,animation:`tp-slidein .3s ease-out ${fi*0.06}s both`}}>
+        <div style={{flex:1.5,padding:"8px 16px",display:"flex",alignItems:"center",gap:6}}>
+          <div style={{width:4,height:4,borderRadius:999,background:p.ac+"40",flexShrink:0}}/>
+          <T k={`f${fi}`} s={{fontSize:f(11),color:p.tx}}>{ft}</T>
+        </div>
+        {vals[fi].map((val,vi)=><div key={vi} style={{flex:1,padding:"8px 8px",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",background:vi===2?p.ac+"05":"transparent"}}>
+          {val==="✓"?<div style={{width:18,height:18,borderRadius:999,background:"#10B98115",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          :val==="—"?<div style={{width:18,height:18,borderRadius:999,background:p.mu+"08",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:6,height:1.5,borderRadius:1,background:p.mu+"40"}}/></div>
+          :<span style={{fontSize:f(11),color:vi===2?p.ac:p.tx,fontWeight:vi===2?600:400,background:vi===2?p.ac+"10":"transparent",borderRadius:6,padding:"2px 8px"}}>{val}</span>}
+        </div>)}
+      </div>)}
+      <div style={{display:"flex",padding:"10px 8px 12px",borderTop:`1px solid ${p.ac}08`,position:"relative",zIndex:1}}>
+        <div style={{flex:1.5}}/>
+        {tiers.map((t,i)=><div key={i} style={{flex:1,display:"flex",justifyContent:"center"}}>
+          <div style={{height:30,borderRadius:10,padding:"0 12px",display:"flex",alignItems:"center",justifyContent:"center",background:i===2?p.ac:"transparent",border:i===2?"none":`1px solid ${p.bd}`,boxShadow:i===2?`0 4px 12px ${p.ac}25`:"none"}}>
+            <span style={{fontSize:f(9),fontWeight:600,color:i===2?onAc:p.tx}}>{i===0?"Free":i===1?"Upgrade":"Go Team"}</span>
+          </div>
+        </div>)}
+      </div>
+    </div>}
   }
 
   /* ---- PROMO BANNER ---- */
