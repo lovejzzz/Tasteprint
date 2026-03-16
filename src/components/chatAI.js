@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 83: Conversational humor callback & running jokes
+   Round 84: Thread recap & summary awareness + bugfix mem.msgs→mem.history
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -4605,6 +4605,10 @@ function generateResponse(text) {
       return revResp;
     }
   }
+
+  // ═══ -1.1. Conversation summary request — "what have we talked about?" ═══
+  const summaryResp = handleSummaryRequest(text);
+  if (summaryResp) return summaryResp;
 
   // ═══ -1. Remember/recall commands — "what do you remember about me?" ═══
   const rememberCmd = handleRememberCommand(text);
@@ -11457,7 +11461,7 @@ function detectRepairSignal(text, prevUserMsg) {
 
 // Get the previous user message from memory for re-interpretation
 function getPreviousUserMessage() {
-  const msgs = mem.msgs;
+  const msgs = mem.history;
   let userMsgCount = 0;
   for (let i = msgs.length - 1; i >= 0; i--) {
     if (msgs[i].role === "user") {
@@ -12002,7 +12006,7 @@ function getStoryDomain(topics) {
   }
 
   // Check the most recent user message for domain hints
-  const lastMsg = mem.msgs.length > 0 ? mem.msgs[mem.msgs.length - 1].text?.toLowerCase() || "" : "";
+  const lastMsg = mem.history.length > 0 ? mem.history[mem.history.length - 1].text?.toLowerCase() || "" : "";
   if (techWords.some(w => lastMsg.includes(w))) return "tech";
   if (designWords.some(w => lastMsg.includes(w))) return "design";
   if (workWords.some(w => lastMsg.includes(w))) return "work";
@@ -13662,6 +13666,122 @@ function applyHumorCallback(response, text, topics) {
   return sentences[0].trim() + " " + callback + " " + sentences.slice(1).join("").trim();
 }
 
+/* ── Conversational Thread Recap & Summary Awareness (Round 84) ──
+ * When conversations run long (12+ turns), the AI occasionally
+ * demonstrates it's been tracking the whole conversation by weaving
+ * in a brief recap of ground covered. Also handles explicit "what
+ * have we talked about?" / "summarize" requests.
+ *
+ * This creates the "wow, it actually knows what we discussed" moment.
+ * Unlike temporal callbacks (which reference ONE earlier statement),
+ * this synthesizes the WHOLE conversation arc into a compact summary.
+ *
+ * Recap trigger: 12+ turns, 15% fire rate, 12-turn cooldown.
+ * Summary request: responds immediately with structured recap.
+ */
+
+let lastRecapTurn = 0;
+
+function buildConversationSummary() {
+  const history = mem.history || [];
+  if (history.length < 4) return null;
+
+  // Extract unique topics discussed with frequency
+  const topicCounts = {};
+  const userClaims = [];
+  const sharedLaughs = [];
+
+  for (const msg of history) {
+    if (msg.topics) {
+      for (const t of msg.topics) {
+        topicCounts[t] = (topicCounts[t] || 0) + 1;
+      }
+    }
+    if (msg.role === "user") {
+      const text = msg.text || "";
+      // Capture notable user statements
+      if (text.length > 20 && text.length < 100) {
+        const hasOpinion = /\b(I think|I love|I hate|honestly|the thing is|my favorite)\b/i.test(text);
+        if (hasOpinion) userClaims.push(text.substring(0, 50));
+      }
+      if (/\b(haha|lol|lmao|😂)\b/i.test(text)) sharedLaughs.push(true);
+    }
+  }
+
+  // Rank topics by frequency, take top 3
+  const ranked = Object.entries(topicCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([t]) => t);
+
+  if (ranked.length === 0) return null;
+
+  return {
+    topics: ranked,
+    turnCount: mem.turn,
+    hadLaughs: sharedLaughs.length > 0,
+    notableClaim: userClaims.length > 0 ? userClaims[userClaims.length - 1] : null,
+    userName: mem.userName,
+  };
+}
+
+function handleSummaryRequest(text) {
+  const lower = text.toLowerCase();
+  const isSummaryAsk = /\b(what have we|what did we|summarize|summary|recap|what were we|what .* talk.* about|catch me up)\b/i.test(lower);
+  if (!isSummaryAsk) return null;
+
+  const summary = buildConversationSummary();
+  if (!summary) return "We just started! Ask me anything and let's build up a conversation.";
+
+  const { topics, turnCount, hadLaughs, notableClaim, userName } = summary;
+  const nameStr = userName ? `, ${userName}` : "";
+
+  const topicList = topics.length === 1
+    ? topics[0]
+    : topics.length === 2
+      ? `${topics[0]} and ${topics[1]}`
+      : `${topics.slice(0, -1).join(", ")}, and ${topics[topics.length - 1]}`;
+
+  const templates = [
+    `So far${nameStr}? We've covered ${topicList} over about ${turnCount} messages.${hadLaughs ? " Had some good laughs along the way too." : ""}${notableClaim ? ` You mentioned "${notableClaim.substring(0, 40)}..." which stuck with me.` : ""}`,
+    `Let me think... we've gone through ${topicList}.${notableClaim ? ` I remember you saying something about "${notableClaim.substring(0, 35)}..."` : ""} ${hadLaughs ? "And we've had fun doing it!" : "It's been a good conversation!"} What should we dig into next?`,
+    `Recap: we started with ${topics[0]}${topics.length > 1 ? `, wandered into ${topics.slice(1).join(" and ")}` : ""}.${turnCount > 15 ? " We've been at this a while!" : ""} ${hadLaughs ? "Some laughs happened." : ""} Want to keep going or switch it up?`,
+  ];
+
+  return templates[Math.floor(Math.random() * templates.length)];
+}
+
+function applyThreadRecap(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 12) return response; // need substantial conversation
+  if (turn - lastRecapTurn < 12) return response; // 12-turn cooldown
+  if (response.length > 200) return response; // don't bloat
+  if (Math.random() > 0.15) return response; // 15% fire rate
+  // Don't recap during emotional/repair moments
+  if (/^(sorry|I hear|that sounds|ouch|bye|hey,? I)/i.test(response)) return response;
+
+  const summary = buildConversationSummary();
+  if (!summary || summary.topics.length < 2) return response; // need at least 2 topics for a meaningful recap
+
+  lastRecapTurn = turn;
+
+  const { topics: recapTopics, hadLaughs } = summary;
+  const topicStr = recapTopics.slice(0, 2).join(" and ");
+
+  // Brief "I've been tracking" asides — not a full summary, just a flash of awareness
+  const asides = [
+    `(We've been jumping between ${topicStr} and I'm here for all of it.)`,
+    `Side note — love that we've gone from ${recapTopics[0]} to ${recapTopics[recapTopics.length - 1]} in this conversation.`,
+    `We've covered some ground, huh? ${topicStr} and counting.`,
+    `${hadLaughs ? "This has been fun — " : ""}we've really gotten into ${topicStr} today.`,
+  ];
+
+  const aside = asides[Math.floor(Math.random() * asides.length)];
+
+  // Append the aside naturally
+  return response + " " + aside;
+}
+
 function applySurpriseInsight(response, topics) {
   const turn = mem.turn;
   if (turn < 4) return response; // let conversation warm up
@@ -14166,6 +14286,9 @@ export function getAIResponse(input) {
   // ═══ Humor callback: reference earlier funny moments for running-joke callbacks ═══
   response = applyHumorCallback(response, text, currentTopics);
 
+  // ═══ Thread recap: brief aside showing awareness of conversation arc ═══
+  response = applyThreadRecap(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -14221,6 +14344,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
