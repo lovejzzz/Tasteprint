@@ -669,10 +669,70 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- RATING ---- */
   if(type==="rating"){
-    const rs=P("stars");const stars=(n,sz=14)=><span style={{fontSize:sz,letterSpacing:2}}>{Array(5).fill(0).map((_,i)=><span key={i} style={{color:i<n?p.ac:p.mu+"30",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("stars",i+1)}>{i<n?"★":"☆"}</span>)}</span>;
-    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>{stars(rs,18)}<div style={{display:"flex",alignItems:"center",gap:6}}><T k="score" s={{fontSize:14,fontWeight:600,color:p.tx}}>4.0</T><T k="count" s={{fontSize:11,color:p.mu}}>(128 reviews)</T></div></div>;
-    if(v===1)return <div style={{...b,display:"flex",alignItems:"center",gap:8}}>{stars(rs,14)}<T k="score" s={{fontSize:13,fontWeight:600,color:p.tx}}>4.0</T><T k="count" s={{fontSize:10,color:p.mu}}>128</T></div>;
-    return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",gap:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>{stars(rs,14)}<T k="date" s={{fontSize:10,color:p.mu}}>2 days ago</T></div><T k="text" s={{fontSize:11,color:p.tx,lineHeight:1.5}}>Excellent quality, fast shipping. Would definitely buy again!</T><div style={{display:"flex",alignItems:"center",gap:6}}><Img k="avatar" s={{width:20,height:20,borderRadius:999,background:p.ac+"20"}}/><T k="author" s={{fontSize:10,fontWeight:500,color:p.mu}}>Jane D.</T></div></div>;
+    const rs=P("stars");
+    const starIcon=(filled,sz=14)=><svg width={sz} height={sz} viewBox="0 0 24 24" fill={filled?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>;
+    const stars=(n,sz=14)=><span style={{display:"inline-flex",gap:2,color:p.ac}}>{Array(5).fill(0).map((_,i)=><span key={i} style={{color:i<n?p.ac:p.mu+"30",cursor:"pointer",transition:"transform .15s,color .15s",display:"inline-flex"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("stars",i+1)}>{starIcon(i<n,sz)}</span>)}</span>;
+    /* v0 Stars — centered stars with score and count */
+    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,animation:"tp-fadein .3s ease-out"}}>
+      {stars(rs,18)}
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <T k="score" s={{fontSize:f(15),fontWeight:700,color:p.tx}}>4.0</T>
+        <T k="count" s={{fontSize:f(11),color:p.mu}}>(128 reviews)</T>
+      </div>
+    </div>;
+    /* v1 Compact — inline minimal stars + score */
+    if(v===1)return <div style={{...b,display:"flex",alignItems:"center",gap:8,animation:"tp-fadein .3s ease-out"}}>
+      {stars(rs,13)}
+      <T k="score" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>4.0</T>
+      <T k="count" s={{fontSize:f(10),color:p.mu}}>128</T>
+    </div>;
+    /* v2 Review — card with review text, avatar, date */
+    if(v===2)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",gap:8,animation:"tp-fadein .3s ease-out"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        {stars(rs,13)}
+        <T k="date" s={{fontSize:f(10),color:p.mu}}>2 days ago</T>
+      </div>
+      <T k="text" s={{fontSize:f(11),color:p.tx,lineHeight:1.5}}>Excellent quality, fast shipping. Would definitely buy again!</T>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <Img k="avatar" s={{width:20,height:20,borderRadius:999,background:p.ac+"20"}}/>
+        <T k="author" s={{fontSize:f(10),fontWeight:500,color:p.mu}}>Jane D.</T>
+        <span style={{fontSize:f(9),color:p.ac,marginLeft:"auto",background:p.ac+"10",padding:"1px 6px",borderRadius:4}}>Verified</span>
+      </div>
+    </div>;
+    /* v3 Sentiment — emoji-based sentiment faces */
+    if(v===3){const emojis=["😞","😐","🙂","😊","🤩"];const labels=["Poor","Fair","Good","Great","Amazing"];
+    return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",gap:10,animation:"tp-fadein .3s ease-out"}}>
+      <T k="title" s={{fontSize:f(12),fontWeight:600,color:p.tx,textAlign:"center"}}>How was your experience?</T>
+      <div style={{display:"flex",justifyContent:"center",gap:6}}>
+        {emojis.map((em,i)=>{const active=i<rs;const sel=i===rs-1;return <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",transition:"transform .2s cubic-bezier(.34,1.56,.64,1)",transform:sel?"scale(1.25)":"scale(1)",animation:`tp-fadein .2s ease-out ${i*0.06}s both`}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("stars",i+1)}>
+          <span style={{fontSize:sel?24:18,filter:active?"":`grayscale(1) opacity(.3)`,transition:"all .2s ease"}}>{em}</span>
+          {sel&&<span style={{fontSize:f(8),fontWeight:600,color:p.ac,animation:"tp-badge-pop .3s cubic-bezier(.34,1.56,.64,1)"}}>{labels[i]}</span>}
+        </div>})}
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,marginTop:2}}>
+        <span style={{fontSize:f(20),fontWeight:700,color:p.tx,animation:"tp-count .4s ease-out"}}>{rs}.0</span>
+        <span style={{fontSize:f(10),color:p.mu}}>/5</span>
+      </div>
+    </div>}
+    /* v4 Breakdown — distribution bars with summary */
+    {const dist=[68,22,6,2,2];const total=128;
+    return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:14,display:"flex",gap:14,animation:"tp-fadein .3s ease-out"}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,minWidth:60}}>
+        <T k="score" s={{fontSize:f(28),fontWeight:800,color:p.tx,letterSpacing:"-0.03em",lineHeight:1,animation:"tp-count .5s ease-out"}}>4.0</T>
+        {stars(rs,11)}
+        <T k="count" s={{fontSize:f(9),color:p.mu,marginTop:2}}>128 reviews</T>
+      </div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",gap:4,justifyContent:"center"}}>
+        {[5,4,3,2,1].map((n,i)=><div key={n} style={{display:"flex",alignItems:"center",gap:5,animation:`tp-fadein .2s ease-out ${i*0.06}s both`}}>
+          <span style={{fontSize:f(9),color:p.mu,width:10,textAlign:"right"}}>{n}</span>
+          <span style={{display:"inline-flex",color:p.ac,opacity:.6}}>{starIcon(true,8)}</span>
+          <div style={{flex:1,height:6,borderRadius:3,background:p.su,overflow:"hidden"}}>
+            <div style={{height:"100%",borderRadius:3,background:n>=4?p.ac:n===3?p.ac2||p.ac:p.mu+"40",width:`${dist[5-n]}%`,transformOrigin:"left",animation:`tp-fill .6s ease-out ${i*0.08}s both`}}/>
+          </div>
+          <span style={{fontSize:f(8),color:p.mu,width:22,textAlign:"right"}}>{dist[5-n]}%</span>
+        </div>)}
+      </div>
+    </div>}
   }
 
   /* ---- RECEIPT ---- */

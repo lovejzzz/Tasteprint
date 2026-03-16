@@ -75,7 +75,7 @@ export const VARIANTS = {
   "feature-table":["Checkmark","Highlighted","Minimal"],
   "promo-banner":["Gradient","Pill","Countdown","Glass","Social Proof"],
   "order-summary":["Card","Compact","Discount","Itemized","Glass"],
-  rating:["Stars","Compact","Review"],
+  rating:["Stars","Compact","Review","Sentiment","Breakdown"],
   receipt:["Dashed","Clean","Digital","Thermal","Glass"],
   "sub-toggle":["Cards","Switch","Pill","Glass"],
   tooltip:   ["Light","Dark","Arrow","Glass","Rich"],
