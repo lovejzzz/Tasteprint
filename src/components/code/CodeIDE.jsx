@@ -315,6 +315,7 @@ const SHORTCUTS = [
     ['\u2318+Z', 'Undo'],
     ['\u2318+Shift+Z', 'Redo'],
     ['\u2318+R', 'Rename symbol'],
+    ['\u2318+Shift+S', 'Surround with...'],
     ['Tab (on trigger)', 'Expand snippet'],
   ]},
   { cat: 'Search', items: [
@@ -596,6 +597,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const helpSearchRef = React.useRef(null);
   const helpFilterRef = React.useRef({ q: '' });
 
+  /* ---- Per-file scroll/cursor memory ---- */
+  const filePositions = React.useRef({});
+
+  /* ---- Surround with menu ---- */
+  const [surroundMenu, setSurroundMenu] = React.useState(null);
+
   /* ---- Welcome tab ---- */
   const [welcomeDismissed, setWelcomeDismissed] = React.useState(false);
 
@@ -805,12 +812,24 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       clear: () => { logs.length = 0 },
       table: (...a) => logs.push({ t: 'log', v: a.map(x => JSON.stringify(x, null, 2)).join(' ') }),
     };
-    try {
-      const r = new Function('console', 'tp', input)(fc, tp || {});
-      if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
-      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ' + input }, ...logs], ms: null, err: null, errLn: null }));
-    } catch (e) {
-      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ' + input }, { t: 'err', v: e.message }], ms: null, err: null, errLn: null }));
+    const isAsync = /\bawait\b/.test(input);
+    if (isAsync) {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ' + input }], ms: null, err: null, errLn: null }));
+      const fn = new Function('console', 'tp', `return (async () => {\n${input}\n})()`);
+      fn(fc, tp || {}).then(r => {
+        if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
+        setOutput(prev => ({ logs: [...(prev?.logs || []), ...logs], ms: null, err: null, errLn: null }));
+      }).catch(e => {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: e.message }], ms: null, err: null, errLn: null }));
+      });
+    } else {
+      try {
+        const r = new Function('console', 'tp', input)(fc, tp || {});
+        if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ' + input }, ...logs], ms: null, err: null, errLn: null }));
+      } catch (e) {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F ' + input }, { t: 'err', v: e.message }], ms: null, err: null, errLn: null }));
+      }
     }
     setTermInput('');
   };
@@ -1005,10 +1024,35 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   };
 
   const openFile = (path) => {
+    // Save current file position
+    if (activeFile && taRef.current) {
+      filePositions.current[activeFile] = {
+        scrollTop: taRef.current.scrollTop,
+        selStart: taRef.current.selectionStart,
+        selEnd: taRef.current.selectionEnd,
+        activeLn,
+        cursor,
+      };
+    }
     setActiveFile(path);
     if (!openTabs.includes(path)) setOpenTabs(prev => [...prev, path]);
-    setActiveLn(1);
-    setCursor({ ln: 1, col: 1 });
+    // Restore saved position or reset
+    const saved = filePositions.current[path];
+    if (saved) {
+      setActiveLn(saved.activeLn);
+      setCursor(saved.cursor);
+      setTimeout(() => {
+        const el = taRef.current;
+        if (el) {
+          el.scrollTop = saved.scrollTop;
+          el.selectionStart = saved.selStart;
+          el.selectionEnd = saved.selEnd;
+        }
+      }, 0);
+    } else {
+      setActiveLn(1);
+      setCursor({ ln: 1, col: 1 });
+    }
     setRecentFiles(prev => [path, ...prev.filter(p => p !== path)].slice(0, 10));
   };
 
@@ -1116,6 +1160,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Keyboard Shortcuts', key: 'help', hint: '\u2318+K' },
       { label: showBracketColors ? 'Disable Bracket Colors' : 'Enable Bracket Colors', key: 'bracketcolor', hint: '' },
       { label: showIndentRainbow ? 'Disable Indent Rainbow' : 'Enable Indent Rainbow', key: 'indentrainbow', hint: '' },
+      { label: 'Surround With...', key: 'surround', hint: '\u2318+Shift+S' },
       { label: 'Zoom In', key: 'zoomin', hint: '\u2318+=' },
       { label: 'Zoom Out', key: 'zoomout', hint: '\u2318+-' },
       { label: 'Reset Zoom', key: 'zoomreset', hint: '\u2318+0' },
@@ -1152,6 +1197,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'help') setHelpOpen(h => !h);
     else if (key === 'bracketcolor') setShowBracketColors(v => !v);
     else if (key === 'indentrainbow') setShowIndentRainbow(v => !v);
+    else if (key === 'surround') {
+      const el = taRef.current;
+      if (el && el.selectionStart !== el.selectionEnd) { setSurroundMenu({ s: el.selectionStart, en: el.selectionEnd }); }
+      else showToast('Select code to surround', 'warn');
+    }
     else if (key === 'zoomin') setEditorZoom(z => Math.min(2, z + 0.1));
     else if (key === 'zoomout') setEditorZoom(z => Math.max(0.6, z - 0.1));
     else if (key === 'zoomreset') setEditorZoom(1);
@@ -1362,6 +1412,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     /* Escape: close overlays */
     if (e.key === 'Escape') {
       if (acOpen) { setAcOpen(false); return; }
+      if (surroundMenu) { setSurroundMenu(null); return; }
       if (searchOpen) { setSearchOpen(false); return; }
       if (cmdOpen) { setCmdOpen(false); return; }
       if (gotoOpen) { setGotoOpen(false); return; }
@@ -1549,6 +1600,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setCode(nc);
         setTimeout(() => { el.selectionStart = ns; el.selectionEnd = ns + (en - s) }, 0);
       }
+      return;
+    }
+
+    /* Surround with: Cmd+Shift+S */
+    if (e.key === 's' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      if (readonly || s === en) { showToast('Select code to surround', 'warn'); return; }
+      setSurroundMenu({ s, en });
       return;
     }
 
@@ -1777,6 +1836,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         [data-ide-scroll] *::-webkit-scrollbar-thumb:hover { background: #ffffff25; }
         [data-ide-scroll] *::-webkit-scrollbar-corner { background: transparent; }
         [data-ide-scroll] textarea::selection { background: #cba6f730; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
       `}</style>
 
       {/* Title bar — drag handle for moving IDE on canvas */}
@@ -2355,6 +2415,45 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 })}
                 {commands.length === 0 && <div style={{ padding: '8px 10px', fontSize: 9, color: '#555' }}>No matching commands</div>}
               </div>
+            </div>
+          )}
+
+          {/* Surround with menu */}
+          {surroundMenu && (
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '15%', right: '15%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden' }}>
+              <div style={{ padding: '6px 10px', borderBottom: '1px solid #ffffff08', fontSize: 9, color: '#cba6f7', fontWeight: 600 }}>Surround with...</div>
+              {[
+                { label: 'if (...) { }', key: 'if', wrap: (sel, ind) => `${ind}if (condition) {\n${sel}\n${ind}}` },
+                { label: 'if (...) { } else { }', key: 'ife', wrap: (sel, ind) => `${ind}if (condition) {\n${sel}\n${ind}} else {\n${ind}  \n${ind}}` },
+                { label: 'for (...) { }', key: 'for', wrap: (sel, ind) => `${ind}for (let i = 0; i < length; i++) {\n${sel}\n${ind}}` },
+                { label: 'while (...) { }', key: 'while', wrap: (sel, ind) => `${ind}while (condition) {\n${sel}\n${ind}}` },
+                { label: 'try { } catch { }', key: 'try', wrap: (sel, ind) => `${ind}try {\n${sel}\n${ind}} catch (e) {\n${ind}  console.error(e);\n${ind}}` },
+                { label: 'function (...) { }', key: 'fn', wrap: (sel, ind) => `${ind}function name() {\n${sel}\n${ind}}` },
+                { label: '( )', key: 'paren', wrap: (sel) => `(${sel.trim()})` },
+                { label: '[ ]', key: 'bracket', wrap: (sel) => `[${sel.trim()}]` },
+              ].map(item => (
+                <div key={item.key} onClick={() => {
+                  const { s: ss, en: se } = surroundMenu;
+                  const selected = code.substring(ss, se);
+                  // Detect indent of selected lines
+                  const lineStart = code.lastIndexOf('\n', ss - 1) + 1;
+                  const indent = code.substring(lineStart, ss).match(/^(\s*)/)[0];
+                  // Re-indent selected code by adding one level
+                  const tab = ' '.repeat(tabSize);
+                  const reindented = selected.split('\n').map(l => tab + l).join('\n');
+                  const wrapped = item.key === 'paren' || item.key === 'bracket' ? item.wrap(selected) : item.wrap(reindented, indent);
+                  const nc = code.substring(0, ss) + wrapped + code.substring(se);
+                  setCode(nc);
+                  setSurroundMenu(null);
+                  showToast(`Surrounded with ${item.label}`, 'info');
+                  setTimeout(() => taRef.current?.focus(), 0);
+                }}
+                  style={{ padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  {item.label}
+                </div>
+              ))}
             </div>
           )}
 
@@ -3333,10 +3432,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     {(() => {
                       const hints = [];
                       lines.forEach((l, i) => {
+                        const trimmed = l.trim();
+                        if (/^\s*\/\//.test(l)) return; // skip comments
                         if (/\bvar\b/.test(l)) hints.push({ ln: i + 1, msg: 'Prefer const/let over var', sev: 'warn' });
                         if (/console\.log/.test(l) && !activeFile.includes('playground')) hints.push({ ln: i + 1, msg: 'console.log left in code', sev: 'info' });
                         if (/==(?!=)/.test(l) && !/===/.test(l)) hints.push({ ln: i + 1, msg: 'Use === instead of ==', sev: 'warn' });
                         if (/!=(?!=)/.test(l) && !/!==/.test(l)) hints.push({ ln: i + 1, msg: 'Use !== instead of !=', sev: 'warn' });
+                        if (/\balert\s*\(/.test(l)) hints.push({ ln: i + 1, msg: 'Avoid using alert()', sev: 'warn' });
+                        if (l.length > 120 && !l.trim().startsWith('//')) hints.push({ ln: i + 1, msg: `Line too long (${l.length} chars)`, sev: 'info' });
+                        if (/;\s*;/.test(l)) hints.push({ ln: i + 1, msg: 'Double semicolon', sev: 'warn' });
+                        if (/\{\}/.test(l) && !/\(\)/.test(l)) hints.push({ ln: i + 1, msg: 'Empty block statement', sev: 'info' });
                       });
                       return hints.length > 0 || output?.err ? (<>
                         {output?.err && (
@@ -3356,11 +3461,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         <span style={{ color: '#f38ba8', fontWeight: 600 }}>{'\u2717'} Error</span>
                         {output.errLn && <span style={{ opacity: .5, marginLeft: 6 }}>line {output.errLn}</span>}
                         <div style={{ marginTop: 2, color: '#f38ba8cc' }}>{output.err}</div>
-                        {output.suggest && (
-                          <div style={{ marginTop: 4, fontSize: 8, color: '#89b4fa', background: '#89b4fa10', padding: '3px 6px', borderRadius: 3, borderLeft: '2px solid #89b4fa40' }}>
-                            {'\uD83D\uDCA1'} {output.suggest}
-                          </div>
-                        )}
+                        {output.suggest && (() => {
+                          // Check if the suggestion is a tp.method() fix that can be auto-applied
+                          const fixMatch = output.suggest.match(/Did you mean (tp\.\w+\(\)\??)/);
+                          const errVarMatch = output.err?.match(/(\w+) is not defined/);
+                          const canFix = fixMatch && errVarMatch && output.errLn;
+                          return (
+                            <div onClick={canFix ? () => {
+                              // Apply the fix: replace the undefined variable with the suggestion
+                              const all = code.split('\n');
+                              const ln = output.errLn - 1;
+                              if (ln >= 0 && ln < all.length) {
+                                all[ln] = all[ln].replace(new RegExp('\\b' + errVarMatch[1] + '\\b'), fixMatch[1]);
+                                setCode(all.join('\n'));
+                                showToast('Fix applied!', 'success');
+                                setOutput(prev => ({ ...prev, suggest: null }));
+                              }
+                            } : undefined}
+                              style={{ marginTop: 4, fontSize: 8, color: '#89b4fa', background: '#89b4fa10', padding: '3px 6px', borderRadius: 3, borderLeft: '2px solid #89b4fa40', cursor: canFix ? 'pointer' : 'default' }}
+                              onMouseEnter={canFix ? e => { e.currentTarget.style.background = '#89b4fa20'; } : undefined}
+                              onMouseLeave={canFix ? e => { e.currentTarget.style.background = '#89b4fa10'; } : undefined}>
+                              {'\uD83D\uDCA1'} {output.suggest}{canFix && <span style={{ marginLeft: 6, fontSize: 7, opacity: .7 }}>(click to fix)</span>}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                     {hints.map((h, i) => (
@@ -3444,7 +3568,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           color: toast.type === 'success' ? '#27c93f' : toast.type === 'warn' ? '#f9e2af' : toast.type === 'error' ? '#f38ba8' : '#89b4fa',
           border: `1px solid ${toast.type === 'success' ? '#27c93f40' : toast.type === 'warn' ? '#f9e2af40' : toast.type === 'error' ? '#f38ba840' : '#89b4fa40'}`,
           boxShadow: '0 4px 12px rgba(0,0,0,.3)', pointerEvents: 'none',
-          animation: 'none', fontFamily: MONO, whiteSpace: 'nowrap',
+          animation: 'toastIn .2s ease-out', fontFamily: MONO, whiteSpace: 'nowrap',
         }}>{toast.msg}</div>
       )}
 
