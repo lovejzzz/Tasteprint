@@ -9451,6 +9451,111 @@ function adjustTypingForPace(typingMs) {
   return typingMs;
 }
 
+/* ── Retroactive Insight & Dot Connection (Round 55) ──
+ * Tracks topic co-occurrences across the conversation. When the user brings
+ * up something that retroactively connects two previously separate threads,
+ * the AI has an "aha moment" — naturally calling out the connection.
+ * Also detects when the user's stance has evolved (said X about topic A
+ * early on, now says Y) and notes the growth.
+ */
+
+let topicPairHistory = {};   // "topicA|topicB" → { firstTurn, count }
+let lastInsightTurn = 0;
+
+function trackTopicPairs(topics) {
+  if (topics.length < 1) return;
+  // Record pairs
+  for (let i = 0; i < topics.length; i++) {
+    for (let j = i + 1; j < topics.length; j++) {
+      const key = [topics[i], topics[j]].sort().join("|");
+      if (!topicPairHistory[key]) {
+        topicPairHistory[key] = { firstTurn: mem.turn, count: 0 };
+      }
+      topicPairHistory[key].count++;
+    }
+  }
+}
+
+function detectRetroactiveInsight(currentTopics) {
+  if (mem.turn - lastInsightTurn < 8 || mem.turn < 7) return null;
+  if (currentTopics.length < 1) return null;
+
+  // Check if current topic connects to two previously separate topics
+  const userHistory = mem.history.filter(h => h.role === "user");
+  if (userHistory.length < 4) return null;
+
+  // Gather all topics from earlier messages (excluding last 2)
+  const olderTopics = new Set();
+  userHistory.slice(0, -2).forEach(h => (h.topics || []).forEach(t => olderTopics.add(t)));
+
+  // Find a current topic that appeared in an older context with a different companion topic
+  for (const ct of currentTopics) {
+    if (!olderTopics.has(ct)) continue;
+
+    // Find what topics this was paired with before vs now
+    const oldPairs = [];
+    userHistory.slice(0, -2).forEach(h => {
+      if ((h.topics || []).includes(ct)) {
+        (h.topics || []).filter(t => t !== ct).forEach(t => oldPairs.push(t));
+      }
+    });
+
+    const newPairs = currentTopics.filter(t => t !== ct);
+
+    // If a new pairing exists that didn't exist before — that's a connection
+    for (const np of newPairs) {
+      if (oldPairs.length > 0 && !oldPairs.includes(np)) {
+        const oldCompanion = oldPairs[0];
+        return {
+          bridge: ct,
+          from: oldCompanion,
+          to: np,
+          type: "new_connection"
+        };
+      }
+    }
+  }
+
+  // Check for recurring topic pair (discussed together 3+ times = pattern)
+  for (const [key, val] of Object.entries(topicPairHistory)) {
+    if (val.count >= 3 && mem.turn - val.firstTurn >= 5) {
+      const [a, b] = key.split("|");
+      if (currentTopics.includes(a) || currentTopics.includes(b)) {
+        return { bridge: null, from: a, to: b, type: "recurring_theme" };
+      }
+    }
+  }
+
+  return null;
+}
+
+function applyRetroactiveInsight(response, currentTopics) {
+  if (Math.random() > 0.22) return response;
+
+  const insight = detectRetroactiveInsight(currentTopics);
+  if (!insight) return response;
+
+  lastInsightTurn = mem.turn;
+  let prefix = "";
+
+  if (insight.type === "new_connection") {
+    const connections = [
+      `Oh wait — you know what I just realized? The ${insight.bridge} thing connects what you were saying about ${insight.from} to ${insight.to}. That's actually a really interesting thread.`,
+      `Hold on — I'm connecting dots here. Earlier you were talking about ${insight.from}, and now ${insight.to} — ${insight.bridge} is the common thread. That's not obvious but it makes total sense.`,
+      `Okay, this is cool — ${insight.bridge} just bridged two things you've been thinking about separately: ${insight.from} and ${insight.to}. I love when conversations do that.`,
+    ];
+    prefix = connections[Math.floor(Math.random() * connections.length)] + " ";
+  } else if (insight.type === "recurring_theme") {
+    const recurrings = [
+      `You know, ${insight.from} and ${insight.to} keep coming up together. I think there's a pattern in how you think about these — they're clearly connected in your mind.`,
+      `I've noticed ${insight.from} and ${insight.to} are sort of a package deal for you. There's a mental model there that I find interesting.`,
+    ];
+    prefix = recurrings[Math.floor(Math.random() * recurrings.length)] + " ";
+  }
+
+  return prefix ? prefix + response : response;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -9559,6 +9664,10 @@ export function getAIResponse(input) {
 
   // ═══ Topic bridging: natural connective tissue on topic shifts/callbacks ═══
   response = addTopicBridge(response, currentTopics);
+
+  // ═══ Retroactive insight: connect dots across separate threads ═══
+  trackTopicPairs(currentTopics);
+  response = applyRetroactiveInsight(response, currentTopics);
 
   // ═══ Observational wit: self-aware humor about conversation patterns ═══
   trackMessageLength(text);
@@ -9670,6 +9779,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
