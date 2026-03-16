@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 11: Multi-sentence processing for complex inputs
+   Round 12: Conversation repair & graceful degradation
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1625,14 +1625,22 @@ function generateResponse(text) {
     return respondToTopic(nonMod, topics, primaryTopic, parsed);
   }
 
-  // ═══ 17. Fallback — mirror input, then momentum, then echo ═══
-  // Try mirroring the user's actual words first
+  // ═══ 17. Fallback — graceful degradation, mirror, momentum, rescue ═══
+  // Try graceful degradation first — be honest when confused
+  const degraded = gracefulDegradation(text, keywords);
+  if (degraded && Math.random() > 0.4) return degraded;
+
+  // Try mirroring the user's actual words
   const mirrored = mirrorInput(text, keywords);
   if (mirrored && Math.random() > 0.3) return mirrored;
 
   // Check if conversation needs energy
   const momentum = momentumResponse();
   if (momentum) return momentum;
+
+  // Last resort: if we've hit fallback 3+ times recently, offer a topic rescue
+  const recentFallbacks = recentStructures.filter(s => s === "generic-ack" || s === "probe").length;
+  if (recentFallbacks >= 2 && Math.random() > 0.5) return offerTopicRescue();
 
   return respondFallback(text, tokens, keywords);
 }
@@ -2100,6 +2108,177 @@ function tryProactiveCallback(response, currentTopics) {
   return response;
 }
 
+/* ── Conversation Repair System ──
+ * Detects when the AI is about to give a low-quality response (generic fallback,
+ * repetitive pattern, or confusion signal) and applies repair strategies:
+ * 1. Confusion detection — user says "what?", "huh?", "I don't get it"
+ * 2. Repetition guard — prevents the same response structure 3x in a row
+ * 3. Graceful degradation — when the bot truly doesn't know, it admits it
+ *    charmingly rather than giving vague "that's interesting" responses
+ * 4. Topic rescue — offers concrete conversation pivots when stuck
+ * 5. Ambiguity handling — when input could mean multiple things, asks
+ */
+
+let recentStructures = []; // track response "shapes" for repetition detection
+
+function classifyStructure(response) {
+  // Classify the response's conversational structure
+  if (/\?$/.test(response.trim())) return "question";
+  if (/^(oh|ooh|hmm|ah|ha|haha|wow)/i.test(response)) return "reaction";
+  if (/tell me more|what else|how about|what's on your mind/i.test(response)) return "probe";
+  if (/that's (interesting|cool|awesome|great|neat)/i.test(response)) return "generic-ack";
+  if (response.length < 30) return "short";
+  if (response.includes("!") && response.length > 60) return "enthusiastic";
+  return "statement";
+}
+
+function detectRepetition(response) {
+  const struct = classifyStructure(response);
+  recentStructures.push(struct);
+  if (recentStructures.length > 5) recentStructures.shift();
+
+  // Check for 3+ of the same structure in a row
+  const last3 = recentStructures.slice(-3);
+  if (last3.length === 3 && last3[0] === last3[1] && last3[1] === last3[2]) {
+    return last3[0]; // the repeated structure
+  }
+  return null;
+}
+
+function repairRepetition(response, repeatedType) {
+  // Break the pattern by switching to a different conversational move
+  switch (repeatedType) {
+    case "question":
+      // Stop asking questions — make a statement instead
+      return response.replace(/\?[^?]*$/, ".") + " But I'm genuinely curious about your perspective.";
+    case "generic-ack":
+      // Replace generic acknowledgment with something specific
+      return pickNew([
+        "Okay, I'm going to be honest — I want to give you a better response than 'that's interesting.' What specifically about this matters to you?",
+        "Rather than just saying 'cool' again, let me ask — what's the real thing you want to dig into here?",
+        "I notice I keep giving surface-level reactions. Let's go deeper — what's the heart of what you're thinking about?",
+      ]);
+    case "probe":
+      // Stop probing and share something instead
+      return pickNew([
+        "You know what, instead of asking more questions — here's what I think is cool about what you're saying: it shows you think deeply about things.",
+        "Let me flip the script instead of asking another question. From what we've been talking about, you seem like someone who values substance.",
+        "Instead of another question from me — I think the thread running through what you've been saying is really interesting.",
+      ]);
+    default:
+      return response;
+  }
+}
+
+function detectConfusion(text) {
+  const lower = text.toLowerCase().trim();
+  // Direct confusion signals
+  if (/^(what|huh|wdym|what do you mean|i don't (get|understand)|confused|that (doesn't|makes no) sense)\??$/i.test(lower)) return "direct";
+  // Softer confusion
+  if (/^(wait|hold on|back up|say that again|come again|excuse me)\b/i.test(lower)) return "soft";
+  // Correction attempt
+  if (/^(no |not |i (meant|said|was talking)|that's not what i)/i.test(lower)) return "correction";
+  return null;
+}
+
+function repairConfusion(confusionType) {
+  const lastAI = mem.lastAI();
+  const lastUser = mem.prevUserMsg();
+
+  if (confusionType === "direct") {
+    if (lastAI) {
+      // Try to rephrase what we said
+      const topic = lastAI.topics?.[0] || "that";
+      return pickNew([
+        `Sorry, let me try again! I was talking about ${topic}. What I meant was — what's your take on it?`,
+        `My bad — I jumped ahead! Let me back up. What were you trying to say about ${topic}?`,
+        `Ha, I think I got a bit off track there 😅 Let's reset — what did you want to talk about?`,
+      ]);
+    }
+    return "Sorry about that! I got confused. Let's start fresh — what's on your mind?";
+  }
+
+  if (confusionType === "soft") {
+    return pickNew([
+      "Oh wait, sorry — I might have misread what you were saying. Can you rephrase? I want to get it right this time.",
+      "Hold on, you're right — let me actually listen this time. What were you getting at?",
+      "Fair point, I may have jumped to conclusions. Run that by me again?",
+    ]);
+  }
+
+  if (confusionType === "correction") {
+    if (lastUser) {
+      return pickNew([
+        `Ah, my mistake! I misunderstood. So what you actually meant was...?`,
+        `Oh gotcha — sorry about that! I read that wrong. Tell me what you actually meant.`,
+        `Oops, I totally misread that 😅 My bad! What were you actually saying?`,
+      ]);
+    }
+    return "Ah, my mistake! Tell me what you actually meant — I'll pay better attention this time.";
+  }
+
+  return null;
+}
+
+function handleAmbiguity(text, intents, topics) {
+  // If multiple strong intents compete (both >0.6), the input is ambiguous
+  if (intents.length >= 2 && intents[0].conf > 0.6 && intents[1].conf > 0.55) {
+    const diff = intents[0].conf - intents[1].conf;
+    if (diff < 0.15) {
+      // Very close — ask for clarification naturally
+      const a = intents[0].intent, b = intents[1].intent;
+      return pickNew([
+        `Ooh, I'm picking up on both ${a} and ${b} vibes here — which angle are you coming from?`,
+        `That's got me thinking in two directions — the ${a} side and the ${b} side. Which one are you after?`,
+        `Interesting — are you asking about the ${a} aspect or more the ${b} part?`,
+      ]);
+    }
+  }
+  return null;
+}
+
+function gracefulDegradation(text, keywords) {
+  // When we truly have no clue, be honest and charming about it
+  const wordCount = tokenize(text).length;
+
+  // Very long message we can't parse — acknowledge the effort
+  if (wordCount > 25 && keywords.length < 2) {
+    return pickNew([
+      "Okay I'm going to level with you — I read all of that and I think my little AI brain needs help. Can you give me the TL;DR? 😄",
+      "I want to give that a proper response but I'm not sure I'm following the thread. What's the key thing you want to talk about?",
+      "That's a lot of thought and I want to do it justice! Can you boil it down to the core question?",
+    ]);
+  }
+
+  // Completely unknown territory
+  if (keywords.length === 0 || wordCount < 3) return null; // let normal handlers deal with very short msgs
+
+  // We have keywords but no matching intents/topics — be specific about what we caught
+  const caught = keywords.slice(0, 2).join(" and ");
+  return pickNew([
+    `Hmm, I caught "${caught}" but I'm not 100% sure what you're getting at. Can you tell me more?`,
+    `I heard you say something about ${caught} — but I want to make sure I'm on the right track. What specifically are you wondering?`,
+    `Okay, ${caught} — I want to give you a real answer, not a generic one. Can you rephrase that for me?`,
+    `"${caught}" — interesting! But I'd rather ask than guess wrong. What's the actual question?`,
+  ]);
+}
+
+// Concrete topic pivots when conversation is truly stuck
+function offerTopicRescue() {
+  const explored = Object.keys(mem.topics);
+  const allTopics = ["tech", "design", "food", "music", "movies", "gaming", "travel", "books", "science", "philosophy"];
+  const unexplored = allTopics.filter(t => !explored.includes(t));
+  const suggestion = unexplored.length > 0 ? pick(unexplored) : pick(allTopics);
+
+  const rescues = [
+    `Hey, totally different direction — have you been into any ${suggestion} stuff lately?`,
+    `Okay wild card: let's talk about ${suggestion}. What's your take?`,
+    `Plot twist — ${suggestion}. Go. First thought that comes to mind!`,
+    `Let me try something different: if you had to teach someone about ${suggestion}, where would you start?`,
+  ];
+  return pickNew(rescues);
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -2110,8 +2289,43 @@ export function getAIResponse(input) {
   const parsed = parseSentence(text);
   const sent = sentiment(text);
 
+  // ═══ Conversation repair: detect confusion BEFORE generating response ═══
+  const confusion = detectConfusion(text);
+  if (confusion) {
+    const repair = repairConfusion(confusion);
+    if (repair) {
+      mem.add("user", text, [], [], sent);
+      mem.add("ai", repair);
+      trackAIQuestion(repair);
+      const typingMs = calcTypingMs(repair, sent, parsed);
+      return { text: repair, typingMs, pause: calcTypingPause(typingMs) };
+    }
+  }
+
   // Generate core response
   let response = generateResponse(text);
+
+  // ═══ Conversation repair: ambiguity handling ═══
+  const intents = classify(text);
+  const currentTopics = extractTopics(tokenize(text));
+  const ambiguous = handleAmbiguity(text, intents.filter(i=>!i.modifier), currentTopics);
+  if (ambiguous && Math.random() > 0.6) {
+    response = ambiguous; // occasionally ask for clarification instead of guessing
+  }
+
+  // ═══ Conversation repair: repetition guard ═══
+  const repeated = detectRepetition(response);
+  if (repeated) {
+    response = repairRepetition(response, repeated);
+  }
+
+  // ═══ Conversation repair: graceful degradation ═══
+  // If response looks like a generic fallback, try to do better
+  if (/^(that's interesting|hmm.*tell me more|cool.*what else)/i.test(response) && mem.turn > 3) {
+    const { keywords } = extractKW(text);
+    const degraded = gracefulDegradation(text, keywords);
+    if (degraded) response = degraded;
+  }
 
   // Apply conversational rhythm — shape response to follow natural patterns
   const targetMove = pickNextMove();
@@ -2119,7 +2333,6 @@ export function getAIResponse(input) {
   recordMove(response);
 
   // Try proactive callbacks — naturally reference earlier conversation
-  const currentTopics = extractTopics(tokenize(text));
   response = tryProactiveCallback(response, currentTopics);
 
   // Apply personality layer
