@@ -49,7 +49,7 @@ export const VARIANTS = {
   "stat-card":["Outlined","Tinted icon","Left accent","Inverted","Terminal"],
   "dash-panel":["Telemetry","Signal","Minimal","Gradient","Glass"],
   "image-placeholder":["Subtle","Gradient","Dashed","Glass","Brutal"],
-  "avatar-row":["Circular","Small tight","Rounded sq"],
+  "avatar-row":["Circular","Small tight","Rounded sq","Glass","Gradient ring"],
   "list-item":["Card row","Divider","Tinted","Glass","Settings"],
   input:     ["Outlined","Labeled","Filled","Underline","Glass"],
   search:    ["Bordered","Pill kbd","Underline","Glass","AI"],
