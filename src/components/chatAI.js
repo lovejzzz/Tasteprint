@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 76: Conversational parallel structure
+   Round 77: Conversational scaffolding & progressive understanding
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -12633,6 +12633,130 @@ function applyParallelStructure(response, text) {
   return response;
 }
 
+/* ── Conversational Scaffolding & Progressive Understanding (Round 77) ──
+ * When a user explains something across multiple turns on the same topic,
+ * humans naturally build visible understanding: "OK so first X... and now
+ * Y makes that click... so basically Z." This module tracks when the user
+ * is building an explanation and occasionally reflects accumulated understanding
+ * back, making the AI feel like it's genuinely learning from the conversation.
+ *
+ * Tracks: consecutive turns on same topic cluster, key claims per topic,
+ * and "understanding level" (surface → connecting → synthesized).
+ *
+ * 18% fire rate, 5-turn cooldown, only after 3+ turns on same topic.
+ */
+
+let scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 };
+let lastScaffoldTurn = 0;
+
+function updateScaffold(text, topics) {
+  const turn = mem.turn;
+  const mainTopic = topics[0] || "";
+
+  // Check if still on same topic cluster
+  const sameTopic = mainTopic && (
+    scaffoldState.topic === mainTopic ||
+    stem(scaffoldState.topic) === stem(mainTopic) ||
+    (scaffoldState.topic && mainTopic.toLowerCase().includes(scaffoldState.topic.toLowerCase())) ||
+    (scaffoldState.topic && scaffoldState.topic.toLowerCase().includes(mainTopic.toLowerCase()))
+  );
+
+  if (sameTopic && turn - scaffoldState.lastTurn <= 2) {
+    // Continue building on same topic
+    scaffoldState.turns++;
+    scaffoldState.lastTurn = turn;
+
+    // Extract a key claim from this message (first meaningful clause)
+    const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+    const claim = sentences[0].trim();
+    if (claim.length > 8 && claim.length < 80 && scaffoldState.claims.length < 5) {
+      // Compress: strip filler, lowercase
+      const compressed = claim
+        .replace(/^(so |well |like |basically |I think |I mean |you know )/i, "")
+        .replace(/[.!?]+$/, "")
+        .trim();
+      if (compressed.length > 5) scaffoldState.claims.push(compressed);
+    }
+  } else if (mainTopic) {
+    // New topic — reset scaffold
+    scaffoldState = {
+      topic: mainTopic,
+      claims: [],
+      turns: 1,
+      lastTurn: turn,
+    };
+    // Seed with first claim
+    const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+    const claim = sentences[0].trim().replace(/^(so |well |like |basically )/i, "").replace(/[.!?]+$/, "").trim();
+    if (claim.length > 5 && claim.length < 80) scaffoldState.claims.push(claim);
+  }
+}
+
+function getUnderstandingLevel() {
+  if (scaffoldState.turns >= 5 && scaffoldState.claims.length >= 3) return "synthesized";
+  if (scaffoldState.turns >= 3 && scaffoldState.claims.length >= 2) return "connecting";
+  if (scaffoldState.turns >= 2) return "surface";
+  return "none";
+}
+
+function applyScaffolding(response, text, topics) {
+  const turn = mem.turn;
+
+  updateScaffold(text, topics);
+
+  if (turn < 5) return response;
+  if (turn - lastScaffoldTurn < 5) return response;     // 5-turn cooldown
+  if (response.length > 220) return response;             // don't bloat
+  if (response.length < 20) return response;
+  if (Math.random() > 0.18) return response;               // 18% fire rate
+
+  const level = getUnderstandingLevel();
+  if (level === "none") return response;
+
+  const topic = scaffoldState.topic;
+  const claims = scaffoldState.claims;
+
+  lastScaffoldTurn = turn;
+
+  if (level === "surface" && claims.length >= 1) {
+    // Early stage: show you're tracking
+    const surfaceFrames = [
+      `OK I think I'm following — ${claims[claims.length - 1]}.`,
+      `So you're saying ${claims[claims.length - 1]} — got it.`,
+      `Right, ${claims[claims.length - 1]}. Makes sense so far.`,
+    ];
+    const frame = surfaceFrames[Math.floor(Math.random() * surfaceFrames.length)];
+    return frame + " " + response;
+  }
+
+  if (level === "connecting" && claims.length >= 2) {
+    // Middle stage: connect dots between claims
+    const connectFrames = [
+      `OK so — ${claims[0]}, and then ${claims[claims.length - 1]}. I see how those connect.`,
+      `Wait, so ${claims[0]}... and now ${claims[claims.length - 1]}. That's starting to click.`,
+      `Interesting — first ${claims[0]}, now ${claims[claims.length - 1]}. There's a thread here.`,
+    ];
+    const frame = connectFrames[Math.floor(Math.random() * connectFrames.length)];
+    return frame + " " + response;
+  }
+
+  if (level === "synthesized" && claims.length >= 3) {
+    // Deep stage: synthesize the full picture
+    const synthFrames = [
+      `Let me make sure I've got this — ${claims[0]}, which led to ${claims[1]}, and now ${claims[claims.length - 1]}. That's a solid thread.`,
+      `So if I'm piecing this together: ${claims[0]}... then ${claims[1]}... and ${claims[claims.length - 1]} ties it together.`,
+      `OK I think I see the full picture now — from ${claims[0]} to ${claims[1]} to ${claims[claims.length - 1]}.`,
+    ];
+    const frame = synthFrames[Math.floor(Math.random() * synthFrames.length)];
+    // After synthesizing, partially reset to avoid repeating
+    scaffoldState.claims = [claims[claims.length - 1]];
+    scaffoldState.turns = 2;
+    return frame + " " + response;
+  }
+
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -13136,6 +13260,9 @@ export function getAIResponse(input) {
   // ═══ Parallel structure: address multi-part inputs (lists, alternatives, multi-questions) ═══
   response = applyParallelStructure(response, text);
 
+  // ═══ Scaffolding: reflect growing understanding when user explains over multiple turns ═══
+  response = applyScaffolding(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -13188,6 +13315,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
