@@ -34,7 +34,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   /* Active index (tabs, navbar, sidebar, cmd-palette, dropdown, stepper, timeline, sub-toggle) */
   if ("active" in defaults) {
     const active = G("active");
-    const counts = { tabs: 3, navbar: 3, sidebar: 4, pagination: 5, stepper: 3, timeline: 3, accordion: 3, dropdown: 3, "cmd-palette": 4, "sub-toggle": 2 };
+    const counts = { tabs: 3, navbar: 3, sidebar: 4, pagination: 5, stepper: 3, timeline: 3, accordion: 3, dropdown: 3, "cmd-palette": 4, "sub-toggle": 2, kanban: 3 };
     const n = counts[type] || 4;
     const isPage = type === "pagination";
     controls.push(<React.Fragment key="active"><span style={label}>{isPage ? "Page" : "Active"}</span>
@@ -151,6 +151,26 @@ export default function PropsPanel({ type, props, onProp, p }) {
     const on = G("wishlisted");
     controls.push(<React.Fragment key="wish"><span style={label}>♥</span>
       <button style={{ ...btn(on), width: 22, height: 22, fontSize: 12, border: "none", background: "transparent", color: on ? "#EF4444" : p.mu + "40" }} onMouseDown={stop} onClick={() => onProp("wishlisted", !on)}>{on ? "♥" : "♡"}</button>
+    </React.Fragment>);
+  }
+
+  /* Playing toggle (media-player) */
+  if ("playing" in defaults) {
+    const on = G("playing");
+    controls.push(<React.Fragment key="playing"><span style={label}>{on ? "▶" : "⏸"}</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("playing", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
+  /* Online status toggle (profile-card) */
+  if ("online" in defaults) {
+    const on = G("online");
+    controls.push(<React.Fragment key="online"><span style={label}>{on ? "Online" : "Offline"}</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#22c55e" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("online", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
     </React.Fragment>);
   }
 

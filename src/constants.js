@@ -186,7 +186,7 @@ export const DEFAULT_PROPS = {
   "cmd-palette": { active: 0 },
   progress:      { pct: 68 },
   slider:        { pct: 65 },
-  "media-player":{ pct: 42 },
+  "media-player":{ pct: 42, playing: true },
   testimonial:   { stars: 4 },
   rating:        { stars: 4 },
   "sub-toggle":  { active: 1 },
@@ -197,6 +197,8 @@ export const DEFAULT_PROPS = {
   toast:         { level: 0 },
   "pricing-card":{ featured: false },
   "product-card":{ wishlisted: false },
+  "profile-card":{ online: true },
+  kanban:        { active: 1 },
   "cart-item":   { qty: 1 },
 };
 
