@@ -79,7 +79,7 @@ export const VARIANTS = {
   receipt:["Dashed","Clean","Digital","Thermal","Glass"],
   "sub-toggle":["Cards","Switch","Pill","Glass"],
   tooltip:   ["Light","Dark","Arrow","Glass","Rich"],
-  breadcrumb:["Slash","Arrow","Dots"],
+  breadcrumb:["Slash","Arrow","Dots","Pill","Underline"],
   skeleton:  ["Card","List","Profile"],
   chart:     ["Bar","Line","Donut"],
   testimonial:["Card","Minimal","Bubble","Glass","Hero"],

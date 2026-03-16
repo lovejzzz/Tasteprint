@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 9: Deep knowledge base — explainers, comparisons, how-it-works
+   Round 10: Proactive conversation callbacks + deep knowledge base
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1889,6 +1889,85 @@ function calcTypingPause(typingMs) {
   return { pauseAt: Math.round(pauseAt), pauseMs: Math.round(pauseMs) };
 }
 
+/* ── Proactive Conversation Callbacks ──
+ * Naturally weave in references to things discussed earlier in the conversation.
+ * Unlike the rhythm engine's forced "callback" move, this fires contextually:
+ * when the current topic overlaps with something the user mentioned before,
+ * OR when the conversation has been going long enough that a callback feels
+ * natural. Makes the AI feel like it genuinely remembers the conversation.
+ */
+
+let lastCallbackTurn = 0; // prevent callbacks too close together
+
+function tryProactiveCallback(response, currentTopics) {
+  // Don't callback too frequently (at least 4 turns apart)
+  if (mem.turn - lastCallbackTurn < 4) return response;
+  // Don't modify very short or very long responses
+  if (response.length < 20 || response.length > 180) return response;
+  // Don't add to responses that already reference earlier conversation
+  if (/you mentioned|earlier|back to|remember|you said/i.test(response)) return response;
+
+  // ── Strategy 1: Topic bridge — current topic connects to an earlier one ──
+  if (currentTopics.length > 0 && mem.turn > 5) {
+    const olderHistory = mem.history.filter(h => h.role === "user").slice(0, -2); // exclude last 2
+    for (const topic of currentTopics) {
+      for (const prev of olderHistory) {
+        if (prev.topics?.includes(topic) && Math.random() > 0.6) {
+          const bridges = [
+            `This connects to what you were saying about ${topic} earlier —`,
+            `Oh, this reminds me — you brought up ${topic} before too.`,
+            `Funny how we keep coming back to ${topic}!`,
+          ];
+          lastCallbackTurn = mem.turn;
+          return pick(bridges) + " " + response;
+        }
+      }
+    }
+  }
+
+  // ── Strategy 2: Fact callback — reference a stored fact naturally ──
+  if (mem.turn > 6 && Object.keys(mem.facts).length > 0 && Math.random() > 0.7) {
+    const factKeys = Object.keys(mem.facts);
+    const fact = pick(factKeys);
+    const val = mem.facts[fact];
+
+    if (fact === "project") {
+      const projectBridges = [
+        ` By the way, how's the ${val} project going?`,
+        ` — that might be useful for your ${val} project too!`,
+        ` Speaking of which, does this tie into the ${val} work you mentioned?`,
+      ];
+      lastCallbackTurn = mem.turn;
+      return response + pick(projectBridges);
+    }
+    if (fact.startsWith("likes_")) {
+      const thing = val;
+      const likeBridges = [
+        ` Oh, and since you're into ${thing} — this might be relevant!`,
+        ` That actually ties into ${thing}, which you mentioned liking!`,
+      ];
+      lastCallbackTurn = mem.turn;
+      return response + pick(likeBridges);
+    }
+    if (fact === "role" || fact === "job") {
+      lastCallbackTurn = mem.turn;
+      return response + ` — especially relevant for someone in ${val}!`;
+    }
+  }
+
+  // ── Strategy 3: Name callback — use their name naturally (rare) ──
+  if (mem.userName && mem.turn > 8 && Math.random() > 0.85) {
+    const nameTouch = [
+      `${mem.userName}, ` + response.charAt(0).toLowerCase() + response.slice(1),
+      response + `, ${mem.userName}!`,
+    ];
+    lastCallbackTurn = mem.turn;
+    return pick(nameTouch);
+  }
+
+  return response;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -1906,6 +1985,10 @@ export function getAIResponse(input) {
   const targetMove = pickNextMove();
   response = shapeToRhythm(response, targetMove);
   recordMove(response);
+
+  // Try proactive callbacks — naturally reference earlier conversation
+  const currentTopics = extractTopics(tokenize(text));
+  response = tryProactiveCallback(response, currentTopics);
 
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);

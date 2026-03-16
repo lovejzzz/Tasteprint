@@ -499,9 +499,19 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- BREADCRUMB ---- */
   if(type==="breadcrumb"){
-    const items=["Home","Products","Details"];
-    const sep=v===0?" / ":v===1?" › ":"  •  ";
-    return <div style={{...b,display:"flex",alignItems:"center",gap:0}}>{items.map((it,i)=><React.Fragment key={i}>{i>0&&<span style={{fontSize:11,color:p.mu,opacity:.4}}>{sep}</span>}<T k={`b${i}`} s={{fontSize:12,color:i===items.length-1?p.tx:p.mu,fontWeight:i===items.length-1?500:400}}>{it}</T></React.Fragment>)}</div>;
+    const items=["Home","Products","Details"];const last=items.length-1;
+    const homeSvg=<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:2,opacity:.7}}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+    const chevSep=<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:.35,flexShrink:0}}><path d="M9 18l6-6-6-6"/></svg>;
+    /* v0 Slash — clean with home icon, hover color shift */
+    if(v===0)return <div style={{...b,display:"flex",alignItems:"center",gap:6}}>{items.map((it,i)=><React.Fragment key={i}>{i>0&&<span style={{fontSize:11,color:p.mu,opacity:.3}}>/</span>}<span style={{display:"flex",alignItems:"center",gap:2,color:i===last?p.tx:p.mu,cursor:i<last?"pointer":"default",transition:"color .15s"}} onMouseEnter={e=>{if(i<last)e.currentTarget.style.color=p.ac}} onMouseLeave={e=>{if(i<last)e.currentTarget.style.color=p.mu}}>{i===0&&homeSvg}<T k={`b${i}`} s={{fontSize:11,fontWeight:i===last?600:400,letterSpacing:"0.01em"}}>{it}</T></span></React.Fragment>)}</div>;
+    /* v1 Arrow — chevron separators, active page accent */
+    if(v===1)return <div style={{...b,display:"flex",alignItems:"center",gap:6}}>{items.map((it,i)=><React.Fragment key={i}>{i>0&&chevSep}<span style={{display:"flex",alignItems:"center",gap:2,color:i===last?p.ac:p.mu,cursor:i<last?"pointer":"default",transition:"color .15s"}} onMouseEnter={e=>{if(i<last)e.currentTarget.style.color=p.tx}} onMouseLeave={e=>{if(i<last)e.currentTarget.style.color=p.mu}}>{i===0&&homeSvg}<T k={`b${i}`} s={{fontSize:11,fontWeight:i===last?600:400}}>{it}</T></span></React.Fragment>)}</div>;
+    /* v2 Dots — minimal dot separators */
+    if(v===2)return <div style={{...b,display:"flex",alignItems:"center",gap:8}}>{items.map((it,i)=><React.Fragment key={i}>{i>0&&<span style={{width:3,height:3,borderRadius:999,background:p.mu,opacity:.3,flexShrink:0}}/>}<T k={`b${i}`} s={{fontSize:11,color:i===last?p.tx:p.mu,fontWeight:i===last?600:400,transition:"color .15s"}}>{it}</T></React.Fragment>)}</div>;
+    /* v3 Pill — each item as a pill/chip, active pill filled */
+    if(v===3)return <div style={{...b,display:"flex",alignItems:"center",gap:4}}>{items.map((it,i)=><React.Fragment key={i}>{i>0&&chevSep}<span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"3px 10px",borderRadius:999,background:i===last?p.ac:p.su,color:i===last?onAc:p.mu,cursor:i<last?"pointer":"default",fontSize:11,fontWeight:i===last?600:400,transition:"all .2s ease",border:i===last?"none":`1px solid ${p.bd}`}} onMouseEnter={e=>{if(i<last){e.currentTarget.style.background=p.ac+"15";e.currentTarget.style.color=p.ac}}} onMouseLeave={e=>{if(i<last){e.currentTarget.style.background=p.su;e.currentTarget.style.color=p.mu}}}>{i===0&&homeSvg}<T k={`b${i}`} s={{}}>{it}</T></span></React.Fragment>)}</div>;
+    /* v4 Underline — text-only with underline hover, accent active */
+    return <div style={{...b,display:"flex",alignItems:"center",gap:8}}>{items.map((it,i)=><React.Fragment key={i}>{i>0&&<span style={{fontSize:10,color:p.mu,opacity:.3}}>/</span>}<span style={{cursor:i<last?"pointer":"default",borderBottom:i===last?`2px solid ${p.ac}`:"2px solid transparent",paddingBottom:2,transition:"all .15s ease"}} onMouseEnter={e=>{if(i<last)e.currentTarget.style.borderBottomColor=p.mu+"60"}} onMouseLeave={e=>{if(i<last)e.currentTarget.style.borderBottomColor="transparent"}}><T k={`b${i}`} s={{fontSize:11,color:i===last?p.ac:p.mu,fontWeight:i===last?600:400}}>{it}</T></span></React.Fragment>)}</div>;
   }
 
   /* ---- SKELETON ---- */
