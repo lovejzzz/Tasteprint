@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 30: Epistemic modulation & self-awareness
+   Round 44: Progressive question depth & intelligent probing
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -7363,6 +7363,207 @@ function addStance(response, text, topics) {
   return pick(positions);
 }
 
+/* ── Round 44: Progressive Question Depth & Intelligent Probing ──
+ * Replaces flat COMP.deepeners with depth-aware follow-ups that evolve
+ * as conversation goes deeper into a topic. Tracks what's been asked
+ * per topic and generates increasingly specific questions.
+ */
+
+// Track per-topic question depth and asked questions
+const topicDepth = {};  // { topic: { depth: 0-3, asked: Set, lastTurn: n } }
+
+// Depth-tiered question templates per domain
+const DEPTH_TEMPLATES = {
+  tech: {
+    0: [ // Surface: getting to know
+      t => `What got you into ${t}?`,
+      t => `How long have you been working with ${t}?`,
+      t => `What's your setup for ${t} look like?`,
+      t => `Do you use ${t} for personal or work stuff?`,
+    ],
+    1: [ // Engaged: specific experiences
+      t => `What's been the trickiest thing you've dealt with in ${t}?`,
+      t => `Has ${t} changed how you approach other tools?`,
+      t => `What's something about ${t} that surprised you after using it a while?`,
+      t => `Is there a specific pattern in ${t} you keep reaching for?`,
+      t => `What would you change about ${t} if you could?`,
+    ],
+    2: [ // Deep: opinions and tradeoffs
+      t => `Where does ${t} fall short that nobody talks about?`,
+      t => `If you were starting a project tomorrow, would you still pick ${t}?`,
+      t => `What's the biggest misconception people have about ${t}?`,
+      t => `How do you see ${t} evolving in the next couple years?`,
+      t => `What's the thing about ${t} that only people who've used it seriously would know?`,
+    ],
+    3: [ // Expert: nuanced debate-level
+      t => `What's the steelman argument against ${t} that you actually think has merit?`,
+      t => `If ${t} disappeared tomorrow, what would you miss most — and least?`,
+      t => `Is there a philosophy behind ${t} that you think carries over beyond just code?`,
+      t => `What's your unpopular opinion about ${t}?`,
+    ],
+  },
+  design: {
+    0: [
+      t => `What draws you to ${t}?`,
+      t => `Are you exploring ${t} or is it part of your daily work?`,
+      t => `What's your go-to tool for ${t}?`,
+    ],
+    1: [
+      t => `What's the hardest part of getting ${t} right?`,
+      t => `Has your approach to ${t} changed over time?`,
+      t => `Who does ${t} really well that you admire?`,
+      t => `What's an underrated aspect of ${t}?`,
+    ],
+    2: [
+      t => `Where do you draw the line between good ${t} and overthinking it?`,
+      t => `What's a ${t} trend you think will age badly?`,
+      t => `How do you know when ${t} is "done"?`,
+    ],
+    3: [
+      t => `What's the tension between ${t} idealism and shipping deadlines?`,
+      t => `If you could change one thing about how the industry approaches ${t}, what would it be?`,
+    ],
+  },
+  life: {
+    0: [
+      t => `What do you enjoy most about ${t}?`,
+      t => `How'd you get into ${t}?`,
+      t => `Is ${t} a recent thing or long-time interest?`,
+    ],
+    1: [
+      t => `What's been your best experience with ${t}?`,
+      t => `Has ${t} connected you with anyone interesting?`,
+      t => `What would you tell someone just getting into ${t}?`,
+    ],
+    2: [
+      t => `How has ${t} shaped how you think about other stuff?`,
+      t => `What's the thing about ${t} that most people get wrong?`,
+      t => `Is there a moment with ${t} that really stuck with you?`,
+    ],
+    3: [
+      t => `What does ${t} mean to you beyond just the surface level?`,
+      t => `Has ${t} changed something fundamental about how you see things?`,
+    ],
+  },
+};
+
+// Map topics to domains for depth template selection
+const TOPIC_DOMAINS = {};
+const techTopics = "react javascript typescript python css node git rust vue nextjs tailwind html api database sql algorithm docker aws graphql angular svelte go java swift kotlin redux webpack vite code programming software engineering developer framework library testing debugging deployment".split(" ");
+const designTopics = "ui ux figma color typography prototype wireframe animation responsive brand accessibility design layout illustration icon".split(" ");
+techTopics.forEach(t => TOPIC_DOMAINS[t] = "tech");
+designTopics.forEach(t => TOPIC_DOMAINS[t] = "design");
+// Everything else defaults to "life"
+
+function getTopicDomain(topic) {
+  return TOPIC_DOMAINS[topic] || "life";
+}
+
+function getTopicEntry(topic) {
+  if (!topicDepth[topic]) {
+    topicDepth[topic] = { depth: 0, asked: new Set(), lastTurn: 0 };
+  }
+  return topicDepth[topic];
+}
+
+// Advance depth when we revisit a topic
+function advanceTopicDepth(topic) {
+  const entry = getTopicEntry(topic);
+  const turnGap = mem.history.length - entry.lastTurn;
+  // Advance depth on revisit (every 2+ exchanges on same topic)
+  if (turnGap <= 4 && entry.depth < 3) {
+    entry.depth = Math.min(3, entry.depth + 1);
+  }
+  entry.lastTurn = mem.history.length;
+}
+
+// Generate a depth-appropriate question for a topic
+function progressiveQuestion(topic) {
+  const entry = getTopicEntry(topic);
+  advanceTopicDepth(topic);
+
+  const domain = getTopicDomain(topic);
+  const templates = DEPTH_TEMPLATES[domain] || DEPTH_TEMPLATES.life;
+
+  // Try current depth first, fall back to lower depths
+  for (let d = entry.depth; d >= 0; d--) {
+    const pool = templates[d];
+    if (!pool) continue;
+    // Filter out already-asked questions
+    const available = pool.filter(fn => !entry.asked.has(fn.toString()));
+    if (available.length > 0) {
+      const chosen = pick(available);
+      entry.asked.add(chosen.toString());
+      return chosen(topic);
+    }
+  }
+
+  // All depth questions exhausted — fall back to ASSOC hooks or deepeners
+  const assoc = ASSOC[topic];
+  if (assoc && assoc.hooks) {
+    const unused = assoc.hooks.filter(h => !entry.asked.has(h));
+    if (unused.length > 0) {
+      const h = pick(unused);
+      entry.asked.add(h);
+      return h;
+    }
+  }
+
+  // True fallback: generic deepeners (shouldn't happen often)
+  return pick(COMP.deepeners);
+}
+
+// Pipeline step: replace generic deepener endings with progressive questions
+function deepenQuestions(response, topics) {
+  if (!topics || topics.length === 0) return response;
+  if (Math.random() > 0.35) return response; // 35% fire rate
+  const turn = mem.history.length;
+  if (turn - lastDeepenerTurn < 3) return response; // 3-turn cooldown
+
+  const topic = topics[0]; // Use primary topic
+
+  // Detect if the response ends with a generic deepener
+  const genericPatterns = [
+    /What drew you to that\?$/,
+    /How long have you been into that\?$/,
+    /What's the best part about it\?$/,
+    /What got you started\?$/,
+    /Is there a specific aspect you focus on\?$/,
+    /What's been the biggest surprise\?$/,
+    /Would you recommend it to a beginner\?$/,
+    /What's next for you with that\?$/,
+    /Has it changed how you think about things\?$/,
+    /What would you do differently if starting over\?$/,
+    /tell me more about that\?$/i,
+    /what's your experience been like\?$/i,
+    /what do you think\?$/i,
+  ];
+
+  const hasGeneric = genericPatterns.some(p => p.test(response.trim()));
+  if (hasGeneric) {
+    // Replace the generic ending with a depth-appropriate question
+    const betterQ = progressiveQuestion(topic);
+    for (const p of genericPatterns) {
+      if (p.test(response.trim())) {
+        lastDeepenerTurn = turn;
+        return response.replace(p, betterQ);
+      }
+    }
+  }
+
+  // Even without a generic ending, occasionally append a depth-aware question
+  // if the response doesn't already end with a question
+  if (!response.trim().endsWith("?") && Math.random() < 0.2) {
+    const q = progressiveQuestion(topic);
+    lastDeepenerTurn = turn;
+    return response + " " + q;
+  }
+
+  return response;
+}
+
+let lastDeepenerTurn = 0;
+
 /* ── Conversation Arc Awareness ──
  * Tracks the NARRATIVE of the conversation — not just individual messages,
  * but the progression of topics, mood, and depth. At key moments,
@@ -7643,6 +7844,9 @@ export function getAIResponse(input) {
   // ═══ Precision echoing: replace generic questions/acks with content-specific ones ═══
   response = precisionEcho(response, text, tokens);
 
+  // ═══ Progressive question depth: replace flat deepeners with depth-aware follow-ups ═══
+  response = deepenQuestions(response, currentTopics);
+
   // ═══ Cross-domain analogy: unexpected connections between fields ═══
   response = injectAnalogy(response, currentTopics);
 
@@ -7700,6 +7904,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
