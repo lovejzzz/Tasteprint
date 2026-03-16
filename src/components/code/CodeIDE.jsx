@@ -1586,43 +1586,6 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return occ;
   }, [code, selectedWord]);
 
-  /* ---- Breadcrumb scope detection (nested chain) ---- */
-  const scopeChain = React.useMemo(() => {
-    const chain = [];
-    const upTo = lines.slice(0, activeLn);
-    let braceDepth = 0;
-    const depths = [];
-    // Track brace depth at each scope start
-    for (let i = 0; i < upTo.length; i++) {
-      const m = upTo[i].match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async)|class\s+(\w+)|(\w+)\s*\(.*\)\s*\{)/);
-      if (m) {
-        const name = m[1] || m[2] || m[3] || m[4];
-        const kind = m[3] ? 'class' : 'fn';
-        chain.push({ name, kind, line: i + 1, depth: braceDepth });
-      }
-      for (const ch of upTo[i]) {
-        if (ch === '{') braceDepth++;
-        else if (ch === '}') {
-          braceDepth--;
-          // Remove scopes that have ended
-          while (chain.length && chain[chain.length - 1].depth >= braceDepth) {
-            // Check if this scope's brace was closed
-            if (chain[chain.length - 1].depth >= braceDepth) {
-              // Keep the scope if we're still inside it
-              const lastScope = chain[chain.length - 1];
-              // Check if there's a foldable range that extends past activeLn
-              const foldEnd = foldableRanges[lastScope.line - 1];
-              if (foldEnd !== undefined && foldEnd + 1 >= activeLn) break;
-              chain.pop();
-            } else break;
-          }
-        }
-      }
-    }
-    return chain.length ? chain : null;
-  }, [lines, activeLn, foldableRanges]);
-  const currentScope = scopeChain ? scopeChain[scopeChain.length - 1]?.name : null;
-
   /* ---- Outline: extract symbols from code ---- */
   const outlineSymbols = React.useMemo(() => {
     const syms = [];
@@ -1691,6 +1654,35 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     return ranges;
   }, [lines]);
+
+  /* ---- Breadcrumb scope detection (nested chain) ---- */
+  const scopeChain = React.useMemo(() => {
+    const chain = [];
+    const upTo = lines.slice(0, activeLn);
+    let braceDepth = 0;
+    for (let i = 0; i < upTo.length; i++) {
+      const m = upTo[i].match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async)|class\s+(\w+)|(\w+)\s*\(.*\)\s*\{)/);
+      if (m) {
+        const name = m[1] || m[2] || m[3] || m[4];
+        const kind = m[3] ? 'class' : 'fn';
+        chain.push({ name, kind, line: i + 1, depth: braceDepth });
+      }
+      for (const ch of upTo[i]) {
+        if (ch === '{') braceDepth++;
+        else if (ch === '}') {
+          braceDepth--;
+          while (chain.length && chain[chain.length - 1].depth >= braceDepth) {
+            const lastScope = chain[chain.length - 1];
+            const foldEnd = foldableRanges[lastScope.line - 1];
+            if (foldEnd !== undefined && foldEnd + 1 >= activeLn) break;
+            chain.pop();
+          }
+        }
+      }
+    }
+    return chain.length ? chain : null;
+  }, [lines, activeLn, foldableRanges]);
+  const currentScope = scopeChain ? scopeChain[scopeChain.length - 1]?.name : null;
 
   /* ---- Visible lines (accounting for folds) ---- */
   const visibleLines = React.useMemo(() => {
@@ -3843,6 +3835,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         @keyframes navPulse { 0% { background: #cba6f730; } 100% { background: transparent; } }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes ghostPulse { 0%,100% { opacity: .4; } 50% { opacity: .6; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
       {/* Title bar — drag handle for moving IDE on canvas */}
@@ -3879,7 +3872,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             cursor: busy || readonly ? 'default' : 'pointer', fontFamily: MONO, transition: 'all .2s',
             opacity: readonly ? .3 : 1
           }}>
-          {busy ? '\u25CF RUN' : '\u25B6 Run'}
+          {busy ? <><span style={{ display: 'inline-block', animation: 'spin .8s linear infinite', fontSize: 9 }}>{'\u21BB'}</span> Run</> : '\u25B6 Run'}
         </button>
       </div>
 
@@ -5353,7 +5346,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         <div key={i} style={{
                           fontSize: fs(10), lineHeight: lh, whiteSpace: 'pre',
                           height: Math.round(16 * zf), position: 'relative',
-                          background: i + 1 === activeLn ? '#ffffff08' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : inBracketRange ? '#cba6f704' : 'transparent',
+                          background: i + 1 === activeLn ? '#cba6f70a' : output?.errLn === i + 1 ? '#f38ba808' : hasOccurrence ? '#cba6f706' : inBracketRange ? '#cba6f704' : 'transparent',
                           borderLeft: i + 1 === activeLn ? '2px solid #cba6f730' : bracketCol !== undefined ? '2px solid #cba6f740' : inBracketRange ? '2px solid #cba6f712' : '2px solid transparent',
                           animation: navPulseLn === i + 1 ? 'navPulse .8s ease-out' : 'none',
                         }}>
