@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 10: Proactive conversation callbacks + deep knowledge base
+   Round 11: Multi-sentence processing for complex inputs
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -1322,6 +1322,132 @@ const EXCITED = [
   "Now THAT's exciting! What's the plan?",
 ];
 
+/* ── Multi-Sentence Processing ──
+ * Real conversations involve multi-sentence messages:
+ *   "I've been learning React lately. It's pretty cool but hooks confuse me. Any tips?"
+ * Without this, the AI latches onto one aspect and ignores the rest.
+ * This splits complex inputs, analyzes each sentence, then composes a
+ * response that addresses the key parts — making the AI feel attentive.
+ */
+
+function splitSentences(text) {
+  // Split on sentence boundaries while preserving the content
+  return text
+    .split(/(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])\s+(?=[a-z]{2,})/)
+    .map(s => s.trim())
+    .filter(s => s.length > 2);
+}
+
+function classifySentence(sentence) {
+  const lower = sentence.toLowerCase();
+  const hasQ = sentence.includes("?");
+  const parsed = parseSentence(sentence);
+  const topics = extractTopics(tokenize(sentence));
+  const sent = sentiment(sentence);
+
+  let type = "statement";
+  if (hasQ) type = "question";
+  else if (parsed.act === "agreement" || parsed.act === "disagreement") type = "reaction";
+  else if (parsed.preferences.length > 0) type = "sharing";
+  else if (/but|however|though|although/i.test(lower)) type = "contrast";
+  else if (sent >= 2) type = "positive";
+  else if (sent <= -1) type = "negative";
+
+  return { text: sentence, type, topics, sent, parsed, hasQ };
+}
+
+function handleMultiSentence(text) {
+  const sentences = splitSentences(text);
+  if (sentences.length < 2) return null; // not multi-sentence
+
+  const analyzed = sentences.map(classifySentence);
+
+  // Find the most "actionable" sentence — questions first, then sharing, then contrasts
+  const question = analyzed.find(s => s.type === "question");
+  const sharing = analyzed.find(s => s.type === "sharing");
+  const contrast = analyzed.find(s => s.type === "contrast");
+  const negative = analyzed.find(s => s.type === "negative");
+  const positive = analyzed.find(s => s.type === "positive");
+
+  // Collect all unique topics mentioned
+  const allTopics = [...new Set(analyzed.flatMap(s => s.topics))];
+
+  // Build a multi-part response
+  const parts = [];
+
+  // Acknowledge what they shared first (shows we read the whole message)
+  if (sharing && !question) {
+    const val = sharing.parsed.preferences[0]?.value;
+    if (val) {
+      parts.push(pick([
+        `I love that you're into ${val}!`,
+        `${val} — that's great!`,
+        `Cool that you're getting into ${val}!`,
+      ]));
+    }
+  } else if (positive && sentences.length > 2) {
+    // Acknowledge the overall positive tone of a long message
+    parts.push(pick(["I love the enthusiasm!", "Sounds like things are going well!", "That's great to hear!"]));
+  }
+
+  // Address contrast/concern if present ("but X confuses me", "however I'm stuck on")
+  if (contrast) {
+    const lower = contrast.text.toLowerCase();
+    // Extract what's after "but" / "however"
+    const butMatch = lower.match(/(?:but|however|though|although)\s+(.+)/);
+    if (butMatch) {
+      const concern = butMatch[1].replace(/[.!?]$/, "").trim();
+      if (concern.length > 3 && concern.length < 60) {
+        parts.push(pick([
+          `Totally get the "${concern}" part —`,
+          `And yeah, ${concern} is a real thing.`,
+          `I hear you on the ${concern} bit!`,
+        ]));
+      }
+    }
+  } else if (negative) {
+    parts.push(pick(["I hear you on the frustrating parts.", "The tricky bits are real!", "That's a common challenge honestly."]));
+  }
+
+  // Answer the question if there is one
+  if (question) {
+    // Try to get a knowledge-based answer for the question
+    const explainer = lookupExplainer(question.text);
+    if (explainer) {
+      parts.push(explainer.brief);
+    } else if (question.topics.length > 0) {
+      const topic = question.topics[0];
+      if (ASSOC[topic]?.opinions) {
+        parts.push(pick(ASSOC[topic].opinions) + ".");
+      }
+      if (ASSOC[topic]?.hooks) {
+        parts.push(pick(ASSOC[topic].hooks));
+      }
+    } else {
+      // Generic helpful response to the question
+      parts.push(pick([
+        "My tip? Start small, build something real, and the concepts click way faster than reading docs.",
+        "Honestly, the best approach is hands-on. Pick a small project and learn as you go!",
+        "The key is not to learn everything at once. Focus on one concept, nail it, then move on.",
+        "I'd say start with the basics and don't worry about the advanced stuff until you need it.",
+      ]));
+    }
+  }
+
+  // If we have topics but no question, add a relevant hook
+  if (!question && allTopics.length > 0) {
+    const topic = allTopics[0];
+    if (ASSOC[topic]?.hooks) {
+      parts.push(pick(ASSOC[topic].hooks));
+    }
+  }
+
+  // Need at least 2 meaningful parts to justify multi-sentence processing
+  if (parts.length < 2) return null;
+
+  return parts.join(" ");
+}
+
 /* ── The Brain: Main Response Generator ── */
 
 function generateResponse(text) {
@@ -1337,6 +1463,12 @@ function generateResponse(text) {
   // Record in memory
   mem.add("user", text, nonMod.map(i=>i.intent), topics, sent);
   extractFacts(text, parsed);
+
+  // ═══ 0. Multi-sentence processing — handle paragraph-length inputs ═══
+  if (text.length > 40 && /[.!?]\s/.test(text)) {
+    const multiResponse = handleMultiSentence(text);
+    if (multiResponse) return multiResponse;
+  }
 
   // ═══ 0.5. Question-answer linking — check if user is answering our question ═══
   if (mem.lastQuestion) {
