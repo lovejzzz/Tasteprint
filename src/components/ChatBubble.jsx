@@ -92,6 +92,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   const [inputVal, setInputVal] = useState("");
   const [typing, setTyping] = useState(false);
   const [sending, setSending] = useState(null);
+  const [sendBtnAnim, setSendBtnAnim] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -116,6 +117,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     const myId = idRef.current++;
     const myMsg = { from: "me", text, id: myId };
     setSending(myId);
+    setSendBtnAnim(true);
+    setTimeout(() => setSendBtnAnim(false), 500);
     setMessages(prev => [...prev, myMsg]);
     setInputVal("");
 
@@ -127,6 +130,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
     setTimeout(() => {
       setSending(null);
+    }, 450);
+
+    setTimeout(() => {
       setTyping(true);
 
       if (pause) {
@@ -150,7 +156,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           setTyping(false);
         }, typingMs);
       }
-    }, 300);
+    }, 350);
   }, [inputVal]);
 
   const handleKeyDown = useCallback((e) => {
@@ -196,6 +202,10 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
               borderRadius: m.from === "me" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
               background: m.from === "me" ? p.ac : p.su,
               boxShadow: m.from === "me" ? `0 2px 8px ${p.ac}20` : "none",
+              "--glow-color": `${p.ac}30`,
+              animation: sending === m.id
+                ? `tp-msg-send .4s cubic-bezier(.22,1,.36,1) both, tp-msg-glow .6s ease-out .15s both`
+                : undefined,
             }}>
               <EditableMsg
                 text={m.text}
@@ -245,8 +255,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             background: inputVal.trim() ? p.ac : p.mu + "30",
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: inputVal.trim() ? "pointer" : "default",
-            transition: "all .2s ease",
+            transition: "background .2s, transform .15s",
             transform: inputVal.trim() ? "scale(1)" : "scale(0.9)",
+            animation: sendBtnAnim ? "tp-send-fly .45s cubic-bezier(.34,1.56,.64,1) both" : "none",
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={inputVal.trim() ? onAc : p.mu} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -337,7 +348,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             width: 28, height: 28, borderRadius: 8, border: "none",
             background: inputVal.trim() ? p.ac : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: inputVal.trim() ? "pointer" : "default", transition: "all .2s",
+            cursor: inputVal.trim() ? "pointer" : "default", transition: "background .2s",
+            animation: sendBtnAnim ? "tp-send-fly .45s cubic-bezier(.34,1.56,.64,1) both" : "none",
           }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={inputVal.trim() ? onAc : p.mu + "50"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -465,7 +477,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           {emojiOpen && <EmojiPicker onPick={pickEmoji} p={p} />}
         </div>
         <input ref={inputRef} value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={handleKeyDown} onMouseDown={e => e.stopPropagation()} placeholder="Message..." style={{ flex: 1, height: 34, borderRadius: 999, border: `1px solid ${p.ac}12`, background: `${p.card}40`, backdropFilter: "blur(8px)", padding: "0 14px", fontSize: 11, color: p.tx, fontFamily: "inherit", outline: "none" }} />
-        <button onClick={sendMessage} onMouseDown={e => e.stopPropagation()} style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: inputVal.trim() ? `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})` : `${p.mu}20`, display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", transition: "all .2s", boxShadow: inputVal.trim() ? `0 2px 12px ${p.ac}30` : "none", transform: inputVal.trim() ? "scale(1)" : "scale(0.9)" }}>
+        <button onClick={sendMessage} onMouseDown={e => e.stopPropagation()} style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: inputVal.trim() ? `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})` : `${p.mu}20`, display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", transition: "background .2s, box-shadow .2s", boxShadow: inputVal.trim() ? `0 2px 12px ${p.ac}30` : "none", transform: inputVal.trim() ? "scale(1)" : "scale(0.9)", animation: sendBtnAnim ? "tp-send-fly .45s cubic-bezier(.34,1.56,.64,1) both" : "none" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={inputVal.trim() ? onAc : p.mu} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
         </button>
       </div>
@@ -530,7 +542,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           {emojiOpen && <EmojiPicker onPick={pickEmoji} p={p} />}
         </div>
         <input ref={inputRef} value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={handleKeyDown} onMouseDown={e => e.stopPropagation()} placeholder="Ask anything..." style={{ flex: 1, height: 32, borderRadius: 999, border: `1px solid ${p.bd}`, background: p.su, padding: "0 12px", fontSize: 11, color: p.tx, fontFamily: "inherit", outline: "none" }} />
-        <button onClick={sendMessage} onMouseDown={e => e.stopPropagation()} style={{ width: 32, height: 32, borderRadius: 999, border: "none", background: inputVal.trim() ? `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})` : p.mu + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", transition: "all .2s", boxShadow: inputVal.trim() ? `0 2px 8px ${p.ac}25` : "none", transform: inputVal.trim() ? "scale(1)" : "scale(0.9)" }}>
+        <button onClick={sendMessage} onMouseDown={e => e.stopPropagation()} style={{ width: 32, height: 32, borderRadius: 999, border: "none", background: inputVal.trim() ? `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})` : p.mu + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", transition: "background .2s, box-shadow .2s", boxShadow: inputVal.trim() ? `0 2px 8px ${p.ac}25` : "none", transform: inputVal.trim() ? "scale(1)" : "scale(0.9)", animation: sendBtnAnim ? "tp-send-fly .45s cubic-bezier(.34,1.56,.64,1) both" : "none" }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={inputVal.trim() ? onAc : p.mu} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
         </button>
       </div>

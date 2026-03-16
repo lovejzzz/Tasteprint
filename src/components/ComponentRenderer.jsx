@@ -25,12 +25,14 @@ const ANIM_STYLE = `
 @keyframes tp-shimmer-slide{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 @keyframes tp-modal-in{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 @keyframes tp-tooltip-in{from{opacity:0;transform:translateY(4px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes tp-msg-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-@keyframes tp-msg-send{0%{opacity:0;transform:scale(.85) translateY(8px)}60%{transform:scale(1.03) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes tp-msg-appear{0%{opacity:0;transform:translateY(8px) scale(.97)}50%{opacity:1}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes tp-msg-send{0%{opacity:0;transform:translateY(20px) scale(.88) rotate(-1deg)}35%{opacity:1;transform:translateY(-4px) scale(1.04) rotate(.3deg)}65%{transform:translateY(1px) scale(.99) rotate(0deg)}100%{opacity:1;transform:translateY(0) scale(1) rotate(0deg)}}
+@keyframes tp-msg-glow{0%{box-shadow:0 0 0 0 var(--glow-color,rgba(0,0,0,0))}40%{box-shadow:0 0 12px 3px var(--glow-color,rgba(0,0,0,.15))}100%{box-shadow:0 0 0 0 var(--glow-color,rgba(0,0,0,0))}}
+@keyframes tp-send-fly{0%{transform:scale(1) rotate(0)}30%{transform:scale(.8) rotate(-15deg)}60%{transform:scale(1.15) rotate(5deg) translateY(-3px)}100%{transform:scale(1) rotate(0) translateY(0)}}
 @keyframes tp-underline-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes tp-badge-pop{0%{opacity:0;transform:scale(.5)}60%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
 @keyframes tp-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes tp-typing-dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:.9}}
+@keyframes tp-typing-dot{0%,80%,100%{transform:translateY(0) scale(1);opacity:.35}25%{transform:translateY(-5px) scale(1.2);opacity:1}50%{transform:translateY(-1px) scale(.95);opacity:.6}}
 `;
 
 function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1}){
