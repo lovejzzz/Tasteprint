@@ -1440,6 +1440,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       }
       setTermInput(''); return;
     }
+    if (cmd === 'format' || cmd.startsWith('format ')) {
+      const target = cmd.slice(7).trim() || activeFile;
+      const f = getFile(target);
+      if (!f || f.readOnly) { setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `Cannot format ${target}${f?.readOnly ? ' (read-only)' : ' (not found)'}` }], ms: null, err: null, errLn: null })); }
+      else { formatCode(); setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F format ${target}` }, { t: 'log', v: '\u2713 Formatted successfully' }], ms: null, err: null, errLn: null })); }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('node ')) {
+      const target = cmd.slice(5).trim();
+      const f = getFile(target);
+      if (!f) { setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `node: ${target}: No such file` }], ms: null, err: null, errLn: null })); }
+      else {
+        // Execute the file content
+        const savedFile = activeFile;
+        if (target !== activeFile) openFile(target);
+        setTimeout(() => { runCode(); if (target !== savedFile) openFile(savedFile); }, 50);
+      }
+      setTermInput(''); return;
+    }
     if (cmd === 'alias' || cmd === 'aliases') {
       setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F alias' },
         { t: 'log', v: '  Shortcuts:' },
@@ -1656,6 +1675,17 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       }
     }
     if (cmtStart !== -1 && lines.length - cmtStart >= 3) ranges[cmtStart] = lines.length - 1;
+    // Region markers: // #region name ... // #endregion
+    const regionStack = [];
+    for (let i = 0; i < lines.length; i++) {
+      const regionStart = /^\s*\/\/\s*#region\b/.test(lines[i]);
+      const regionEnd = /^\s*\/\/\s*#endregion\b/.test(lines[i]);
+      if (regionStart) regionStack.push(i);
+      if (regionEnd && regionStack.length) {
+        const start = regionStack.pop();
+        if (i - start >= 1) ranges[start] = i;
+      }
+    }
     return ranges;
   }, [lines]);
 
@@ -2103,6 +2133,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Toggle Color Decorators', key: 'colordecorators', hint: '' },
       { label: 'Collapse All Folders', key: 'collapsefolders', hint: '' },
       { label: 'Expand All Folders', key: 'expandfolders', hint: '' },
+      { label: 'Inline Variable', key: 'inlinevar', hint: '' },
+      { label: 'Convert to Arrow Function', key: 'toarrow', hint: '' },
       { label: 'Toggle Auto Save', key: 'autosave', hint: '' },
       { label: 'Clear Terminal', key: 'clearterm', hint: '' },
       { label: 'Notifications', key: 'notifs', hint: '' },
@@ -2375,6 +2407,54 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     else if (key === 'breakpoint') { toggleBreakpoint(activeLn); showToast(breakpoints.has(activeLn) ? 'Breakpoint removed' : 'Breakpoint set', 'info'); }
     else if (key === 'clearbreakpoints') { setBreakpoints(new Set()); showToast('All breakpoints cleared', 'info'); }
+    else if (key === 'foldall') {
+      const newFolded = new Set();
+      Object.keys(foldableRanges).forEach(k => newFolded.add(parseInt(k)));
+      setFoldedLines(newFolded);
+      showToast(`Folded all ${newFolded.size} regions`, 'info');
+    }
+    else if (key === 'unfoldall') { setFoldedLines(new Set()); showToast('Unfolded all', 'info'); }
+    else if (key === 'inlinevar') {
+      if (readonly) return;
+      const el = taRef.current; if (!el) return;
+      const s = el.selectionStart;
+      // Find the variable at cursor
+      const bef = code.substring(0, s).match(/(\w+)$/)?.[1] || '';
+      const aft = code.substring(s).match(/^(\w*)/)?.[1] || '';
+      const word = bef + aft;
+      if (word.length < 1) { showToast('Place cursor on a variable', 'warn'); return; }
+      // Find declaration: const/let/var word = value;
+      const declRx = new RegExp(`(?:const|let|var)\\s+${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*=\\s*(.+?)\\s*;`);
+      const declMatch = code.match(declRx);
+      if (!declMatch) { showToast(`No declaration found for '${word}'`, 'warn'); return; }
+      const value = declMatch[1];
+      // Remove declaration line and replace all uses
+      let nc = code.replace(declRx, '').replace(/^\s*\n/gm, (m, off) => off === code.indexOf(declMatch[0]) ? '' : m);
+      // Remove the empty line left by deletion
+      nc = nc.replace(new RegExp(`(?:const|let|var)\\s+${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*=\\s*${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*;?\\s*\\n?`), '');
+      const wordRx = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+      nc = code.replace(declMatch[0], '').replace(wordRx, value);
+      // Clean up empty line
+      nc = nc.replace(/\n\s*\n\s*\n/g, '\n\n');
+      setCode(nc);
+      showToast(`Inlined '${word}' with '${value.substring(0, 30)}${value.length > 30 ? '...' : ''}'`, 'info');
+    }
+    else if (key === 'toarrow') {
+      if (readonly) return;
+      const el = taRef.current; if (!el) return;
+      const lineIdx = activeLn - 1;
+      const line = lines[lineIdx];
+      if (!line) return;
+      // Match: function name(params) { or function name(params) => or async function
+      const fnMatch = line.match(/^(\s*)(async\s+)?function\s+(\w+)\s*\(([^)]*)\)\s*\{?/);
+      if (!fnMatch) { showToast('Place cursor on a function declaration', 'warn'); return; }
+      const [full, indent, isAsync, name, params] = fnMatch;
+      const arrow = `${indent}${isAsync || ''}const ${name} = (${params}) => {`;
+      const all = code.split('\n');
+      all[lineIdx] = arrow;
+      setCode(all.join('\n'));
+      showToast(`Converted '${name}' to arrow function`, 'info');
+    }
     else if (key === 'ghosttext') { setShowGhostText(v => !v); showToast(showGhostText ? 'Ghost text off' : 'Ghost text on', 'info'); }
     else if (key === 'mdpreview') { if (activeFile.endsWith('.md')) setMdPreview(v => !v); else showToast('Only for .md files', 'warn'); }
     else if (key === 'lineending') { setLineEnding(le => le === 'LF' ? 'CRLF' : 'LF'); showToast(`Line ending: ${lineEnding === 'LF' ? 'CRLF' : 'LF'}`, 'info'); }
@@ -2910,6 +2990,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (foldedLines.has(lineIdx)) {
         toggleFold(lineIdx);
         showToast('Unfolded', 'info');
+      }
+      return;
+    }
+
+    /* Fold all / Unfold all: Ctrl+Shift+Alt+[ / ] */
+    if ((e.key === '[' || e.key === ']') && (e.metaKey || e.ctrlKey) && e.shiftKey && e.altKey) {
+      e.preventDefault();
+      if (e.key === '[') {
+        // Fold all
+        const newFolded = new Set();
+        Object.keys(foldableRanges).forEach(k => newFolded.add(parseInt(k)));
+        setFoldedLines(newFolded);
+        showToast(`Folded all ${newFolded.size} regions`, 'info');
+      } else {
+        // Unfold all
+        setFoldedLines(new Set());
+        showToast('Unfolded all', 'info');
       }
       return;
     }
@@ -5595,7 +5692,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       setAcOpen(false);
                     }
                   }
-                  // Parameter hints: detect if cursor is inside tp.method(...)
+                  // Parameter hints: detect if cursor is inside tp.method(...) or user function(...)
                   const beforePos = val.substring(0, pos);
                   const phMatch = beforePos.match(/tp\.(\w+)\(([^)]*$)/);
                   if (phMatch && PARAM_HINTS[phMatch[1]]) {
@@ -5603,7 +5700,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     const argsSoFar = phMatch[2].split(',').length - 1;
                     setParamHint({ method: phMatch[1], params, activeParam: Math.min(argsSoFar, params.length - 1) });
                   } else {
-                    setParamHint(null);
+                    // User-defined function parameter hints
+                    const userFnMatch = beforePos.match(/\b(\w+)\(([^)]*$)/);
+                    if (userFnMatch && !['if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'new'].includes(userFnMatch[1])) {
+                      const fnName = userFnMatch[1];
+                      // Search for function declaration in code
+                      const fnDeclRx = new RegExp(`(?:function\\s+${fnName}|(?:const|let|var)\\s+${fnName}\\s*=\\s*(?:async\\s+)?(?:function\\s*)?\\()\\s*\\(([^)]*)`);
+                      const declMatch = val.match(fnDeclRx);
+                      // Also check arrow: const name = (params) =>
+                      const arrowRx = new RegExp(`(?:const|let|var)\\s+${fnName}\\s*=\\s*(?:async\\s+)?\\(([^)]*)\\)\\s*=>`);
+                      const arrowMatch = val.match(arrowRx);
+                      const paramStr = declMatch?.[1] || arrowMatch?.[1];
+                      if (paramStr !== undefined) {
+                        const params = paramStr.split(',').map(p => p.trim()).filter(Boolean);
+                        if (params.length > 0) {
+                          const argsSoFar = userFnMatch[2].split(',').length - 1;
+                          setParamHint({ method: fnName, params, activeParam: Math.min(argsSoFar, params.length - 1), isUserFn: true });
+                        } else setParamHint(null);
+                      } else setParamHint(null);
+                    } else setParamHint(null);
                   }
                 }}
                 onScroll={e => setScrollTop(e.target.scrollTop)}
@@ -6029,7 +6144,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     padding: '4px 8px', pointerEvents: 'none', maxWidth: 300,
                   }}>
                     <div style={{ fontSize: 8, color: '#cba6f7', fontWeight: 600, marginBottom: 2 }}>
-                      tp.{paramHint.method}(
+                      {paramHint.isUserFn ? '' : 'tp.'}{paramHint.method}(
                       {paramHint.params.map((p, i) => (
                         <span key={i} style={{ color: i === paramHint.activeParam ? '#f9e2af' : '#a6adc860', fontWeight: i === paramHint.activeParam ? 600 : 400 }}>
                           {i > 0 ? ', ' : ''}{p}
@@ -6350,6 +6465,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       setTimeout(() => { el.selectionStart = nameStart; el.selectionEnd = nameStart + 9; el.focus(); }, 0);
                       showToast('Extracted to function — rename it now', 'info');
                     }, disabled: readonly },
+                    { label: 'Inline Variable', action: () => runCommand('inlinevar'), disabled: readonly },
+                    { label: 'Convert to Arrow', action: () => runCommand('toarrow'), disabled: readonly },
                     null,
                     { label: 'Format Document', action: formatCode, disabled: readonly },
                     { label: 'Run', action: runCode, hint: '\u2318+Enter', disabled: readonly },
