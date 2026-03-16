@@ -11062,6 +11062,186 @@ function applyMomentumAwareness(response, text, topics) {
   return response; // "cruising" — no adjustment needed
 }
 
+/* ── Conversational Prediction & Anticipatory Framing (Round 68) ──
+ * Real conversationalists anticipate where the talk is heading. A friend
+ * discussing pros of something will sense the "but what about cons?" coming.
+ * This system predicts the user's likely next move based on conversation
+ * trajectory, then frames the response to feel naturally ahead of the curve
+ * when the prediction hits. When it misses, it just stays silent.
+ *
+ * Prediction types:
+ * - "flip"     — user explored one side, likely to ask about the other
+ * - "deepen"   — user asked surface question, likely to go deeper
+ * - "example"  — user got an abstract answer, likely to want an example
+ * - "apply"    — user learned a concept, likely to ask "how do I use this?"
+ * - "compare"  — user mentioned X, likely to ask "how does it compare to Y?"
+ * - "pivot"    — topic exhausted, user likely to shift
+ *
+ * Fire rate: ~25% when prediction matches, 4-turn cooldown.
+ */
+
+let predictions = [];       // [{ type, topic, context, turn }]
+let lastPredictionTurn = 0;
+let predictionHits = 0;
+let predictionMisses = 0;
+
+function predictNextMove(topics, text, intents) {
+  const preds = [];
+  const lower = text.toLowerCase();
+
+  // Flip detection: user discussed pros → predict cons (or vice versa)
+  const posSignals = /\b(love|great|awesome|best|advantage|pro|benefit|good about|like about|fan of)\b/i;
+  const negSignals = /\b(hate|bad|worst|disadvantage|con|downside|problem with|issue with|don.t like)\b/i;
+  if (posSignals.test(lower) && topics.length > 0) {
+    preds.push({ type: "flip", topic: topics[0], direction: "negative", confidence: 0.6 });
+  }
+  if (negSignals.test(lower) && topics.length > 0) {
+    preds.push({ type: "flip", topic: topics[0], direction: "positive", confidence: 0.5 });
+  }
+
+  // Deepen: user asked a "what is" question → predict "how does it work"
+  if (/\b(what is|what are|what.s)\b/i.test(lower) && topics.length > 0) {
+    preds.push({ type: "deepen", topic: topics[0], confidence: 0.55 });
+  }
+
+  // Example: AI gave an abstract/conceptual answer last turn
+  const lastAI = (mem.history || []).filter(h => h.role === "ai").slice(-1)[0];
+  if (lastAI && /\b(concept|theory|principle|approach|pattern|paradigm)\b/i.test(lastAI.text || "")) {
+    preds.push({ type: "example", topic: topics[0] || "", confidence: 0.5 });
+  }
+
+  // Apply: user learned something → predict "how do I use/start/try this"
+  if (/\b(learn|understand|get it|makes sense|got it|see|neat|interesting)\b/i.test(lower) && topics.length > 0) {
+    preds.push({ type: "apply", topic: topics[0], confidence: 0.45 });
+  }
+
+  // Compare: user mentioned a specific tool/tech → predict comparison
+  const techTerms = /\b(react|vue|angular|python|java|typescript|rust|go|node|svelte|next|tailwind|figma|sketch)\b/i;
+  const techMatch = lower.match(techTerms);
+  if (techMatch && topics.length > 0) {
+    preds.push({ type: "compare", topic: techMatch[0], confidence: 0.4 });
+  }
+
+  // Pivot: same topic for 4+ turns → predict shift
+  const topicCounts = {};
+  (topicHistory || []).slice(-6).forEach(e => { topicCounts[e.topic] = (topicCounts[e.topic] || 0) + 1; });
+  for (const [t, count] of Object.entries(topicCounts)) {
+    if (count >= 4) preds.push({ type: "pivot", topic: t, confidence: 0.5 });
+  }
+
+  return preds;
+}
+
+function checkPredictionMatch(predictions, text, topics, intents) {
+  const lower = text.toLowerCase();
+
+  for (const pred of predictions) {
+    switch (pred.type) {
+      case "flip": {
+        const wantNeg = pred.direction === "negative";
+        const hasFlip = wantNeg
+          ? /\b(bad|downside|con|problem|issue|disadvantage|but what about|any drawback)\b/i.test(lower)
+          : /\b(good|upside|pro|benefit|advantage|positive)\b/i.test(lower);
+        if (hasFlip && topics.some(t => t === pred.topic || stem(t) === stem(pred.topic))) {
+          return { pred, matchType: "flip" };
+        }
+        break;
+      }
+      case "deepen": {
+        const deepSignals = /\b(how does|how do|why does|why do|explain|tell me more|go deeper|what.s behind|how.s that work)\b/i;
+        if (deepSignals.test(lower)) return { pred, matchType: "deepen" };
+        break;
+      }
+      case "example": {
+        if (/\b(example|instance|like what|such as|show me|demonstrate|in practice)\b/i.test(lower)) {
+          return { pred, matchType: "example" };
+        }
+        break;
+      }
+      case "apply": {
+        if (/\b(how do I|how can I|how would I|try|start|use|apply|implement|build|get started)\b/i.test(lower)) {
+          return { pred, matchType: "apply" };
+        }
+        break;
+      }
+      case "compare": {
+        if (/\b(vs|versus|compared|better|difference|choose|prefer|over|or)\b/i.test(lower)) {
+          return { pred, matchType: "compare" };
+        }
+        break;
+      }
+      case "pivot": {
+        if (topics.length > 0 && !topics.some(t => t === pred.topic || stem(t) === stem(pred.topic))) {
+          return { pred, matchType: "pivot" };
+        }
+        break;
+      }
+    }
+  }
+  return null;
+}
+
+function applyAnticipatoryFraming(response, text, topics, intents) {
+  const turn = mem.turn;
+  if (turn < 4) return response;
+  if (turn - lastPredictionTurn < 4) return response;
+
+  // Check if any previous prediction matched
+  const match = predictions.length > 0 ? checkPredictionMatch(predictions, text, topics, intents) : null;
+
+  if (match && Math.random() < 0.25) {
+    // Prediction hit — frame response to feel anticipatory
+    predictionHits++;
+    lastPredictionTurn = turn;
+
+    const framings = {
+      flip: [
+        "I had a feeling you'd ask about the other side. ",
+        "Ah yes — I was just thinking about that too. ",
+        "Good instinct to look at both sides. ",
+      ],
+      deepen: [
+        "I was hoping you'd want to dig deeper. ",
+        "Let's get into the mechanics. ",
+        "Great question — the surface version undersells it. ",
+      ],
+      example: [
+        "Thought you might want something concrete. ",
+        "Yeah, abstractions only go so far — ",
+        "Let me make that real. ",
+      ],
+      apply: [
+        "The practical side — love it. ",
+        "Now we're talking real-world. ",
+        "Okay, putting theory into practice — ",
+      ],
+      compare: [
+        "I figured a comparison was coming. ",
+        "Good call — context helps. ",
+        "Let's put them side by side. ",
+      ],
+      pivot: [
+        "Fresh topic — I like it. ",
+        "Nice shift. ",
+        "New terrain — let's explore. ",
+      ],
+    };
+
+    const frames = framings[match.matchType] || [];
+    if (frames.length > 0 && !response.match(/^(I had|I was|I figured|Good instinct|Let's get)/i)) {
+      const frame = frames[Math.floor(Math.random() * frames.length)];
+      return frame + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+  } else if (predictions.length > 0) {
+    predictionMisses++;
+  }
+
+  // Generate new predictions for the NEXT turn
+  predictions = predictNextMove(topics, text, intents);
+
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -11525,6 +11705,9 @@ export function getAIResponse(input) {
   // ═══ Momentum awareness: detect flow state and adjust holistically ═══
   response = applyMomentumAwareness(response, text, currentTopics);
 
+  // ═══ Anticipatory framing: predict user's next move and frame accordingly ═══
+  response = applyAnticipatoryFraming(response, text, currentTopics, intents);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -11574,6 +11757,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
