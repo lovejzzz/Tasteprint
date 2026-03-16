@@ -50,7 +50,7 @@ export const VARIANTS = {
   "dash-panel":["Telemetry","Signal","Minimal"],
   "image-placeholder":["Subtle","Gradient","Dashed"],
   "avatar-row":["Circular","Small tight","Rounded sq"],
-  "list-item":["Card row","Divider","Tinted"],
+  "list-item":["Card row","Divider","Tinted","Glass","Settings"],
   input:     ["Outlined","Labeled","Filled","Underline","Glass"],
   search:    ["Bordered","Pill kbd","Underline","Glass","AI"],
   toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass"],
