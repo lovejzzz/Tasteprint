@@ -7,7 +7,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   const defaults = DEFAULT_PROPS[type] || {};
   const G = (k) => props[k] !== undefined ? props[k] : defaults[k];
   const stop = e => e.stopPropagation();
-  const sty = { position: "absolute", bottom: -6, left: "50%", transform: "translate(-50%, 100%)", zIndex: 200, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 10, padding: "6px 10px", boxShadow: `0 4px 16px ${p.tx}10`, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", userSelect: "none", whiteSpace: "nowrap", maxWidth: 320 };
+  const sty = { position: "absolute", bottom: -6, left: "50%", transform: "translate(-50%, 100%)", zIndex: 200, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 10, padding: "6px 10px", boxShadow: `0 4px 16px ${p.tx}10`, display: "flex", gap: 6, alignItems: "center", userSelect: "none", whiteSpace: "nowrap" };
   const label = { fontSize: 8, color: p.mu, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 };
   const btn = (active) => ({ width: 22, height: 22, borderRadius: 6, border: active ? `1.5px solid ${p.ac}` : `1px solid ${p.bd}`, background: active ? p.ac + "18" : "transparent", color: active ? p.ac : p.mu, fontSize: 10, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, fontFamily: "inherit", transition: "all .15s" });
 
