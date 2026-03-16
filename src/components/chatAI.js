@@ -8997,6 +8997,213 @@ function tryArcObservation(response) {
   return arc;
 }
 
+/* ── Conversational Hooks & Open Loops (Round 52) ──
+ * Creates forward pull — the feeling that makes you want to keep talking.
+ * Real conversationalists drop unfinished thoughts, hint at related knowledge,
+ * create curiosity gaps, and promise to circle back. This system:
+ * 1. Open loops: start a thought, defer the payoff ("oh, that reminds me of something wild...")
+ * 2. Curiosity hooks: hint at interesting related knowledge without giving it all away
+ * 3. Deferred promises: track when we promise to come back to something, then deliver
+ * 4. Strategic incompleteness: sometimes leave room for the user to ask more
+ */
+
+// Track open loops we've created and need to close
+let openLoops = [];        // [{ topic, hook, turn, closed }]
+let lastHookTurn = 0;
+let lastLoopCloseTurn = 0;
+
+// Curiosity hook templates — these tease knowledge without dumping it
+const CURIOSITY_HOOKS = {
+  factTease: [
+    "There's actually a wild story behind that.",
+    "Oh — there's a fascinating reason why that works the way it does.",
+    "There's a really interesting history behind that, actually.",
+    "Fun fact territory here — but I'll save it unless you're curious.",
+  ],
+  connectionTease: [
+    "That connects to something completely unexpected, actually.",
+    "This is weirdly related to {related} in a way most people don't realize.",
+    "There's a link between this and {related} that I find really interesting.",
+  ],
+  opinionTease: [
+    "I have a kind of controversial take on this, actually.",
+    "I might get pushback for this, but I have thoughts.",
+    "This is one of those topics where I have a surprisingly strong opinion.",
+  ],
+  depthTease: [
+    "There's a lot more to unpack there if you're into it.",
+    "We're just scratching the surface on this one.",
+    "Oh, this goes deep — how far down the rabbit hole do you want to go?",
+  ],
+};
+
+// Open loop templates — start a thought that creates pull
+const OPEN_LOOP_TEMPLATES = [
+  { hook: "Oh wait, {topic} actually reminds me of something — but first, {response}", closers: [
+    "So, about that thing {topic} reminded me of — ",
+    "Oh right, I was going to tell you — {topic} connects to ",
+  ]},
+  { hook: "There's a really good analogy for this... actually, let me think about how to phrase it.", closers: [
+    "Okay, I thought of the analogy — ",
+    "So the way I'd put it is — ",
+  ]},
+  { hook: "I started to say something about {topic} but got sidetracked — remind me to come back to that.", closers: [
+    "Oh! You know what I never came back to? That {topic} thing — ",
+    "Wait, I promised I'd circle back on {topic} — ",
+  ]},
+];
+
+// Create a curiosity hook based on available knowledge
+function createCuriosityHook(response, topics) {
+  if (mem.turn - lastHookTurn < 6 || mem.turn < 4) return response;
+  if (Math.random() > 0.18) return response;
+
+  // Find a topic we know something about
+  const knownTopic = topics.find(t => ASSOC[t]);
+  if (!knownTopic) return response;
+  const assoc = ASSOC[knownTopic];
+
+  // Pick a hook type based on what we have
+  let hookType, templates;
+  if (assoc.facts && assoc.facts.length > 0 && Math.random() > 0.5) {
+    hookType = "factTease";
+    templates = CURIOSITY_HOOKS.factTease;
+  } else if (assoc.related && assoc.related.length > 0 && Math.random() > 0.4) {
+    hookType = "connectionTease";
+    templates = CURIOSITY_HOOKS.connectionTease;
+  } else if (assoc.opinions && assoc.opinions.length > 0 && Math.random() > 0.5) {
+    hookType = "opinionTease";
+    templates = CURIOSITY_HOOKS.opinionTease;
+  } else {
+    hookType = "depthTease";
+    templates = CURIOSITY_HOOKS.depthTease;
+  }
+
+  let hook = templates[Math.floor(Math.random() * templates.length)];
+
+  // Fill in {related} if present
+  if (hook.includes("{related}") && assoc.related) {
+    const rel = assoc.related[Math.floor(Math.random() * assoc.related.length)];
+    hook = hook.replace("{related}", rel);
+  }
+
+  // Append hook to response — don't interrupt, add after
+  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+  if (sentences.length >= 2) {
+    // Insert after first sentence for natural flow
+    lastHookTurn = mem.turn;
+    return sentences[0].trim() + " " + hook + " " + sentences.slice(1).join(" ").trim();
+  }
+
+  lastHookTurn = mem.turn;
+  return response + " " + hook;
+}
+
+// Create an open loop — start a thought we'll close later
+function createOpenLoop(response, topics) {
+  if (mem.turn - lastHookTurn < 5 || mem.turn < 6) return response;
+  if (openLoops.filter(l => !l.closed).length >= 2) return response; // max 2 open at once
+  if (Math.random() > 0.12) return response;
+
+  const knownTopic = topics.find(t => ASSOC[t]) || topics[0];
+  if (!knownTopic) return response;
+
+  const tmpl = OPEN_LOOP_TEMPLATES[Math.floor(Math.random() * OPEN_LOOP_TEMPLATES.length)];
+  const hook = tmpl.hook.replace(/\{topic\}/g, knownTopic).replace("{response}", "");
+
+  openLoops.push({
+    topic: knownTopic,
+    closers: tmpl.closers,
+    turn: mem.turn,
+    closed: false,
+  });
+
+  // Keep max 4 tracked loops
+  if (openLoops.length > 4) openLoops = openLoops.slice(-4);
+
+  lastHookTurn = mem.turn;
+  return response + " " + hook;
+}
+
+// Close a previously opened loop — deliver on the promise
+function closeOpenLoop(response, topics) {
+  if (mem.turn - lastLoopCloseTurn < 4) return response;
+
+  const pendingLoops = openLoops.filter(l => !l.closed && (mem.turn - l.turn) >= 2 && (mem.turn - l.turn) <= 8);
+  if (pendingLoops.length === 0) return response;
+
+  // Close the oldest pending loop if topics overlap or randomly
+  const loop = pendingLoops.find(l => topics.includes(l.topic)) || (Math.random() > 0.5 ? pendingLoops[0] : null);
+  if (!loop) return response;
+
+  const closer = loop.closers[Math.floor(Math.random() * loop.closers.length)]
+    .replace(/\{topic\}/g, loop.topic);
+
+  // Get a nugget to deliver as the payoff
+  const assoc = ASSOC[loop.topic];
+  let payoff = "";
+  if (assoc) {
+    if (assoc.facts && assoc.facts.length > 0) {
+      payoff = assoc.facts[Math.floor(Math.random() * assoc.facts.length)].toLowerCase();
+    } else if (assoc.opinions && assoc.opinions.length > 0) {
+      payoff = assoc.opinions[Math.floor(Math.random() * assoc.opinions.length)];
+    }
+  }
+
+  loop.closed = true;
+  lastLoopCloseTurn = mem.turn;
+
+  if (payoff) {
+    return closer + payoff + ". " + response;
+  }
+  return response;
+}
+
+// Strategic incompleteness — sometimes don't give the full answer
+function addStrategicIncompleteness(response, topics, inputEnergy) {
+  // Only on engaged, high-energy conversations where user wants to dig in
+  if (inputEnergy < 0.4 || mem.turn < 5) return response;
+  if (Math.random() > 0.14) return response;
+
+  const knownTopic = topics.find(t => ASSOC[t]);
+  if (!knownTopic) return response;
+  const assoc = ASSOC[knownTopic];
+  if (!assoc.hooks || assoc.hooks.length === 0) return response;
+
+  // Trim the response slightly and add a pull-forward hook
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 2) return response;
+
+  // Keep most of the response but add an inviting closer instead of the last sentence
+  const trimmed = sentences.slice(0, -1).join(" ").trim();
+  const followUp = assoc.hooks[Math.floor(Math.random() * assoc.hooks.length)];
+
+  // Only if the follow-up is a question (creates forward pull)
+  if (!followUp.includes("?")) return response;
+
+  return trimmed + " " + followUp;
+}
+
+// Main hook orchestrator — runs all sub-systems
+function addConversationalHooks(response, topics, inputEnergy) {
+  // Don't add hooks during emotional moments or when user is disengaged
+  const sent = mem.avgSent();
+  if (sent < -1.5) return response;
+
+  // Try to close an open loop first (delivering on promises takes priority)
+  const closed = closeOpenLoop(response, topics);
+  if (closed !== response) return closed;
+
+  // Then try creating new hooks (only one per turn)
+  const hooked = createCuriosityHook(response, topics);
+  if (hooked !== response) return hooked;
+
+  const looped = createOpenLoop(response, topics);
+  if (looped !== response) return looped;
+
+  return addStrategicIncompleteness(response, topics, inputEnergy);
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -9158,6 +9365,9 @@ export function getAIResponse(input) {
   // ═══ Pattern breaking: detect structural ruts and inject surprise ═══
   response = breakPattern(response, text, currentTopics, inputEnergy);
 
+  // ═══ Conversational hooks & open loops: create forward pull and curiosity ═══
+  response = addConversationalHooks(response, currentTopics, inputEnergy);
+
   // ═══ Nuanced stance: occasionally push back, play devil's advocate, take positions ═══
   response = addStance(response, text, currentTopics);
 
@@ -9200,6 +9410,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
