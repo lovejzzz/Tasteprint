@@ -528,9 +528,104 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- PRODUCT CARD ---- */
   if(type==="product-card"){
-    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><Img k="media" s={{height:"50%",background:p.su}}/><div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}><T k="title" s={{fontSize:13,fontWeight:600,color:p.tx}}>Wireless Headphones</T><T k="desc" s={{fontSize:10,color:p.mu}}>Active noise canceling, 30hr battery</T><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}><T k="price" s={{fontSize:16,fontWeight:700,color:p.tx}}>$49.00</T><div style={{height:30,width:72,borderRadius:8,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:onAc,fontSize:10,fontWeight:600}}>Add</T></div></div></div></div>;
-    if(v===1)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative"}}><div style={{position:"absolute",top:10,left:10,background:"#E05050",borderRadius:6,padding:"2px 8px",zIndex:2}}><T k="badge" s={{fontSize:9,color:"#fff",fontWeight:600}}>SALE</T></div><Img k="media" s={{height:"50%",background:p.su}}/><div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}><T k="title" s={{fontSize:13,fontWeight:600,color:p.tx}}>Wireless Headphones</T><div style={{display:"flex",alignItems:"center",gap:8,marginTop:"auto"}}><T k="price" s={{fontSize:16,fontWeight:700,color:p.ac}}>$29.00</T><T k="orig" s={{fontSize:12,color:p.mu,textDecoration:"line-through"}}>$49.00</T></div></div></div>;
-    return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,display:"flex",gap:0,overflow:"hidden"}}><Img k="media" s={{width:"40%",background:p.su,flexShrink:0}}/><div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}><T k="title" s={{fontSize:13,fontWeight:600,color:p.tx}}>Wireless Headphones</T><T k="desc" s={{fontSize:10,color:p.mu,lineHeight:1.5}}>Updated 3m ago</T><div style={{marginTop:"auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="price" s={{fontSize:15,fontWeight:700,color:p.tx}}>$49.00</T><div style={{height:28,width:66,borderRadius:6,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:onAc,fontSize:10,fontWeight:600}}>Add</T></div></div></div></div>;
+    const heart=<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>;
+    const star=(fill)=><svg width="11" height="11" viewBox="0 0 24 24" fill={fill?"currentColor":"none"} stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>;
+    /* v0 Standard — clean vertical card with image + price + CTA */
+    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",animation:"tp-fadein .3s ease-out"}}>
+      <Img k="media" s={{height:"50%",background:p.su}}/>
+      <div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}>
+        <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>Wireless Headphones</T>
+        <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Active noise canceling, 30hr battery</T>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}>
+          <T k="price" s={{fontSize:f(16),fontWeight:700,color:p.tx}}>$49.00</T>
+          <div style={{height:30,width:72,borderRadius:8,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:600}}>Add</T></div>
+        </div>
+      </div>
+    </div>;
+    /* v1 Sale badge — discount tag + strikethrough original price */
+    if(v===1)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"absolute",top:10,left:10,background:"#E05050",borderRadius:6,padding:"2px 8px",zIndex:2,animation:"tp-badge-pop .4s cubic-bezier(.34,1.56,.64,1) .1s both"}}><T k="badge" s={{fontSize:f(9),color:"#fff",fontWeight:700,letterSpacing:".03em"}}>SALE</T></div>
+      <Img k="media" s={{height:"50%",background:p.su}}/>
+      <div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}>
+        <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>Wireless Headphones</T>
+        <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Limited time offer</T>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:"auto"}}>
+          <T k="price" s={{fontSize:f(16),fontWeight:700,color:"#E05050"}}>$29.00</T>
+          <T k="orig" s={{fontSize:f(12),color:p.mu,textDecoration:"line-through"}}>$49.00</T>
+          <span style={{fontSize:f(9),fontWeight:600,color:"#E05050",background:"#E0505012",padding:"1px 6px",borderRadius:4,marginLeft:"auto"}}>-41%</span>
+        </div>
+      </div>
+    </div>;
+    /* v2 Horizontal — side-by-side image and details */
+    if(v===2)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,display:"flex",gap:0,overflow:"hidden",animation:"tp-fadein .3s ease-out"}}>
+      <Img k="media" s={{width:"40%",background:p.su,flexShrink:0}}/>
+      <div style={{padding:14,display:"flex",flexDirection:"column",gap:5,flex:1}}>
+        <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>Wireless Headphones</T>
+        <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.5}}>Active noise canceling</T>
+        <div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
+          {[1,2,3,4].map(i=><span key={i}>{star(true)}</span>)}<span>{star(false)}</span>
+          <span style={{fontSize:f(9),color:p.mu,marginLeft:3}}>4.0</span>
+        </div>
+        <div style={{marginTop:"auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <T k="price" s={{fontSize:f(15),fontWeight:700,color:p.tx}}>$49.00</T>
+          <div style={{height:28,width:66,borderRadius:6,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:600}}>Add</T></div>
+        </div>
+      </div>
+    </div>;
+    /* v3 Wishlist — hover-reveal heart + rating row + tag chips */
+    if(v===3)return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"relative"}}>
+        <Img k="media" s={{height:0,paddingBottom:"65%",background:p.su}}/>
+        <div style={{position:"absolute",top:8,right:8,width:30,height:30,borderRadius:999,background:p.card+"dd",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.mu,border:`1px solid ${p.bd}`,animation:"tp-fadein .3s ease-out .2s both"}}>{heart}</div>
+        <div style={{position:"absolute",bottom:8,left:8,display:"flex",gap:4}}>
+          <span style={{fontSize:f(9),fontWeight:600,background:p.ac+"18",color:p.ac,padding:"2px 8px",borderRadius:999,backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"tp-slidein .3s ease-out .15s both"}}>New</span>
+          <span style={{fontSize:f(9),fontWeight:500,background:p.card+"cc",color:p.mu,padding:"2px 8px",borderRadius:999,backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"tp-slidein .3s ease-out .2s both"}}>Free shipping</span>
+        </div>
+      </div>
+      <div style={{padding:"12px 14px 14px",display:"flex",flexDirection:"column",gap:5,flex:1}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx,lineHeight:1.3}}>Wireless Headphones</T>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
+          {[1,2,3,4].map(i=><span key={i}>{star(true)}</span>)}<span style={{color:p.mu}}>{star(false)}</span>
+          <span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>(128)</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}>
+          <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+            <T k="price" s={{fontSize:f(16),fontWeight:700,color:p.tx}}>$49.00</T>
+          </div>
+          <div style={{height:32,paddingInline:14,borderRadius:10,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:5}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2.5" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:600}}>Add to cart</T>
+          </div>
+        </div>
+      </div>
+    </div>;
+    /* v4 Glass — frosted glassmorphic card with gradient overlay */
+    return <div style={{...b,background:p.card+"cc",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:18,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",boxShadow:`0 8px 32px ${p.tx}08`,animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"relative"}}>
+        <Img k="media" s={{height:0,paddingBottom:"60%",background:`linear-gradient(135deg,${p.ac}18,${p.ac2||p.ac}18)`}}/>
+        <div style={{position:"absolute",inset:0,background:`linear-gradient(180deg,transparent 40%,${p.card}cc 100%)`}}/>
+        <div style={{position:"absolute",top:10,left:10,background:p.card+"bb",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",borderRadius:999,padding:"3px 10px",border:`1px solid ${p.bd}`}}>
+          <T k="badge" s={{fontSize:f(9),fontWeight:600,color:p.ac}}>Trending</T>
+        </div>
+        <div style={{position:"absolute",top:10,right:10,width:28,height:28,borderRadius:999,background:p.card+"bb",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.mu,border:`1px solid ${p.bd}`}}>{heart}</div>
+      </div>
+      <div style={{padding:"10px 14px 14px",display:"flex",flexDirection:"column",gap:5,flex:1,position:"relative"}}>
+        <T k="title" s={{fontSize:f(14),fontWeight:700,color:p.tx,letterSpacing:"-0.01em"}}>Wireless Headphones</T>
+        <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Premium noise canceling</T>
+        <div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
+          {[1,2,3,4,5].map(i=><span key={i} style={{opacity:i<=4?1:.3}}>{star(i<=4)}</span>)}
+          <span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>4.8</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto",paddingTop:4}}>
+          <T k="price" s={{fontSize:f(17),fontWeight:800,color:p.tx}}>$49.00</T>
+          <div style={{height:34,paddingInline:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 12px ${p.ac}30`}}>
+            <T k="cta" s={{color:onAc,fontSize:f(11),fontWeight:600}}>Buy now</T>
+          </div>
+        </div>
+      </div>
+    </div>;
   }
 
   /* ---- CART ITEM ---- */

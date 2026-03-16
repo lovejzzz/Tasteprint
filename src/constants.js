@@ -70,7 +70,7 @@ export const VARIANTS = {
   alert:     ["Tinted","Card","Banner","Glass"],
   pagination:["Numbered","Dots","Minimal","Pill","Glass"],
   "pricing-card":["Clean","Featured","Minimal"],
-  "product-card":["Standard","Sale badge","Horizontal"],
+  "product-card":["Standard","Sale badge","Horizontal","Wishlist","Glass"],
   "cart-item":["Standard","Compact","Detailed","Swipe","Brutal"],
   "feature-table":["Checkmark","Highlighted","Minimal"],
   "promo-banner":["Gradient","Pill","Countdown","Glass","Social Proof"],
