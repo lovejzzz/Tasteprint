@@ -415,6 +415,8 @@ const SHORTCUTS = [
     ['\u2318+Shift+[', 'Fold at cursor'],
     ['\u2318+Shift+]', 'Unfold at cursor'],
     ['\u2318+Shift+Space', 'Expand selection to brackets'],
+    ['Alt+Shift+\u2191', 'Expand selection (enclosing scope)'],
+    ['Alt+Shift+\u2193', 'Shrink selection'],
   ]},
   { cat: 'Search', items: [
     ['\u2318+F', 'Find'],
@@ -624,6 +626,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Terminal tabs ---- */
   const [termTab, setTermTab] = React.useState('output');
+  const [termFilter, setTermFilter] = React.useState('all'); // 'all' | 'log' | 'warn' | 'err' | 'dbg'
 
   /* ---- Global search ---- */
   const [globalSearchOpen, setGlobalSearchOpen] = React.useState(false);
@@ -2468,6 +2471,47 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       return;
     }
 
+    /* Smart selection expand: Alt+Shift+Up (expand) / Alt+Shift+Down (shrink) */
+    if (e.key === 'ArrowUp' && e.altKey && e.shiftKey) {
+      e.preventDefault();
+      // Find enclosing bracket pair and select inside it
+      const OPENERS = '({['; const CLOSERS = ')}]';
+      let depth = 0, found = false;
+      for (let j = s - 1; j >= 0; j--) {
+        if (CLOSERS.includes(code[j])) depth++;
+        if (OPENERS.includes(code[j])) {
+          if (depth === 0) {
+            // Found an opener — find its matching closer
+            const opener = code[j]; const closer = CLOSERS[OPENERS.indexOf(opener)];
+            let d = 1;
+            for (let k = j + 1; k < code.length; k++) {
+              if (code[k] === opener) d++;
+              if (code[k] === closer) { d--; if (d === 0) { setTimeout(() => { el.selectionStart = j; el.selectionEnd = k + 1; }, 0); found = true; break; } }
+            }
+            break;
+          }
+          depth--;
+        }
+      }
+      if (!found && s !== 0) setTimeout(() => { el.selectionStart = 0; el.selectionEnd = code.length; }, 0);
+      return;
+    }
+    if (e.key === 'ArrowDown' && e.altKey && e.shiftKey) {
+      e.preventDefault();
+      // Shrink: if selection spans brackets, select inner content
+      if (s !== en) {
+        const sel = code.substring(s, en);
+        const OPENERS = '({['; const CLOSERS = ')}]';
+        if (OPENERS.includes(sel[0]) && CLOSERS.includes(sel[sel.length - 1])) {
+          setTimeout(() => { el.selectionStart = s + 1; el.selectionEnd = en - 1; }, 0);
+        } else {
+          // Deselect
+          setTimeout(() => { el.selectionStart = el.selectionEnd = s; }, 0);
+        }
+      }
+      return;
+    }
+
     /* Editor zoom: Cmd+= / Cmd+- */
     if ((e.key === '=' || e.key === '+') && (e.metaKey || e.ctrlKey)) {
       e.preventDefault(); setEditorZoom(z => Math.min(2, z + 0.1)); return;
@@ -2687,6 +2731,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         while (j > 0 && /\w/.test(code[j - 1])) j--;
         setCode(code.substring(0, j) + code.substring(s));
         setTimeout(() => { el.selectionStart = el.selectionEnd = j }, 0);
+      }
+      return;
+    }
+
+    /* Cmd+Backspace: delete to line start */
+    if (e.key === 'Backspace' && e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      if (readonly) return;
+      const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+      if (s > lineStart) {
+        setCode(code.substring(0, lineStart) + code.substring(s));
+        setTimeout(() => { el.selectionStart = el.selectionEnd = lineStart }, 0);
       }
       return;
     }
@@ -3438,6 +3494,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .7 }}>{currentScope}()</span>
             </>}
             {readonly && <span style={{ fontSize: 7, color: '#f9e2af', opacity: .4, marginLeft: 4 }}>read-only</span>}
+            {!readonly && editFiles[activeFile] !== initFiles[activeFile] && <span style={{ fontSize: 6, color: '#f9e2af', marginLeft: 2 }} title="Modified">{'\u25CF'}</span>}
           </div>}
 
           {/* Search bar */}
@@ -4106,6 +4163,37 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                             {isFolded && <span style={{ position: 'absolute', right: -2, fontSize: 6, color: '#cba6f760' }}>...</span>}
                             {bookmarks.has(i + 1) && <span style={{ position: 'absolute', left: 0, top: 0, fontSize: 7, color: '#89b4fa', lineHeight: lh }}>{'\u25CF'}</span>}
                             {lineChanges[i] && <span style={{ position: 'absolute', right: -1, top: 2, bottom: 2, width: 2, borderRadius: 1, background: lineChanges[i] === 'added' ? '#27c93f' : '#89b4fa' }} />}
+                            {/* Quick fix lightbulb on active line with lint issues */}
+                            {i + 1 === activeLn && lintMap[i] && (
+                              <span onClick={e => {
+                                e.stopPropagation();
+                                // Find fixable lint from problems panel
+                                const ll = lines[i];
+                                if (/\bvar\b/.test(ll)) {
+                                  const all = code.split('\n'); all[i] = all[i].replace(/\bvar\b/g, 'const'); setCode(all.join('\n'));
+                                  showToast('Fixed: var → const', 'success');
+                                } else if (/==(?!=)/.test(ll) && !/===/.test(ll)) {
+                                  const all = code.split('\n'); all[i] = all[i].replace(/==(?!=)/g, '==='); setCode(all.join('\n'));
+                                  showToast('Fixed: == → ===', 'success');
+                                } else if (/!=(?!=)/.test(ll) && !/!==/.test(ll)) {
+                                  const all = code.split('\n'); all[i] = all[i].replace(/!=(?!=)/g, '!=='); setCode(all.join('\n'));
+                                  showToast('Fixed: != → !==', 'success');
+                                } else if (/;\s*;/.test(ll)) {
+                                  const all = code.split('\n'); all[i] = all[i].replace(/;\s*;/g, ';'); setCode(all.join('\n'));
+                                  showToast('Fixed: double semicolon', 'success');
+                                } else {
+                                  showToast(lintMap[i].msg, 'info');
+                                }
+                              }}
+                              style={{
+                                position: 'absolute', left: -2, top: '50%', transform: 'translateY(-50%)',
+                                fontSize: 8, cursor: 'pointer', zIndex: 5, lineHeight: 1,
+                                color: '#f9e2af', opacity: .8, transition: 'opacity .15s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                              onMouseLeave={e => e.currentTarget.style.opacity = '.8'}
+                              title={`Quick Fix: ${lintMap[i].msg}`}>{'\uD83D\uDCA1'}</span>
+                            )}
                           </div>
                         );
                       })}
@@ -5017,7 +5105,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       }}>{tab}{tab === 'problems' && (output?.err || lines.some(l => /\bvar\b/.test(l) || (/==(?!=)/.test(l) && !/===/.test(l)))) ? ' \u25CF' : ''}</span>
                   ))}
                   {output?.ms && <span style={{ fontSize: 8, color: '#27c93f', opacity: .5, marginLeft: 6 }}>{output.ms}ms</span>}
-                  {output?.logs?.length > 0 && <span style={{ fontSize: 7, color: '#444', marginLeft: 6 }}>{output.logs.length} entries</span>}
+                  {output?.logs?.length > 0 && termTab === 'output' && (
+                    <span style={{ display: 'flex', gap: 1, marginLeft: 6 }}>
+                      {[
+                        { key: 'all', label: 'All', color: '#a6adc8' },
+                        { key: 'err', label: 'E', color: '#f38ba8' },
+                        { key: 'warn', label: 'W', color: '#f9e2af' },
+                        { key: 'log', label: 'L', color: '#a6adc8' },
+                        { key: 'dbg', label: 'D', color: '#6c7086' },
+                      ].map(f => {
+                        const count = f.key === 'all' ? output.logs.length : output.logs.filter(l => l.t === f.key).length;
+                        if (f.key !== 'all' && count === 0) return null;
+                        return (
+                          <span key={f.key} onClick={() => setTermFilter(f.key)} onMouseDown={stop}
+                            style={{
+                              fontSize: 7, padding: '0 3px', borderRadius: 2, cursor: 'pointer',
+                              color: termFilter === f.key ? f.color : '#444',
+                              background: termFilter === f.key ? f.color + '15' : 'transparent',
+                              fontWeight: termFilter === f.key ? 600 : 400,
+                            }}>{f.label}{count > 0 && f.key !== 'all' ? ` ${count}` : ''}</span>
+                        );
+                      })}
+                    </span>
+                  )}
+                  {output?.logs?.length > 0 && <span style={{ fontSize: 7, color: '#444', marginLeft: 4 }}>{output.logs.length} entries</span>}
                   {output?.logs?.length > 0 && <span onClick={() => {
                     const text = output.logs.map(l => l.v).join('\n');
                     navigator.clipboard?.writeText(text);
@@ -5032,7 +5143,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 <div ref={termRef} style={{ flex: 1, overflow: 'auto', padding: '4px 10px' }}>
                   {termTab === 'output' ? (<>
                     {output ? (<>
-                      {output.logs.map((l, i) => {
+                      {output.logs.filter(l => termFilter === 'all' || l.t === termFilter).map((l, i) => {
                         // Detect if output is a JSON object/array that can be collapsed
                         const isExpandable = l.v && (l.v.trim().startsWith('{') || l.v.trim().startsWith('[')) && l.v.length > 60;
                         const isExpanded = expandedLogs.has(i);
