@@ -4737,6 +4737,9 @@ function generateResponse(text) {
   const emo = detectEmotion(text, sent, parsed);
   trackEmotion(emo.emotion);
 
+  // ═══ Track vocabulary register from user input ═══
+  updateVocabRegister(text);
+
   // Strong emotion detected — respond emotionally before anything else
   if (emo.confidence >= 0.5 && emo.emotion !== "neutral") {
     const emotionTrend = getEmotionTrend();
@@ -5873,11 +5876,7 @@ function adaptToStyle(response, style) {
     r = r.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s{2,}/g, " ").trim();
   }
 
-  // ── Complexity matching ──
-  if (style.complexity === "complex" && r.length > 40) {
-    // Don't dumb down responses for sophisticated users — this is a no-op
-    // but we could enhance with richer vocabulary in future rounds
-  }
+  // ── Complexity matching (now handled by applyVocabRegister in pipeline) ──
 
   return r.trim();
 }
@@ -13782,6 +13781,124 @@ function applyThreadRecap(response, text, topics) {
   return response + " " + aside;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   VOCABULARY REGISTER ADAPTATION (Round 85)
+   Matches the AI's word-level sophistication to the user's register.
+   - Tracks a rolling vocabulary register score (0–1) from user messages
+   - High register (>0.6): upgrades generic words → richer synonyms
+   - Low register (<0.35): downgrades formal words → simpler alternatives
+   - Mid register: no changes (neutral zone)
+   Fire rate: ~30% of eligible responses (>40 chars, 4+ turns).
+   ══════════════════════════════════════════════════════════════════ */
+
+let vocabRegister = 0.5;        // rolling register score (0=casual, 1=sophisticated)
+let lastRegisterTurn = 0;
+
+// Words that signal high register (sophisticated vocabulary)
+const HIGH_REGISTER_SIGNALS = new Set(
+  "paradigm nuance compelling eloquent intricate articulate insightful dichotomy juxtaposition paradox nuanced ephemeral ubiquitous pragmatic meticulous quintessential multifaceted substantive inherently fundamentally arguably ostensibly phenomenon precipitate exacerbate ameliorate cogent salient pertinent ramifications implications discourse elucidate facet myriad plethora exquisite profound indispensable discern synthesize illuminate conjecture albeit hitherto burgeoning pervasive underpin facilitate mitigate leverag".split(" ")
+);
+
+// Words that signal low register (casual vocabulary)
+const LOW_REGISTER_SIGNALS = new Set(
+  "cool stuff things nice good bad big small lots kinda sorta gonna wanna gotta yeah nah dude bro chill vibes lowkey highkey tbh ngl fr imo sus lit fire bet fam legit hella dope sick af tho lmao lol yo sup ez nbd idk rn bruh fwiw deadass slay cap".split(" ")
+);
+
+// Upgrade map: generic → sophisticated (only applied when register is high)
+const VOCAB_UPGRADES = [
+  [/\binteresting\b/gi, () => pick(["compelling", "intriguing", "fascinating"])],
+  [/\breally good\b/gi, () => pick(["remarkably effective", "genuinely impressive", "particularly noteworthy"])],
+  [/\bpretty cool\b/gi, () => pick(["quite remarkable", "genuinely fascinating", "particularly compelling"])],
+  [/\bbig deal\b/gi, () => pick(["significant development", "substantial shift", "meaningful milestone"])],
+  [/\ba lot of\b/gi, () => pick(["a considerable amount of", "substantial", "a wealth of"])],
+  [/\bimportant\b/gi, () => pick(["pivotal", "consequential", "instrumental"])],
+  [/\bdifficult\b/gi, () => pick(["nuanced", "intricate", "formidable"])],
+  [/\bshows\b/gi, () => pick(["demonstrates", "illustrates", "underscores"])],
+  [/\bgets?\b/gi, () => pick(["acquires", "attains", "garners"])],
+  [/\bthink about\b/gi, () => pick(["consider", "contemplate", "reflect on"])],
+];
+
+// Downgrade map: formal → casual (only applied when register is low)
+const VOCAB_DOWNGRADES = [
+  [/\bfurthermore\b/gi, () => "plus"],
+  [/\bnevertheless\b/gi, () => "still though"],
+  [/\bconsequently\b/gi, () => "so"],
+  [/\bsubstantial(ly)?\b/gi, (m) => m[1] ? "really" : "big"],
+  [/\bparticularly\b/gi, () => "especially"],
+  [/\bdemonstrates?\b/gi, () => "shows"],
+  [/\bfacilitate\b/gi, () => "help with"],
+  [/\butilize\b/gi, () => "use"],
+  [/\bnumerous\b/gi, () => "lots of"],
+  [/\bsignificant\b/gi, () => pick(["big", "major", "real"])],
+  [/\bcomprehensive\b/gi, () => "full"],
+  [/\bnevertheless\b/gi, () => "but still"],
+  [/\baugment\b/gi, () => "boost"],
+  [/\bascertain\b/gi, () => "figure out"],
+];
+
+function updateVocabRegister(text) {
+  const words = tokenize(text);
+  if (words.length < 3) return; // skip very short messages
+
+  let highCount = 0, lowCount = 0;
+  const stemmed = words.map(w => w.toLowerCase());
+
+  for (const w of stemmed) {
+    if (HIGH_REGISTER_SIGNALS.has(w)) highCount++;
+    if (LOW_REGISTER_SIGNALS.has(w)) lowCount++;
+  }
+
+  // Also check average word length (sophisticated users tend to use longer words)
+  const avgWordLen = words.reduce((s, w) => s + w.length, 0) / words.length;
+  if (avgWordLen > 6.5) highCount += 0.5;
+  if (avgWordLen < 3.8) lowCount += 0.5;
+
+  // Check for complex sentence structure (semicolons, em-dashes, parentheticals)
+  if (/[;—]/.test(text) || /\([^)]{10,}\)/.test(text)) highCount += 0.5;
+
+  // Compute this message's register signal
+  const total = highCount + lowCount;
+  if (total === 0) return; // no signal, keep current register
+  const msgRegister = highCount / total; // 0–1
+
+  // Exponential moving average (α=0.3) — recent messages matter more
+  vocabRegister = vocabRegister * 0.7 + msgRegister * 0.3;
+}
+
+function applyVocabRegister(response) {
+  const turn = mem.turn;
+  if (turn < 4) return response; // need enough data
+  if (turn - lastRegisterTurn < 3) return response; // min 3-turn gap
+  if (response.length < 40) return response; // skip short responses
+  if (Math.random() > 0.30) return response; // 30% fire rate
+
+  let r = response;
+
+  if (vocabRegister > 0.6) {
+    // High register — upgrade 1-2 words max to avoid over-correction
+    let upgrades = 0;
+    for (const [pattern, replacer] of VOCAB_UPGRADES) {
+      if (upgrades >= 2) break;
+      if (pattern.test(r)) {
+        r = r.replace(pattern, (...args) => { upgrades++; return upgrades <= 2 ? replacer(args) : args[0]; });
+      }
+    }
+    if (upgrades > 0) lastRegisterTurn = turn;
+  } else if (vocabRegister < 0.35) {
+    // Low register — downgrade 1-2 words max
+    let downgrades = 0;
+    for (const [pattern, replacer] of VOCAB_DOWNGRADES) {
+      if (downgrades >= 2) break;
+      if (pattern.test(r)) {
+        r = r.replace(pattern, (...args) => { downgrades++; return downgrades <= 2 ? replacer(args) : args[0]; });
+      }
+    }
+    if (downgrades > 0) lastRegisterTurn = turn;
+  }
+
+  return r;
+}
+
 function applySurpriseInsight(response, topics) {
   const turn = mem.turn;
   if (turn < 4) return response; // let conversation warm up
@@ -14289,6 +14406,9 @@ export function getAIResponse(input) {
   // ═══ Thread recap: brief aside showing awareness of conversation arc ═══
   response = applyThreadRecap(response, text, currentTopics);
 
+  // ═══ Vocabulary register: adapt word sophistication to match user's register ═══
+  response = applyVocabRegister(response);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -14344,6 +14464,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
