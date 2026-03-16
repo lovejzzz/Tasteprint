@@ -207,6 +207,7 @@ export const DEFAULT_PROPS = {
   "order-summary":{ discount: false },
   "promo-banner":{ dismissed: false },
   table:         { highlight: 0 },
+  badge:         { level: 0 },
   "stat-card":   { trend: 0 },
   "list-item":   { on: true },
   "avatar-row":  { active: 0 },
