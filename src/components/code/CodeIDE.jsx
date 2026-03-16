@@ -436,6 +436,8 @@ const SHORTCUTS = [
     ['\u2318+W', 'Close tab'],
     ['\u2318+Shift+T', 'Reopen closed tab'],
     ['\u2318+Shift+O', 'Go to symbol'],
+    ['PageUp/PageDown', 'Scroll by page'],
+    ['\u2318+Home/End', 'Go to file start/end'],
   ]},
   { cat: 'View', items: [
     ['\u2318+=/\u2318+-', 'Zoom in/out'],
@@ -743,7 +745,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const closedTabs = React.useRef([]);
 
   /* ---- Peek definition ---- */
-  const [peekDef, setPeekDef] = React.useState(null); // { method, line }
+  const [peekDef, setPeekDef] = React.useState(null); // { method, line } or { symbol, defLine, defCode, file }
 
   /* ---- Breadcrumb dropdown ---- */
   const [breadcrumbDrop, setBreadcrumbDrop] = React.useState(null);
@@ -2668,6 +2670,34 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       e.preventDefault(); setEditorZoom(1); return;
     }
 
+    /* Page Up / Page Down: scroll by viewport height */
+    if (e.key === 'PageDown' || e.key === 'PageUp') {
+      e.preventDefault();
+      const lineH = Math.round(16 * zf);
+      const viewH = el.clientHeight;
+      const pageLines = Math.floor(viewH / lineH) - 2;
+      const dir = e.key === 'PageDown' ? 1 : -1;
+      const targetLn = Math.max(1, Math.min(lines.length, activeLn + dir * pageLines));
+      const pos = lineOffsets[targetLn - 1] || 0;
+      el.scrollTop = Math.max(0, el.scrollTop + dir * pageLines * lineH);
+      setTimeout(() => { el.selectionStart = el.selectionEnd = pos; updateCursor(el); }, 0);
+      return;
+    }
+
+    /* Home/End: go to start/end of file with Cmd */
+    if (e.key === 'Home' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      setTimeout(() => { el.selectionStart = el.selectionEnd = 0; updateCursor(el); }, 0);
+      el.scrollTop = 0;
+      return;
+    }
+    if (e.key === 'End' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      setTimeout(() => { el.selectionStart = el.selectionEnd = code.length; updateCursor(el); }, 0);
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+
     /* F3/Shift+F3: jump to next/prev search match */
     if (e.key === 'F3' && !e.metaKey && !e.ctrlKey && !e.altKey) {
       e.preventDefault();
@@ -3682,13 +3712,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               <span onClick={() => setShowReplace(r => !r)} style={{ fontSize: 8, color: showReplace ? '#cba6f7' : '#555', cursor: 'pointer' }}>{showReplace ? '\u25BC' : '\u25B6'} Replace</span>
               <span onClick={() => { setSearchOpen(false); taRef.current?.focus(); }} style={{ fontSize: 9, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</span>
               {showReplace && (
-                <div style={{ width: '100%', display: 'flex', gap: 4, alignItems: 'center', marginTop: 2 }}>
+                <div style={{ width: '100%', display: 'flex', gap: 4, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
                   <input value={replaceWith} onChange={e => setReplaceWith(e.target.value)}
                     placeholder="Replace..." spellCheck={false}
-                    onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') setSearchOpen(false); }}
+                    onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') setSearchOpen(false); if (e.key === 'Enter') { e.shiftKey ? replaceAll() : replaceNext(); } }}
                     style={{ flex: 1, minWidth: 80, maxWidth: 140, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
-                  <span onClick={replaceNext} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }}>Replace</span>
-                  <span onClick={replaceAll} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }}>All</span>
+                  <span onClick={replaceNext} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }} title="Replace next (Enter)">Replace</span>
+                  <span onClick={replaceAll} style={{ fontSize: 8, color: '#89b4fa', cursor: 'pointer' }} title="Replace all (Shift+Enter)">All</span>
+                  {searchRegex && replaceWith && searchMatches.length > 0 && (() => {
+                    try {
+                      const rx = new RegExp(searchTerm, (searchCase ? '' : 'i'));
+                      const match = searchMatches[searchIdx];
+                      if (match) {
+                        const matchText = code.substring(match.pos, match.pos + match.len);
+                        const preview = matchText.replace(rx, replaceWith);
+                        if (preview !== matchText) return (
+                          <span style={{ fontSize: 7, color: '#a6e3a1', opacity: .6, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            title={`Preview: "${matchText}" → "${preview}"`}>
+                            {'\u2192'} {preview.substring(0, 20)}
+                          </span>
+                        );
+                      }
+                    } catch {}
+                    return null;
+                  })()}
                 </div>
               )}
             </div>
@@ -4853,8 +4900,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       if (localMatch) {
                         const defLn = code.substring(0, localMatch.index).split('\n').length;
                         if (defLn !== activeLn) {
-                          goToLine(defLn);
-                          showToast(`Definition: line ${defLn}`, 'info');
+                          // Show peek definition with surrounding context
+                          const defLines = code.split('\n');
+                          const startLn = Math.max(0, defLn - 2);
+                          const endLn = Math.min(defLines.length, defLn + 5);
+                          const defCode = defLines.slice(startLn, endLn);
+                          setPeekDef({ symbol: word, defLine: defLn, defCode, startLn: startLn + 1, file: activeFile, line: activeLn });
                           return;
                         }
                       }
@@ -4864,9 +4915,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         const m = content.match(defRx);
                         if (m) {
                           const ln = content.substring(0, m.index).split('\n').length;
-                          openFile(path);
-                          setTimeout(() => goToLine(ln), 100);
-                          showToast(`Found in ${path.split('/').pop()}:${ln}`, 'info');
+                          const defLines = content.split('\n');
+                          const startLn = Math.max(0, ln - 2);
+                          const endLn = Math.min(defLines.length, ln + 5);
+                          const defCode = defLines.slice(startLn, endLn);
+                          setPeekDef({ symbol: word, defLine: ln, defCode, startLn: startLn + 1, file: path, line: activeLn });
                           return;
                         }
                       }
@@ -4875,9 +4928,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         const m = content.match(defRx);
                         if (m) {
                           const ln = content.substring(0, m.index).split('\n').length;
-                          openFile(path);
-                          setTimeout(() => goToLine(ln), 100);
-                          showToast(`Found in ${path.split('/').pop()}:${ln}`, 'info');
+                          const defLines = content.split('\n');
+                          const startLn = Math.max(0, ln - 2);
+                          const endLn = Math.min(defLines.length, ln + 5);
+                          const defCode = defLines.slice(startLn, endLn);
+                          setPeekDef({ symbol: word, defLine: ln, defCode, startLn: startLn + 1, file: path, line: activeLn });
                           return;
                         }
                       }
@@ -5407,43 +5462,84 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               )}
 
               {/* Peek definition panel */}
-              {peekDef && TP_DOCS[peekDef.method] && (() => {
-                const doc = TP_DOCS[peekDef.method];
-                const docLines = doc.split('\n');
+              {peekDef && (() => {
                 const lineH = Math.round(16 * zf);
                 const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
                 const topPos = Math.min((peekDef.line) * lineH - scrollTop + 8, 200);
-                return (
-                  <div style={{
-                    position: 'absolute', left: gutterW + 8, right: showMinimap ? 48 : 8,
-                    top: Math.max(8, topPos), zIndex: 15,
-                    background: '#1e1e2e', border: '1px solid #cba6f740',
-                    borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,.6)', overflow: 'hidden',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff10' }}>
-                      <span style={{ fontSize: fs(8), color: '#cba6f7', fontWeight: 600, flex: 1 }}>tp.{peekDef.method}</span>
-                      <span onClick={() => { openFile('docs/api.js'); setPeekDef(null); showToast(`Opened tp.${peekDef.method} docs`, 'info'); }}
-                        style={{ fontSize: fs(7), color: '#89b4fa', cursor: 'pointer', marginRight: 8 }}
-                        onMouseDown={stop}>Open Full Docs</span>
-                      <span onClick={() => setPeekDef(null)} onMouseDown={stop}
-                        style={{ fontSize: 10, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</span>
+                // tp method peek
+                if (peekDef.method && TP_DOCS[peekDef.method]) {
+                  const doc = TP_DOCS[peekDef.method];
+                  const docLines = doc.split('\n');
+                  return (
+                    <div style={{
+                      position: 'absolute', left: gutterW + 8, right: showMinimap ? 48 : 8,
+                      top: Math.max(8, topPos), zIndex: 15,
+                      background: '#1e1e2e', border: '1px solid #cba6f740',
+                      borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,.6)', overflow: 'hidden',
+                      animation: 'slideIn .15s ease-out',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff10' }}>
+                        <span style={{ fontSize: fs(8), color: '#cba6f7', fontWeight: 600, flex: 1 }}>tp.{peekDef.method}</span>
+                        <span onClick={() => { openFile('docs/api.js'); setPeekDef(null); showToast(`Opened tp.${peekDef.method} docs`, 'info'); }}
+                          style={{ fontSize: fs(7), color: '#89b4fa', cursor: 'pointer', marginRight: 8 }}
+                          onMouseDown={stop}>Open Full Docs</span>
+                        <span onClick={() => setPeekDef(null)} onMouseDown={stop}
+                          style={{ fontSize: 10, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</span>
+                      </div>
+                      <div style={{ padding: '6px 10px', fontFamily: MONO, fontSize: fs(9), lineHeight: '1.5', maxHeight: 100, overflow: 'auto' }}>
+                        {docLines.map((dl, di) => (
+                          <div key={di} style={{ color: di === 0 ? '#cba6f7' : '#a6adc8' }}>
+                            <HighlightLine text={dl} />
+                          </div>
+                        ))}
+                        {PARAM_HINTS[peekDef.method] && (
+                          <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid #ffffff08' }}>
+                            {PARAM_HINTS[peekDef.method].map((p, pi) => (
+                              <div key={pi} style={{ fontSize: fs(8), color: '#f9e2af' }}>{p}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ padding: '6px 10px', fontFamily: MONO, fontSize: fs(9), lineHeight: '1.5', maxHeight: 100, overflow: 'auto' }}>
-                      {docLines.map((dl, di) => (
-                        <div key={di} style={{ color: di === 0 ? '#cba6f7' : '#a6adc8' }}>
-                          <HighlightLine text={dl} />
-                        </div>
-                      ))}
-                      {PARAM_HINTS[peekDef.method] && (
-                        <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid #ffffff08' }}>
-                          {PARAM_HINTS[peekDef.method].map((p, pi) => (
-                            <div key={pi} style={{ fontSize: fs(8), color: '#f9e2af' }}>{p}</div>
-                          ))}
-                        </div>
-                      )}
+                  );
+                }
+                // Local symbol peek
+                if (peekDef.symbol && peekDef.defCode) {
+                  return (
+                    <div style={{
+                      position: 'absolute', left: gutterW + 8, right: showMinimap ? 48 : 8,
+                      top: Math.max(8, topPos), zIndex: 15,
+                      background: '#1e1e2e', border: '1px solid #89b4fa40',
+                      borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,.6)', overflow: 'hidden',
+                      animation: 'slideIn .15s ease-out',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff10' }}>
+                        <span style={{ fontSize: fs(8), color: '#89b4fa', fontWeight: 600 }}>{peekDef.symbol}</span>
+                        <span style={{ fontSize: fs(7), color: '#555', marginLeft: 6 }}>{peekDef.file.split('/').pop()}:{peekDef.defLine}</span>
+                        <span onClick={() => {
+                          if (peekDef.file !== activeFile) openFile(peekDef.file);
+                          setTimeout(() => goToLine(peekDef.defLine), peekDef.file !== activeFile ? 100 : 0);
+                          setPeekDef(null);
+                        }} onMouseDown={stop}
+                          style={{ fontSize: fs(7), color: '#89b4fa', cursor: 'pointer', marginLeft: 'auto', marginRight: 8 }}>Go to Definition</span>
+                        <span onClick={() => setPeekDef(null)} onMouseDown={stop}
+                          style={{ fontSize: 10, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</span>
+                      </div>
+                      <div style={{ padding: '2px 0', fontFamily: MONO, fontSize: fs(9), lineHeight: lh, maxHeight: 120, overflow: 'auto' }}>
+                        {peekDef.defCode.map((dl, di) => (
+                          <div key={di} style={{
+                            padding: '0 8px 0 4px', display: 'flex',
+                            background: peekDef.startLn + di === peekDef.defLine ? '#89b4fa10' : 'transparent',
+                          }}>
+                            <span style={{ color: '#444', width: 28, textAlign: 'right', flexShrink: 0, marginRight: 8, fontSize: fs(8) }}>{peekDef.startLn + di}</span>
+                            <span style={{ flex: 1, whiteSpace: 'pre', overflow: 'hidden' }}><HighlightLine text={dl} /></span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
+                }
+                return null;
               })()}
 
               {/* Read-only badge */}
