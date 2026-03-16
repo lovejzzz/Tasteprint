@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 74: Rhetorical device engine
+   Round 75: Conversational prosody & emphasis marking
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -12312,6 +12312,183 @@ function applyRhetoric(response, text, topics) {
   return response;
 }
 
+/* ── Conversational Prosody & Emphasis Marking (Round 75) ──
+ * Humans convey vocal stress through text formatting: strategic caps
+ * ("that is SO good"), em-dashes for mid-thought pivots ("wait — no"),
+ * ellipsis for trailing thought ("the thing is..."), and repetition
+ * for emphasis ("really, really"). This module adds prosodic texture
+ * to make responses feel spoken rather than written.
+ *
+ * 6 prosody modes — each targets different sentence structures:
+ * 1. Emphatic caps: ONE key word gets caps for stress
+ * 2. Trailing ellipsis: thought trails off naturally
+ * 3. Em-dash pivot: mid-sentence direction change
+ * 4. Stretched word: "sooo" / "reeeally" for casual emphasis
+ * 5. Repetition stress: "really, really" / "so, so"
+ * 6. Pause comma: extra beat before key word
+ *
+ * 20% fire rate, 4-turn cooldown, mode rotation.
+ */
+
+let lastProsodyTurn = 0;
+let lastProsodyMode = "";
+
+// Mode 1: Emphatic caps on a key word
+function addEmphCaps(response) {
+  // Find a strong adjective or adverb to emphasize
+  const emphTargets = [
+    [/\b(really) (good|great|cool|nice|interesting|important|hard|bad|fun|helpful)\b/i, (_, a, b) => `${a} ${b.toUpperCase()}`],
+    [/\b(so) (good|great|cool|nice|much|many|true|real|right)\b/i, (_, a, b) => `SO ${b}`],
+    [/\b(very) (different|specific|clear|important|real|true)\b/i, (_, a, b) => `VERY ${b}`],
+    [/\b(that's) (exactly|literally|absolutely|definitely) /i, (_, a, b) => `${a} ${b.toUpperCase()} `],
+    [/\b(completely|totally|absolutely) (different|wrong|right|true|agree)\b/i, (_, a, b) => `${a.toUpperCase()} ${b}`],
+  ];
+  for (const [pat, rep] of emphTargets) {
+    if (pat.test(response)) return response.replace(pat, rep);
+  }
+  return null;
+}
+
+// Mode 2: Trailing ellipsis — thought drifts off
+function addTrailingEllipsis(response) {
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 2) return null;
+
+  // Target phrases that trail naturally
+  const trailPatterns = [
+    /\b(I think|I guess|kind of|sort of|in a way|depends|maybe|probably)\b/i,
+    /\b(but then again|but also|though|somehow)\b/i,
+  ];
+
+  for (let i = 0; i < sentences.length; i++) {
+    const s = sentences[i].trim();
+    if (trailPatterns.some(p => p.test(s)) && s.length > 15 && s.length < 80) {
+      // Replace the terminal punctuation with ellipsis
+      sentences[i] = s.replace(/[.!]+$/, "...");
+      return sentences.join(" ");
+    }
+  }
+  return null;
+}
+
+// Mode 3: Em-dash pivot — mid-thought direction change
+function addEmDashPivot(response) {
+  const pivotPatterns = [
+    [/\b(but|although|though|however) (I|it|that|the|this)\b/i, (m, conj, subj) => `— ${subj.toLowerCase()}`],
+    [/\b(actually),? /i, "— actually, "],
+    [/\b(well),? (I|it|that)\b/i, (_, w, subj) => `— well, ${subj.toLowerCase()}`],
+    [/, (and|but) (honestly|really|truly) /i, " — $2 "],
+  ];
+
+  for (const [pat, rep] of pivotPatterns) {
+    if (pat.test(response) && !response.includes("—")) {
+      return response.replace(pat, rep);
+    }
+  }
+  return null;
+}
+
+// Mode 4: Stretched word for casual emphasis
+function addStretchedWord(response) {
+  const stretchMap = [
+    [/\bso\b(?= )/i, () => Math.random() > 0.5 ? "sooo" : "soooo"],
+    [/\breally\b/i, () => "reeeally"],
+    [/\bvery\b/i, () => "veeery"],
+    [/\bsuper\b/i, () => "suuuper"],
+    [/\bway\b(?= )/i, () => "waaay"],
+    [/\btoo\b(?= )/i, () => "toooo"],
+  ];
+
+  for (const [pat, gen] of stretchMap) {
+    if (pat.test(response)) {
+      return response.replace(pat, gen());
+    }
+  }
+  return null;
+}
+
+// Mode 5: Repetition stress — "really, really" / "so, so"
+function addRepetitionStress(response) {
+  const repTargets = [
+    [/\b(really) (good|great|cool|important|nice|interesting|hard)\b/i, "$1, $1 $2"],
+    [/\b(so) (much|many|good|true|right|cool)\b/i, "$1, $1 $2"],
+    [/\b(very) (different|specific|clear|important)\b/i, "$1, $1 $2"],
+    [/\ba lot\b/i, "a lot, a LOT"],
+  ];
+
+  for (const [pat, rep] of repTargets) {
+    if (pat.test(response)) {
+      return response.replace(pat, rep);
+    }
+  }
+  return null;
+}
+
+// Mode 6: Pause comma — extra beat before emphasis
+function addPauseComma(response) {
+  const pauseTargets = [
+    [/\b(it's|that's|this is) (actually|genuinely|honestly|literally) /i, "$1, $2, "],
+    [/\b(and) (that's|it's|this is) /i, "$1, $2 "],
+    [/\b(which is) (exactly|precisely|basically) /i, "$1, $2, "],
+  ];
+
+  for (const [pat, rep] of pauseTargets) {
+    if (pat.test(response) && (response.match(/,/g) || []).length < 3) {
+      return response.replace(pat, rep);
+    }
+  }
+  return null;
+}
+
+function applyProsody(response, text, sent) {
+  const turn = mem.turn;
+
+  if (turn < 3) return response;
+  if (turn - lastProsodyTurn < 4) return response;   // 4-turn cooldown
+  if (response.length < 25) return response;           // too short
+  if (response.length > 220) return response;          // too long — risky
+  if (/^(Ha|Haha|Lol|Aw|😊|🙏)/i.test(response)) return response; // skip reactions
+  if (Math.random() > 0.20) return response;            // 20% fire rate
+
+  const modes = [
+    { name: "emph_caps", fn: () => addEmphCaps(response) },
+    { name: "trailing", fn: () => addTrailingEllipsis(response) },
+    { name: "em_dash", fn: () => addEmDashPivot(response) },
+    { name: "stretch", fn: () => addStretchedWord(response) },
+    { name: "repetition", fn: () => addRepetitionStress(response) },
+    { name: "pause", fn: () => addPauseComma(response) },
+  ];
+
+  // Positive sentiment → prefer stretch/caps/repetition (energetic)
+  // Negative sentiment → prefer trailing/em_dash/pause (measured)
+  const shuffled = modes.sort(() => Math.random() - 0.5);
+  if (sent > 1) {
+    // Boost energetic modes to front
+    const boost = ["emph_caps", "stretch", "repetition"];
+    shuffled.sort((a, b) => (boost.includes(b.name) ? 1 : 0) - (boost.includes(a.name) ? 1 : 0));
+  } else if (sent < -1) {
+    const boost = ["trailing", "em_dash", "pause"];
+    shuffled.sort((a, b) => (boost.includes(b.name) ? 1 : 0) - (boost.includes(a.name) ? 1 : 0));
+  }
+
+  // Deprioritize last-used mode
+  if (lastProsodyMode) {
+    const idx = shuffled.findIndex(m => m.name === lastProsodyMode);
+    if (idx >= 0) shuffled.push(shuffled.splice(idx, 1)[0]);
+  }
+
+  for (const mode of shuffled) {
+    const result = mode.fn();
+    if (result && result !== response) {
+      lastProsodyTurn = turn;
+      lastProsodyMode = mode.name;
+      return result;
+    }
+  }
+
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -12809,6 +12986,9 @@ export function getAIResponse(input) {
   // ═══ Rhetorical devices: tricolon, litotes, antithesis, anaphora, chiasmus, rhetorical questions ═══
   response = applyRhetoric(response, text, currentTopics);
 
+  // ═══ Prosody & emphasis: strategic caps, em-dashes, ellipsis, stretched words, repetition ═══
+  response = applyProsody(response, text, sent);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -12861,6 +13041,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
