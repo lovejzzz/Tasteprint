@@ -87,7 +87,7 @@ export const VARIANTS = {
   stepper:   ["Horizontal","Vertical","Dots","Pill","Icon","Brutal","Gradient"],
   timeline:  ["Left","Centered","Minimal","Card","Activity","Brutal","Gradient"],
   chat:      ["Bubble","Thread","Terminal","Glass","Gradient"],
-  "media-player":["Minimal","Full","Terminal","Glass","Vinyl"],
+  "media-player":["Minimal","Full","Terminal","Glass","Vinyl","Brutal","Gradient"],
   "profile-card":["Standard","Compact","Terminal","Glass","Gradient"],
   "code-block":["Dark","Light","Terminal","Live IDE","Typewriter","Diff","Notebook","Review","Minimap","ASCII Art","Benchmark"],
   notification:["List","Compact","Dot","Card","Glass","Brutal","Gradient"],

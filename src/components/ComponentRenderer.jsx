@@ -1512,7 +1512,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       </div>
     </div>;
     /* v4 Vinyl — retro record aesthetic with spinning disc */
-    return <div style={{...b,background:`linear-gradient(145deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
+    if(v===4)return <div style={{...b,background:`linear-gradient(145deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 60%)",pointerEvents:"none"}}/>
       <div style={{padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:14,position:"relative"}}>
         <div style={{position:"relative",width:54,height:54,flexShrink:0}}>
@@ -1537,6 +1537,64 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
         <div style={{color:onAc,opacity:.5,cursor:"pointer"}}>{skipBack}</div>
         <div style={{width:38,height:38,borderRadius:999,background:onAc,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.ac}40`,color:p.ac,paddingLeft:mpPlaying?2:0}} onClick={()=>cProp?.("playing",!mpPlaying)}>{playIcon}</div>
         <div style={{color:onAc,opacity:.5,cursor:"pointer"}}>{skipFwd}</div>
+      </div>
+    </div>;
+    /* v5 Brutal — thick borders, hard offset shadow, dot-grid bg, squared geometry, uppercase bold */
+    if(v===5)return <div style={{...b,background:p.card,borderRadius:3,border:`2.5px solid ${p.tx}`,padding:14,display:"flex",flexDirection:"column",gap:10,boxShadow:`5px 5px 0 ${p.tx}`,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${p.tx}10 1px,transparent 1px)`,backgroundSize:"12px 12px",pointerEvents:"none"}}/>
+      <div style={{display:"flex",alignItems:"center",gap:12,position:"relative"}}>
+        <Img k="cover" s={{width:48,height:48,borderRadius:3,background:p.su,flexShrink:0,border:`2px solid ${p.tx}`}}/>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}>
+          <T k="title" s={{fontSize:f(12),fontWeight:900,color:p.tx,textTransform:"uppercase",letterSpacing:"0.06em"}}>SIGNAL WAVE</T>
+          <T k="artist" s={{fontSize:f(9),fontWeight:600,color:p.mu,textTransform:"uppercase",letterSpacing:"0.04em"}}>NEON PULSE</T>
+        </div>
+        <div style={{background:mpPlaying?p.ac:p.mu+"30",borderRadius:2,border:`2px solid ${p.tx}`,padding:"2px 6px",boxShadow:`2px 2px 0 ${p.tx}`}}><span style={{fontSize:8,fontWeight:800,color:mpPlaying?onAc:p.mu}}>{mpPlaying?"LIVE":"STOP"}</span></div>
+      </div>
+      <div style={{display:"flex",gap:2,alignItems:"flex-end",height:22,position:"relative"}}>{bars.map((h,i)=><div key={i} style={{flex:1,height:h*1.4,background:i<Math.floor(bars.length*prog/100)?p.tx:p.tx+"20",borderRadius:1,border:`1px solid ${p.tx}`,transformOrigin:"bottom",animation:`tp-bar-grow .3s ease-out ${i*.02}s both`}}/>)}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8,position:"relative"}}>
+        <T k="cur" s={{fontSize:f(9),fontWeight:700,color:p.mu,textTransform:"uppercase"}}>01:47</T>
+        <div style={{flex:1,height:4,borderRadius:1,background:p.su,border:`1.5px solid ${p.tx}`}}><div style={{width:`${prog}%`,height:"100%",background:p.ac,transition:"width .3s"}}/></div>
+        <T k="dur" s={{fontSize:f(9),fontWeight:700,color:p.mu,textTransform:"uppercase"}}>04:12</T>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,position:"relative"}}>
+        <div style={{width:28,height:28,borderRadius:2,border:`2px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,boxShadow:`2px 2px 0 ${p.tx}20`}}>{skipBack}</div>
+        <div style={{width:36,height:36,borderRadius:3,background:p.ac,border:`2.5px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`3px 3px 0 ${p.tx}`,color:onAc,paddingLeft:mpPlaying?2:0}} onClick={()=>cProp?.("playing",!mpPlaying)}>{playIcon}</div>
+        <div style={{width:28,height:28,borderRadius:2,border:`2px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:p.tx,boxShadow:`2px 2px 0 ${p.tx}20`}}>{skipFwd}</div>
+      </div>
+    </div>;
+    /* v6 Gradient — animated gradient bg, shimmer sweep, dual glow shadow, pulsing accent dots */
+    return <div style={{...b,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,padding:16,display:"flex",flexDirection:"column",gap:10,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.ac}30, 0 0 60px ${p.ac}10`,animation:"tp-fadein .35s ease-out"}}>
+      <div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent 20%,${onAc}08 50%,transparent 80%)`,backgroundSize:"200% 100%",animation:"tp-shimmer-slide 3s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",top:10,right:12,width:5,height:5,borderRadius:999,background:onAc,opacity:.3,animation:"tp-pulse 2s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",bottom:14,left:12,width:4,height:4,borderRadius:999,background:onAc,opacity:.2,animation:"tp-pulse 2.5s ease-in-out .5s infinite",pointerEvents:"none"}}/>
+      <div style={{display:"flex",alignItems:"center",gap:12,position:"relative"}}>
+        <div style={{position:"relative",flexShrink:0}}>
+          <Img k="cover" s={{width:52,height:52,borderRadius:14,background:onAc+"15"}}/>
+          <div style={{position:"absolute",inset:-2,borderRadius:16,border:`1px solid ${onAc}20`,boxShadow:`0 4px 20px ${p.ac}40`,pointerEvents:"none"}}/>
+        </div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}>
+          <T k="title" s={{fontSize:f(13),fontWeight:700,color:onAc,letterSpacing:"-0.01em"}}>Signal Wave</T>
+          <T k="artist" s={{fontSize:f(10),color:onAc,opacity:.65}}>Neon Pulse</T>
+        </div>
+        <div style={{color:onAc,opacity:.5,cursor:"pointer"}}>{heartIcon}</div>
+      </div>
+      <div style={{display:"flex",gap:1.5,alignItems:"flex-end",height:22,padding:"0 2px",position:"relative"}}>
+        {bars.map((h,i)=><div key={i} style={{flex:1,height:h*1.4,borderRadius:1,background:i<Math.floor(bars.length*prog/100)?onAc+"80":onAc+"18",transformOrigin:"bottom",animation:`tp-bar-grow .35s ease-out ${i*.02}s both`,transition:"background .2s"}}/>)}
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8,position:"relative"}}>
+        <T k="cur" s={{fontSize:f(9),color:onAc,opacity:.5}}>1:47</T>
+        <div style={{flex:1,height:3,borderRadius:999,background:onAc+"18",position:"relative"}}>
+          <div style={{width:`${prog}%`,height:"100%",borderRadius:999,background:onAc,opacity:.7,transition:"width .3s"}}/>
+          <div style={{position:"absolute",top:-3,left:`${prog}%`,width:9,height:9,borderRadius:999,background:onAc,boxShadow:`0 0 8px ${onAc}60`,transform:"translateX(-50%)"}}/>
+        </div>
+        <T k="dur" s={{fontSize:f(9),color:onAc,opacity:.5}}>4:12</T>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,position:"relative"}}>
+        <div style={{color:onAc,opacity:.4,cursor:"pointer"}}>{shuffleIcon}</div>
+        <div style={{color:onAc,opacity:.6,cursor:"pointer"}}>{skipBack}</div>
+        <div style={{width:38,height:38,borderRadius:999,background:onAc,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.tx}15`,color:p.ac,paddingLeft:mpPlaying?2:0,position:"relative",overflow:"hidden"}} onClick={()=>cProp?.("playing",!mpPlaying)}><div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent 20%,${p.ac}15 50%,transparent 80%)`,backgroundSize:"200% 100%",animation:"tp-shimmer-slide 2.5s ease-in-out .5s infinite",pointerEvents:"none"}}/>{playIcon}</div>
+        <div style={{color:onAc,opacity:.6,cursor:"pointer"}}>{skipFwd}</div>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2" strokeLinecap="round" style={{opacity:.4,cursor:"pointer"}}><polyline points="17 1 4 12 17 23 17 1"/><line x1="20" y1="1" x2="20" y2="23"/></svg>
       </div>
     </div>;
   }
