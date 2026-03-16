@@ -3945,6 +3945,21 @@ function generateResponse(text) {
   const meta = handleMetaConversation(text, parsed.lower || text.toLowerCase(), sent);
   if (meta) return meta;
 
+  // ═══ 0.9. Situational empathy — detect specific life moments and validate deeply ═══
+  if (mem.turn - lastSituationTurn >= 3) {
+    const situation = detectSituation(text, parsed.lower || text.toLowerCase());
+    if (situation) {
+      const sitResp = generateSituationalResponse(situation, text);
+      if (sitResp) {
+        lastSituationTurn = mem.turn;
+        mem.add("ai", sitResp);
+        trackAIQuestion(sitResp);
+        const typingMs = calcTypingMs(sitResp, sent, parsed);
+        return { text: sitResp, typingMs, pause: calcTypingPause(typingMs) };
+      }
+    }
+  }
+
   // ═══ 1. Name introduction ═══
   const nameMatch = text.match(/(?:i'?m|i am|name is|call me|they call me)\s+([A-Z][a-z]{1,15})/);
   if (nameMatch && !STOP.has(nameMatch[1].toLowerCase())) {
@@ -6415,6 +6430,189 @@ function addBreath(response, text, energy) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   SITUATIONAL EMPATHY & MICRO-VALIDATION ENGINE (Round 40)
+   Detects specific life situations — achievements, struggles,
+   vulnerability, life transitions, creative sharing — and generates
+   responses that validate the SPECIFIC emotion, not just the
+   category. Instead of "that's great!" it says "That must feel
+   so satisfying after putting in all that work."
+   Fire rate: ~100% for detected situations (these are high-signal).
+   ══════════════════════════════════════════════════════════════════ */
+
+const SITUATION_PATTERNS = [
+  // ── Achievements & wins ──
+  { pat: /i (?:got|landed|received|accepted) (?:the|a|an|my) (?:job|offer|position|role|promotion|raise|internship)/i,
+    sit: "career_win", emotion: "pride" },
+  { pat: /i (?:got|was) (?:accepted|admitted|in) (?:to|into|at) /i,
+    sit: "acceptance", emotion: "pride" },
+  { pat: /(?:my|our|the) (?:app|project|site|product|game|startup|business|company) (?:just )?(?:launched|shipped|went live|is live|hit|reached)/i,
+    sit: "launch", emotion: "pride" },
+  { pat: /i (?:finally |just )?(?:finished|completed|submitted|passed|graduated|defended)/i,
+    sit: "completion", emotion: "relief" },
+  { pat: /(?:my|the) (?:code|app|feature|test|build|deploy|PR|pull request) (?:finally )?(?:works|passed|compiled|merged|deployed)/i,
+    sit: "code_win", emotion: "relief" },
+  { pat: /i (?:figured|worked) (?:it )?out/i,
+    sit: "breakthrough", emotion: "relief" },
+
+  // ── Struggles & difficulty ──
+  { pat: /i(?:'ve| have) been (?:trying|working on|debugging|struggling with|stuck on) (?:this |it )?(?:for |all )?(?:\d+ )?(?:hours|days|weeks)/i,
+    sit: "long_grind", emotion: "exhaustion" },
+  { pat: /i (?:keep|can't stop) (?:getting|hitting|running into) (?:errors|bugs|issues|problems|walls)/i,
+    sit: "repeated_failure", emotion: "frustration" },
+  { pat: /(?:nothing|it|this) (?:is |seems to be )?(?:working|making sense|clicking)/i,
+    sit: "stuck", emotion: "frustration" },
+  { pat: /i don't (?:know|think) (?:if )?i (?:can|'m (?:able|good enough|cut out))/i,
+    sit: "self_doubt", emotion: "vulnerability" },
+  { pat: /i(?:'m| am) (?:so |really |completely |totally )?(?:burnt? out|exhausted|drained|overwhelmed|overworked)/i,
+    sit: "burnout", emotion: "exhaustion" },
+  { pat: /imposter syndrome/i,
+    sit: "imposter", emotion: "vulnerability" },
+
+  // ── Life transitions ──
+  { pat: /i (?:just )?(?:started|beginning|moved to|relocated|transferred|switched to)/i,
+    sit: "new_chapter", emotion: "mixed" },
+  { pat: /i(?:'m| am) (?:about to|going to|planning to) (?:start|move|switch|quit|leave|change)/i,
+    sit: "upcoming_change", emotion: "nervous" },
+  { pat: /i (?:just )?(?:quit|left|resigned|got (?:laid off|fired|let go))/i,
+    sit: "departure", emotion: "complex" },
+
+  // ── Creative sharing ──
+  { pat: /i(?:'ve| have) been (?:working on|building|making|creating|writing|designing|composing|painting|drawing)/i,
+    sit: "creative_work", emotion: "vulnerable_pride" },
+  { pat: /(?:check|look at|see) (?:this|what i (?:made|built|created|designed|wrote))/i,
+    sit: "showing_work", emotion: "vulnerable_pride" },
+  { pat: /i (?:wrote|made|built|created|designed|composed|painted|drew) (?:a |an |my |this )/i,
+    sit: "creative_share", emotion: "vulnerable_pride" },
+
+  // ── Asking for honest feedback ──
+  { pat: /(?:be |give me )?(?:honest|real|straight|blunt|brutal) (?:with me|feedback|opinion|thoughts)/i,
+    sit: "seeking_honesty", emotion: "brave" },
+  { pat: /(?:is|does) (?:this|it|my) (?:look|sound|seem|read) (?:ok|okay|good|alright|stupid|dumb|weird)/i,
+    sit: "validation_seeking", emotion: "insecure" },
+
+  // ── Personal vulnerability ──
+  { pat: /i(?:'m| am) (?:not sure|scared|afraid|worried|anxious|nervous) (?:about|that|if)/i,
+    sit: "fear", emotion: "vulnerability" },
+  { pat: /i feel (?:like )?(?:a failure|worthless|useless|invisible|alone|lost|stuck)/i,
+    sit: "deep_struggle", emotion: "pain" },
+  { pat: /(?:nobody|no one) (?:cares|understands|gets it|listens)/i,
+    sit: "isolation", emotion: "pain" },
+];
+
+const SITUATION_RESPONSES = {
+  career_win: [
+    "Wait — that is HUGE. Do you realize how competitive that is? You earned that.",
+    "Okay but can we talk about how much work goes into getting to that point? You did that. All you.",
+    "That's not luck — that's preparation meeting opportunity. How does it feel to actually have it?",
+  ],
+  acceptance: [
+    "The fact that you got in says a lot about you. They saw something real. How are you feeling about it?",
+    "That's a door that opened because of what you built. Take a second to actually feel that before you start worrying about what's next.",
+  ],
+  launch: [
+    "Shipping something into the world takes guts. Most people just talk about it. You actually did it. What was the hardest part?",
+    "That moment when it goes live and real people start using it — there's nothing quite like that feeling. How's the reception been?",
+  ],
+  completion: [
+    "The relief you're feeling right now? You've earned every bit of it. That takes real persistence.",
+    "Finished. Done. Actually done. That's such a satisfying feeling. Was there a moment you thought you wouldn't make it?",
+  ],
+  code_win: [
+    "That click when something finally works after fighting it — honestly one of the best feelings in programming.",
+    "The fact that you stuck with it until it worked says more than the code itself. What was the bug?",
+  ],
+  breakthrough: [
+    "That moment of clarity after being stuck is genuinely one of the best feelings. What made it click?",
+    "Figured it out! The struggle before that moment is what makes the breakthrough feel so good.",
+  ],
+  long_grind: [
+    "That's a long time to sit with something that's fighting you. Honestly — have you taken a real break? Sometimes the answer shows up when you stop staring at it.",
+    "The fact that you're still at it says a lot about your stubbornness — and I mean that as a compliment. But seriously, when's the last time you stepped away?",
+  ],
+  repeated_failure: [
+    "That's the kind of thing that makes you want to close your laptop and walk away. Are the errors related or is it a new thing each time?",
+    "When every attempt hits a wall, it's easy to feel like you're going backwards. You're not — you're eliminating possibilities. What's the pattern?",
+  ],
+  stuck: [
+    "Being stuck is uncomfortable because your brain is trying to find a path that doesn't exist yet. Sometimes you have to break the problem into something smaller. What's the core thing that's not clicking?",
+    "That feeling of nothing working is temporary, even though it doesn't feel that way right now. What have you tried so far?",
+  ],
+  self_doubt: [
+    "Hey — the fact that you even question yourself means you care about doing it well. That's not weakness, that's awareness. What specifically is making you doubt?",
+    "I hear that. Self-doubt is weirdly universal — the best people I know all deal with it. What would you tell a friend who said this to you?",
+  ],
+  burnout: [
+    "Burnout isn't laziness — it's your mind saying the current pace isn't sustainable. Is there one thing you could drop right now that would help?",
+    "That's real. Pushing through burnout usually makes it worse, not better. What would your ideal day look like if you could actually rest?",
+  ],
+  imposter: [
+    "Fun fact: imposter syndrome hits hardest when you're actually growing. You wouldn't feel out of place if you weren't reaching for something bigger than your comfort zone.",
+    "Almost everyone you admire has felt exactly this way. The difference isn't that they're more confident — they just kept going anyway.",
+  ],
+  new_chapter: [
+    "New beginnings are this weird cocktail of excitement and low-key terror. How are you actually feeling about it — the honest version?",
+    "Starting something new means being a beginner again, which is uncomfortable but also kind of freeing. What drew you to the change?",
+  ],
+  upcoming_change: [
+    "It's one thing to think about change, another to actually be on the edge of it. What's the thing that excites you most? And what's the thing that scares you most?",
+    "Big decisions feel heavy because they matter. Trust that — the weight means you're taking it seriously.",
+  ],
+  departure: [
+    "That's a big move. There's a lot of feelings that come with leaving something, even when it's the right call. How are you processing it?",
+    "Endings are complicated — even when you chose them. What feels clearest to you right now?",
+  ],
+  creative_work: [
+    "I love that you're making something. Creating is vulnerable by nature — you're putting a piece of yourself out there. What's inspiring you?",
+    "The fact that you're actually building it instead of just thinking about it puts you ahead of most people. What part are you most excited about?",
+  ],
+  showing_work: [
+    "You're sharing something you made — that takes courage. I'm genuinely curious, tell me more about it!",
+    "The fact that you're showing it means part of you is proud of it, even if another part is nervous. What was the hardest part to get right?",
+  ],
+  creative_share: [
+    "You made something! That's always worth celebrating. What was the spark that started it?",
+    "Creating something from nothing is one of the most human things there is. What does it mean to you?",
+  ],
+  seeking_honesty: [
+    "I respect that you want the real version. Okay — let me actually think about this for a second.",
+    "Asking for honesty takes guts. Let's be real then — what specifically do you want feedback on?",
+  ],
+  validation_seeking: [
+    "The fact that you're asking means you care about getting it right. What's your gut telling you about it?",
+    "Before I answer — what do YOU think? Your instinct probably knows more than you're giving it credit for.",
+  ],
+  fear: [
+    "Fear and excitement live in the same place — they feel almost identical. The fact that you're naming it is the first step. What's the worst case you're imagining?",
+    "Being scared about something you care about is a sign you're being brave, not weak. What would help you feel even a little more ready?",
+  ],
+  deep_struggle: [
+    "I hear you, and I want you to know — feeling that way doesn't make it true. What would feel different for you right now if things were even slightly better?",
+    "That's a heavy thing to carry. You don't have to fix everything right now. What's one small thing that's felt okay recently?",
+  ],
+  isolation: [
+    "I'm here, and I'm listening. Sometimes the feeling of not being heard is worse than the actual problem. What would being understood look like for you?",
+    "That feeling is painful and real, even if it's not the whole picture. Right now, in this moment, I hear you.",
+  ],
+};
+
+let lastSituationTurn = 0;
+
+function detectSituation(text, lower) {
+  for (const { pat, sit, emotion } of SITUATION_PATTERNS) {
+    if (pat.test(lower) || pat.test(text)) {
+      return { situation: sit, emotion };
+    }
+  }
+  return null;
+}
+
+function generateSituationalResponse(situation, text) {
+  const pool = SITUATION_RESPONSES[situation.situation];
+  if (!pool) return null;
+  return pickNew(pool);
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CROSS-DOMAIN ANALOGY & UNEXPECTED CONNECTIONS
    Great conversationalists make surprising connections between
    unrelated fields. "Debugging is like detective work" or "CSS
@@ -7066,6 +7264,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
