@@ -997,7 +997,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       </div>
     </div>}
     /* v4 Breakdown — distribution bars with summary */
-    {const dist=[68,22,6,2,2];const total=128;
+    if(v===4){const dist=[68,22,6,2,2];const total=128;
     return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:14,display:"flex",gap:14,animation:"tp-fadein .3s ease-out"}}>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,minWidth:60}}>
         <T k="score" s={{fontSize:f(28),fontWeight:800,color:p.tx,letterSpacing:"-0.03em",lineHeight:1,animation:"tp-count .5s ease-out"}}>4.0</T>
@@ -1015,6 +1015,51 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
         </div>)}
       </div>
     </div>}
+    /* v5 Brutal — thick borders, hard offset shadows, squared star blocks, uppercase bold text, dot-grid bg */
+    if(v===5)return <div style={{...b,background:p.card,borderRadius:3,border:`2.5px solid ${p.tx}`,padding:14,display:"flex",flexDirection:"column",gap:10,boxShadow:`4px 4px 0 ${p.tx}`,position:"relative",overflow:"hidden",animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${p.tx}10 1px, transparent 1px)`,backgroundSize:"8px 8px",pointerEvents:"none"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",zIndex:1}}>
+        <T k="title" s={{fontSize:f(10),fontWeight:900,color:p.tx,textTransform:"uppercase",letterSpacing:"0.1em"}}>Rating</T>
+        <div style={{background:p.ac,borderRadius:2,padding:"2px 8px",border:`2px solid ${p.tx}`,boxShadow:`2px 2px 0 ${p.tx}`}}>
+          <T k="score" s={{fontSize:f(12),fontWeight:900,color:onAc,letterSpacing:"0.05em"}}>4.0</T>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:4,position:"relative",zIndex:1}}>
+        {Array(5).fill(0).map((_,i)=><div key={i} style={{width:22,height:22,borderRadius:2,border:`2px solid ${p.tx}`,background:i<rs?p.ac:"transparent",boxShadow:i<rs?`2px 2px 0 ${p.tx}`:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .15s"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("stars",i+1)}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill={i<rs?onAc:p.mu+"30"} stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>)}
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:6,position:"relative",zIndex:1}}>
+        <Img k="avatar" s={{width:20,height:20,borderRadius:2,border:`2px solid ${p.tx}`,background:p.ac+"18"}}/>
+        <T k="author" s={{fontSize:f(9),fontWeight:800,color:p.tx,textTransform:"uppercase",letterSpacing:"0.06em"}}>Jane D.</T>
+        <span style={{fontSize:f(8),fontWeight:800,color:onAc,background:p.tx,borderRadius:2,padding:"1px 5px",marginLeft:"auto",letterSpacing:"0.04em"}}>VERIFIED</span>
+      </div>
+      <T k="text" s={{fontSize:f(10),color:p.tx,lineHeight:1.5,fontWeight:600,position:"relative",zIndex:1}}>Excellent quality, fast shipping. Would definitely buy again!</T>
+    </div>;
+    /* v6 Gradient — animated gradient bg, shimmer sweep, glowing stars, pulsing accent dots */
+    return <div style={{...b,background:`linear-gradient(135deg,${p.ac}10,${p.ac2||p.ac}08,${p.ac}06)`,borderRadius:18,border:`1px solid ${p.ac}25`,padding:16,display:"flex",flexDirection:"column",gap:10,position:"relative",overflow:"hidden",boxShadow:`0 4px 24px ${p.ac}12, 0 0 0 1px ${p.ac}08`,animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent,${p.ac}08,transparent)`,animation:"tp-shimmer-slide 3s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",zIndex:1}}>
+        <div style={{display:"flex",gap:4}}>
+          {Array(5).fill(0).map((_,i)=><svg key={i} width="16" height="16" viewBox="0 0 24 24" fill={i<rs?p.ac:"none"} stroke={i<rs?p.ac:p.mu+"40"} strokeWidth="1.5" style={{cursor:"pointer",filter:i<rs?`drop-shadow(0 0 4px ${p.ac}50)`:"none",animation:i<rs?`tp-pulse 2s ease-in-out ${i*0.12}s infinite`:"none",transition:"all .2s"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("stars",i+1)}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>)}
+        </div>
+        <div style={{background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,borderRadius:999,padding:"3px 10px",boxShadow:`0 2px 8px ${p.ac}30`}}>
+          <T k="score" s={{fontSize:f(11),fontWeight:700,color:onAc}}>4.0</T>
+        </div>
+      </div>
+      <T k="text" s={{fontSize:f(11),color:p.tx,lineHeight:1.5,fontStyle:"italic",position:"relative",zIndex:1}}>Excellent quality, fast shipping. Would definitely buy again!</T>
+      <div style={{display:"flex",alignItems:"center",gap:8,position:"relative",zIndex:1}}>
+        <Img k="avatar" s={{width:24,height:24,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,border:`2px solid ${p.card}`,boxShadow:`0 0 8px ${p.ac}25`}}/>
+        <div>
+          <T k="author" s={{fontSize:f(10),fontWeight:600,color:p.tx}}>Jane D.</T>
+          <T k="date" s={{fontSize:f(9),color:p.ac,display:"block",fontWeight:500}}>2 days ago</T>
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4}}>
+          <div style={{width:5,height:5,borderRadius:999,background:p.ac,boxShadow:`0 0 6px ${p.ac}`,animation:"tp-pulse 2s ease-in-out infinite"}}/>
+          <span style={{fontSize:f(9),color:p.ac,fontWeight:600,background:`${p.ac}12`,padding:"1px 6px",borderRadius:999}}>Verified</span>
+        </div>
+      </div>
+    </div>;
   }
 
   /* ---- RECEIPT ---- */
