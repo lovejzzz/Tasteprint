@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 22: Implicit meaning & subtext detection
+   Round 23: Semantic memory connections
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -3300,6 +3300,239 @@ function tryProactiveCallback(response, currentTopics) {
   return response;
 }
 
+/* ── Semantic Memory Connections ──
+ * Goes beyond simple "you mentioned X" callbacks. Builds inferred connections
+ * between what the user is saying NOW and what they've shared BEFORE.
+ * If they mentioned liking Python and now ask about APIs, connect the dots.
+ * If they said they're a designer and now discuss CSS, infer the link.
+ * The key: the AI should seem like it's been "thinking" about the user.
+ */
+
+// Topic-to-topic semantic links (what topics relate to what facts)
+const SEMANTIC_LINKS = {
+  // If user has fact X and mentions topic Y, there's a natural connection
+  role: {
+    developer: ["react","javascript","python","typescript","node","rust","api","database","git","docker","aws","algorithm","css","html","nextjs","vue","tailwind","graphql"],
+    designer: ["ui","ux","figma","css","tailwind","color","typography","animation","responsive","prototype","wireframe","brand","accessibility"],
+    student: ["algorithm","python","javascript","database","sql","html","css","git"],
+    manager: ["team","project","productivity","startup","strategy"],
+    freelancer: ["client","project","startup","time","money","productivity"],
+  },
+  // Infer topic connections from known languages/tools
+  knows: {
+    python: ["django","flask","numpy","pandas","ml","ai","data","api"],
+    javascript: ["react","vue","node","typescript","nextjs","npm","frontend"],
+    typescript: ["react","nextjs","node","api","zod","interfaces"],
+    react: ["hooks","components","jsx","nextjs","state","redux","frontend"],
+    rust: ["ownership","wasm","performance","systems"],
+  },
+  // Connect likes to relevant topics
+  likes: {
+    react: ["javascript","typescript","nextjs","frontend","hooks","state"],
+    python: ["django","flask","ml","ai","data"],
+    coffee: ["morning","productivity","cafe","work"],
+    music: ["playlist","spotify","coding","concentration"],
+    gaming: ["games","pc","steam","console","fun"],
+    design: ["ui","ux","figma","css","typography","color"],
+  },
+};
+
+// Given current topics and user facts, find meaningful connections
+function findSemanticConnections(currentTopics, currentKeywords) {
+  const facts = mem.facts;
+  const connections = [];
+
+  // 1. Role-based inference: user's role connects to what they're asking about
+  if (facts.role) {
+    const roleKey = facts.role.toLowerCase().split(" ")[0]; // "frontend developer" → "developer"
+    const roleDomain = SEMANTIC_LINKS.role[roleKey] || SEMANTIC_LINKS.role.developer;
+    if (roleDomain) {
+      for (const topic of currentTopics) {
+        if (roleDomain.includes(topic)) {
+          connections.push({
+            type: "role-topic",
+            fact: facts.role,
+            topic,
+            strength: 0.7,
+            template: [
+              `As a ${facts.role}, you'd probably approach ${topic} differently —`,
+              `This ties into your ${facts.role} work, right?`,
+              `I bet ${topic} looks different from a ${facts.role}'s perspective!`,
+              `Makes sense you'd be into ${topic} given your ${facts.role} background.`,
+            ],
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Knowledge-based inference: user knows X, current topic relates to X
+  const knownLangs = Object.keys(facts).filter(k => k.startsWith("knows_")).map(k => k.replace("knows_", ""));
+  for (const lang of knownLangs) {
+    const related = SEMANTIC_LINKS.knows[lang];
+    if (related) {
+      for (const topic of currentTopics) {
+        if (related.includes(topic)) {
+          connections.push({
+            type: "skill-topic",
+            fact: lang,
+            topic,
+            strength: 0.8,
+            template: [
+              `Since you know ${lang}, ${topic} should feel pretty natural!`,
+              `Oh — are you using ${lang} for this? You mentioned knowing it.`,
+              `Your ${lang} experience should help a lot with ${topic}.`,
+              `That connects nicely with your ${lang} knowledge.`,
+            ],
+          });
+        }
+      }
+    }
+  }
+
+  // 3. Project-based inference: current topic relates to their project
+  if (facts.project) {
+    const projWords = tokenize(facts.project).map(stem);
+    for (const topic of currentTopics) {
+      // Check if topic could relate to the project
+      const topicAssoc = ASSOC[topic];
+      if (topicAssoc?.related) {
+        const overlap = projWords.filter(w => topicAssoc.related.includes(w) || topic === w);
+        if (overlap.length > 0 || currentKeywords.some(kw => projWords.includes(stem(kw)))) {
+          connections.push({
+            type: "project-topic",
+            fact: facts.project,
+            topic,
+            strength: 0.9,
+            template: [
+              `Is this for the ${facts.project} project? Makes total sense.`,
+              `Oh wait — does this tie into ${facts.project}?`,
+              `This ${topic} stuff could be perfect for ${facts.project}.`,
+              `I bet you're thinking about this in the context of ${facts.project}.`,
+            ],
+          });
+        }
+      }
+    }
+  }
+
+  // 4. Like-based inference: things they enjoy connect to current topic
+  const likedThings = Object.keys(facts).filter(k => k.startsWith("likes_")).map(k => facts[k].toLowerCase());
+  for (const liked of likedThings) {
+    const likeKey = liked.split(" ")[0];
+    const related = SEMANTIC_LINKS.likes[likeKey];
+    if (related) {
+      for (const topic of currentTopics) {
+        if (related.includes(topic)) {
+          connections.push({
+            type: "preference-topic",
+            fact: liked,
+            topic,
+            strength: 0.6,
+            template: [
+              `Since you're into ${liked}, ${topic} is a natural fit.`,
+              `Your love of ${liked} probably makes ${topic} extra interesting!`,
+              `Oh, ${topic} — that's right in your wheelhouse given you like ${liked}.`,
+            ],
+          });
+        }
+      }
+    }
+  }
+
+  // 5. Opinion-based inference: if they had opinions on related things
+  const opinionKeys = Object.keys(facts).filter(k => k.startsWith("opinion_"));
+  for (const opKey of opinionKeys) {
+    const subject = opKey.replace("opinion_", "");
+    const opinion = facts[opKey];
+    for (const topic of currentTopics) {
+      // If they have an opinion on something related to current topic
+      const topicAssoc = ASSOC[topic];
+      if (topicAssoc?.related?.includes(subject) || subject === topic) {
+        connections.push({
+          type: "opinion-topic",
+          fact: opinion,
+          topic,
+          strength: 0.5,
+          template: [
+            `You said ${opinion} — does that change how you think about ${topic}?`,
+            `Interesting take on ${topic} given you thought ${opinion}.`,
+            `That's funny because earlier you said ${opinion} — I see a pattern! 😄`,
+          ],
+        });
+      }
+    }
+  }
+
+  // 6. History-based inference: match current keywords against older messages
+  if (mem.turn > 6) {
+    const oldMsgs = mem.history.filter(h => h.role === "user").slice(0, -3); // skip recent 3
+    for (const msg of oldMsgs) {
+      if (!msg.topics || msg.topics.length === 0) continue;
+      for (const topic of currentTopics) {
+        // Find old messages about related but different topics
+        for (const oldTopic of msg.topics) {
+          if (oldTopic === topic) continue; // same topic, not interesting
+          const topicAssoc = ASSOC[topic];
+          const oldAssoc = ASSOC[oldTopic];
+          // Check if these topics are related through ASSOC
+          if ((topicAssoc?.related?.includes(oldTopic)) || (oldAssoc?.related?.includes(topic))) {
+            connections.push({
+              type: "conversation-bridge",
+              fact: oldTopic,
+              topic,
+              strength: 0.65,
+              template: [
+                `This reminds me — when we talked about ${oldTopic}, that's actually connected to this!`,
+                `Oh interesting, earlier you were asking about ${oldTopic} — see how ${topic} ties in?`,
+                `There's a nice thread between this and the ${oldTopic} discussion we had.`,
+              ],
+            });
+            break; // one bridge per old message
+          }
+        }
+      }
+    }
+  }
+
+  // Sort by strength and return top connections
+  connections.sort((a, b) => b.strength - a.strength);
+  return connections.slice(0, 3);
+}
+
+// Apply semantic connection to a response (called from post-processing)
+let lastSemanticTurn = 0;
+
+function applySemanticConnection(response, currentTopics, currentKeywords) {
+  // Don't over-connect — at least 5 turns apart
+  if (mem.turn - lastSemanticTurn < 5) return response;
+  // Don't modify very short or already-connected responses
+  if (response.length < 25 || response.length > 200) return response;
+  if (/you mentioned|earlier|you said|you told me|your .+ project|as a /i.test(response)) return response;
+  // Need enough conversation history
+  if (mem.turn < 5 || Object.keys(mem.facts).length < 1) return response;
+  // Only fire ~30% of the time — should feel natural, not forced
+  if (Math.random() > 0.3) return response;
+
+  const connections = findSemanticConnections(currentTopics, currentKeywords);
+  if (connections.length === 0) return response;
+
+  // Pick best connection
+  const best = connections[0];
+  const connector = pick(best.template);
+
+  lastSemanticTurn = mem.turn;
+
+  // Decide placement: before or after the main response
+  if (best.type === "project-topic" || best.type === "role-topic") {
+    // These work well as prefixes
+    return connector + " " + response;
+  } else {
+    // Most work as suffixes
+    return response + " " + connector;
+  }
+}
+
 /* ── Style Matching & Conversation Phase Awareness ──
  * Two interconnected systems that make the AI feel adaptive:
  *
@@ -4076,6 +4309,10 @@ export function getAIResponse(input) {
   // Try proactive callbacks
   response = tryProactiveCallback(response, currentTopics);
 
+  // ═══ Semantic memory: infer connections between current topic and stored facts ═══
+  const { keywords: semKW } = extractKW(text);
+  response = applySemanticConnection(response, currentTopics, semKW);
+
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
 
@@ -4129,6 +4366,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
