@@ -214,6 +214,8 @@ export const DEFAULT_PROPS = {
   "card-sm":     { featured: false },
   footer:        { active: 0 },
   hero:          { active: 0 },
+  toggle:        { on: true },
+  button:        { loading: false },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
