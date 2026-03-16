@@ -2187,20 +2187,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (e.key === 'd' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
       e.preventDefault();
       if (s === en) {
-        // Select current word
-        const wordStart = code.lastIndexOf(' ', s - 1) + 1;
-        const wordEnd = code.indexOf(' ', s); const we = wordEnd === -1 ? code.length : wordEnd;
-        const lineEnd = code.indexOf('\n', s); const le = lineEnd === -1 ? code.length : lineEnd;
-        const end = Math.min(we, le);
-        const lineStart = code.lastIndexOf('\n', s - 1) + 1;
-        const start = Math.max(wordStart, lineStart);
-        setTimeout(() => { el.selectionStart = start; el.selectionEnd = end; }, 0);
+        // Select current word using word boundaries
+        let ws = s, we = s;
+        while (ws > 0 && /\w/.test(code[ws - 1])) ws--;
+        while (we < code.length && /\w/.test(code[we])) we++;
+        if (ws === we) { ws = Math.max(0, s - 1); we = Math.min(code.length, s + 1); }
+        setTimeout(() => { el.selectionStart = ws; el.selectionEnd = we; }, 0);
       } else {
-        // Find next occurrence of selection
+        // Find next occurrence of selection (wraps around)
         const sel = code.substring(s, en);
-        const after = code.indexOf(sel, en);
-        if (after !== -1) {
+        let after = code.indexOf(sel, en);
+        if (after === -1) after = code.indexOf(sel); // wrap to beginning
+        if (after !== -1 && after !== s) {
           setTimeout(() => { el.selectionStart = after; el.selectionEnd = after + sel.length; }, 0);
+          scrollToLine(code.substring(0, after).split('\n').length);
+        } else {
+          showToast('No more occurrences', 'info');
         }
       }
       return;
@@ -2243,16 +2245,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTimeout(() => recentRef.current?.focus(), 50); return;
     }
 
-    /* Search: Cmd+F */
+    /* Search: Cmd+F — auto-fill selected text */
     if (e.key === 'f' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
       e.preventDefault(); setSearchOpen(true); setShowReplace(false);
-      setTimeout(() => searchRef.current?.focus(), 50); return;
+      if (s !== en) { const sel = code.substring(s, en); if (!sel.includes('\n')) setSearchTerm(sel); }
+      setTimeout(() => { searchRef.current?.focus(); searchRef.current?.select(); }, 50); return;
     }
 
-    /* Replace: Cmd+H */
+    /* Replace: Cmd+H — auto-fill selected text */
     if (e.key === 'h' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault(); setSearchOpen(true); setShowReplace(true);
-      setTimeout(() => searchRef.current?.focus(), 50); return;
+      if (s !== en) { const sel = code.substring(s, en); if (!sel.includes('\n')) setSearchTerm(sel); }
+      setTimeout(() => { searchRef.current?.focus(); searchRef.current?.select(); }, 50); return;
     }
 
     /* Command palette: Cmd+P (files) or Cmd+Shift+P (commands) */
@@ -3299,7 +3303,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               const isRO = !editFiles.hasOwnProperty(path);
               const isModified = !isRO && editFiles[path] !== initFiles[path];
               return (
-                <div key={path} onClick={() => { setActiveFile(path); setTabCtx(null); }}
+                <div key={path} ref={isActive ? el => { if (el) el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } : undefined}
+                  onClick={() => { setActiveFile(path); setTabCtx(null); }}
                   onMouseDown={e => { stop(e); if (e.button === 1) { e.preventDefault(); closeTab(path, e); } }}
                   onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setTabCtx({ path, x: e.clientX, y: e.clientY }); }}
                   draggable onDragStart={() => setDragTab(path)} onDragEnd={() => { setDragTab(null); setDragOverTab(null); }}
@@ -3566,37 +3571,79 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {cmdOpen && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 260 }}>
               <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #ffffff08', padding: '0 10px', gap: 4 }}>
-                <span style={{ fontSize: 10, color: '#cba6f7', flexShrink: 0 }}>{cmdQuery.startsWith('>') ? '\u25B8' : '\u2318'}</span>
-                <input ref={cmdRef} value={cmdQuery} onChange={e => { setCmdQuery(e.target.value); setCmdIdx(0); }}
-                  placeholder={cmdQuery.startsWith('>') ? "Type a command..." : "Type > for commands, or search files..."} spellCheck={false}
+                <span style={{ fontSize: 10, color: '#cba6f7', flexShrink: 0 }}>{cmdQuery.startsWith('>') ? '\u25B8' : cmdQuery.startsWith(':') ? '#' : '\u2318'}</span>
+                <input ref={cmdRef} value={cmdQuery} onChange={e => {
+                    const v = e.target.value;
+                    setCmdQuery(v); setCmdIdx(0);
+                    // ":" prefix = live go-to-line preview
+                    if (v.startsWith(':')) {
+                      const ln = parseInt(v.slice(1));
+                      if (ln >= 1 && ln <= lines.length) { setActiveLn(ln); scrollToLine(ln); }
+                    }
+                  }}
+                  placeholder={cmdQuery.startsWith('>') ? "Type a command..." : cmdQuery.startsWith(':') ? "Type line number..." : "Type > for commands, : for line, or search files..."} spellCheck={false}
                   onKeyDown={e => {
                     e.stopPropagation();
                     if (e.key === 'Escape') { setCmdOpen(false); taRef.current?.focus(); }
+                    // ":" mode: Enter confirms go-to-line
+                    if (e.key === 'Enter' && cmdQuery.startsWith(':')) {
+                      const parts = cmdQuery.slice(1).split(':');
+                      const ln = parseInt(parts[0]);
+                      const col = parts[1] ? parseInt(parts[1]) : 1;
+                      if (ln >= 1 && ln <= lines.length) {
+                        goToLine(ln);
+                        if (col > 1) {
+                          const pos = (lineOffsets[ln - 1] ?? 0) + Math.min(col - 1, (lines[ln - 1] || '').length);
+                          setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; } }, 10);
+                          setCursor({ ln, col });
+                        }
+                      }
+                      setCmdOpen(false); return;
+                    }
                     if (e.key === 'ArrowDown') { e.preventDefault(); setCmdIdx(i => Math.min(i + 1, Math.min(commands.length, 12) - 1)); }
                     if (e.key === 'ArrowUp') { e.preventDefault(); setCmdIdx(i => Math.max(i - 1, 0)); }
-                    if (e.key === 'Enter' && commands.length) { runCommand(commands[Math.min(cmdIdx, commands.length - 1)].key); }
+                    if (e.key === 'Enter' && commands.length && !cmdQuery.startsWith(':')) { runCommand(commands[Math.min(cmdIdx, commands.length - 1)].key); }
                   }}
                   style={{ flex: 1, background: 'transparent', border: 'none', padding: '6px 0', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
                 {cmdQuery && <span onClick={() => { setCmdQuery(''); setCmdIdx(0); }} style={{ fontSize: 8, color: '#555', cursor: 'pointer' }}>{'\u2715'}</span>}
               </div>
               <div style={{ maxHeight: 210, overflow: 'auto' }}>
-                {commands.slice(0, 12).map((c, ci) => {
-                  const isFile = c.key.startsWith('file:');
-                  return (
-                    <div key={c.key} onClick={() => runCommand(c.key)}
-                      onMouseEnter={() => setCmdIdx(ci)}
-                      style={{
-                        display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9,
-                        color: ci === cmdIdx ? '#cdd6f4' : '#a6adc8', cursor: 'pointer', gap: 6,
-                        background: ci === cmdIdx ? '#ffffff10' : 'transparent',
-                      }}>
-                      <span style={{ fontSize: 8, color: isFile ? '#89b4fa' : '#cba6f7', width: 12, textAlign: 'center', flexShrink: 0 }}>{isFile ? '\u2630' : '\u25B8'}</span>
-                      <span style={{ flex: 1 }}>{c.label}</span>
-                      {c.hint && <span style={{ fontSize: 7, color: '#555', background: '#ffffff08', padding: '1px 4px', borderRadius: 3 }}>{c.hint}</span>}
+                {cmdQuery.startsWith(':') ? (() => {
+                  const ln = parseInt(cmdQuery.slice(1)) || 0;
+                  const preview = ln >= 1 && ln <= lines.length
+                    ? lines.slice(Math.max(0, ln - 3), ln + 2)
+                    : [];
+                  const startLn = Math.max(1, ln - 2);
+                  return preview.length ? preview.map((pl, pi) => (
+                    <div key={pi} style={{
+                      padding: '2px 10px', fontSize: 9, fontFamily: MONO,
+                      display: 'flex', gap: 6, alignItems: 'baseline',
+                      background: startLn + pi === ln ? '#cba6f715' : 'transparent',
+                      color: startLn + pi === ln ? '#cdd6f4' : '#666',
+                    }}>
+                      <span style={{ fontSize: 8, color: '#444', width: 24, textAlign: 'right', flexShrink: 0 }}>{startLn + pi}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><HighlightLine text={pl.substring(0, 80)} /></span>
                     </div>
-                  );
-                })}
-                {commands.length === 0 && <div style={{ padding: '8px 10px', fontSize: 9, color: '#555' }}>No matching commands</div>}
+                  )) : <div style={{ padding: '8px 10px', fontSize: 9, color: '#555' }}>Type a line number (1-{lines.length})</div>;
+                })() : <>
+                  {commands.slice(0, 12).map((c, ci) => {
+                    const isFile = c.key.startsWith('file:');
+                    return (
+                      <div key={c.key} onClick={() => runCommand(c.key)}
+                        onMouseEnter={() => setCmdIdx(ci)}
+                        style={{
+                          display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9,
+                          color: ci === cmdIdx ? '#cdd6f4' : '#a6adc8', cursor: 'pointer', gap: 6,
+                          background: ci === cmdIdx ? '#ffffff10' : 'transparent',
+                        }}>
+                        <span style={{ fontSize: 8, color: isFile ? '#89b4fa' : '#cba6f7', width: 12, textAlign: 'center', flexShrink: 0 }}>{isFile ? '\u2630' : '\u25B8'}</span>
+                        <span style={{ flex: 1 }}>{c.label}</span>
+                        {c.hint && <span style={{ fontSize: 7, color: '#555', background: '#ffffff08', padding: '1px 4px', borderRadius: 3 }}>{c.hint}</span>}
+                      </div>
+                    );
+                  })}
+                  {commands.length === 0 && <div style={{ padding: '8px 10px', fontSize: 9, color: '#555' }}>No matching commands</div>}
+                </>}
               </div>
             </div>
           )}
@@ -3645,36 +3692,50 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             </div>
           )}
 
-          {/* Go to line dialog */}
+          {/* Go to line dialog — supports "line" and "line:col" */}
           {gotoOpen && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '20%', right: '20%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 9, color: '#555' }}>Go to line:</span>
               <input ref={gotoRef} value={gotoVal} onChange={e => {
-                  const v = e.target.value.replace(/\D/g, '');
+                  const v = e.target.value.replace(/[^\d:]/g, '');
                   setGotoVal(v);
-                  // Live preview: scroll to the line as you type
                   const ln = parseInt(v);
                   if (ln >= 1 && ln <= lines.length) {
                     setActiveLn(ln);
                     scrollToLine(ln);
                   }
                 }}
-                placeholder={`1-${lines.length}`} spellCheck={false}
+                placeholder={`line or line:col (1-${lines.length})`} spellCheck={false}
                 onKeyDown={e => {
                   e.stopPropagation();
                   if (e.key === 'Escape') { setGotoOpen(false); taRef.current?.focus(); }
                   if (e.key === 'Enter') {
-                    const ln = parseInt(gotoVal);
-                    if (ln >= 1 && ln <= lines.length) goToLine(ln);
+                    const parts = gotoVal.split(':');
+                    const ln = parseInt(parts[0]);
+                    const col = parts[1] ? parseInt(parts[1]) : 1;
+                    if (ln >= 1 && ln <= lines.length) {
+                      goToLine(ln);
+                      // Set cursor to column
+                      if (col > 1) {
+                        const pos = (lineOffsets[ln - 1] ?? 0) + Math.min(col - 1, (lines[ln - 1] || '').length);
+                        setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; } }, 10);
+                        setCursor({ ln, col });
+                      }
+                    }
                     setGotoOpen(false);
                   }
                 }}
                 style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
-              {gotoVal && parseInt(gotoVal) >= 1 && parseInt(gotoVal) <= lines.length && (
-                <span style={{ fontSize: 7, color: '#555', fontFamily: MONO, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {lines[parseInt(gotoVal) - 1]?.trim().substring(0, 30)}
-                </span>
-              )}
+              {gotoVal && (() => {
+                const ln = parseInt(gotoVal);
+                const col = gotoVal.includes(':') ? parseInt(gotoVal.split(':')[1]) || 1 : null;
+                if (ln >= 1 && ln <= lines.length) return (
+                  <span style={{ fontSize: 7, color: '#555', fontFamily: MONO, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {lines[ln - 1]?.trim().substring(0, 30)}{col ? ` (col ${col})` : ''}
+                  </span>
+                );
+                return null;
+              })()}
             </div>
           )}
 
@@ -4518,6 +4579,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 onPaste={e => {
                   if (readonly) return;
                   const text = e.clipboardData?.getData('text');
+                  if (text) clipHistory.current = [text, ...clipHistory.current.filter(c => c !== text)].slice(0, 10);
                   if (!text || !text.includes('\n')) return; // single-line paste handled natively
                   e.preventDefault();
                   const el = e.target;
