@@ -81,7 +81,7 @@ export const VARIANTS = {
   tooltip:   ["Light","Dark","Arrow","Glass","Rich"],
   breadcrumb:["Slash","Arrow","Dots","Pill","Underline"],
   skeleton:  ["Card","List","Profile"],
-  chart:     ["Bar","Line","Donut"],
+  chart:     ["Bar","Line","Donut","Sparkline","Area"],
   testimonial:["Card","Minimal","Bubble","Glass","Hero"],
   "cmd-palette":["Full","Minimal","Grouped"],
   stepper:   ["Horizontal","Vertical","Dots","Pill","Icon"],
