@@ -11592,6 +11592,214 @@ function applyCautionMode(response) {
   return response;
 }
 
+/* ── Conversational Metacognition & Thinking Aloud (Round 71) ──
+ * Humans narrate their thinking process: "Hmm, let me think...",
+ * "Wait, actually...", "I'm not sure but...". This module adds
+ * visible reasoning to AI responses — the AI appears to *process*
+ * in real time rather than pattern-match. Five metacognitive modes:
+ *
+ * 1. Deliberation: prefix complex questions with thinking markers
+ * 2. Course correction: start one direction then pivot mid-thought
+ * 3. Uncertainty surfacing: express genuine not-knowing with nuance
+ * 4. Connection narration: verbalize the moment of linking ideas
+ * 5. Process commentary: brief meta-observations about the conversation
+ *
+ * Fires selectively — only when the input genuinely warrants visible
+ * thinking. Short/simple exchanges skip metacognition entirely.
+ */
+
+let lastMetaTurn = 0;
+let metaMode = "none";  // tracks which mode fired last to avoid repetition
+
+// Classify how "think-worthy" the input is
+function assessComplexity(text, topics, intents) {
+  let score = 0;
+
+  // Length signals complexity
+  const words = text.split(/\s+/).length;
+  if (words > 20) score += 0.3;
+  if (words > 40) score += 0.2;
+
+  // Questions are more think-worthy
+  if (text.includes("?")) score += 0.2;
+  if (/\b(why|how come|what if|explain|difference between|compare)\b/i.test(text)) score += 0.3;
+
+  // Abstract/philosophical topics
+  if (/\b(meaning|purpose|consciousness|ethics|morality|philosophy|existence|paradox|dilemma)\b/i.test(text)) score += 0.4;
+
+  // Multi-topic messages
+  if (topics.length >= 2) score += 0.2;
+
+  // Debate/opinion requests
+  if (/\b(what do you think|your (opinion|take|view)|agree|disagree|better|worse)\b/i.test(text)) score += 0.3;
+
+  // Technical depth
+  if (/\b(algorithm|architecture|trade-?off|optimize|scale|implement|debug)\b/i.test(text)) score += 0.2;
+
+  return Math.min(score, 1.0);
+}
+
+// Mode 1: Deliberation — thinking prefix before complex answers
+function addDeliberation(response, complexity) {
+  const prefixes = [
+    "Hmm, that's a good one... ",
+    "Let me think about that for a sec. ",
+    "Okay, so... ",
+    "That's actually worth thinking through. ",
+    "Interesting question — ",
+    "Hmm... ",
+  ];
+  // Higher complexity → more deliberate prefix
+  if (complexity > 0.7) {
+    const deep = [
+      "Okay, there's a few ways to look at this. ",
+      "Hmm, let me actually think through this properly. ",
+      "That's a layered question — ",
+    ];
+    return deep[Math.floor(Math.random() * deep.length)] + response;
+  }
+  return prefixes[Math.floor(Math.random() * prefixes.length)] + response;
+}
+
+// Mode 2: Course correction — start then pivot
+function addCourseCorrection(response) {
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 2) return response;
+
+  const pivots = [
+    "Well, actually — ",
+    "Wait, no — ",
+    "Hmm, let me rethink that — ",
+    "Actually, scratch that — ",
+    "Or actually, better way to put it: ",
+  ];
+  const pivot = pivots[Math.floor(Math.random() * pivots.length)];
+
+  // Take first sentence as the "initial thought", pivot into the rest
+  const initial = sentences[0].trim();
+  const rest = sentences.slice(1).join(" ").trim();
+
+  // Make the initial thought slightly tentative
+  const tentative = initial.replace(/\.\s*$/, "... ");
+  return tentative + pivot + rest;
+}
+
+// Mode 3: Uncertainty surfacing — genuine not-knowing
+function addUncertainty(response, topics) {
+  const hedges = [
+    `I'm not 100% sure about this, but `,
+    `My honest sense is... `,
+    `I could be wrong, but `,
+    `Take this with a grain of salt — `,
+    `I think — and I'm kind of working this out as I go — `,
+  ];
+  const hedge = hedges[Math.floor(Math.random() * hedges.length)];
+
+  // Strip overly confident openers and replace with hedge
+  let r = response.replace(/^(Absolutely|Definitely|Obviously|Clearly|Without a doubt)[,!.]?\s*/i, "");
+  if (r.length > 0) r = r.charAt(0).toLowerCase() + r.slice(1);
+  return hedge + r;
+}
+
+// Mode 4: Connection narration — verbalizing the linking moment
+function addConnectionNarration(response, topics) {
+  const prevTopicList = previousTopics.slice(-5).flat();
+  const overlap = topics.filter(t => prevTopicList.some(pt =>
+    stem(t) === stem(pt) || t.toLowerCase().includes(pt.toLowerCase()) || pt.toLowerCase().includes(t.toLowerCase())
+  ));
+
+  if (overlap.length === 0) return null; // no connection to narrate
+
+  const connectors = [
+    `Oh wait — this connects to what we were saying about ${overlap[0]}. `,
+    `Huh, actually that ties back to the ${overlap[0]} thing. `,
+    `Interesting — I'm seeing a thread between this and ${overlap[0]}. `,
+    `You know what, this reminds me of our earlier ${overlap[0]} conversation. `,
+  ];
+
+  return connectors[Math.floor(Math.random() * connectors.length)] + response;
+}
+
+// Mode 5: Process commentary — meta-observations about the conversation
+function addProcessCommentary(response) {
+  const turn = mem.turn;
+  const commentaries = [];
+
+  if (turn > 10 && turn % 7 === 0) {
+    commentaries.push("We've covered a lot of ground here — ");
+  }
+  if (topicHistory.length > 4) {
+    const uniqueTopics = new Set(topicHistory.flat().map(t => stem(t)));
+    if (uniqueTopics.size > 6) {
+      commentaries.push("You know, we keep circling around some interesting themes. ");
+    }
+  }
+  if (sharedGround.length > 3) {
+    commentaries.push("I feel like we're building on a real understanding here. ");
+  }
+
+  if (commentaries.length === 0) return null;
+  return commentaries[Math.floor(Math.random() * commentaries.length)] + response;
+}
+
+// Main metacognition dispatcher
+function applyMetacognition(response, text, topics, intents) {
+  const turn = mem.turn;
+
+  // Don't fire too early or too often
+  if (turn < 3) return response;
+  if (turn - lastMetaTurn < 4) return response;  // min 4-turn gap
+  if (response.length > 250) return response;     // don't bloat long responses
+  if (Math.random() > 0.28) return response;       // 28% fire rate
+
+  const complexity = assessComplexity(text, topics, intents);
+
+  // Only fire deliberation/uncertainty on sufficiently complex inputs
+  if (complexity < 0.3 && text.split(/\s+/).length < 8) return response;
+
+  // Choose mode — avoid repeating the same mode back-to-back
+  const modes = [];
+
+  if (complexity >= 0.5) modes.push("deliberation");
+  if (complexity >= 0.4 && response.match(/[^.!?]+[.!?]+/g)?.length >= 2) modes.push("correction");
+  if (complexity >= 0.3 && /\b(why|how|what if|explain)\b/i.test(text)) modes.push("uncertainty");
+  if (previousTopics.length > 2 && topics.length > 0) modes.push("connection");
+  if (turn > 8 && Math.random() > 0.6) modes.push("commentary");
+
+  // Filter out last used mode
+  const available = modes.filter(m => m !== metaMode);
+  if (available.length === 0) return response;
+
+  const chosen = available[Math.floor(Math.random() * available.length)];
+  let result = null;
+
+  switch (chosen) {
+    case "deliberation":
+      result = addDeliberation(response, complexity);
+      break;
+    case "correction":
+      result = addCourseCorrection(response);
+      break;
+    case "uncertainty":
+      result = addUncertainty(response, topics);
+      break;
+    case "connection":
+      result = addConnectionNarration(response, topics);
+      break;
+    case "commentary":
+      result = addProcessCommentary(response);
+      break;
+  }
+
+  if (result) {
+    lastMetaTurn = turn;
+    metaMode = chosen;
+    return result;
+  }
+
+  return response;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -12077,6 +12285,9 @@ export function getAIResponse(input) {
   // ═══ Cadence mirroring: match user's conversation structure (length, questions, fragments) ═══
   response = applyCadenceMirroring(response, text);
 
+  // ═══ Metacognition: visible thinking, course correction, uncertainty surfacing ═══
+  response = applyMetacognition(response, text, currentTopics, intents);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -12129,6 +12340,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
