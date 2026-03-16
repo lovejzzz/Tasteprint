@@ -10041,6 +10041,205 @@ function applyTopicFatigue(response, topics, inputEnergy) {
   return trimmed + " " + pivotLine;
 }
 
+/* ── AI Self-Model & Persona Consistency (Round 62) ──
+ * Tracks the AI's own expressed claims, opinions, preferences, and stances
+ * across the conversation so it never contradicts itself. When a related topic
+ * recurs, the AI recalls its own prior position and stays consistent —
+ * or explicitly flags a "change of mind" rather than silently flip-flopping.
+ * Also enables natural self-references ("Like I said earlier...", "I still
+ * think...") that make the AI feel like a coherent person, not random strings.
+ */
+
+const aiSelfModel = {
+  opinions: {},   // { topic: { stance, text, turn, strength } }
+  claims: [],     // [{ claim, topic, turn }] — factual assertions AI made
+  preferences: {},// { category: { pick, turn } } — "I prefer X over Y"
+  style: {},      // { topic: lastApproach } — how AI approached a topic last time
+};
+
+function trackAISelfExpression(response, topics) {
+  const lower = response.toLowerCase();
+  const turn = mem.turn;
+
+  // Extract AI opinions — "I think X", "I believe X", "I love X", "I'm a fan of X"
+  const opinionPatterns = [
+    /i (?:think|believe|feel like|reckon)\s+(.{8,60}?)(?:\.|!|,|\?|$)/gi,
+    /i (?:really |totally |honestly )?(?:love|like|enjoy|prefer|appreciate)\s+(.{4,40}?)(?:\.|!|,|\?|$)/gi,
+    /i'm (?:a (?:big |huge )?fan of|really into|partial to)\s+(.{4,40}?)(?:\.|!|,|\?|$)/gi,
+    /(?:my favorite|my pick|i'd go with|i'd choose)\s+(?:is |would be )?(.{4,40}?)(?:\.|!|,|\?|$)/gi,
+    /i (?:don't|wouldn't|can't stand|dislike)\s+(.{4,40}?)(?:\.|!|,|\?|$)/gi,
+  ];
+
+  for (const pat of opinionPatterns) {
+    pat.lastIndex = 0;
+    let m;
+    while ((m = pat.exec(lower)) !== null) {
+      const content = m[1].trim().replace(/\s+/g, " ");
+      if (content.length < 4 || content.length > 60) continue;
+
+      // Determine stance valence
+      const isNegative = /don't|wouldn't|can't stand|dislike/.test(m[0]);
+      const stance = isNegative ? "negative" : "positive";
+      const strength = /really|totally|honestly|huge|big/.test(m[0]) ? 0.9 : 0.6;
+
+      // Key by closest topic or extract noun from content
+      const key = topics[0] || content.split(/\s+/).slice(0, 2).join("_");
+      aiSelfModel.opinions[key] = { stance, text: content, turn, strength, full: m[0].trim() };
+    }
+  }
+
+  // Extract factual claims — "X is Y", "The thing about X is"
+  const claimPatterns = [
+    /(?:the (?:thing|trick|key|secret) (?:about|with|to)\s+\w+\s+is)\s+(.{8,50}?)(?:\.|!|$)/gi,
+    /(?:actually|honestly|fun fact),?\s+(.{10,60}?)(?:\.|!|$)/gi,
+  ];
+  for (const pat of claimPatterns) {
+    pat.lastIndex = 0;
+    let m;
+    while ((m = pat.exec(lower)) !== null) {
+      const claim = m[1].trim();
+      if (claim.length >= 8 && aiSelfModel.claims.length < 30) {
+        aiSelfModel.claims.push({ claim, topic: topics[0] || "", turn });
+      }
+    }
+  }
+
+  // Extract preference comparisons — "X over Y", "X rather than Y"
+  const prefMatch = lower.match(/(?:(\w+)\s+over\s+(\w+))|(?:(\w+)\s+rather than\s+(\w+))/);
+  if (prefMatch) {
+    const pick = prefMatch[1] || prefMatch[3];
+    const alt = prefMatch[2] || prefMatch[4];
+    if (pick && alt) {
+      const cat = topics[0] || "general";
+      aiSelfModel.preferences[cat] = { pick, alt, turn };
+    }
+  }
+
+  // Track approach style per topic
+  if (topics[0]) {
+    const isQuestion = /\?/.test(response);
+    const isAnalytic = /because|since|the reason|technically/.test(lower);
+    const isPlayful = /haha|😄|😊|lol|!/.test(response);
+    const approach = isAnalytic ? "analytical" : isPlayful ? "playful" : isQuestion ? "curious" : "informative";
+    aiSelfModel.style[topics[0]] = approach;
+  }
+}
+
+function enforcePersonaConsistency(response, topics) {
+  const lower = response.toLowerCase();
+  const turn = mem.turn;
+
+  // 1. Check for contradictions with own prior opinions
+  for (const topic of topics) {
+    const prior = aiSelfModel.opinions[topic];
+    if (!prior || turn - prior.turn < 2) continue;
+
+    // Does current response contradict a prior stance?
+    const currentPositive = /i (?:love|like|enjoy|prefer|think .* great|am a fan)/i.test(lower);
+    const currentNegative = /i (?:don't|wouldn't|can't stand|dislike|not a fan)/i.test(lower);
+
+    if (prior.stance === "positive" && currentNegative) {
+      // About to contradict — reframe as evolving, not flip-flopping
+      const pivots = [
+        `Okay I realize earlier I said ${prior.text} — and I still stand by that, but`,
+        `Hmm actually, I was positive about ${topic} before — I think my view is more nuanced now.`,
+        `I know I was into ${topic} earlier — I think what I'm getting at is a different angle:`,
+      ];
+      const pivot = pivots[Math.floor(Math.random() * pivots.length)];
+      // Replace the first sentence with the pivot + rest
+      const sentences = response.match(/[^.!?]+[.!?]+/g);
+      if (sentences && sentences.length > 1) {
+        return pivot + " " + sentences.slice(1).join(" ").trim();
+      }
+      return pivot + " " + response;
+    }
+
+    if (prior.stance === "negative" && currentPositive) {
+      const pivots = [
+        `Okay honestly I was skeptical about ${topic} before, but I'm coming around —`,
+        `I know I was less enthusiastic about ${topic} earlier — fair, I've reconsidered.`,
+      ];
+      const pivot = pivots[Math.floor(Math.random() * pivots.length)];
+      return pivot + " " + response;
+    }
+  }
+
+  // 2. Check for preference contradictions — "X over Y" then later "Y over X"
+  for (const topic of topics) {
+    const pref = aiSelfModel.preferences[topic];
+    if (!pref || turn - pref.turn < 2) continue;
+    const reversal = lower.includes(`${pref.alt} over ${pref.pick}`) || lower.includes(`${pref.alt} rather than ${pref.pick}`);
+    if (reversal) {
+      return response.replace(
+        new RegExp(`${pref.alt}\\s+(?:over|rather than)\\s+${pref.pick}`, "i"),
+        `${pref.pick} — though ${pref.alt} is growing on me`
+      );
+    }
+  }
+
+  return response;
+}
+
+function addSelfReference(response, topics) {
+  const turn = mem.turn;
+  if (turn < 6 || Math.random() > 0.2) return response; // 20% fire rate
+  if (/i said|i mentioned|like i|as i was saying/i.test(response)) return response; // already has one
+
+  // Find a prior opinion on a current topic
+  for (const topic of topics) {
+    const prior = aiSelfModel.opinions[topic];
+    if (!prior || turn - prior.turn < 3 || turn - prior.turn > 15) continue;
+
+    const refsPositive = [
+      `I still stand by what I said about ${prior.text} —`,
+      `Like I mentioned, ${prior.text}.`,
+      `I said this before but — ${prior.text}.`,
+      `My take on this hasn't changed —`,
+    ];
+    const refsNeutral = [
+      `Going back to what I was saying about ${topic} —`,
+      `This connects to my earlier point about ${topic}.`,
+    ];
+
+    const refs = prior.strength > 0.7 ? refsPositive : refsNeutral;
+    const ref = refs[Math.floor(Math.random() * refs.length)];
+
+    // Prepend the self-reference to response
+    return ref + " " + response;
+  }
+
+  // Check for claim callbacks
+  const relevantClaim = aiSelfModel.claims.find(c =>
+    topics.includes(c.topic) && turn - c.turn >= 4 && turn - c.turn <= 20
+  );
+  if (relevantClaim && Math.random() > 0.6) {
+    return `Remember when I mentioned that ${relevantClaim.claim}? ` + response;
+  }
+
+  return response;
+}
+
+let lastSelfRefTurn = 0;
+
+function applySelfModel(response, topics, text) {
+  const turn = mem.turn;
+
+  // Track what the AI just expressed (runs every turn)
+  trackAISelfExpression(response, topics);
+
+  // Enforce consistency (runs every turn — catches contradictions)
+  response = enforcePersonaConsistency(response, topics);
+
+  // Add self-references (rate-limited: 20% chance, 4-turn cooldown)
+  if (turn - lastSelfRefTurn >= 4) {
+    const before = response;
+    response = addSelfReference(response, topics);
+    if (response !== before) lastSelfRefTurn = turn;
+  }
+
+  return response;
+}
+
 /* ── Output Polish & Deduplication (Round 58) ──
  * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
  * Runs just before output to ensure the response reads naturally regardless
@@ -10426,6 +10625,9 @@ export function getAIResponse(input) {
   // ═══ Nuanced stance: occasionally push back, play devil's advocate, take positions ═══
   response = addStance(response, text, currentTopics);
 
+  // ═══ AI self-model: track own opinions, enforce consistency, add self-references ═══
+  response = applySelfModel(response, currentTopics, text);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -10475,6 +10677,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
