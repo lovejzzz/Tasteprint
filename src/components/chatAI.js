@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 51: Response architecture variation
+   Round 64: Emotional contagion & vibe mirroring
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -10402,6 +10402,265 @@ function applyInitiativeManagement(response, text, parsed, sent, topics) {
   return response;
 }
 
+/* ── Emotional Contagion & Vibe Mirroring (Round 64) ──
+ * Goes beyond sentiment (+/-) to detect the user's communicative VIBE:
+ * playful, serious, introspective, excited, anxious, matter-of-fact,
+ * creative, vulnerable. Then modulates the AI's response texture —
+ * word swap, punctuation, rhythm, register — to emotionally match.
+ * The effect: when the user is being silly, the AI gets silly back.
+ * When the user slows down and gets reflective, the AI downshifts.
+ * Real humans do this unconsciously — it's what makes conversation feel
+ * like a duet rather than parallel monologues.
+ */
+
+let lastVibeTurn = 0;
+let prevVibe = "neutral";
+let vibeStreak = 0;
+
+function detectVibe(text, sent, parsed) {
+  const lower = (text || "").toLowerCase();
+  const len = text.length;
+  const caps = (text.match(/[A-Z]{2,}/g) || []).length;
+  const excl = (text.match(/!/g) || []).length;
+  const qs = (text.match(/\?/g) || []).length;
+  const dots = (text.match(/\.\.\./g) || []).length;
+  const lols = (lower.match(/\b(?:lol|lmao|haha|heh|lmfao|rofl|😂|🤣|😆)\b/g) || []).length;
+  const emojis = (text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu) || []).length;
+
+  const scores = {
+    playful: 0, serious: 0, introspective: 0, excited: 0,
+    anxious: 0, matter_of_fact: 0, creative: 0, vulnerable: 0
+  };
+
+  // ── Playful signals ──
+  if (lols > 0) scores.playful += 0.4;
+  if (emojis >= 2) scores.playful += 0.2;
+  if (/(?:haha|hehe|lol|omg|bruh|dude|ngl|tbh|lowkey|highkey|vibes?|sheesh|slay|bet|fr fr)/i.test(lower)) scores.playful += 0.3;
+  if (/[~]|xD|:P|:\)|;\)/i.test(text)) scores.playful += 0.2;
+  if (/(?:funny|joke|hilarious|wild|chaotic|unhinged|cursed|blessed)/i.test(lower)) scores.playful += 0.25;
+
+  // ── Serious signals ──
+  if (len > 80 && excl === 0 && lols === 0 && emojis === 0) scores.serious += 0.3;
+  if (/(?:important|serious|concern|issue|problem|need to|have to|must|critical|actually)/i.test(lower)) scores.serious += 0.25;
+  if (/(?:I think|in my opinion|from my perspective|to be honest|honestly)/i.test(lower)) scores.serious += 0.2;
+  if (dots === 0 && excl === 0 && len > 40) scores.serious += 0.1;
+
+  // ── Introspective signals ──
+  if (/(?:I wonder|I've been thinking|sometimes I|I realize|it's weird but|I feel like|it's strange|makes me think|I keep)/i.test(lower)) scores.introspective += 0.4;
+  if (dots >= 1) scores.introspective += 0.2;
+  if (/(?:meaning|purpose|why do we|what if|existential|philosophical|deeper|soul|consciousness)/i.test(lower)) scores.introspective += 0.3;
+  if (len > 60 && qs <= 1 && excl === 0 && lols === 0) scores.introspective += 0.15;
+
+  // ── Excited signals ──
+  if (excl >= 2) scores.excited += 0.4;
+  if (caps >= 2) scores.excited += 0.35;
+  if (/(?:amazing|awesome|incredible|insane|so cool|mind blown|can't believe|holy|WOW|OMG|YES)/i.test(lower)) scores.excited += 0.3;
+  if (sent >= 2) scores.excited += 0.2;
+  if (emojis >= 1 && excl >= 1) scores.excited += 0.15;
+
+  // ── Anxious signals ──
+  if (/(?:worry|worried|anxious|nervous|scared|afraid|stress|overwhelm|panic|idk|what if .* goes wrong|am I|should I|is it okay|help)/i.test(lower)) scores.anxious += 0.4;
+  if (/(?:\?\?|\?!|ugh|oof|yikes|oh no|oh god)/i.test(lower)) scores.anxious += 0.25;
+  if (qs >= 2 && sent < 0) scores.anxious += 0.2;
+
+  // ── Matter-of-fact signals ──
+  if (len < 40 && excl === 0 && emojis === 0 && qs <= 1 && lols === 0) scores.matter_of_fact += 0.3;
+  if (/^(?:it's |that's |this is |the |there |so |just |basically |it |they )/i.test(lower)) scores.matter_of_fact += 0.2;
+  if (/(?:basically|essentially|specifically|technically|literally|exactly|the thing is)/i.test(lower)) scores.matter_of_fact += 0.2;
+  if (Math.abs(sent) < 1 && len < 60) scores.matter_of_fact += 0.15;
+
+  // ── Creative signals ──
+  if (/(?:imagine|what if|picture this|like a|metaphor|story|build|create|design|art|aesthetic|vision|concept|idea for)/i.test(lower)) scores.creative += 0.35;
+  if (/(?:vibe|aesthetic|mood|energy|feel|texture|color|shape|pattern|rhythm)/i.test(lower)) scores.creative += 0.2;
+  if (len > 60 && /(?:like |as if |almost |kind of |sort of )/i.test(lower)) scores.creative += 0.15;
+
+  // ── Vulnerable signals ──
+  if (/(?:I'm (?:not sure|scared|afraid|struggling|lost|confused)|honestly |truth is|can I be real|between us|I don't know if|it's hard to)/i.test(lower)) scores.vulnerable += 0.4;
+  if (/(?:insecure|embarrass|ashamed|lonely|hurt|broken|cry|tear|miss |missing )/i.test(lower)) scores.vulnerable += 0.35;
+  if (sent < -1 && /\bI\b/i.test(text) && len > 30) scores.vulnerable += 0.2;
+  if (dots >= 2 && sent < 0) scores.vulnerable += 0.15;
+
+  // Find dominant vibe
+  let best = "neutral";
+  let bestScore = 0.25; // threshold to register a vibe
+  for (const [vibe, score] of Object.entries(scores)) {
+    if (score > bestScore) { best = vibe; bestScore = score; }
+  }
+
+  // Track streak
+  if (best === prevVibe) vibeStreak++;
+  else vibeStreak = 1;
+  prevVibe = best;
+
+  return { vibe: best, score: bestScore, scores };
+}
+
+function applyVibeContagion(response, text, sent, parsed) {
+  const turn = mem.turn;
+  if (turn < 2) return response;
+  if (turn - lastVibeTurn < 2) return response;
+  if (Math.random() > 0.45) return response; // 45% fire rate
+
+  const { vibe, score } = detectVibe(text, sent, parsed);
+  if (vibe === "neutral") return response;
+
+  lastVibeTurn = turn;
+  let r = response;
+
+  switch (vibe) {
+    case "playful": {
+      // Loosen up: add casual punctuation, playful interjections
+      if (!/haha|lol|omg|okay but/i.test(r)) {
+        const playfulSwaps = [
+          [/\bvery\b/i, "super"], [/\breally\b/i, "legit"],
+          [/\bgreat\b/i, "amazing"], [/\binteresting\b/i, "wild"],
+          [/\bgood\b/i, "solid"], [/\bthink\b/i, "feel like"],
+        ];
+        for (const [pat, rep] of playfulSwaps) {
+          if (pat.test(r) && Math.random() > 0.5) { r = r.replace(pat, rep); break; }
+        }
+      }
+      // Add a playful closer if response ends cleanly
+      if (vibeStreak >= 2 && Math.random() > 0.5) {
+        const closers = [" (okay I'm having fun with this)", " — this energy is everything", " lol"];
+        r += closers[Math.floor(Math.random() * closers.length)];
+      }
+      break;
+    }
+
+    case "serious": {
+      // Tighten up: remove casual fillers, straighten punctuation
+      r = r.replace(/\b(?:kinda|sorta|like,? (?=\w))/gi, "");
+      r = r.replace(/!+/g, ".");
+      r = r.replace(/\b(?:haha|lol|heh)\b/gi, "").trim();
+      // Strip trailing playful asides
+      r = r.replace(/\s*\((?:just|okay|ha|lol)[^)]*\)\s*$/i, "");
+      break;
+    }
+
+    case "introspective": {
+      // Slow down: add pauses, soften assertions, use ellipses
+      if (Math.random() > 0.4) {
+        const introSwaps = [
+          [/^(I think)/i, "I wonder if"], [/\bit is\b/i, "it might be"],
+          [/\bdefinitely\b/i, "maybe"], [/\bclearly\b/i, "it feels like"],
+        ];
+        for (const [pat, rep] of introSwaps) {
+          if (pat.test(r)) { r = r.replace(pat, rep); break; }
+        }
+      }
+      // Add a contemplative pause
+      if (r.length > 50 && !r.includes("...") && Math.random() > 0.5) {
+        const sentences = r.match(/[^.!?]+[.!?]+/g);
+        if (sentences && sentences.length >= 2) {
+          r = sentences[0].trim() + " ..." + sentences.slice(1).join(" ");
+        }
+      }
+      break;
+    }
+
+    case "excited": {
+      // Amp up: strengthen language, add enthusiasm markers
+      const excitedSwaps = [
+        [/\bgood\b/i, "incredible"], [/\bnice\b/i, "amazing"],
+        [/\bcool\b/i, "SO cool"], [/\binteresting\b/i, "fascinating"],
+        [/\blike\b(?! a)/i, "love"],
+      ];
+      for (const [pat, rep] of excitedSwaps) {
+        if (pat.test(r) && Math.random() > 0.4) { r = r.replace(pat, rep); break; }
+      }
+      // Amplify punctuation
+      if (!/!/.test(r) && r.length > 20) {
+        r = r.replace(/\.(\s|$)/, "!$1");
+      }
+      break;
+    }
+
+    case "anxious": {
+      // Calm down: reassure, validate, soften tone
+      if (!/it's okay|no worries|don't worry|totally normal|you're fine/i.test(r)) {
+        const reassurances = [
+          "Hey, that's totally valid. ",
+          "Okay first — breathe. ",
+          "That makes sense to feel that way. ",
+          "No judgment here. ",
+        ];
+        if (Math.random() > 0.4) {
+          r = reassurances[Math.floor(Math.random() * reassurances.length)] + r;
+        }
+      }
+      // Strip any accidental dismissiveness
+      r = r.replace(/\bjust\b (?=relax|calm|chill)/gi, "");
+      break;
+    }
+
+    case "matter_of_fact": {
+      // Match directness: strip hedges, tighten language
+      r = r.replace(/\b(?:I think|I guess|maybe|perhaps|kind of|sort of|you know)\b,?\s*/gi, "");
+      r = r.replace(/\s+/g, " ").trim();
+      // If response is wordy, compress
+      if (r.length > 140) {
+        const sentences = r.match(/[^.!?]+[.!?]+/g);
+        if (sentences && sentences.length > 2) {
+          r = sentences.slice(0, 2).join(" ").trim();
+        }
+      }
+      break;
+    }
+
+    case "creative": {
+      // Open up: add imagery, metaphor-friendly language
+      const creativeSwaps = [
+        [/\bgood\b/i, "vivid"], [/\binteresting\b/i, "rich"],
+        [/\bworks\b/i, "sings"], [/\bfits\b/i, "clicks"],
+        [/\bmakes sense\b/i, "resonates"],
+      ];
+      for (const [pat, rep] of creativeSwaps) {
+        if (pat.test(r) && Math.random() > 0.4) { r = r.replace(pat, rep); break; }
+      }
+      // Add a creative flourish
+      if (vibeStreak >= 2 && Math.random() > 0.6) {
+        const flourishes = [
+          " — I can almost picture it.",
+          " There's something poetic about that.",
+          " That has a real texture to it.",
+        ];
+        r += flourishes[Math.floor(Math.random() * flourishes.length)];
+      }
+      break;
+    }
+
+    case "vulnerable": {
+      // Gentleness: soften everything, validate, hold space
+      // Strip anything that could feel dismissive
+      r = r.replace(/\b(?:just|simply|obviously|clearly|easy)\b/gi, "").replace(/\s+/g, " ").trim();
+      // Lead with warmth if not already warm
+      if (!/thank you for|I appreciate|that takes|brave|courage|hear you/i.test(r)) {
+        const warmth = [
+          "Thank you for sharing that. ",
+          "I hear you. ",
+          "That takes courage to say. ",
+        ];
+        if (Math.random() > 0.3) {
+          r = warmth[Math.floor(Math.random() * warmth.length)] + r.charAt(0).toLowerCase() + r.slice(1);
+        }
+      }
+      // Don't ask probing questions when someone is vulnerable
+      if (/\?/.test(r)) {
+        const sentences = r.match(/[^.!?]+[.!?]+/g);
+        if (sentences && sentences.length >= 2) {
+          // Keep statements, soften or remove questions
+          r = sentences.filter(s => !/\?/.test(s)).join(" ").trim();
+          if (r.length < 20) r = response; // fallback if too short
+        }
+      }
+      break;
+    }
+  }
+
+  return r;
+}
+
 /* ── Output Polish & Deduplication (Round 58) ──
  * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
  * Runs just before output to ensure the response reads naturally regardless
@@ -10793,6 +11052,9 @@ export function getAIResponse(input) {
   // ═══ Conversational initiative: manage floor dynamics, prevent stalling ═══
   response = applyInitiativeManagement(response, text, parsed, sent, currentTopics);
 
+  // ═══ Emotional contagion: mirror user's communicative vibe (playful/serious/etc.) ═══
+  response = applyVibeContagion(response, text, sent, parsed);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -10842,6 +11104,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
