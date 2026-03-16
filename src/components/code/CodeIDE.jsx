@@ -457,6 +457,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [termHeight, setTermHeight] = React.useState(120);
   const termDrag = React.useRef(null);
 
+  /* ---- Explorer filter ---- */
+  const [explorerFilter, setExplorerFilter] = React.useState('');
+
   /* ---- Explorer new file input ---- */
   const [newFileInput, setNewFileInput] = React.useState(false);
   const [newFileName, setNewFileName] = React.useState('');
@@ -576,17 +579,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const jumpBookmark = (dir) => {
     const sorted = [...bookmarks].sort((a, b) => a - b);
     if (!sorted.length) return;
-    if (dir > 0) {
-      const next = sorted.find(b => b > activeLn) || sorted[0];
-      setActiveLn(next); setCursor({ ln: next, col: 1 });
-      const pos = code.split('\n').slice(0, next - 1).join('\n').length + (next > 1 ? 1 : 0);
-      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
-    } else {
-      const prev = [...sorted].reverse().find(b => b < activeLn) || sorted[sorted.length - 1];
-      setActiveLn(prev); setCursor({ ln: prev, col: 1 });
-      const pos = code.split('\n').slice(0, prev - 1).join('\n').length + (prev > 1 ? 1 : 0);
-      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
-    }
+    const target = dir > 0
+      ? (sorted.find(b => b > activeLn) || sorted[0])
+      : ([...sorted].reverse().find(b => b < activeLn) || sorted[sorted.length - 1]);
+    goToLine(target);
   };
 
   /* ---- Tab context menu / pinned tabs ---- */
@@ -1381,6 +1377,23 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
   };
 
+  /* ---- Scroll to line (smooth) ---- */
+  const scrollToLine = (ln) => {
+    const el = taRef.current;
+    if (!el) return;
+    const lineH = Math.round(16 * zf);
+    const target = (ln - 1) * lineH - el.clientHeight / 3;
+    el.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+  };
+
+  /* ---- Navigate to line (set cursor + scroll) ---- */
+  const goToLine = (ln) => {
+    setActiveLn(ln); setCursor({ ln, col: 1 });
+    const pos = code.split('\n').slice(0, ln - 1).join('\n').length + (ln > 1 ? 1 : 0);
+    scrollToLine(ln);
+    setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+  };
+
   /* ---- Line helpers ---- */
   const getLineRange = (pos) => {
     const start = code.lastIndexOf('\n', pos - 1) + 1;
@@ -2029,10 +2042,28 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           width: explorerW, background: '#181825', borderRight: 'none',
           display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'auto', position: 'relative'
         }}>
-          <div style={{ padding: '6px 10px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-            Explorer
+          <div style={{ padding: '6px 10px 4px', fontSize: 8, color: '#555', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ flex: 1 }}>Explorer</span>
+            <input
+              placeholder="Filter..."
+              spellCheck={false}
+              onMouseDown={stop}
+              onKeyDown={e => e.stopPropagation()}
+              onChange={e => setExplorerFilter(e.target.value)}
+              value={explorerFilter}
+              style={{
+                width: explorerFilter ? 70 : 40, background: '#1e1e2e', border: '1px solid #ffffff10',
+                borderRadius: 3, padding: '1px 4px', fontSize: 7, color: '#cdd6f4', outline: 'none',
+                fontFamily: MONO, transition: 'width .15s',
+              }}
+              onFocus={e => e.currentTarget.style.width = '70px'}
+              onBlur={e => { if (!explorerFilter) e.currentTarget.style.width = '40px'; }}
+            />
           </div>
-          {TREE.map(folder => (
+          {TREE.map(folder => {
+            const filteredChildren = explorerFilter ? folder.children.filter(f => f.name.toLowerCase().includes(explorerFilter.toLowerCase())) : folder.children;
+            if (explorerFilter && filteredChildren.length === 0) return null;
+            return (
             <React.Fragment key={folder.name}>
               <div
                 onClick={() => setOpenFolders(prev => ({ ...prev, [folder.name]: !prev[folder.name] }))}
@@ -2046,7 +2077,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 <span style={{ fontSize: 10, opacity: .6 }}>{openFolders[folder.name] ? '\uD83D\uDCC2' : '\uD83D\uDCC1'}</span>
                 <span>{folder.name}</span>
               </div>
-              {openFolders[folder.name] && folder.children.map(f => {
+              {(openFolders[folder.name] || explorerFilter) && folder.children.filter(f => !explorerFilter || f.name.toLowerCase().includes(explorerFilter.toLowerCase())).map(f => {
                 const isActive = f.path === activeFile;
                 const isReadonly = !editFiles.hasOwnProperty(f.path) && GEN_FILES[f.path];
                 const isDeletable = editFiles.hasOwnProperty(f.path) && !initFiles[f.path];
@@ -2088,7 +2119,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 );
               })}
             </React.Fragment>
-          ))}
+          );})}
           {/* Explorer context menu */}
           {explorerCtx && (
             <div onMouseDown={stop} style={{
@@ -2201,11 +2232,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 <div style={{ fontSize: 8, color: '#444', padding: '8px', textAlign: 'center' }}>No symbols</div>
               ) : outlineSymbols.map((sym, si) => (
                 <div key={si}
-                  onClick={() => {
-                    setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
-                    const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
-                    setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
-                  }}
+                  onClick={() => goToLine(sym.line)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
                     cursor: 'pointer', fontSize: 8,
@@ -2566,22 +2593,32 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {gotoOpen && (
             <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '20%', right: '20%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 9, color: '#555' }}>Go to line:</span>
-              <input ref={gotoRef} value={gotoVal} onChange={e => setGotoVal(e.target.value.replace(/\D/g, ''))}
+              <input ref={gotoRef} value={gotoVal} onChange={e => {
+                  const v = e.target.value.replace(/\D/g, '');
+                  setGotoVal(v);
+                  // Live preview: scroll to the line as you type
+                  const ln = parseInt(v);
+                  if (ln >= 1 && ln <= lines.length) {
+                    setActiveLn(ln);
+                    scrollToLine(ln);
+                  }
+                }}
                 placeholder={`1-${lines.length}`} spellCheck={false}
                 onKeyDown={e => {
                   e.stopPropagation();
                   if (e.key === 'Escape') { setGotoOpen(false); taRef.current?.focus(); }
                   if (e.key === 'Enter') {
                     const ln = parseInt(gotoVal);
-                    if (ln >= 1 && ln <= lines.length) {
-                      const pos = code.split('\n').slice(0, ln - 1).join('\n').length + (ln > 1 ? 1 : 0);
-                      setActiveLn(ln); setCursor({ ln, col: 1 });
-                      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
-                    }
+                    if (ln >= 1 && ln <= lines.length) goToLine(ln);
                     setGotoOpen(false);
                   }
                 }}
                 style={{ flex: 1, background: '#1e1e2e', border: '1px solid #ffffff10', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+              {gotoVal && parseInt(gotoVal) >= 1 && parseInt(gotoVal) <= lines.length && (
+                <span style={{ fontSize: 7, color: '#555', fontFamily: MONO, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {lines[parseInt(gotoVal) - 1]?.trim().substring(0, 30)}
+                </span>
+              )}
             </div>
           )}
 
@@ -2699,10 +2736,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       if (e.key === 'ArrowUp') { e.preventDefault(); setSymbolIdx(i => Math.max(i - 1, 0)); }
                       if (e.key === 'Enter' && filtered.length) {
                         const sym = filtered[Math.min(symbolIdx, filtered.length - 1)];
-                        setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
-                        const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
-                        setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
-                        setSymbolOpen(false);
+                        goToLine(sym.line); setSymbolOpen(false);
                       }
                     }}
                     style={{ flex: 1, background: 'transparent', border: 'none', padding: '6px 0', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
@@ -2710,10 +2744,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 <div style={{ maxHeight: 210, overflow: 'auto' }}>
                   {filtered.slice(0, 15).map((sym, i) => (
                     <div key={`${sym.name}-${sym.line}`} onClick={() => {
-                      setActiveLn(sym.line); setCursor({ ln: sym.line, col: 1 });
-                      const pos = code.split('\n').slice(0, sym.line - 1).join('\n').length + (sym.line > 1 ? 1 : 0);
-                      setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
-                      setSymbolOpen(false);
+                      goToLine(sym.line); setSymbolOpen(false);
                     }}
                       onMouseEnter={() => setSymbolIdx(i)}
                       style={{
@@ -3665,10 +3696,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       </div>
                     )}
                     {hints.map((h, i) => (
-                      <div key={`h${i}`} onClick={() => {
-                        setActiveLn(h.ln); setCursor({ ln: h.ln, col: 1 });
-                        const pos = code.split('\n').slice(0, h.ln - 1).join('\n').length + (h.ln > 1 ? 1 : 0);
-                        setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
+                      <div key={`h${i}`} onClick={() => { goToLine(h.ln);
                       }} style={{
                         fontSize: fs(9), padding: '2px 6px', marginTop: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                         color: h.sev === 'warn' ? '#f9e2af' : '#89b4fa',
