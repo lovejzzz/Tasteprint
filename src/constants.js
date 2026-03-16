@@ -73,7 +73,7 @@ export const VARIANTS = {
   "product-card":["Standard","Sale badge","Horizontal"],
   "cart-item":["Standard","Compact","Detailed","Swipe","Brutal"],
   "feature-table":["Checkmark","Highlighted","Minimal"],
-  "promo-banner":["Gradient","Pill"],
+  "promo-banner":["Gradient","Pill","Countdown","Glass","Social Proof"],
   "order-summary":["Card","Compact"],
   rating:["Stars","Compact","Review"],
   receipt:["Dashed","Clean"],
