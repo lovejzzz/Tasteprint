@@ -6578,6 +6578,80 @@ function adjustForSubtext(response, subtext) {
   return response;
 }
 
+/* ── Gentle Reframing (Round 96) ──
+ * When the user is stuck in negative framing (self-doubt, catastrophizing,
+ * all-or-nothing thinking), gently offer a constructive reframe without
+ * dismissing their concern. Not toxic positivity — empathetic redirection.
+ */
+
+let lastReframeTurn = 0;
+let recentReframes = [];
+
+const NEGATIVE_FRAME_PATTERNS = [
+  { pattern: /\bi (?:can't|can never|will never|always fail|suck at|am terrible at) (.{4,30})/i, type: "self-doubt" },
+  { pattern: /\b(?:nothing works|everything is broken|it's hopeless|there's no way|impossible)\b/i, type: "catastrophe" },
+  { pattern: /\b(?:i'm (?:so |really )?(?:stuck|lost|confused|overwhelmed)|i don't know what to do)\b/i, type: "stuck" },
+  { pattern: /\b(?:this is (?:pointless|useless|a waste)|why (?:even |do i )?bother)\b/i, type: "futility" },
+  { pattern: /\b(?:i(?:'m| am) (?:not (?:good|smart|skilled) enough|too (?:dumb|slow|old)))\b/i, type: "inadequacy" },
+];
+
+const REFRAME_TEMPLATES = {
+  "self-doubt": [
+    "I hear the frustration — but the fact that you're wrestling with this means you care about getting it right.",
+    "That self-criticism is loud right now. But honestly? You're further along than you think.",
+  ],
+  "catastrophe": [
+    "I know it feels like everything — but let's zoom in on just one piece. What's the smallest thing that's actually broken?",
+    "It feels like a lot. But from what you've described, there are pieces here that are working.",
+  ],
+  "stuck": [
+    "Being stuck is actually a sign you've outgrown the obvious answers. Let's try a different angle.",
+    "Sometimes 'stuck' just means you need one new piece of information. What's the last thing you tried?",
+  ],
+  "futility": [
+    "I get the frustration. But you wouldn't be talking about it if some part of you didn't think there's a way forward.",
+    "It might not feel like it, but you're closer than you were when you started.",
+  ],
+  "inadequacy": [
+    "That voice in your head is being way too harsh. From what I've seen, you're handling this well.",
+    "Competence isn't a fixed thing — you're actively growing by working through this.",
+  ],
+};
+
+function applyGentleReframing(response, text, sent) {
+  const turn = mem.turn;
+  if (turn - lastReframeTurn < 6) return response; // 6-turn cooldown
+  if (Math.random() > 0.22) return response; // 22% fire rate
+
+  // Only trigger on negative sentiment
+  if (sent && sent.score > -0.2) return response;
+
+  let bestMatch = null;
+  for (const nf of NEGATIVE_FRAME_PATTERNS) {
+    if (nf.pattern.test(text)) { bestMatch = nf.type; break; }
+  }
+  if (!bestMatch) return response;
+
+  // Skip if response already contains reframing language
+  const lower = response.toLowerCase();
+  if (/\b(?:but.*further|closer than|actually.*working|you're.*handling|don't.*too hard)\b/.test(lower)) return response;
+
+  const pool = REFRAME_TEMPLATES[bestMatch] || REFRAME_TEMPLATES["stuck"];
+  const available = pool.filter(t => !recentReframes.includes(t));
+  if (available.length === 0) return response;
+
+  const pick = available[Math.floor(Math.random() * available.length)];
+
+  lastReframeTurn = turn;
+  recentReframes.push(pick);
+  if (recentReframes.length > 5) recentReframes.shift();
+
+  // Replace response with reframe + trimmed original
+  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+  const trimmed = sentences.length > 2 ? sentences.slice(0, 2).join(" ").trim() : response;
+  return pick + " " + trimmed;
+}
+
 /* ── Conversational Grounding & Active Listening ──
  * Humans constantly signal they're tracking conversation:
  * - Micro-acknowledgments: "Right", "Gotcha", "Mm-hmm"
@@ -15633,6 +15707,9 @@ export function getAIResponse(input) {
   // ═══ Subtext-aware tone adjustment: soften/adjust based on what user actually means ═══
   response = adjustForSubtext(response, subtext);
 
+  // ═══ Gentle reframing: redirect negative framing without dismissing the concern ═══
+  response = applyGentleReframing(response, text, sent);
+
   // ═══ Subtext trend: if user is withdrawing over multiple turns, acknowledge it ═══
   const trend = getSubtextTrend();
   if (trend === "losing_interest" && Math.random() > 0.6) {
@@ -15679,6 +15756,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
