@@ -166,7 +166,7 @@ export const LIB = [
     {type:"notification",label:"Notification",w:300,h:180},
   ]},
   { cat:"Social", items:[
-    {type:"chat",label:"Chat",w:300,h:200},
+    {type:"chat",label:"Chat",w:300,h:320},
     {type:"media-player",label:"Media player",w:300,h:120},
     {type:"profile-card",label:"Profile card",w:240,h:180},
   ]},

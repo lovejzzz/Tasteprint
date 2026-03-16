@@ -3,6 +3,7 @@ import { FONTS, DEFAULT_PROPS } from "../constants";
 import { sanitizeHtml } from "../utils";
 import { tokenize, TC, HighlightLine } from "./code/tokenizer";
 import { CodeIDE, CodeNotebook, CodeReview, CodeMinimap, AsciiArt, CodeBenchmark, CodeTypewriter } from "./code";
+import ChatBubble from "./ChatBubble";
 
 /* ========== COMPONENT RENDERER ========== */
 const ANIM_STYLE = `
@@ -22,6 +23,9 @@ const ANIM_STYLE = `
 @keyframes tp-fadein{from{opacity:0}to{opacity:1}}
 @keyframes tp-stripe-move{from{background-position:0 0}to{background-position:32px 0}}
 @keyframes tp-shimmer-slide{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+@keyframes tp-msg-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tp-msg-send{0%{opacity:0;transform:scale(.85) translateY(8px)}60%{transform:scale(1.03) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes tp-typing-dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:.9}}
 `;
 
 function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1}){
@@ -527,10 +531,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- CHAT ---- */
   if(type==="chat"){
-    const msgs=[{from:"them",text:"Hey, how's the project going?"},{from:"me",text:"Almost done! Just finishing the UI."},{from:"them",text:"Looks great 🔥"}];
-    if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,padding:14,display:"flex",flexDirection:"column",gap:8,overflow:"auto"}}>{msgs.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.from==="me"?"flex-end":"flex-start",animation:`tp-slidein .3s ease-out ${i*0.1}s both`}}><div style={{maxWidth:"75%",padding:"8px 12px",borderRadius:m.from==="me"?"12px 12px 4px 12px":"12px 12px 12px 4px",background:m.from==="me"?p.ac:p.su}}><T k={`m${i}`} s={{fontSize:11,color:m.from==="me"?onAc:p.tx,lineHeight:1.4}}>{m.text}</T></div></div>)}<div style={{display:"flex",gap:6,marginTop:"auto"}}><div style={{flex:1,height:32,borderRadius:999,background:p.su,border:`1px solid ${p.bd}`,padding:"0 12px",display:"flex",alignItems:"center"}}><T k="input" s={{fontSize:11,color:p.mu,opacity:.4}}>Type a message...</T></div><div style={{width:32,height:32,borderRadius:999,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:onAc,fontSize:12}}>↑</span></div></div></div>;
-    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",gap:6}}>{msgs.map((m,i)=><div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",animation:`tp-fadein .3s ease-out ${i*0.08}s both`}}><div style={{width:22,height:22,borderRadius:999,background:m.from==="me"?p.ac+"20":p.mu+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:9,color:m.from==="me"?p.ac:p.mu,fontWeight:600}}>{m.from==="me"?"Y":"A"}</div><div><T k={`n${i}`} s={{fontSize:10,fontWeight:600,color:p.tx}}>{m.from==="me"?"You":"Alex"}</T><T k={`m${i}`} s={{fontSize:11,color:p.mu,display:"block",marginTop:2,lineHeight:1.4}}>{m.text}</T></div></div>)}</div>;
-    return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:6,fontFamily:"'JetBrains Mono',monospace"}}>{msgs.map((m,i)=><div key={i} style={{display:"flex",gap:8,animation:`tp-fadein .3s ease-out ${i*0.08}s both`}}><span style={{fontSize:9,color:m.from==="me"?p.ac:"#666",opacity:.6}}>{m.from==="me"?"YOU>":"SYS>"}</span><T k={`m${i}`} s={{fontSize:10,color:m.from==="me"?p.ac:"#888"}}>{m.text}</T></div>)}<div style={{display:"flex",gap:6,marginTop:"auto",alignItems:"center"}}><span style={{fontSize:9,color:p.ac,opacity:.5}}>CMD&gt;</span><div style={{flex:1,height:1,background:p.ac+"20"}}/><span style={{borderRight:`2px solid ${p.ac}`,animation:"tp-blink 1s step-end infinite"}}>&nbsp;</span></div></div>;
+    return <ChatBubble v={v} p={p} editable={editable} texts={texts} onText={onText} font={font} fsize={fsize} b={b} onAc={onAc} />;
   }
 
   /* ---- MEDIA PLAYER ---- */
