@@ -485,7 +485,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   );
 
   /* ── Gradient variant (v===4) — modern gradient AI assistant ── */
-  return (
+  if (v === 4) return (
     <div style={{ ...b, background: p.card, borderRadius: 18, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", position: "relative" }}>
       {/* Gradient header */}
       <div data-ide-drag style={{ padding: "10px 14px", background: `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})`, borderRadius: "18px 18px 0 0", display: "flex", alignItems: "center", gap: 10, cursor: "grab", position: "relative" }}>
@@ -543,6 +543,114 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
         </div>
         <input ref={inputRef} value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={handleKeyDown} onMouseDown={e => e.stopPropagation()} placeholder="Ask anything..." style={{ flex: 1, height: 32, borderRadius: 999, border: `1px solid ${p.bd}`, background: p.su, padding: "0 12px", fontSize: 11, color: p.tx, fontFamily: "inherit", outline: "none" }} />
         <button onClick={sendMessage} onMouseDown={e => e.stopPropagation()} style={{ width: 32, height: 32, borderRadius: 999, border: "none", background: inputVal.trim() ? `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})` : p.mu + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", transition: "background .2s, box-shadow .2s", boxShadow: inputVal.trim() ? `0 2px 8px ${p.ac}25` : "none", transform: inputVal.trim() ? "scale(1)" : "scale(0.9)", animation: sendBtnAnim ? "tp-send-fly .45s cubic-bezier(.34,1.56,.64,1) both" : "none" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={inputVal.trim() ? onAc : p.mu} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ── Brutal variant (v===5) — thick borders, dot-grid, squared bubbles, offset shadow ── */
+  if (v === 5) return (
+    <div style={{ ...b, background: p.card, borderRadius: 3, border: `2.5px solid ${p.tx}`, boxShadow: `4px 4px 0 ${p.ac}`, display: "flex", flexDirection: "column", position: "relative" }}>
+      <div data-ide-drag style={{ padding: "8px 14px", borderBottom: `2.5px solid ${p.tx}`, display: "flex", alignItems: "center", gap: 8, cursor: "grab", position: "relative", backgroundImage: `radial-gradient(${p.tx}12 1px, transparent 1px)`, backgroundSize: "10px 10px" }}>
+        <div style={{ width: 24, height: 24, borderRadius: 2, border: `2px solid ${p.tx}`, background: p.ac, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 10, fontWeight: 900, color: onAc }}>AI</span>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 900, color: p.tx, letterSpacing: "0.08em", textTransform: "uppercase", flex: 1 }}>CHATBOT</span>
+        <div style={{ padding: "1px 6px", background: p.tx, borderRadius: 1 }}>
+          <span style={{ fontSize: 8, fontWeight: 800, color: p.card }}>{messages.length}</span>
+        </div>
+      </div>
+      <div ref={scrollRef} style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0 }}>
+        {messages.map((m, i) => (
+          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: sending === m.id ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both" : `tp-msg-appear .3s ease-out ${i * 0.03}s both` }}>
+            <div style={{
+              maxWidth: "78%", padding: "7px 10px",
+              borderRadius: 2,
+              background: m.from === "me" ? p.tx : p.card,
+              border: `2px solid ${p.tx}`,
+              boxShadow: m.from === "me" ? `2px 2px 0 ${p.ac}` : `2px 2px 0 ${p.tx}40`,
+            }}>
+              <EditableMsg text={m.text} onEdit={t => editMessage(m.id, t)} style={{ fontSize: 11, color: m.from === "me" ? p.card : p.tx, fontWeight: 600, lineHeight: "1.5", letterSpacing: "0.01em", wordBreak: "break-word" }} />
+            </div>
+          </div>
+        ))}
+        {typing && (
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-msg-appear .2s ease-out" }}>
+            <div style={{ padding: "8px 12px", borderRadius: 2, border: `2px solid ${p.tx}`, boxShadow: `2px 2px 0 ${p.tx}40` }}>
+              <TypingDots color={p.tx} />
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{ padding: "8px 10px", borderTop: `2.5px solid ${p.tx}`, display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setEmojiOpen(o => !o)} onMouseDown={e => e.stopPropagation()} style={{ width: 28, height: 28, borderRadius: 2, border: `2px solid ${p.tx}`, background: emojiOpen ? p.su : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13 }}>😊</button>
+          {emojiOpen && <EmojiPicker onPick={pickEmoji} p={p} />}
+        </div>
+        <input ref={inputRef} value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={handleKeyDown} onMouseDown={e => e.stopPropagation()} placeholder="TYPE HERE..." style={{ flex: 1, height: 30, borderRadius: 2, border: `2px solid ${p.tx}`, background: p.card, padding: "0 10px", fontSize: 10, color: p.tx, fontWeight: 700, letterSpacing: "0.04em", fontFamily: "inherit", outline: "none", textTransform: "uppercase" }} />
+        <button onClick={sendMessage} onMouseDown={e => e.stopPropagation()} style={{ width: 30, height: 30, borderRadius: 2, border: `2px solid ${p.tx}`, background: inputVal.trim() ? p.tx : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", boxShadow: inputVal.trim() ? `2px 2px 0 ${p.ac}` : "none" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={inputVal.trim() ? p.card : p.mu} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ── Gradient glow variant (v===6) — shimmer sweep, pulsing dots, dual glow ── */
+  const ac2 = p.ac2 || p.ac;
+  return (
+    <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.ac}18`, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", boxShadow: `0 4px 24px ${p.ac}12, 0 0 0 1px ${p.ac}08` }}>
+      <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${p.ac}06, transparent 40%, ${ac2}04)`, pointerEvents: "none" }} />
+      <div data-ide-drag style={{ padding: "10px 14px", background: `linear-gradient(135deg, ${p.ac}12, ${ac2}08)`, borderBottom: `1px solid ${p.ac}15`, display: "flex", alignItems: "center", gap: 10, cursor: "grab", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: `linear-gradient(90deg, transparent, ${p.ac}08, transparent)`, animation: "tp-shimmer-slide 3s ease-in-out infinite", pointerEvents: "none" }} />
+        <div style={{ width: 26, height: 26, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}25, ${ac2}18)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 10px ${p.ac}20`, position: "relative" }}>
+          <div style={{ width: 6, height: 6, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease-in-out infinite" }} />
+        </div>
+        <div style={{ flex: 1, position: "relative" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: p.tx }}>AI Assistant</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 1 }}>
+            <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, boxShadow: `0 0 6px ${p.ac}50`, animation: "tp-pulse 2s ease infinite" }} />
+            <span style={{ fontSize: 8, color: p.ac, opacity: 0.7 }}>Online</span>
+          </div>
+        </div>
+        <span style={{ fontSize: 8, color: p.mu }}>{messages.length}</span>
+      </div>
+      <div ref={scrollRef} style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0, position: "relative", zIndex: 1 }}>
+        {messages.map((m, i) => (
+          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: sending === m.id ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both" : `tp-msg-appear .3s ease-out ${i * 0.03}s both` }}>
+            {m.from !== "me" && <div style={{ width: 20, height: 20, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}20, ${ac2}15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6, marginTop: 2, boxShadow: `0 0 8px ${p.ac}15` }}>
+              <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2.5s ease infinite" }} />
+            </div>}
+            <div style={{
+              maxWidth: "75%", padding: "8px 12px", position: "relative", overflow: "hidden",
+              borderRadius: m.from === "me" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+              background: m.from === "me" ? `linear-gradient(135deg, ${p.ac}, ${ac2})` : p.card,
+              border: m.from === "me" ? "none" : `1px solid ${p.ac}15`,
+              boxShadow: m.from === "me" ? `0 2px 12px ${p.ac}25, 0 0 0 1px ${p.ac}10` : `0 1px 6px ${p.tx}06`,
+            }}>
+              {m.from === "me" && <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)`, animation: "tp-shimmer-slide 2.5s ease-in-out infinite", pointerEvents: "none" }} />}
+              <EditableMsg text={m.text} onEdit={t => editMessage(m.id, t)} style={{ fontSize: 11, color: m.from === "me" ? onAc : p.tx, lineHeight: "1.5", wordBreak: "break-word", position: "relative", zIndex: 1 }} />
+            </div>
+          </div>
+        ))}
+        {typing && (
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-msg-appear .2s ease-out" }}>
+            <div style={{ width: 20, height: 20, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}20, ${ac2}15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6, boxShadow: `0 0 8px ${p.ac}15` }}>
+              <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
+            </div>
+            <div style={{ padding: "9px 14px", borderRadius: "14px 14px 14px 4px", background: p.card, border: `1px solid ${p.ac}15`, boxShadow: `0 1px 6px ${p.tx}06` }}>
+              <TypingDots color={p.ac} />
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{ padding: "8px 10px", borderTop: `1px solid ${p.ac}12`, display: "flex", gap: 6, alignItems: "center", position: "relative", zIndex: 1 }}>
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setEmojiOpen(o => !o)} onMouseDown={e => e.stopPropagation()} style={{ width: 30, height: 30, borderRadius: 999, border: "none", background: emojiOpen ? `${p.ac}12` : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>😊</button>
+          {emojiOpen && <EmojiPicker onPick={pickEmoji} p={p} />}
+        </div>
+        <input ref={inputRef} value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={handleKeyDown} onMouseDown={e => e.stopPropagation()} placeholder="Ask anything..." style={{ flex: 1, height: 32, borderRadius: 999, border: `1px solid ${p.ac}18`, background: `${p.card}`, padding: "0 12px", fontSize: 11, color: p.tx, fontFamily: "inherit", outline: "none" }} />
+        <button onClick={sendMessage} onMouseDown={e => e.stopPropagation()} style={{ width: 32, height: 32, borderRadius: 999, border: "none", background: inputVal.trim() ? `linear-gradient(135deg, ${p.ac}, ${ac2})` : p.mu + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", boxShadow: inputVal.trim() ? `0 2px 10px ${p.ac}30, 0 0 0 1px ${p.ac}15` : "none", transition: "all .2s" }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={inputVal.trim() ? onAc : p.mu} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
         </button>
       </div>

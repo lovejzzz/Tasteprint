@@ -86,7 +86,7 @@ export const VARIANTS = {
   "cmd-palette":["Full","Minimal","Grouped","Spotlight","Glass"],
   stepper:   ["Horizontal","Vertical","Dots","Pill","Icon","Brutal","Gradient"],
   timeline:  ["Left","Centered","Minimal","Card","Activity","Brutal","Gradient"],
-  chat:      ["Bubble","Thread","Terminal","Glass","Gradient"],
+  chat:      ["Bubble","Thread","Terminal","Glass","Gradient","Brutal","Gradient glow"],
   "media-player":["Minimal","Full","Terminal","Glass","Vinyl","Brutal","Gradient"],
   "profile-card":["Standard","Compact","Terminal","Glass","Gradient","Brutal","Gradient glow"],
   "code-block":["Dark","Light","Terminal","Live IDE","Typewriter","Diff","Notebook","Review","Minimap","ASCII Art","Benchmark"],
