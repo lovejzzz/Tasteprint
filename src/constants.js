@@ -78,7 +78,7 @@ export const VARIANTS = {
   rating:["Stars","Compact","Review","Sentiment","Breakdown"],
   receipt:["Dashed","Clean","Digital","Thermal","Glass"],
   "sub-toggle":["Cards","Switch","Pill","Glass","Brutal","Gradient"],
-  tooltip:   ["Light","Dark","Arrow","Glass","Rich"],
+  tooltip:   ["Light","Dark","Arrow","Glass","Rich","Brutal","Gradient"],
   breadcrumb:["Slash","Arrow","Dots","Pill","Underline"],
   skeleton:  ["Card","List","Profile","Feed","Dashboard"],
   chart:     ["Bar","Line","Donut","Sparkline","Area"],
