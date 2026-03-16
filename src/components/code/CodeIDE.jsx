@@ -730,6 +730,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  mv <f> <t> — Rename/move a file' },
         { t: 'log', v: '  head [n] f — Show first n lines of file' },
         { t: 'log', v: '  rm <f>     — Delete a user-created file' },
+        { t: 'log', v: '  export     — Copy canvas state to clipboard' },
+        { t: 'log', v: '  find <n>   — Find files by name' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -936,6 +938,33 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `Cannot delete built-in file: ${src}` }], ms: null, err: null, errLn: null }));
       } else {
         setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: `File not found: ${path}` }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd === 'export') {
+      const data = tp?.export();
+      if (data) {
+        const json = JSON.stringify(data, null, 2);
+        navigator.clipboard?.writeText(json);
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F export' },
+          { t: 'log', v: `Exported ${data.shapes?.length || 0} shapes to clipboard (${(json.length / 1024).toFixed(1)}KB)` },
+        ], ms: null, err: null, errLn: null }));
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: 'tp API not available' }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('find ')) {
+      const needle = cmd.slice(5).trim().toLowerCase();
+      if (needle) {
+        const results = [];
+        const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+        for (const p of allPaths) {
+          if (p.toLowerCase().includes(needle)) results.push(p);
+        }
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F find ${needle}` },
+          ...(results.length ? results.map(p => ({ t: 'log', v: `  ${p}` })) : [{ t: 'log', v: '  No matching files' }]),
+        ], ms: null, err: null, errLn: null }));
       }
       setTermInput(''); return;
     }
@@ -1607,7 +1636,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTimeout(() => searchRef.current?.focus(), 50); return;
     }
 
-    /* Command palette: Cmd+P */
+    /* Command palette: Cmd+P or Cmd+Shift+P */
     if (e.key === 'p' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault(); setCmdOpen(o => !o); setCmdQuery('');
       setTimeout(() => cmdRef.current?.focus(), 50); return;
@@ -1708,8 +1737,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       e.preventDefault(); editorRedo(); return;
     }
 
-    /* Go to line: Ctrl+G */
-    if (e.key === 'g' && e.ctrlKey && !e.metaKey) {
+    /* Go to line: Ctrl+G or Cmd+G */
+    if (e.key === 'g' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
       e.preventDefault(); setGotoOpen(true); setGotoVal('');
       setTimeout(() => gotoRef.current?.focus(), 50); return;
     }
@@ -2243,32 +2272,42 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               background: '#181825', border: '1px solid #ffffff15', borderRadius: 6,
               boxShadow: '0 4px 12px rgba(0,0,0,.5)', minWidth: 100, overflow: 'hidden'
             }}>
-              <div onClick={() => { openFile(explorerCtx.path); setExplorerCtx(null); }}
-                style={{ padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                Open
-              </div>
-              {explorerCtx.deletable && <>
-                <div style={{ height: 1, background: '#ffffff08' }} />
-                <div onClick={() => {
-                  const name = explorerCtx.path.split('/').pop();
-                  setRenameFile(explorerCtx.path); setRenameName(name); setExplorerCtx(null);
-                  setTimeout(() => renameRef.current?.focus(), 50);
-                }}
-                  style={{ padding: '4px 10px', fontSize: 9, color: '#a6adc8', cursor: 'pointer' }}
+              {[
+                { label: 'Open', action: () => openFile(explorerCtx.path) },
+                null,
+                { label: 'Copy Path', action: () => { navigator.clipboard?.writeText(explorerCtx.path); showToast('Path copied!', 'info'); } },
+                { label: 'Copy Name', action: () => { navigator.clipboard?.writeText(explorerCtx.path.split('/').pop()); showToast('Name copied!', 'info'); } },
+                ...(explorerCtx.deletable ? [
+                  null,
+                  { label: 'Duplicate', action: () => {
+                    const name = explorerCtx.path.split('/').pop();
+                    const base = name.replace(/\.\w+$/, '');
+                    const ext = name.includes('.') ? '.' + name.split('.').pop() : '';
+                    const newName = `${base}-copy${ext}`;
+                    const folder = explorerCtx.path.substring(0, explorerCtx.path.lastIndexOf('/') + 1);
+                    const content = editFiles[explorerCtx.path] || '';
+                    setEditFiles(prev => ({ ...prev, [folder + newName]: content }));
+                    openFile(folder + newName);
+                    showToast(`Duplicated as ${newName}`, 'info');
+                  }},
+                  { label: 'Rename', action: () => {
+                    const name = explorerCtx.path.split('/').pop();
+                    setRenameFile(explorerCtx.path); setRenameName(name);
+                    setTimeout(() => renameRef.current?.focus(), 50);
+                  }},
+                  null,
+                  { label: 'Delete', action: () => deleteFile(explorerCtx.path), color: '#f38ba8' },
+                ] : []),
+              ].map((item, i) => item === null ? (
+                <div key={`sep${i}`} style={{ height: 1, background: '#ffffff08', margin: '1px 0' }} />
+              ) : (
+                <div key={item.label} onClick={() => { item.action(); setExplorerCtx(null); }}
+                  style={{ padding: '4px 10px', fontSize: 9, color: item.color || '#a6adc8', cursor: 'pointer' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  Rename
+                  {item.label}
                 </div>
-                <div style={{ height: 1, background: '#ffffff08' }} />
-                <div onClick={() => { deleteFile(explorerCtx.path); setExplorerCtx(null); }}
-                  style={{ padding: '4px 10px', fontSize: 9, color: '#f38ba8', cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  Delete
-                </div>
-              </>}
+              ))}
             </div>
           )}
 
@@ -3906,10 +3945,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'rm'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'rm', 'export', 'find'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'rm'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'rm', 'find'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'Escape') { setTermInput(''); termInputRef.current?.blur(); }
@@ -3964,6 +4003,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             {readonly && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }}>Read-only</span>}
             {output?.ms && <span style={{ fontSize: fs(8), color: '#27c93f', opacity: .5 }} title="Last execution time">{output.ms}ms</span>}
             {output?.err && <span onClick={() => { setTermOpen(true); setTermTab('problems'); }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#f38ba8', cursor: 'pointer', opacity: .6 }} title="Click to see error">{'\u2717'} 1</span>}
+            {(() => {
+              let lintCount = 0;
+              lines.forEach(l => { if (!/^\s*\/\//.test(l) && (/\bvar\b/.test(l) || (/==(?!=)/.test(l) && !/===/.test(l)) || /\beval\s*\(/.test(l) || /\bdebugger\b/.test(l.trim()) || /\balert\s*\(/.test(l))) lintCount++; });
+              return lintCount > 0 ? <span onClick={() => { setTermOpen(true); setTermTab('problems'); }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#f9e2af', cursor: 'pointer', opacity: .6 }} title="Click to see warnings">{'\u26A0'} {lintCount}</span> : null;
+            })()}
             {tp && <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .4 }}>tp</span>}
             <span onClick={() => setWordWrap(w => !w)} onMouseDown={stop}
               style={{ fontSize: fs(8), color: wordWrap ? '#cba6f7' : '#555', marginLeft: 'auto', cursor: 'pointer' }}
@@ -3977,6 +4021,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               {activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
             </span>
             <span style={{ fontSize: fs(8), color: '#555' }}>{code.length > 1024 ? `${(code.length / 1024).toFixed(1)}KB` : `${code.length}B`}</span>
+            {(() => {
+              const totalH = lines.length * Math.round(16 * zf);
+              const viewH = el?.clientHeight || 1;
+              const pct = totalH <= viewH ? 100 : Math.round((scrollTop / Math.max(1, totalH - viewH)) * 100);
+              return <span style={{ fontSize: fs(8), color: '#555' }} title="Scroll position">
+                {scrollTop <= 0 ? 'Top' : pct >= 99 ? 'Bot' : `${pct}%`}
+              </span>;
+            })()}
             <span style={{ fontSize: fs(8), color: '#555' }}>UTF-8</span>
             <span onClick={() => setNotifOpen(n => !n)} onMouseDown={stop} style={{ position: 'relative' }}>
               <span style={{ fontSize: fs(8), color: notifHistory.length ? '#cba6f7' : '#555', cursor: 'pointer', opacity: .6 }}
