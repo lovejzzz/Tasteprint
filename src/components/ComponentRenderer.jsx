@@ -27,6 +27,8 @@ const ANIM_STYLE = `
 @keyframes tp-tooltip-in{from{opacity:0;transform:translateY(4px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes tp-msg-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes tp-msg-send{0%{opacity:0;transform:scale(.85) translateY(8px)}60%{transform:scale(1.03) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes tp-underline-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes tp-badge-pop{0%{opacity:0;transform:scale(.5)}60%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
 @keyframes tp-typing-dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:.9}}
 `;
 
@@ -143,9 +145,51 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- HEADING ---- */
   if(type==="heading"){
-    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:4}}><div style={{display:"flex",alignItems:"center",gap:8}}><T k="title" s={{fontSize:22,fontWeight:600,color:p.tx,letterSpacing:"-0.02em"}}>Dashboard</T><span style={{fontSize:11,color:p.mu,opacity:.5,fontWeight:400}}>(24)</span></div><T k="sub" s={{fontSize:11,color:p.mu,lineHeight:1.4}}>Track your key metrics and team activity</T></div>;
-    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:6}}><div style={{display:"flex",alignItems:"flex-end",gap:10}}><div style={{width:4,height:24,borderRadius:2,background:p.ac,transformOrigin:"bottom",animation:"tp-grow .4s ease-out"}}/><T k="title" s={{fontSize:20,fontWeight:600,color:p.tx}}>Dashboard</T></div><T k="desc" s={{fontSize:11,color:p.mu,lineHeight:1.4,paddingLeft:14}}>Monitor performance across all channels</T></div>;
-    return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:3}}><T k="over" s={{fontSize:10,fontWeight:600,color:p.ac,textTransform:"uppercase",letterSpacing:"0.1em"}}>Section</T><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><T k="title" s={{fontSize:20,fontWeight:500,color:p.tx}}>Dashboard</T><T k="link" s={{fontSize:11,color:p.ac,fontWeight:500}}>View all →</T></div><div style={{height:1,background:p.bd,marginTop:4}}/></div>;
+    /* v0 Clean — title + count + subtitle, staggered fade-in */
+    if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:5}}>
+      <div style={{display:"flex",alignItems:"baseline",gap:8,animation:"tp-fadein .3s ease-out"}}>
+        <T k="title" s={{fontSize:f(22),fontWeight:700,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1}}>Dashboard</T>
+        <span style={{fontSize:f(11),color:p.mu,opacity:.45,fontWeight:400,animation:"tp-fadein .4s ease-out .15s both"}}>(24)</span>
+      </div>
+      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .1s both"}}>Track your key metrics and team activity</T>
+    </div>;
+    /* v1 Accent bar — animated left bar + title + description */
+    if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:6}}>
+      <div style={{display:"flex",alignItems:"stretch",gap:10}}>
+        <div style={{width:3,borderRadius:2,background:`linear-gradient(180deg,${p.ac},${p.ac2||p.ac})`,transformOrigin:"bottom",animation:"tp-grow .4s cubic-bezier(.34,1.56,.64,1)",minHeight:26}}/>
+        <div style={{display:"flex",flexDirection:"column",gap:3}}>
+          <T k="title" s={{fontSize:f(20),fontWeight:700,color:p.tx,lineHeight:1.15}}>Dashboard</T>
+          <T k="desc" s={{fontSize:f(11),color:p.mu,lineHeight:1.4,opacity:.7}}>Monitor performance across all channels</T>
+        </div>
+      </div>
+    </div>;
+    /* v2 Overline — uppercase overline label + title + "View all" link + divider */
+    if(v===2)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:4}}>
+      <T k="over" s={{fontSize:f(9),fontWeight:700,color:p.ac,textTransform:"uppercase",letterSpacing:"0.12em",animation:"tp-fadein .3s ease-out"}}>Section</T>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <T k="title" s={{fontSize:f(20),fontWeight:600,color:p.tx,letterSpacing:"-0.01em"}}>Dashboard</T>
+        <T k="link" s={{fontSize:f(11),color:p.ac,fontWeight:500,opacity:.8}}>View all →</T>
+      </div>
+      <div style={{height:1,background:`linear-gradient(90deg,${p.bd},transparent)`,marginTop:2,transformOrigin:"left",animation:"tp-underline-grow .5s ease-out"}}/>
+    </div>;
+    /* v3 Gradient — gradient text title + animated underline accent */
+    if(v===3)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:6}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <T k="title" s={{fontSize:f(22),fontWeight:800,letterSpacing:"-0.03em",lineHeight:1.1,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Dashboard</T>
+      </div>
+      <div style={{height:3,borderRadius:2,background:`linear-gradient(90deg,${p.ac},${p.ac2||p.ac},transparent)`,width:"40%",transformOrigin:"left",animation:"tp-underline-grow .5s cubic-bezier(.34,1.56,.64,1) .15s both"}}/>
+      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .2s both"}}>Track your key metrics and team activity</T>
+    </div>;
+    /* v4 Badge — title with accent badge/label + count chip */
+    return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",gap:6}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+        <T k="title" s={{fontSize:f(20),fontWeight:700,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1}}>Dashboard</T>
+        <span style={{fontSize:f(10),fontWeight:600,color:p.ac,background:p.ac+"14",padding:"2px 8px",borderRadius:999,whiteSpace:"nowrap",animation:"tp-badge-pop .4s cubic-bezier(.34,1.56,.64,1) .2s both"}}>New</span>
+        <span style={{fontSize:f(10),fontWeight:500,color:p.mu,background:p.su,padding:"2px 7px",borderRadius:999,whiteSpace:"nowrap",animation:"tp-badge-pop .4s cubic-bezier(.34,1.56,.64,1) .3s both"}}>24 items</span>
+      </div>
+      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .15s both"}}>Track your key metrics and team activity</T>
+      <div style={{height:1,background:p.bd,opacity:.5}}/>
+    </div>;
   }
 
   /* ---- STAT-CARD ---- */
