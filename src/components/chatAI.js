@@ -1194,6 +1194,131 @@ function handleComparison(text) {
   return parts.join(" ");
 }
 
+/* ── Contextual Opinion & Recommendation Engine ──
+ * When users ask "what do you think about X?", "should I use X?",
+ * "do you recommend X?", "is X good?" — leverage ASSOC data to give
+ * specific, opinionated, genuinely helpful answers instead of generic
+ * "it depends" responses. Also handles "what's your favorite X?"
+ */
+
+function handleOpinionRequest(text, topics) {
+  const lower = text.toLowerCase();
+
+  // Detect opinion/recommendation patterns
+  const isOpinion = /what (?:do )?you (?:think|feel|reckon) (?:about|of)\b/i.test(lower);
+  const isRecommend = /(?:should I|would you recommend|do you recommend|is .+ (?:good|worth|any good))/i.test(lower);
+  const isFavorite = /(?:what'?s? (?:your|the best)|favorite|fav) (\w+)/i.test(lower);
+  const isGoodFor = /(?:is .+ good for|best (?:for|way to)|how (?:do I|should I) (?:start|learn|get into))/i.test(lower);
+
+  if (!isOpinion && !isRecommend && !isFavorite && !isGoodFor) return null;
+
+  // Find the relevant topic
+  const topic = topics[0];
+  const assoc = topic ? ASSOC[topic] : null;
+
+  // "What do you think about X?"
+  if (isOpinion && assoc) {
+    const opinion = pick(assoc.opinions);
+    const fact = assoc.facts ? pick(assoc.facts) : null;
+    const hook = pick(assoc.hooks || COMP.deepeners);
+
+    const starters = [
+      `Honestly? I think ${opinion}.`,
+      `My take on ${topic}: ${opinion}.`,
+      `Here's what I think — ${opinion}.`,
+      `Real talk: ${opinion}.`,
+    ];
+    let response = pickNew(starters);
+    if (fact && Math.random() > 0.4) response += ` Plus, ${fact.charAt(0).toLowerCase() + fact.slice(1)}.`;
+    response += " " + hook;
+    return response;
+  }
+
+  // "Should I use/learn/try X?"
+  if (isRecommend && assoc) {
+    const opinion = pick(assoc.opinions);
+    const hook = pick(assoc.hooks || COMP.deepeners);
+
+    // Extract what they're considering
+    const shouldMatch = lower.match(/should I (?:use|learn|try|start|get into|switch to)\s+(.+?)[\?\.!]?$/i);
+    const thing = shouldMatch ? shouldMatch[1] : topic;
+
+    const recs = [
+      `Honestly, yes — ${opinion}. I'd say go for it!`,
+      `I think it's worth trying! ${opinion}. ${hook}`,
+      `Depends on your situation, but my instinct says yes. ${opinion}. What's drawing you to it?`,
+      `${topic} is solid! ${opinion}. The real question is: ${hook}`,
+    ];
+    return pickNew(recs);
+  }
+
+  // "Is X good?" / "Is X worth it?"
+  if (isRecommend && !assoc) {
+    // No ASSOC data — give a thoughtful generic
+    const subject = lower.replace(/^(?:is|are)\s+/i, "").replace(/\s*(?:good|worth|any good|nice).*$/i, "").trim();
+    if (subject.length > 2 && subject.length < 30) {
+      return pickNew([
+        `From what I know, ${subject} has its fans! It really depends on what you need it for. What's your use case?`,
+        `${subject} can definitely be good — the real question is what you're using it for. What's the context?`,
+        `I've heard mixed things about ${subject}, honestly. Some people love it, others have reservations. What drew your attention to it?`,
+      ]);
+    }
+  }
+
+  // "What's your favorite X?" / "What's the best X?"
+  if (isFavorite) {
+    const favMatch = lower.match(/(?:fav(?:orite)?|best)\s+(\w+)/i);
+    const category = favMatch ? favMatch[1] : null;
+
+    // Map categories to ASSOC topics
+    const catMap = {
+      language: ["javascript","python","typescript","rust","go"],
+      framework: ["react","vue","svelte","nextjs","angular"],
+      font: ["typography"], tool: ["figma","git","vite"],
+      food: ["pizza","sushi","ramen","curry","pasta","burger","coffee"],
+      game: ["gaming"], movie: ["movie","film","netflix"],
+      song: ["music"], show: ["series","netflix","anime"],
+      drink: ["coffee"], editor: ["vite","figma"],
+    };
+
+    const candidates = catMap[category] || [];
+    if (candidates.length > 0) {
+      const chosen = pick(candidates);
+      const assocChosen = ASSOC[chosen];
+      if (assocChosen) {
+        const opinion = pick(assocChosen.opinions);
+        return pickNew([
+          `Ooh, tough question! If I had to pick, I'd lean toward ${chosen} — ${opinion}. But that's just me! What's yours?`,
+          `Hmm, I have a soft spot for ${chosen}. ${opinion}. What about you?`,
+          `I'd say ${chosen}! ${opinion}. Though honestly, they're all great in their own way. What's your pick?`,
+        ]);
+      }
+    }
+
+    return pickNew([
+      `Ooh, that's such a personal choice! I'd love to hear yours first — then I'll share mine 😊`,
+      `Hmm, I don't think I can pick just one! What's YOUR favorite?`,
+      `That's a tough one! I'd need to think about it. What would you say?`,
+    ]);
+  }
+
+  // "How do I learn/start/get into X?"
+  if (isGoodFor && assoc) {
+    const fact = assoc.facts ? pick(assoc.facts) : null;
+    const opinion = pick(assoc.opinions);
+    const hook = pick(assoc.hooks || COMP.deepeners);
+
+    const advice = [
+      `Great question! With ${topic}, I'd say just dive in. ${opinion}. ${hook}`,
+      `The best way to get into ${topic} is to start small and build. ${fact ? fact + ". " : ""}${hook}`,
+      `Honestly, ${topic} is really rewarding once you get going. ${opinion}. My advice: don't overthink it, just start! ${hook}`,
+    ];
+    return pickNew(advice);
+  }
+
+  return null;
+}
+
 /* ── Conversational Rhythm Engine ──
  * Maps how humans actually talk: statement→question→reaction→deeper→pivot.
  * Tracks the pattern of recent exchanges and ensures the AI follows
@@ -2189,6 +2314,10 @@ function generateResponse(text) {
   // ═══ 8.5. Comparison engine — "X vs Y" ═══
   const comparison = handleComparison(text);
   if (comparison) return comparison;
+
+  // ═══ 8.7. Opinion & recommendation engine ═══
+  const opinionResponse = handleOpinionRequest(text, topics);
+  if (opinionResponse) return opinionResponse;
 
   // ═══ 9. Questions — use Q&A engine ═══
   if (parsed.qType) {
