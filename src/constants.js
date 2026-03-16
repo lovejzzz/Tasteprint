@@ -216,6 +216,7 @@ export const DEFAULT_PROPS = {
   hero:          { active: 0 },
   toggle:        { on: true },
   button:        { loading: false },
+  navbar:        { active: 0 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
