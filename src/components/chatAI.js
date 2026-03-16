@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 7: Multi-turn reasoning — question-answer linking
+   Round 8: Emotional intelligence — nuanced emotion detection & response
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -50,6 +50,182 @@ function sentiment(text) {
   }
   if (text.includes("!!")) sc+=0.5;
   return Math.max(-5, Math.min(5, sc));
+}
+
+/* ── Emotion Detection Engine ── */
+/*
+ * Goes beyond sentiment (a number) to detect nuanced emotional states
+ * from text signals: punctuation patterns, caps, word choices, repetition,
+ * conversation history, and emoji usage. Returns the dominant emotion
+ * with a confidence score so the response generator can match tone.
+ */
+
+const EMOTIONS = {
+  excited:     { weight: 0, signals: [] },
+  frustrated:  { weight: 0, signals: [] },
+  amused:      { weight: 0, signals: [] },
+  curious:     { weight: 0, signals: [] },
+  sarcastic:   { weight: 0, signals: [] },
+  venting:     { weight: 0, signals: [] },
+  affectionate:{ weight: 0, signals: [] },
+  neutral:     { weight: 0, signals: [] },
+};
+
+function detectEmotion(text, sent, parsed) {
+  const scores = { excited:0, frustrated:0, amused:0, curious:0, sarcastic:0, venting:0, affectionate:0, neutral:1 };
+  const raw = text;
+  const lower = text.toLowerCase();
+  const tokens = tokenize(text);
+
+  // ── Excitement signals ──
+  const exclamCount = (raw.match(/!/g)||[]).length;
+  if (exclamCount >= 2) scores.excited += 1.5 + exclamCount * 0.3;
+  if (/[A-Z]{3,}/.test(raw) && !/^[A-Z\s]+$/.test(raw.trim())) scores.excited += 1.2; // mixed caps (not all-caps)
+  if (/omg|yesss+|wooo+|lets go|can't wait|finally|amazing/i.test(lower)) scores.excited += 2;
+  if (/(🚀|🔥|🎉|✨|💯|⚡|🤩|😍|🥳|💪|🙌)/u.test(raw)) scores.excited += 1.5;
+  if (sent >= 2) scores.excited += sent * 0.5;
+
+  // ── Frustration signals ──
+  const allCaps = /^[A-Z\s!?.]+$/.test(raw.trim()) && raw.length > 5;
+  if (allCaps) scores.frustrated += 2.5;
+  if (/ugh+|argh+|ffs|wtf|omfg|come on|seriously\??|are you kidding/i.test(lower)) scores.frustrated += 2;
+  if (/i (already|just) (said|told|asked|mentioned)/i.test(lower)) scores.frustrated += 2.5;
+  if (/why (won't|doesn't|isn't|can't|don't)/i.test(lower)) scores.frustrated += 1.2;
+  if (/again\b|still\b.*broken|keeps?\s+(crash|fail|break)/i.test(lower)) scores.frustrated += 1.5;
+  if ((raw.match(/\?/g)||[]).length >= 3) scores.frustrated += 1; // multiple question marks
+  if (/(😤|😡|🤬|💀|😑|🙄)/u.test(raw)) scores.frustrated += 1.5;
+  if (sent <= -1) scores.frustrated += Math.abs(sent) * 0.4;
+  // Repeated questions — check if user asked same thing before
+  const prevUser = mem.prevUserMsg();
+  if (prevUser && similarity(lower, prevUser.text.toLowerCase()) > 0.6) scores.frustrated += 2;
+
+  // ── Amusement signals ──
+  if (/\b(lol|lmao|rofl|haha+|hehe+|lolol)\b/i.test(lower)) scores.amused += 2.5;
+  if (/😂|🤣|😆|💀.*lol|☠️/u.test(raw)) scores.amused += 2;
+  if (/that's (so |really )?(funny|hilarious)/i.test(lower)) scores.amused += 2;
+  if (/i'm (dead|dying|crying)/i.test(lower) && sent >= 0) scores.amused += 1.5;
+
+  // ── Curiosity signals ──
+  if (parsed?.qType) scores.curious += 1.5;
+  if (/i wonder|how (does|do|can|would)|what if|is it (true|possible)|tell me (about|more)/i.test(lower)) scores.curious += 2;
+  if (/fascinating|interesting|intriguing|curious|mind-blowing/i.test(lower)) scores.curious += 1.5;
+  if ((raw.match(/\?/g)||[]).length >= 2 && scores.frustrated < 2) scores.curious += 1;
+  if (/🤔|🧐|💭|❓/u.test(raw)) scores.curious += 1;
+
+  // ── Sarcasm signals ──
+  // Positive words in clearly negative context, or exaggerated politeness
+  if (/oh (great|wonderful|fantastic|perfect|brilliant|lovely)\b/i.test(lower) && sent <= 0) scores.sarcastic += 2.5;
+  if (/thanks (a lot|so much|for nothing)/i.test(lower) && sent <= 0) scores.sarcastic += 2.5;
+  if (/wow (so|such|very) (helpful|useful|great|nice)/i.test(lower)) scores.sarcastic += 2;
+  if (/sure(,| ) that (works|helps|makes sense)/i.test(lower) && sent < 0) scores.sarcastic += 1.5;
+  if (/🙃|🙄/u.test(raw)) scores.sarcastic += 1.5;
+  // "..." at the end often signals sarcasm or passive aggression
+  if (/\.{3,}$/.test(raw.trim()) && sent <= 0) scores.sarcastic += 0.8;
+
+  // ── Venting signals ──
+  // Long negative messages (stream of consciousness)
+  if (tokens.length > 15 && sent <= -1) scores.venting += 2;
+  if (/i (can't|cannot) (believe|stand|deal|handle|take)/i.test(lower)) scores.venting += 2;
+  if (/sick (of|and tired)|fed up|had enough|over it|done with/i.test(lower)) scores.venting += 2.5;
+  if (/everything is|nothing (works|is right)|i just (want|need|wish)/i.test(lower)) scores.venting += 1.5;
+  if (tokens.length > 20 && sent < 0) scores.venting += 1; // long + negative = venting
+
+  // ── Affection signals ──
+  if (/you('re| are) (the best|awesome|amazing|great|so (helpful|sweet|nice))/i.test(lower)) scores.affectionate += 2.5;
+  if (/i (love|adore) (you|this|talking|chatting)/i.test(lower)) scores.affectionate += 2;
+  if (/(❤️|🥰|💕|🫶|😘|💗|💖)/u.test(raw)) scores.affectionate += 2;
+  if (/thank(s| you) so much|means a lot|really appreciate/i.test(lower)) scores.affectionate += 1.5;
+
+  // Find dominant emotion
+  let best = "neutral", bestScore = 1;
+  for (const [emo, sc] of Object.entries(scores)) {
+    if (sc > bestScore) { best = emo; bestScore = sc; }
+  }
+
+  // Require minimum confidence threshold
+  if (bestScore < 1.5 && best !== "neutral") best = "neutral";
+
+  return { emotion: best, confidence: Math.min(bestScore / 4, 1), scores };
+}
+
+// Simple Jaccard-ish similarity for repeated-question detection
+function similarity(a, b) {
+  const sa = new Set(tokenize(a).map(stem));
+  const sb = new Set(tokenize(b).map(stem));
+  if (sa.size === 0 || sb.size === 0) return 0;
+  let overlap = 0;
+  for (const w of sa) if (sb.has(w)) overlap++;
+  return overlap / Math.max(sa.size, sb.size);
+}
+
+/* ── Emotion-Aware Response Pools ── */
+
+const EMOTION_RESPONSES = {
+  excited: [
+    "I LOVE your energy right now!! 🔥 Tell me everything!",
+    "Okay your excitement is contagious!! What's got you so hyped?",
+    "YESSS!! I'm here for this energy! 🚀 Keep going!",
+    "The enthusiasm!! I can feel it through the screen! 😊 What's happening?",
+    "This is the energy I live for! Spill the details! ✨",
+  ],
+  frustrated: [
+    "Hey, I totally get the frustration. Let's work through this together — what exactly is going wrong?",
+    "I can tell this is annoying. Deep breath — let me try to actually help. What's the core issue?",
+    "Ugh, that sounds maddening. Let's figure this out step by step. What's happening?",
+    "I hear you — that's genuinely frustrating. Walk me through it and let's see what we can do.",
+    "That's a pain. I want to help for real — what would be most useful right now?",
+  ],
+  amused: [
+    "😂😂 Okay that got me! I'm cracking up over here!",
+    "Hahaha I'm DEAD 💀 You're hilarious!",
+    "LOL okay you win that round 😂 What else you got?",
+    "I literally can't 😂 That's amazing. You're funny!",
+    "Hahaha! Okay I needed that laugh 😄 You've got jokes!",
+  ],
+  curious: [
+    "Ooh, great question! Let me think about that... 🤔",
+    "Now THAT's an interesting thing to wonder about! Here's my take —",
+    "I love that you're curious about this! Let's dig in —",
+    "What a fun rabbit hole to go down! So here's the thing —",
+    "That's the kind of question I live for! Okay so —",
+  ],
+  sarcastic: [
+    "Ha — I sense some sarcasm there 😄 Fair enough though! What would actually be helpful?",
+    "Okay okay, I deserved that one 😅 Let me try again — what do you actually need?",
+    "Reading between the lines here 🙃 What would genuinely help?",
+    "Heh, point taken! I'll try to be more useful. What's really going on?",
+    "I can take a hint 😄 Let me try a different approach — what's up?",
+  ],
+  venting: [
+    "I hear you. I'm just going to listen for a sec — sounds like you need to get this off your chest. 💙",
+    "That's a lot to deal with. Take your time — I'm not going anywhere. What's weighing on you most?",
+    "Sometimes you just need to let it out. I'm here for it. What's the biggest thing bothering you?",
+    "That sounds genuinely overwhelming. You don't have to have it all figured out right now. What feels most urgent?",
+    "I'm listening, no judgment. It sounds like things have been really hard. What do you need right now?",
+  ],
+  affectionate: [
+    "Aww, you're making me blush! 🥹 If I had a heart it'd be melting right now!",
+    "Stop, you're too kind! 😊 Right back at you — you're awesome to talk to!",
+    "You're the sweetest! This is why I love our chats 💙",
+    "That means so much! Genuinely — you made my day (do AIs have days? 😄)!",
+    "🥰 Okay now I'm all warm and fuzzy! You're amazing!",
+  ],
+};
+
+// Track recent emotions for trend detection
+let recentEmotions = [];
+
+function trackEmotion(emotion) {
+  recentEmotions.push(emotion);
+  if (recentEmotions.length > 6) recentEmotions.shift();
+}
+
+function getEmotionTrend() {
+  if (recentEmotions.length < 3) return null;
+  const last3 = recentEmotions.slice(-3);
+  // If same emotion 3x in a row, it's a strong trend
+  if (last3[0] === last3[1] && last3[1] === last3[2] && last3[0] !== "neutral") return last3[0];
+  return null;
 }
 
 /* ── Conversation Memory ── */
@@ -1027,11 +1203,37 @@ function generateResponse(text) {
   // ═══ 6. Joke request ═══
   if (primary?.intent === "joke") return pickNew(JOKES);
 
-  // ═══ 7. Empathy for negative sentiment ═══
-  if (sent <= -2) return pickNew(EMPATHY);
+  // ═══ 7. Emotion-aware responses ═══
+  const emo = detectEmotion(text, sent, parsed);
+  trackEmotion(emo.emotion);
 
-  // ═══ 8. Excitement for very positive ═══
-  if (sent >= 3 && nonMod.length === 0) return pickNew(EXCITED);
+  // Strong emotion detected — respond emotionally before anything else
+  if (emo.confidence >= 0.5 && emo.emotion !== "neutral") {
+    const emotionTrend = getEmotionTrend();
+
+    // Frustration escalation: if frustrated 3x, acknowledge the pattern
+    if (emo.emotion === "frustrated" && emotionTrend === "frustrated") {
+      return pickNew([
+        "Okay I can tell this has been consistently frustrating. I'm sorry. Let's reset — what would genuinely help right now?",
+        "I know I keep hearing frustration and I want to do better. What's the #1 thing I can help with?",
+        "You've been patient with me. Let's cut to the chase — what do you need?",
+      ]);
+    }
+
+    // High-confidence emotion → emotion-specific pool
+    if (emo.confidence >= 0.6 && EMOTION_RESPONSES[emo.emotion]) {
+      return pickNew(EMOTION_RESPONSES[emo.emotion]);
+    }
+
+    // Medium-confidence → blend: use emotion pool but allow fallthrough
+    if (emo.emotion === "frustrated" || emo.emotion === "venting") {
+      return pickNew(EMOTION_RESPONSES[emo.emotion]);
+    }
+  }
+
+  // Legacy sentiment fallbacks for edge cases the emotion engine misses
+  if (sent <= -2 && emo.emotion === "neutral") return pickNew(EMPATHY);
+  if (sent >= 3 && nonMod.length === 0 && emo.emotion === "neutral") return pickNew(EXCITED);
 
   // ═══ 8.5. Comparison engine — "X vs Y" ═══
   const comparison = handleComparison(text);
@@ -1457,10 +1659,20 @@ function calcTypingMs(response, userSent, parsed) {
   // Base delay: ~15ms per character, clamped
   let base = Math.min(Math.max(len * 15, 400), 2200);
 
-  // Sentiment adjustments
-  if (userSent <= -2) base *= 1.2;      // empathetic = slower, more thoughtful
-  if (userSent >= 3) base *= 0.75;      // excited = faster, matching energy
-  if (parsed?.qType === "about_ai") base *= 1.15; // "thinking" about itself
+  // Emotion-aware timing
+  const lastEmo = recentEmotions[recentEmotions.length - 1] || "neutral";
+  if (lastEmo === "frustrated") base *= 0.65;       // respond fast — don't make frustrated users wait
+  if (lastEmo === "excited") base *= 0.7;            // match their energy with quick replies
+  if (lastEmo === "venting") base *= 1.3;            // take time — show we're reading carefully
+  if (lastEmo === "curious") base *= 1.1;            // slight pause to "think" about the answer
+  if (lastEmo === "amused") base *= 0.75;            // quick banter
+
+  // Legacy sentiment fallback
+  if (lastEmo === "neutral") {
+    if (userSent <= -2) base *= 1.2;
+    if (userSent >= 3) base *= 0.75;
+  }
+  if (parsed?.qType === "about_ai") base *= 1.15;
 
   // Short replies are snappy
   if (len < 20) base = 300 + Math.random() * 300;
@@ -1480,8 +1692,12 @@ function calcTypingMs(response, userSent, parsed) {
  */
 
 function calcTypingPause(typingMs) {
-  // Only pause on longer typing durations, 25% chance
-  if (typingMs < 1000 || Math.random() > 0.25) return null;
+  const lastEmo = recentEmotions[recentEmotions.length - 1] || "neutral";
+  // Frustrated users: never pause — respond ASAP
+  if (lastEmo === "frustrated") return null;
+  // Venting/curious: higher pause chance (shows "careful reading")
+  const pauseChance = (lastEmo === "venting" || lastEmo === "curious") ? 0.4 : 0.25;
+  if (typingMs < 1000 || Math.random() > pauseChance) return null;
 
   // Pause happens 40-70% through the typing
   const pauseAt = typingMs * (0.4 + Math.random() * 0.3);
