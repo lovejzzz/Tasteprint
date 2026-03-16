@@ -64,17 +64,21 @@ function EditableMsg({ text, style, onEdit }) {
 }
 
 /* ── Typing indicator component ── */
-function TypingDots({ color }) {
+function TypingDots({ color, variant }) {
+  // Terminal variant uses blinking cursor instead of dots
+  if (variant === "terminal") {
+    return <span style={{ fontSize: 10, color, animation: "tp-blink 1s step-end infinite" }}>█</span>;
+  }
   return (
-    <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 0" }}>
+    <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "4px 0" }}>
       {[0, 1, 2].map(i => (
         <div
           key={i}
           style={{
-            width: 6, height: 6, borderRadius: 999,
+            width: i === 1 ? 7 : 6, height: i === 1 ? 7 : 6, borderRadius: 999,
             background: color,
-            opacity: 0.5,
-            animation: `tp-typing-dot 1.4s ease-in-out ${i * 0.2}s infinite`,
+            animation: `tp-typing-dot 1.6s cubic-bezier(.4,0,.2,1) ${i * 0.18}s infinite`,
+            willChange: "transform, opacity",
           }}
         />
       ))}
@@ -94,6 +98,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   const [sending, setSending] = useState(null);
   const [sendBtnAnim, setSendBtnAnim] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const [deliveredId, setDeliveredId] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const idRef = useRef(3);
@@ -135,26 +141,27 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     setTimeout(() => {
       setTyping(true);
 
+      const finishAi = () => {
+        const aiId = idRef.current++;
+        setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId }]);
+        setTyping(false);
+        // Show delivered checkmark briefly on the user's last message
+        setDeliveredId(myId);
+        setTimeout(() => setDeliveredId(null), 2000);
+      };
+
       if (pause) {
         // Simulate typing correction: type, pause (dots disappear), restart, finish
         setTimeout(() => {
           setTyping(false); // dots disappear — "rethinking"
           setTimeout(() => {
             setTyping(true); // restart typing
-            setTimeout(() => {
-              const aiId = idRef.current++;
-              setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId }]);
-              setTyping(false);
-            }, typingMs - pause.pauseAt);
+            setTimeout(finishAi, typingMs - pause.pauseAt);
           }, pause.pauseMs);
         }, pause.pauseAt);
       } else {
         // Normal typing flow
-        setTimeout(() => {
-          const aiId = idRef.current++;
-          setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId }]);
-          setTyping(false);
-        }, typingMs);
+        setTimeout(finishAi, typingMs);
       }
     }, 350);
   }, [inputVal]);
@@ -172,6 +179,20 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     setEmojiOpen(false);
     inputRef.current?.focus();
   }, []);
+
+  /* Helper: directional message animation based on sender */
+  const msgAnim = (m, isSending) => {
+    if (isSending) return "tp-msg-send .5s cubic-bezier(.22,1.2,.36,1) both";
+    return m.from === "me"
+      ? "tp-msg-me-in .4s cubic-bezier(.22,1,.36,1) both"
+      : "tp-msg-ai-in .4s cubic-bezier(.22,1,.36,1) both";
+  };
+
+  /* Helper: input focus glow style */
+  const inputGlow = (color) => inputFocused ? { boxShadow: `0 0 0 2px ${color}25`, borderColor: color, transition: "box-shadow .25s ease, border-color .25s ease" } : { transition: "box-shadow .25s ease, border-color .25s ease" };
+
+  /* Helper: onFocus/onBlur handlers for input glow */
+  const focusHandlers = { onFocus: () => setInputFocused(true), onBlur: () => setInputFocused(false) };
 
   /* ── Bubble variant (v===0) — iMessage style ── */
   if (v === 0) return (
@@ -191,9 +212,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             style={{
               display: "flex",
               justifyContent: m.from === "me" ? "flex-end" : "flex-start",
-              animation: sending === m.id
-                ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both"
-                : "tp-msg-appear .3s ease-out both",
+              alignItems: "flex-end",
+              gap: 4,
+              animation: msgAnim(m, sending === m.id),
             }}
           >
             <div style={{
@@ -203,9 +224,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
               background: m.from === "me" ? p.ac : p.su,
               boxShadow: m.from === "me" ? `0 2px 8px ${p.ac}20` : "none",
               "--glow-color": `${p.ac}30`,
-              animation: sending === m.id
-                ? `tp-msg-send .4s cubic-bezier(.22,1,.36,1) both, tp-msg-glow .6s ease-out .15s both`
-                : undefined,
+              animation: sending === m.id ? "tp-msg-glow .6s ease-out .15s both" : undefined,
+              transition: "box-shadow .3s ease",
             }}>
               <EditableMsg
                 text={m.text}
@@ -213,10 +233,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
                 style={{ fontSize: 11, color: m.from === "me" ? onAc : p.tx, lineHeight: "1.45", wordBreak: "break-word" }}
               />
             </div>
+            {m.from === "me" && deliveredId === m.id && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, animation: "tp-check-pop .4s cubic-bezier(.34,1.56,.64,1) both" }}><polyline points="20 6 9 17 4 12" /></svg>
+            )}
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-msg-appear .2s ease-out" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ padding: "8px 14px", borderRadius: "14px 14px 14px 4px", background: p.su }}>
               <TypingDots color={p.mu} />
             </div>
@@ -240,11 +263,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           onChange={e => setInputVal(e.target.value)}
           onKeyDown={handleKeyDown}
           onMouseDown={e => e.stopPropagation()}
+          {...focusHandlers}
           placeholder="Type a message..."
           style={{
             flex: 1, height: 32, borderRadius: 999, border: `1px solid ${p.bd}`,
             background: p.su, padding: "0 12px", fontSize: 11, color: p.tx,
             fontFamily: "inherit", outline: "none",
+            ...inputGlow(p.ac),
           }}
         />
         <button
@@ -284,7 +309,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             key={m.id}
             style={{
               display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 2px",
-              animation: sending === m.id ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both" : "tp-fadein .25s ease-out both",
+              animation: msgAnim(m, sending === m.id),
             }}
           >
             <div style={{
@@ -311,7 +336,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 2px", animation: "tp-fadein .2s ease-out" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 2px", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ width: 22, height: 22, borderRadius: 999, background: p.mu + "20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600, color: p.mu }}>A</div>
             <TypingDots color={p.mu} />
           </div>
@@ -326,11 +351,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           onChange={e => setInputVal(e.target.value)}
           onKeyDown={handleKeyDown}
           onMouseDown={e => e.stopPropagation()}
+          {...focusHandlers}
           placeholder="Reply..."
           style={{
             flex: 1, height: 30, borderRadius: 8, border: `1px solid ${p.bd}`,
             background: "transparent", padding: "0 10px", fontSize: 11, color: p.tx,
             fontFamily: "inherit", outline: "none",
+            ...inputGlow(p.ac),
           }}
         />
         <div style={{ position: "relative" }}>
@@ -376,7 +403,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             key={m.id}
             style={{
               display: "flex", gap: 8,
-              animation: sending === m.id ? "tp-msg-send .3s ease both" : "tp-fadein .2s ease-out both",
+              animation: msgAnim(m, sending === m.id),
             }}
           >
             <span style={{ fontSize: 9, color: m.from === "me" ? p.ac : "#666", opacity: 0.6, flexShrink: 0 }}>
@@ -390,9 +417,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", gap: 8, animation: "tp-fadein .2s ease-out" }}>
+          <div style={{ display: "flex", gap: 8, animation: "tp-typing-enter .3s cubic-bezier(.22,1,.36,1) both" }}>
             <span style={{ fontSize: 9, color: "#666", opacity: 0.6 }}>AI &gt;</span>
-            <span style={{ fontSize: 10, color: p.ac, animation: "tp-blink 1s step-end infinite" }}>█</span>
+            <TypingDots color={p.ac} variant="terminal" />
           </div>
         )}
       </div>
@@ -448,7 +475,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", minHeight: 0 }}>
         {messages.map((m) => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: sending === m.id ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both" : "tp-msg-appear .3s ease-out both" }}>
+          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: msgAnim(m, sending === m.id) }}>
             <div style={{
               maxWidth: "80%", padding: "8px 13px", position: "relative",
               borderRadius: m.from === "me" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
@@ -457,13 +484,16 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
               WebkitBackdropFilter: m.from === "me" ? "none" : "blur(8px)",
               border: m.from === "me" ? "none" : `1px solid ${p.ac}12`,
               boxShadow: m.from === "me" ? `0 4px 16px ${p.ac}25` : `0 2px 8px ${p.tx}06, inset 0 1px 0 ${p.card}40`,
+              "--glow-color": `${p.ac}25`,
+              animation: sending === m.id ? "tp-msg-glow .7s ease-out .1s both" : undefined,
+              transition: "box-shadow .3s ease",
             }}>
               <EditableMsg text={m.text} onEdit={t => editMessage(m.id, t)} style={{ fontSize: 11, color: m.from === "me" ? onAc : p.tx, lineHeight: "1.5", wordBreak: "break-word" }} />
             </div>
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-msg-appear .2s ease-out" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ padding: "9px 16px", borderRadius: "16px 16px 16px 4px", background: `${p.card}70`, backdropFilter: "blur(8px)", border: `1px solid ${p.ac}12`, boxShadow: `inset 0 1px 0 ${p.card}40` }}>
               <TypingDots color={p.ac} />
             </div>
@@ -504,9 +534,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       </div>
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0, background: p.bg }}>
-        {messages.map((m, i) => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: sending === m.id ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both" : `tp-msg-appear .3s ease-out ${i * 0.03}s both` }}>
-            {m.from !== "me" && <div style={{ width: 22, height: 22, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}30, ${p.ac2}30)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6, marginTop: 2 }}>
+        {messages.map((m) => (
+          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 4, animation: msgAnim(m, sending === m.id) }}>
+            {m.from !== "me" && <div style={{ width: 22, height: 22, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}30, ${p.ac2}30)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 2, marginBottom: 2 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /></svg>
             </div>}
             <div style={{
@@ -515,17 +545,19 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
               background: m.from === "me" ? `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})` : p.su,
               boxShadow: m.from === "me" ? `0 2px 10px ${p.ac}20` : "none",
               border: m.from === "me" ? "none" : `1px solid ${p.bd}`,
+              "--glow-color": `${p.ac}25`,
+              animation: sending === m.id ? "tp-msg-glow .6s ease-out .15s both" : undefined,
             }}>
               <EditableMsg text={m.text} onEdit={t => editMessage(m.id, t)} style={{ fontSize: 11, color: m.from === "me" ? onAc : p.tx, lineHeight: "1.5", wordBreak: "break-word" }} />
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 3, gap: 3 }}>
                 <span style={{ fontSize: 8, color: m.from === "me" ? onAc + "60" : p.mu, opacity: 0.5 }}>now</span>
-                {m.from === "me" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={onAc + "60"} strokeWidth="2.5" strokeLinecap="round" style={{ marginLeft: 3 }}><polyline points="20 6 9 17 4 12" /></svg>}
+                {m.from === "me" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={deliveredId === m.id ? onAc : onAc + "40"} strokeWidth="2.5" strokeLinecap="round" style={{ animation: deliveredId === m.id ? "tp-check-pop .35s cubic-bezier(.34,1.56,.64,1) both" : "none", transition: "stroke .3s" }}><polyline points="20 6 9 17 4 12" /></svg>}
               </div>
             </div>
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-msg-appear .2s ease-out" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ width: 22, height: 22, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}30, ${p.ac2}30)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /></svg>
             </div>
@@ -562,21 +594,22 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
         </div>
       </div>
       <div ref={scrollRef} style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0 }}>
-        {messages.map((m, i) => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: sending === m.id ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both" : `tp-msg-appear .3s ease-out ${i * 0.03}s both` }}>
+        {messages.map((m) => (
+          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: msgAnim(m, sending === m.id) }}>
             <div style={{
               maxWidth: "78%", padding: "7px 10px",
               borderRadius: 2,
               background: m.from === "me" ? p.tx : p.card,
               border: `2px solid ${p.tx}`,
               boxShadow: m.from === "me" ? `2px 2px 0 ${p.ac}` : `2px 2px 0 ${p.tx}40`,
+              transition: "box-shadow .2s ease",
             }}>
               <EditableMsg text={m.text} onEdit={t => editMessage(m.id, t)} style={{ fontSize: 11, color: m.from === "me" ? p.card : p.tx, fontWeight: 600, lineHeight: "1.5", letterSpacing: "0.01em", wordBreak: "break-word" }} />
             </div>
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-msg-appear .2s ease-out" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .3s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ padding: "8px 12px", borderRadius: 2, border: `2px solid ${p.tx}`, boxShadow: `2px 2px 0 ${p.tx}40` }}>
               <TypingDots color={p.tx} />
             </div>
@@ -616,8 +649,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
         <span style={{ fontSize: 8, color: p.mu }}>{messages.length}</span>
       </div>
       <div ref={scrollRef} style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0, position: "relative", zIndex: 1 }}>
-        {messages.map((m, i) => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: sending === m.id ? "tp-msg-send .35s cubic-bezier(.2,.8,.3,1.2) both" : `tp-msg-appear .3s ease-out ${i * 0.03}s both` }}>
+        {messages.map((m) => (
+          <div key={m.id} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animation: msgAnim(m, sending === m.id) }}>
             {m.from !== "me" && <div style={{ width: 20, height: 20, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}20, ${ac2}15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6, marginTop: 2, boxShadow: `0 0 8px ${p.ac}15` }}>
               <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2.5s ease infinite" }} />
             </div>}
@@ -627,6 +660,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
               background: m.from === "me" ? `linear-gradient(135deg, ${p.ac}, ${ac2})` : p.card,
               border: m.from === "me" ? "none" : `1px solid ${p.ac}15`,
               boxShadow: m.from === "me" ? `0 2px 12px ${p.ac}25, 0 0 0 1px ${p.ac}10` : `0 1px 6px ${p.tx}06`,
+              "--glow-color": `${p.ac}20`,
+              animation: sending === m.id ? "tp-msg-glow .7s ease-out .1s both" : undefined,
             }}>
               {m.from === "me" && <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)`, animation: "tp-shimmer-slide 2.5s ease-in-out infinite", pointerEvents: "none" }} />}
               <EditableMsg text={m.text} onEdit={t => editMessage(m.id, t)} style={{ fontSize: 11, color: m.from === "me" ? onAc : p.tx, lineHeight: "1.5", wordBreak: "break-word", position: "relative", zIndex: 1 }} />
@@ -634,7 +669,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-msg-appear .2s ease-out" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ width: 20, height: 20, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}20, ${ac2}15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6, boxShadow: `0 0 8px ${p.ac}15` }}>
               <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
             </div>
