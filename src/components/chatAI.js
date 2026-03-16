@@ -7232,6 +7232,137 @@ function precisionEcho(response, text, tokens) {
   return response;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   NUANCED STANCE & OPINION DEPTH ENGINE (Round 43)
+   The AI always agrees. Real people don't. This engine adds the
+   ability to respectfully push back, play devil's advocate, offer
+   counterpoints, or take a genuine position. The goal: make the AI
+   feel like it has actual views, not just mirrors of the user's.
+
+   Strategies:
+   1. Respectful disagreement — "I see where you're coming from, but..."
+   2. Devil's advocate — "Let me push back on that for a sec..."
+   3. Nuanced "it depends" — with actual reasoning, not cop-out
+   4. Strong preference — genuinely picks a side with a WHY
+
+   Fire rate: ~12% of opinion-adjacent responses, 5-turn cooldown.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastStanceTurn = 0;
+
+// Debate seeds: topics where the AI has a genuine contrarian angle
+const COUNTERPOINTS = {
+  // Tech debates
+  typescript: ["TypeScript adds overhead that isn't always worth it — for small scripts, plain JS is faster and simpler", "The type system can give you false confidence — runtime is still wild"],
+  react: ["React's mental model is clean, but the ecosystem fragmentation is real — too many ways to do everything", "The hooks model is powerful but the dependency array footgun catches even experienced devs"],
+  vue: ["Vue's simplicity is great to start, but some of its 'magic' makes debugging harder at scale", "The Options API vs Composition API split means two codebases in one framework"],
+  angular: ["Angular gets a bad rap, but its opinionated structure actually saves time on big teams", "The learning curve is steep, but once you're in, you move fast"],
+  python: ["Python's speed is fine for most things, but the GIL means you're fighting it for real concurrency", "The dynamic typing that makes it easy to learn also makes it easy to ship subtle bugs"],
+  rust: ["Rust's safety guarantees are incredible, but the compile times and learning curve are a real cost", "Not every project needs Rust-level safety — sometimes Go or even JS is the right pragmatic call"],
+  ai: ["AI tools are amazing assistants, but the over-reliance on them is making people skip the learning stage", "The hype cycle is real — most 'AI features' are fancy autocomplete, and that's okay"],
+  css: ["CSS is actually beautiful once you stop fighting it — the problem is usually the mental model, not the language", "Tailwind is great but it trades one complexity for another — your HTML becomes the mess instead"],
+  tailwind: ["Tailwind is productive, but 'utility-first' can mean your markup becomes unreadable spaghetti", "The flip side: you never have to name CSS classes, and naming things is genuinely one of the hardest problems"],
+  nextjs: ["Next.js is powerful but the constant API changes between versions cause real churn fatigue", "Server components are cool in theory, but the mental model of what runs where gets confusing fast"],
+  // Design debates
+  design: ["Minimal design is trendy but sometimes 'clean' just means 'empty' — density has value too", "The best design is often invisible, but invisible design doesn't win awards — there's tension there"],
+  figma: ["Figma is dominant for good reason, but the browser-based approach means you're always one bad connection from frustration", "Figma's collaboration model changed design, but too many cooks in a Figma file is chaos"],
+  // Life/work debates
+  remote: ["Remote work is freedom, but the serendipitous hallway conversations you lose are genuinely hard to replace", "Fully remote teams can work, but it requires 3x the intentional communication effort"],
+  startup: ["Startups are exciting but the romanticization hides the fact that most fail, and the ones that succeed often grind people down", "The 'move fast and break things' ethos is great until you're the thing that breaks"],
+  productivity: ["Most productivity advice is procrastination with extra steps — the real hack is just doing the boring thing", "Deep work is ideal but modern work rarely allows for it — the ability to context-switch well is underrated"],
+  learning: ["Tutorial hell is real — at some point you have to close the tutorial and build something ugly", "Everyone says 'learn by building' but sometimes you need the theory first or you just build bad habits"],
+};
+
+// Detect when the user states an opinion we can engage with
+function detectStanceOpportunity(text, lower, topics) {
+  // User states a strong opinion
+  const opinionSignals = [
+    /i (?:think|believe|feel like|feel that) (.+?)(?:\.|!|$)/i,
+    /(.+?) is (?:the best|better than|overrated|underrated|overhyped|garbage|amazing|terrible|the worst|the future)/i,
+    /(?:everyone|nobody|people) should (?:use|learn|try|stop using|switch to) (.+?)(?:\.|!|$)/i,
+    /i (?:hate|love|can't stand|prefer|always use|never use) (.+?)(?:\.|!|$)/i,
+    /(.+?) (?:is dead|is dying|sucks|rules|wins|loses)/i,
+  ];
+
+  for (const pat of opinionSignals) {
+    if (pat.test(text)) return true;
+  }
+
+  // User asks for the AI's opinion
+  if (/what (?:do )?you (?:think|reckon|feel)/i.test(lower)) return true;
+  // User presents a comparison
+  if (/(?:vs\.?|versus|or|compared to)\b/i.test(lower) && topics.length > 0) return true;
+
+  return false;
+}
+
+function addStance(response, text, topics) {
+  // Guards
+  if (response.length < 30) return response;
+  if (mem.turn - lastStanceTurn < 5) return response;
+  if (/^(hey|hi|hello|bye|see you|take care)/i.test(response)) return response;
+
+  const lower = text.toLowerCase();
+  if (!detectStanceOpportunity(text, lower, topics)) return response;
+
+  // 12% fire rate
+  if (Math.random() > 0.12) return response;
+
+  // Find a relevant counterpoint
+  let counterTopic = null;
+  let counter = null;
+  for (const topic of topics) {
+    if (COUNTERPOINTS[topic]) {
+      counterTopic = topic;
+      counter = pick(COUNTERPOINTS[topic]);
+      break;
+    }
+  }
+
+  if (!counter) return response;
+
+  lastStanceTurn = mem.turn;
+  const strategy = Math.random();
+
+  // Strategy 1: Respectful disagreement (~30%)
+  if (strategy < 0.30) {
+    const disagreements = [
+      `I hear you, but let me push back gently: ${counter}. What do you think about that angle?`,
+      `Okay, here's where I might disagree a little — ${counter}. Not saying you're wrong, just... there's another side.`,
+      `That's a fair take! Though — ${counter}. I go back and forth on this honestly.`,
+    ];
+    return pick(disagreements);
+  }
+
+  // Strategy 2: Devil's advocate (~25%)
+  if (strategy < 0.55) {
+    const advocates = [
+      `Let me play devil's advocate for a sec: ${counter}. But I get why you'd disagree.`,
+      `Okay, counterpoint though — ${counter}. I don't fully believe that myself, but it's worth considering.`,
+      `The other side of that coin: ${counter}. Where do you land on it?`,
+    ];
+    return pick(advocates);
+  }
+
+  // Strategy 3: Nuanced "it depends" with reasoning (~25%)
+  if (strategy < 0.80) {
+    const nuanced = [
+      `Honestly? It depends. ${counter}. But in the right context, your take is totally valid too.`,
+      `I'm genuinely torn on this one. On one hand, sure. On the other: ${counter}. Context matters a lot here.`,
+      `This is one of those things where both sides have a point. ${counter}. But also, your perspective makes sense for your situation.`,
+    ];
+    return pick(nuanced);
+  }
+
+  // Strategy 4: Strong position (~20%)
+  const positions = [
+    `Hot take: ${counter}. I'll die on this hill. But convince me otherwise! 😄`,
+    `Okay, real talk — ${counter}. That's just how I see it. Am I wrong?`,
+    `I actually have a strong opinion here: ${counter}. Fight me on it. 😄`,
+  ];
+  return pick(positions);
+}
+
 /* ── Conversation Arc Awareness ──
  * Tracks the NARRATIVE of the conversation — not just individual messages,
  * but the progression of topics, mood, and depth. At key moments,
@@ -7527,6 +7658,9 @@ export function getAIResponse(input) {
   // ═══ Pattern breaking: detect structural ruts and inject surprise ═══
   response = breakPattern(response, text, currentTopics, inputEnergy);
 
+  // ═══ Nuanced stance: occasionally push back, play devil's advocate, take positions ═══
+  response = addStance(response, text, currentTopics);
+
   // ═══ Subtext-aware tone adjustment: soften/adjust based on what user actually means ═══
   response = adjustForSubtext(response, subtext);
 
@@ -7566,6 +7700,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
