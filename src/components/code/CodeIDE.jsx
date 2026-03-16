@@ -293,6 +293,7 @@ const PARAM_HINTS = {
 const SHORTCUTS = [
   { cat: 'General', items: [
     ['\u2318+Enter', 'Run code'],
+    ['\u2318+Shift+Enter', 'Run selection'],
     ['\u2318+S', 'Save state'],
     ['\u2318+P', 'Command palette'],
     ['\u2318+K', 'Shortcuts help'],
@@ -620,6 +621,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Recently closed tabs ---- */
   const closedTabs = React.useRef([]);
+
+  /* ---- Peek definition ---- */
+  const [peekDef, setPeekDef] = React.useState(null); // { method, line }
 
   /* ---- Breadcrumb dropdown ---- */
   const [breadcrumbDrop, setBreadcrumbDrop] = React.useState(null);
@@ -1397,6 +1401,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const commands = React.useMemo(() => {
     const cmds = [
       { label: 'Run Code', key: 'run', hint: '\u2318+Enter' },
+      { label: 'Run Selection', key: 'runsel', hint: '\u2318+\u21E7+Enter' },
       { label: 'Toggle Terminal', key: 'term', hint: '' },
       { label: 'Toggle Explorer', key: 'tree', hint: '' },
       { label: 'Find', key: 'find', hint: '\u2318+F' },
@@ -1462,6 +1467,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const runCommand = (key) => {
     setCmdOpen(false); setCmdQuery('');
     if (key === 'run') runCode();
+    else if (key === 'runsel') { const el = taRef.current; if (el && el.selectionStart !== el.selectionEnd) runSelection(); else showToast('Select code to run', 'warn'); }
     else if (key === 'term') setTermOpen(t => !t);
     else if (key === 'tree') setSidebarMode(m => m === 'files' ? null : 'files');
     else if (key === 'find') { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }
@@ -1669,6 +1675,47 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
   };
 
+  /* ---- Run selected code only ---- */
+  const runSelection = () => {
+    const el = taRef.current;
+    if (!el || el.selectionStart === el.selectionEnd) return;
+    const sel = code.substring(el.selectionStart, el.selectionEnd);
+    setBusy(true); setTermOpen(true);
+    const logs = [];
+    const ts = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const fc = {
+      log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' '), ts: ts() }),
+      error: (...a) => logs.push({ t: 'err', v: a.map(String).join(' '), ts: ts() }),
+      warn: (...a) => logs.push({ t: 'warn', v: a.map(String).join(' '), ts: ts() }),
+      info: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '), ts: ts() }),
+    };
+    logs.push({ t: 'log', v: '\u25B7 Running selection...', ts: ts() });
+    const t0 = performance.now();
+    const isAsync = /\bawait\b/.test(sel);
+    if (isAsync) {
+      const fn = new Function('console', 'tp', `return (async () => {\n${sel}\n})()`);
+      fn(fc, tp || {}).then(r => {
+        const ms = (performance.now() - t0).toFixed(1);
+        if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
+        setOutput(prev => ({ logs: [...(prev?.logs || []), ...logs], ms, err: null, errLn: null }));
+        setBusy(false);
+      }).catch(e => {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), ...logs, { t: 'err', v: e.message }], ms: null, err: e.message, errLn: null }));
+        setBusy(false);
+      });
+    } else {
+      try {
+        const r = new Function('console', 'tp', sel)(fc, tp || {});
+        const ms = (performance.now() - t0).toFixed(1);
+        if (r !== undefined) logs.push({ t: 'ret', v: '\u2190 ' + JSON.stringify(r) });
+        setOutput(prev => ({ logs: [...(prev?.logs || []), ...logs], ms, err: null, errLn: null }));
+      } catch (e) {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), ...logs, { t: 'err', v: e.message }], ms: null, err: e.message, errLn: null }));
+      }
+      setTimeout(() => setBusy(false), 300);
+    }
+  };
+
   /* ---- Format code (simple auto-indent) ---- */
   const formatCode = () => {
     if (readonly) return;
@@ -1756,9 +1803,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     const el = e.target;
     const s = el.selectionStart, en = el.selectionEnd;
 
-    /* Run: Cmd+Enter / Insert line above: Cmd+Shift+Enter */
+    /* Cmd+Shift+Enter: run selection if selected, else insert line above */
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
       e.preventDefault();
+      if (s !== en) { runSelection(); return; }
       if (readonly) return;
       const lineStart = code.lastIndexOf('\n', s - 1) + 1;
       const currentIndent = code.substring(lineStart, s).match(/^(\s*)/)[0];
@@ -1865,6 +1913,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
     /* Escape: close overlays */
     if (e.key === 'Escape') {
+      if (peekDef) { setPeekDef(null); return; }
       if (acOpen) { setAcOpen(false); return; }
       if (surroundMenu) { setSurroundMenu(null); return; }
       if (searchOpen) { setSearchOpen(false); return; }
@@ -3694,7 +3743,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 }}
                 onClick={e => {
                   updateCursor(e.target);
-                  // Cmd+Click: go to definition for tp methods
+                  // Cmd+Click: peek definition for tp methods
                   if (e.metaKey || e.ctrlKey) {
                     const el = e.target;
                     const pos = el.selectionStart;
@@ -3702,8 +3751,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     const after = code.substring(pos, Math.min(code.length, pos + 30));
                     const m = (before + after).match(/tp\.(\w+)/);
                     if (m && TP_DOCS[m[1]]) {
-                      openFile('docs/api.js');
-                      showToast(`Jumped to tp.${m[1]} docs`, 'info');
+                      setPeekDef({ method: m[1], line: activeLn });
                     }
                   }
                 }}
@@ -4034,6 +4082,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     null,
                     { label: 'Format Document', action: formatCode, disabled: readonly },
                     { label: 'Run', action: runCode, hint: '\u2318+Enter', disabled: readonly },
+                    { label: 'Run Selection', action: () => { const el = taRef.current; if (el && el.selectionStart !== el.selectionEnd) runSelection(); else showToast('Select code to run', 'warn'); }, disabled: readonly },
                   ].map((item, i) => item === null ? (
                     <div key={`sep-${i}`} style={{ height: 1, background: '#ffffff08', margin: '2px 0' }} />
                   ) : (
@@ -4050,6 +4099,46 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   ))}
                 </div>
               )}
+
+              {/* Peek definition panel */}
+              {peekDef && TP_DOCS[peekDef.method] && (() => {
+                const doc = TP_DOCS[peekDef.method];
+                const docLines = doc.split('\n');
+                const lineH = Math.round(16 * zf);
+                const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
+                const topPos = Math.min((peekDef.line) * lineH - scrollTop + 8, 200);
+                return (
+                  <div style={{
+                    position: 'absolute', left: gutterW + 8, right: showMinimap ? 48 : 8,
+                    top: Math.max(8, topPos), zIndex: 15,
+                    background: '#1e1e2e', border: '1px solid #cba6f740',
+                    borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,.6)', overflow: 'hidden',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', background: '#181825', borderBottom: '1px solid #ffffff10' }}>
+                      <span style={{ fontSize: fs(8), color: '#cba6f7', fontWeight: 600, flex: 1 }}>tp.{peekDef.method}</span>
+                      <span onClick={() => { openFile('docs/api.js'); setPeekDef(null); showToast(`Opened tp.${peekDef.method} docs`, 'info'); }}
+                        style={{ fontSize: fs(7), color: '#89b4fa', cursor: 'pointer', marginRight: 8 }}
+                        onMouseDown={stop}>Open Full Docs</span>
+                      <span onClick={() => setPeekDef(null)} onMouseDown={stop}
+                        style={{ fontSize: 10, color: '#555', cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</span>
+                    </div>
+                    <div style={{ padding: '6px 10px', fontFamily: MONO, fontSize: fs(9), lineHeight: '1.5', maxHeight: 100, overflow: 'auto' }}>
+                      {docLines.map((dl, di) => (
+                        <div key={di} style={{ color: di === 0 ? '#cba6f7' : '#a6adc8' }}>
+                          <HighlightLine text={dl} />
+                        </div>
+                      ))}
+                      {PARAM_HINTS[peekDef.method] && (
+                        <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid #ffffff08' }}>
+                          {PARAM_HINTS[peekDef.method].map((p, pi) => (
+                            <div key={pi} style={{ fontSize: fs(8), color: '#f9e2af' }}>{p}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Read-only badge */}
               {readonly && (
@@ -4197,6 +4286,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         if (/\bnew\s+Object\b/.test(l)) hints.push({ ln: i + 1, msg: 'Use {} instead of new Object()', sev: 'info', fix: () => {
                           const all = code.split('\n'); all[i] = all[i].replace(/new\s+Object\(\)/g, '{}'); setCode(all.join('\n')); showToast('Fixed: new Object() → {}', 'success');
                         }});
+                        if (/\btypeof\s+\w+\s*===?\s*'undefined'/.test(l)) hints.push({ ln: i + 1, msg: 'Consider optional chaining (?.) instead', sev: 'info' });
+                        if (/[^=!<>]=\s*=(?!=)/.test(l) && /if|while|for/.test(l)) hints.push({ ln: i + 1, msg: 'Assignment in condition — use === for comparison', sev: 'warn' });
+                        if (/\.then\s*\(/.test(l) && /\bawait\b/.test(code)) hints.push({ ln: i + 1, msg: 'Consider using await instead of .then()', sev: 'info' });
                       });
                       const fixable = hints.filter(h => h.fix);
                       return hints.length > 0 || output?.err ? (<>
