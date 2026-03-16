@@ -85,7 +85,7 @@ export const VARIANTS = {
   testimonial:["Card","Minimal","Bubble","Glass","Hero"],
   "cmd-palette":["Full","Minimal","Grouped"],
   stepper:   ["Horizontal","Vertical","Dots","Pill","Icon"],
-  timeline:  ["Left","Centered","Minimal"],
+  timeline:  ["Left","Centered","Minimal","Card","Activity"],
   chat:      ["Bubble","Thread","Terminal"],
   "media-player":["Minimal","Full","Terminal"],
   "profile-card":["Standard","Compact","Terminal"],
