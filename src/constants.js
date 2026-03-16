@@ -199,6 +199,9 @@ export const DEFAULT_PROPS = {
   "product-card":{ wishlisted: false },
   "profile-card":{ online: true },
   kanban:        { active: 1 },
+  skeleton:      { loading: true },
+  "bento-grid":  { active: 0 },
+  "feature-table":{ highlight: 1 },
   "cart-item":   { qty: 1 },
 };
 

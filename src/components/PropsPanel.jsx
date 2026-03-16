@@ -77,12 +77,13 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
-  /* Chart highlight bar */
+  /* Highlight (chart bar or feature-table row) */
   if ("highlight" in defaults) {
     const hl = G("highlight");
     const bars = G("bars") || defaults.bars;
-    controls.push(<React.Fragment key="hl"><span style={label}>Highlight</span>
-      {bars.map((_, i) => <button key={i} style={{ ...btn(hl === i), width: 18, height: 18, fontSize: 8 }} onMouseDown={stop} onClick={() => onProp("highlight", i)}>{i + 1}</button>)}
+    const hlCount = bars ? bars.length : ({ "feature-table": 4 }[type] || 4);
+    controls.push(<React.Fragment key="hl"><span style={label}>{bars ? "Highlight" : "Row"}</span>
+      {Array.from({ length: hlCount }, (_, i) => <button key={i} style={{ ...btn(hl === i), width: 18, height: 18, fontSize: 8 }} onMouseDown={stop} onClick={() => onProp("highlight", i)}>{i + 1}</button>)}
     </React.Fragment>);
   }
 
@@ -169,6 +170,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
     const on = G("online");
     controls.push(<React.Fragment key="online"><span style={label}>{on ? "Online" : "Offline"}</span>
       <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#22c55e" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("online", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
+  /* Loading toggle (skeleton) */
+  if ("loading" in defaults) {
+    const on = G("loading");
+    controls.push(<React.Fragment key="loading"><span style={label}>{on ? "Loading" : "Loaded"}</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("loading", !on)}>
         <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
       </button>
     </React.Fragment>);
