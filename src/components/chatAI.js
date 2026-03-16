@@ -13086,6 +13086,158 @@ function applySpecificityAnchoring(response, text, topics) {
   return response;
 }
 
+/* ── Conversational Contrastive Framing (Round 80) ──
+ * Real conversations aren't just agreement loops. Interesting humans
+ * offer contrasting perspectives: "but have you thought about...",
+ * "interesting — though the flip side is...", "what if it's actually..."
+ *
+ * This system detects when the user makes a strong claim and occasionally
+ * generates a genuine counter-angle using topic knowledge (ASSOC data,
+ * related topics, common tensions). NOT disagreement — it's intellectual
+ * play. The AI reframes without invalidating.
+ *
+ * Key distinction from calibrated agreement: agreement controls the
+ * LEVEL of agreement. This generates the actual contrasting CONTENT.
+ *
+ * 15% fire rate, 5-turn cooldown. Only triggers on strong claims.
+ */
+
+let lastContrastTurn = 0;
+
+// Common topic tensions/polarities — when user leans one way, offer the other
+const TOPIC_TENSIONS = {
+  simplicity: "complexity", complexity: "simplicity",
+  speed: "quality", quality: "speed",
+  consistency: "creativity", creativity: "consistency",
+  planning: "spontaneity", spontaneity: "planning",
+  specialization: "generalization", generalization: "specialization",
+  minimalism: "expressiveness", expressiveness: "minimalism",
+  structure: "flexibility", flexibility: "structure",
+  theory: "practice", practice: "theory",
+  convention: "innovation", innovation: "convention",
+  control: "trust", trust: "control",
+  depth: "breadth", breadth: "depth",
+  solo: "collaboration", collaboration: "independence",
+  perfection: "iteration", iteration: "polish",
+};
+
+// Detect a strong stance the user is taking
+function detectUserStance(text) {
+  const lower = text.toLowerCase();
+
+  // Look for strong directional claims
+  const stancePatterns = [
+    { pattern: /\b(?:always|never|the only way|you have to|you need to|the best|the worst)\b/i, strength: "absolute" },
+    { pattern: /\b(?:way better|much worse|so much more|far more important|clearly superior)\b/i, strength: "comparative" },
+    { pattern: /\b(?:overrated|underrated|everyone should|nobody should|waste of time)\b/i, strength: "evaluative" },
+    { pattern: /\b(?:I (?:always|never|only) |I (?:can't stand|refuse to|won't))\b/i, strength: "personal" },
+  ];
+
+  for (const { pattern, strength } of stancePatterns) {
+    if (pattern.test(lower)) {
+      // Extract what the stance is about (next 3-6 words after the marker)
+      const m = lower.match(new RegExp(pattern.source + "\\s+(.{4,40}?)(?:\\.|,|!|\\?|$)", "i"));
+      return { strength, subject: m ? m[1]?.trim() : null };
+    }
+  }
+
+  return null;
+}
+
+// Find a contrasting angle from ASSOC knowledge
+function findContrastAngle(text, topics) {
+  const lower = text.toLowerCase();
+
+  // Check topic tensions
+  for (const [pole, opposite] of Object.entries(TOPIC_TENSIONS)) {
+    if (lower.includes(pole)) {
+      // Build a gentle counter using the opposite pole
+      return { type: "tension", pole, opposite };
+    }
+  }
+
+  // Check if any topic has related topics that could offer contrast
+  for (const topic of topics) {
+    const assoc = typeof ASSOC !== "undefined" && ASSOC[topic];
+    if (assoc?.opinions && assoc.opinions.length > 0) {
+      // Pick an opinion that might serve as a different angle
+      const opinion = assoc.opinions[Math.floor(Math.random() * assoc.opinions.length)];
+      if (opinion && opinion.length > 10) {
+        return { type: "opinion", topic, opinion };
+      }
+    }
+    if (assoc?.related && assoc.related.length > 1) {
+      // Suggest a related but different angle
+      const alt = assoc.related[Math.floor(Math.random() * assoc.related.length)];
+      if (alt !== topic) {
+        return { type: "related", topic, alt };
+      }
+    }
+  }
+
+  return null;
+}
+
+// Generate the contrasting frame
+function generateContrastFrame(angle, stance) {
+  if (angle.type === "tension") {
+    const frames = [
+      `Though I wonder — sometimes ${angle.opposite} gets you further than ${angle.pole} in the long run.`,
+      `Interesting — but what about the ${angle.opposite} side? There's something to be said for it.`,
+      `True, but I've also seen cases where leaning into ${angle.opposite} instead of ${angle.pole} paid off in unexpected ways.`,
+      `Fair — though the tension between ${angle.pole} and ${angle.opposite} is exactly where the interesting stuff lives.`,
+    ];
+    return frames[Math.floor(Math.random() * frames.length)];
+  }
+
+  if (angle.type === "opinion") {
+    const frames = [
+      `That said — ${angle.opinion}. Different angle, but maybe they connect?`,
+      `Here's a thought: ${angle.opinion}. Might complicate your take a bit, in a good way.`,
+      `Playing devil's advocate for a sec — ${angle.opinion}.`,
+    ];
+    return frames[Math.floor(Math.random() * frames.length)];
+  }
+
+  if (angle.type === "related") {
+    const frames = [
+      `What about approaching it from the ${angle.alt} angle instead? Sometimes a sideways look reveals more.`,
+      `Have you thought about it through the lens of ${angle.alt}? Might add a layer.`,
+      `The ${angle.alt} perspective on this is kind of different — could be worth considering.`,
+    ];
+    return frames[Math.floor(Math.random() * frames.length)];
+  }
+
+  return null;
+}
+
+function applyContrastiveFraming(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 4) return response; // let convo warm up
+  if (turn - lastContrastTurn < 5) return response; // 5-turn cooldown
+  if (response.length > 200) return response; // don't bloat
+  if (Math.random() > 0.15) return response; // 15% fire rate
+
+  // Need a strong user stance to contrast against
+  const stance = detectUserStance(text);
+  if (!stance) return response;
+
+  // Find a contrasting angle
+  const angle = findContrastAngle(text, topics);
+  if (!angle) return response;
+
+  const frame = generateContrastFrame(angle, stance);
+  if (!frame) return response;
+
+  lastContrastTurn = turn;
+
+  // Append the contrast after the main response
+  // Use a separator that feels natural
+  const separators = [" ", " \n\n", " "];
+  const sep = separators[Math.floor(Math.random() * separators.length)];
+  return response + sep + frame;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -13598,6 +13750,9 @@ export function getAIResponse(input) {
   // ═══ Specificity anchoring: replace vague phrases with concrete references from context ═══
   response = applySpecificityAnchoring(response, text, currentTopics);
 
+  // ═══ Contrastive framing: offer counter-angles on strong claims for intellectual depth ═══
+  response = applyContrastiveFraming(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -13650,6 +13805,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
