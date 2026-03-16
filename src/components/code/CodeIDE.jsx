@@ -1284,7 +1284,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Bracket colorization: compute bracket depth per position ---- */
   const BRACKET_COLORS = ['#f9e2af', '#89b4fa', '#a6e3a1', '#f38ba8', '#cba6f7', '#fab387'];
 
-  /* ---- Foldable lines (lines that start a block with { ) ---- */
+  /* ---- Foldable lines (lines that start a block with { ) + import groups ---- */
   const foldableRanges = React.useMemo(() => {
     const ranges = {};
     const stack = [];
@@ -1298,6 +1298,28 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         }
       }
     }
+    // Import block folding: consecutive import/require lines fold as a group
+    let impStart = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const isImp = /^\s*import\s/.test(lines[i]) || /^\s*(?:const|let|var)\s+\w+\s*=\s*require\(/.test(lines[i]);
+      if (isImp && impStart === -1) impStart = i;
+      if (!isImp && impStart !== -1) {
+        if (i - impStart >= 3) ranges[impStart] = i - 1; // 3+ consecutive imports = foldable
+        impStart = -1;
+      }
+    }
+    if (impStart !== -1 && lines.length - impStart >= 3) ranges[impStart] = lines.length - 1;
+    // Comment block folding: consecutive // lines fold as a group
+    let cmtStart = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const isCmt = /^\s*\/\//.test(lines[i]);
+      if (isCmt && cmtStart === -1) cmtStart = i;
+      if (!isCmt && cmtStart !== -1) {
+        if (i - cmtStart >= 3) ranges[cmtStart] = i - 1;
+        cmtStart = -1;
+      }
+    }
+    if (cmtStart !== -1 && lines.length - cmtStart >= 3) ranges[cmtStart] = lines.length - 1;
     return ranges;
   }, [lines]);
 
@@ -1351,6 +1373,22 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     }
     return null;
   }, [code, activeLn, lines]);
+
+  /* ---- Cursor scope: find enclosing function/class name at cursor ---- */
+  const cursorScope = React.useMemo(() => {
+    if (!lines.length) return null;
+    const fnRx = /(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:\(|function|async|\w+\s*=>)|class\s+(\w+)|(\w+)\s*\()/;
+    for (let i = activeLn - 1; i >= 0; i--) {
+      const m = lines[i].match(fnRx);
+      if (m) {
+        const name = m[1] || m[2] || m[3] || m[4];
+        const endRange = foldableRanges[i];
+        if (endRange !== undefined && endRange >= activeLn - 1) return name;
+        if (endRange === undefined && i === activeLn - 1) return name;
+      }
+    }
+    return null;
+  }, [lines, activeLn, foldableRanges]);
 
   /* ---- Global search results ---- */
   const globalSearchResults = React.useMemo(() => {
@@ -2587,6 +2625,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         [data-ide-scroll] *::-webkit-scrollbar-thumb:hover { background: #ffffff25; }
         [data-ide-scroll] *::-webkit-scrollbar-corner { background: transparent; }
         [data-ide-scroll] textarea::selection { background: #cba6f730; }
+        [data-ide-scroll] [data-ide-tabs]::-webkit-scrollbar { display: none; }
         @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
       `}</style>
@@ -2994,7 +3033,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'auto' }}>
+          <div data-ide-tabs onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; }} style={{ display: 'flex', borderBottom: '1px solid #ffffff08', background: '#16162a', flexShrink: 0, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {openTabs.map(path => {
               const name = path.split('/').pop();
               const isActive = path === activeFile;
@@ -3509,35 +3548,46 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
             {/* Code editor */}
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative', outline: editorFocused ? '1px solid #cba6f720' : 'none', outlineOffset: -1, transition: 'outline-color .2s' }}>
-              {/* Sticky scroll — show enclosing function/block when scrolled */}
+              {/* Multi-level sticky scroll — show nested enclosing scopes when scrolled */}
               {scrollTop > 50 && (() => {
                 const topVisibleLine = Math.floor(scrollTop / Math.round(16 * zf));
-                // Find the enclosing function for the top visible line
+                const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
+                const scopeRx = /(?:function\s+\w|(?:const|let|var)\s+\w+\s*=\s*(?:\(|function|async|\w+\s*=>)|class\s+\w|export\s+(?:default\s+)?(?:function|class))/;
+                // Collect all enclosing scopes for the top visible line
+                const scopes = [];
                 for (let i = topVisibleLine; i >= 0; i--) {
                   const l = lines[i];
-                  if (l && /(?:function\s+\w|(?:const|let|var)\s+\w+\s*=\s*(?:\(|function|async|\w+\s*=>)|class\s+\w|(?:if|for|while)\s*\()/.test(l)) {
+                  if (l && scopeRx.test(l)) {
                     const endRange = foldableRanges[i];
                     if (endRange !== undefined && endRange > topVisibleLine) {
-                      const gutterW = showLineNumbers ? (lines.length >= 1000 ? 48 : lines.length >= 100 ? 42 : 36) : 0;
-                      return (
-                        <div onClick={() => {
-                          setActiveLn(i + 1); setCursor({ ln: i + 1, col: 1 });
-                          const pos = lines.slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
-                          if (taRef.current) { taRef.current.scrollTop = i * Math.round(16 * zf); taRef.current.selectionStart = taRef.current.selectionEnd = pos; }
-                        }} style={{
-                          position: 'absolute', top: 0, left: gutterW + 1, right: 0, zIndex: 5,
-                          background: '#1e1e2eee', borderBottom: '1px solid #ffffff10',
-                          padding: '2px 8px', fontSize: fs(9), lineHeight: lh,
-                          fontFamily: MONO, cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                        }}>
-                          <HighlightLine text={l.trimStart()} />
-                        </div>
-                      );
+                      scopes.unshift({ line: i, text: l.trimStart() });
+                      if (scopes.length >= 2) break;
                     }
-                    break;
                   }
                 }
-                return null;
+                if (!scopes.length) return null;
+                const lineH = Math.round(16 * zf);
+                return (
+                  <div style={{
+                    position: 'absolute', top: 0, left: gutterW + 1, right: 0, zIndex: 5,
+                    background: '#1e1e2eee', borderBottom: '1px solid #ffffff10',
+                  }}>
+                    {scopes.map((s, si) => (
+                      <div key={s.line} onClick={() => {
+                        setActiveLn(s.line + 1); setCursor({ ln: s.line + 1, col: 1 });
+                        const pos = lines.slice(0, s.line).join('\n').length + (s.line > 0 ? 1 : 0);
+                        if (taRef.current) { taRef.current.scrollTop = s.line * lineH; taRef.current.selectionStart = taRef.current.selectionEnd = pos; }
+                      }} style={{
+                        padding: '1px 8px', fontSize: fs(9), lineHeight: lh,
+                        fontFamily: MONO, cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                        opacity: si === scopes.length - 1 ? 1 : .6,
+                        paddingLeft: si === 0 && scopes.length > 1 ? 8 : 8 + si * 12,
+                      }}>
+                        <HighlightLine text={s.text} />
+                      </div>
+                    ))}
+                  </div>
+                );
               })()}
               {/* Scroll shadows */}
               {scrollTop > 10 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 12, background: 'linear-gradient(to bottom, #1e1e2e, transparent)', zIndex: 4, pointerEvents: 'none' }} />}
@@ -4737,11 +4787,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           }}>
             <span style={{ fontSize: fs(8), color: output?.err ? '#f38ba8' : '#27c93f' }}>{'\u25CF'}</span>
             <span style={{ fontSize: fs(8), color: '#555' }}>Ln {cursor.ln}, Col {cursor.col}</span>
+            {cursorScope && <span style={{ fontSize: fs(8), color: '#89b4fa', opacity: .5 }} title="Current scope">{cursorScope}()</span>}
             {hasSel && (() => {
               const selText = code.substring(Math.min(el.selectionStart, el.selectionEnd), Math.max(el.selectionStart, el.selectionEnd));
               const words = selText.trim().split(/\s+/).filter(Boolean).length;
               return <span style={{ fontSize: fs(8), color: '#cba6f7', opacity: .6 }}>({selLen} chars, {words} words, {selLines} lines)</span>;
             })()}
+            {selectedWord && !hasSel && wordOccurrences.size > 0 && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }} title="Occurrences of selected word">{wordOccurrences.size} occurrences</span>}
             <span style={{ fontSize: fs(8), color: '#555' }}>{lines.length} lines</span>
             {readonly && <span style={{ fontSize: fs(8), color: '#f9e2af', opacity: .5 }}>Read-only</span>}
             {output?.ms && <span style={{ fontSize: fs(8), color: '#27c93f', opacity: .5 }} title="Last execution time">{output.ms}ms</span>}
