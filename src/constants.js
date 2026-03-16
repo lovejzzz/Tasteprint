@@ -83,7 +83,7 @@ export const VARIANTS = {
   skeleton:  ["Card","List","Profile","Feed","Dashboard"],
   chart:     ["Bar","Line","Donut","Sparkline","Area"],
   testimonial:["Card","Minimal","Bubble","Glass","Hero"],
-  "cmd-palette":["Full","Minimal","Grouped"],
+  "cmd-palette":["Full","Minimal","Grouped","Spotlight","Glass"],
   stepper:   ["Horizontal","Vertical","Dots","Pill","Icon"],
   timeline:  ["Left","Centered","Minimal","Card","Activity"],
   chat:      ["Bubble","Thread","Terminal"],

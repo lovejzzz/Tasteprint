@@ -877,7 +877,68 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     const items=[{icon:"⌂",label:"Go to Dashboard"},{icon:"⚙",label:"Settings"},{icon:"?",label:"Help center"},{icon:"↗",label:"Open docs"}];const ac=P("active");
     if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,boxShadow:`0 16px 48px ${p.tx}12`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"10px 14px",borderBottom:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:8}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" opacity=".3"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><T k="search" s={{fontSize:12,color:p.mu,opacity:.4}}>Type a command...</T></div><div style={{flex:1,padding:4}}>{items.map((it,i)=><div key={i} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10,background:i===ac?p.ac+"10":"transparent",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i)}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i}`} s={{fontSize:12,color:i===ac?p.ac:p.tx}}>{it.label}</T>{i===ac&&<span style={{marginLeft:"auto",fontSize:9,color:p.mu,opacity:.3}}>Enter ↵</span>}</div>)}</div></div>;
     if(v===1)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,boxShadow:`0 8px 32px ${p.tx}08`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"10px 14px",borderBottom:`1px solid ${p.bd}`}}><T k="search" s={{fontSize:12,color:p.mu,opacity:.4}}>Search...</T></div><div style={{flex:1,padding:2}}>{items.map((it,i)=><div key={i} style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:10,background:i===ac?p.su:"transparent",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i)}><T k={`c${i}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}</div></div>;
-    return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,boxShadow:`0 16px 48px ${p.tx}12`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"10px 14px",borderBottom:`1px solid ${p.bd}`}}><T k="search" s={{fontSize:12,color:p.mu,opacity:.4}}>Type a command...</T></div><div style={{padding:4}}><div style={{fontSize:9,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",padding:"6px 10px 2px"}}>Navigation</div>{items.slice(0,2).map((it,i)=><div key={i} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10,background:i===ac?p.ac+"10":"transparent",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i)}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}<div style={{fontSize:9,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",padding:"6px 10px 2px"}}>Help</div>{items.slice(2).map((it,i)=><div key={i+2} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10,background:i+2===ac?p.ac+"10":"transparent",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i+2)}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i+2}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}</div></div>;
+    if(v===2)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,boxShadow:`0 16px 48px ${p.tx}12`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{padding:"10px 14px",borderBottom:`1px solid ${p.bd}`}}><T k="search" s={{fontSize:12,color:p.mu,opacity:.4}}>Type a command...</T></div><div style={{padding:4}}><div style={{fontSize:9,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",padding:"6px 10px 2px"}}>Navigation</div>{items.slice(0,2).map((it,i)=><div key={i} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10,background:i===ac?p.ac+"10":"transparent",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i)}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}<div style={{fontSize:9,color:p.mu,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",padding:"6px 10px 2px"}}>Help</div>{items.slice(2).map((it,i)=><div key={i+2} style={{padding:"8px 10px",borderRadius:8,display:"flex",alignItems:"center",gap:10,background:i+2===ac?p.ac+"10":"transparent",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i+2)}><span style={{fontSize:13,opacity:.5}}>{it.icon}</span><T k={`c${i+2}`} s={{fontSize:12,color:p.tx}}>{it.label}</T></div>)}</div></div>;
+    /* v3 Spotlight — macOS-style with kbd hints, category tags, large search */
+    const spotItems=[
+      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,label:"Go to Dashboard",kbd:"⌘D",cat:"Navigation"},
+      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,label:"Settings",kbd:"⌘,",cat:"System"},
+      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,label:"Help center",kbd:"⌘?",cat:"Help"},
+      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,label:"Open docs",kbd:"⌘⇧D",cat:"Navigation"},
+    ];
+    if(v===3)return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,boxShadow:`0 20px 60px ${p.tx}15, 0 0 0 1px ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",animation:"tp-fadein .2s ease-out"}}>
+      <div style={{padding:"12px 16px",borderBottom:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:10}}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <T k="search" s={{fontSize:f(13),color:p.mu,opacity:.4,flex:1}}>Search commands...</T>
+        <div style={{display:"flex",gap:3}}>
+          <span style={{fontSize:9,color:p.mu,background:p.su,borderRadius:4,padding:"2px 5px",border:`1px solid ${p.bd}`,fontFamily:"system-ui"}}>⌘</span>
+          <span style={{fontSize:9,color:p.mu,background:p.su,borderRadius:4,padding:"2px 5px",border:`1px solid ${p.bd}`,fontFamily:"system-ui"}}>K</span>
+        </div>
+      </div>
+      <div style={{flex:1,padding:6}}>
+        {spotItems.map((it,i)=><div key={i} style={{padding:"8px 10px",borderRadius:10,display:"flex",alignItems:"center",gap:10,background:i===ac?p.ac+"10":"transparent",cursor:"pointer",transition:"background .15s",animation:`tp-fadein .25s ease-out ${i*.04}s both`}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i)}>
+          <div style={{width:28,height:28,borderRadius:8,background:i===ac?p.ac+"18":p.su,display:"flex",alignItems:"center",justifyContent:"center",color:i===ac?p.ac:p.mu,transition:"all .15s"}}>{it.icon}</div>
+          <div style={{flex:1}}>
+            <T k={`c${i}`} s={{fontSize:f(12),color:i===ac?p.ac:p.tx,fontWeight:i===ac?600:400}}>{it.label}</T>
+            <span style={{fontSize:9,color:p.mu,opacity:.5,marginLeft:6}}>{it.cat}</span>
+          </div>
+          <span style={{fontSize:9,color:p.mu,opacity:.4,fontFamily:"system-ui",letterSpacing:".04em"}}>{it.kbd}</span>
+        </div>)}
+      </div>
+      <div style={{padding:"6px 16px 8px",borderTop:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:12}}>
+        <span style={{fontSize:9,color:p.mu,opacity:.4}}>↑↓ navigate</span>
+        <span style={{fontSize:9,color:p.mu,opacity:.4}}>↵ select</span>
+        <span style={{fontSize:9,color:p.mu,opacity:.4,marginLeft:"auto"}}>esc close</span>
+      </div>
+    </div>;
+    /* v4 Glass — frosted glass with gradient accents and rich layout */
+    return <div style={{...b,background:p.card+"dd",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRadius:18,border:`1px solid ${p.bd}`,boxShadow:`0 24px 64px ${p.tx}18, inset 0 1px 0 ${p.card}88`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .2s ease-out"}}>
+      <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,borderRadius:999,background:`radial-gradient(circle,${p.ac}12,transparent 70%)`,pointerEvents:"none"}}/>
+      <div style={{padding:"14px 16px",borderBottom:`1px solid ${p.bd}`,display:"flex",alignItems:"center",gap:10}}>
+        <div style={{width:20,height:20,borderRadius:6,background:`linear-gradient(135deg,${p.ac}22,${p.ac2||p.ac}22)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <T k="search" s={{fontSize:f(13),color:p.mu,opacity:.4,flex:1}}>Type a command...</T>
+        <div style={{background:p.ac+"10",border:`1px solid ${p.ac}20`,borderRadius:6,padding:"2px 8px"}}><span style={{fontSize:9,color:p.ac,fontWeight:600,fontFamily:"system-ui"}}>⌘K</span></div>
+      </div>
+      <div style={{flex:1,padding:6}}>
+        {spotItems.map((it,i)=><div key={i} style={{padding:"9px 10px",borderRadius:12,display:"flex",alignItems:"center",gap:10,background:i===ac?`linear-gradient(135deg,${p.ac}10,${p.ac2||p.ac}08)`:"transparent",border:i===ac?`1px solid ${p.ac}18`:"1px solid transparent",cursor:"pointer",transition:"all .2s",animation:`tp-slidein .3s ease-out ${i*.05}s both`}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("active",i)}>
+          <div style={{width:30,height:30,borderRadius:9,background:i===ac?p.ac+"15":p.su,border:`1px solid ${i===ac?p.ac+"25":p.bd}`,display:"flex",alignItems:"center",justifyContent:"center",color:i===ac?p.ac:p.mu,transition:"all .2s",boxShadow:i===ac?`0 2px 8px ${p.ac}15`:"none"}}>{it.icon}</div>
+          <div style={{flex:1}}>
+            <T k={`c${i}`} s={{fontSize:f(12),color:i===ac?p.tx:p.tx,fontWeight:i===ac?600:400}}>{it.label}</T>
+          </div>
+          <div style={{display:"flex",gap:2}}>
+            {it.kbd.split("").filter(c=>c.trim()).map((k,j)=><span key={j} style={{fontSize:9,color:i===ac?p.ac:p.mu,background:i===ac?p.ac+"10":p.su,borderRadius:4,padding:"1px 4px",border:`1px solid ${i===ac?p.ac+"20":p.bd}`,fontFamily:"system-ui",minWidth:14,textAlign:"center"}}>{k}</span>)}
+          </div>
+        </div>)}
+      </div>
+      <div style={{padding:"8px 16px",borderTop:`1px solid ${p.bd}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",gap:8}}>
+          <span style={{fontSize:8,color:p.mu,opacity:.5,display:"flex",alignItems:"center",gap:3}}><span style={{background:p.su,borderRadius:3,padding:"1px 3px",border:`1px solid ${p.bd}`,fontSize:8}}>↑↓</span> navigate</span>
+          <span style={{fontSize:8,color:p.mu,opacity:.5,display:"flex",alignItems:"center",gap:3}}><span style={{background:p.su,borderRadius:3,padding:"1px 3px",border:`1px solid ${p.bd}`,fontSize:8}}>↵</span> open</span>
+        </div>
+        <span style={{fontSize:8,color:p.mu,opacity:.4}}>4 commands</span>
+      </div>
+    </div>;
   }
 
   /* ---- STEPPER ---- */
