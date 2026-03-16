@@ -9751,6 +9751,77 @@ function addSpontaneousGift(response, topics, text) {
   return response + " " + gift;
 }
 
+/* ── Output Polish & Deduplication (Round 58) ──
+ * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
+ * Runs just before output to ensure the response reads naturally regardless
+ * of which combination of post-processors fired.
+ */
+
+function polishOutput(response) {
+  let r = response;
+
+  // 1. Remove duplicate sentence openings (pipeline stages can prepend similar phrases)
+  const sentences = r.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length >= 2) {
+    const cleaned = [sentences[0]];
+    for (let i = 1; i < sentences.length; i++) {
+      const prevStart = cleaned[cleaned.length - 1].trim().split(/\s+/).slice(0, 3).join(" ").toLowerCase();
+      const currStart = sentences[i].trim().split(/\s+/).slice(0, 3).join(" ").toLowerCase();
+      // Skip if sentence starts with same 3 words as previous
+      if (currStart !== prevStart) {
+        cleaned.push(sentences[i]);
+      }
+    }
+    r = cleaned.join(" ").trim();
+  }
+
+  // 2. Remove orphaned connectors at the start (from pipeline prefix stacking)
+  r = r.replace(/^(And |But |So |Also |Plus |Oh and )(and |but |so |also )/i, (_, a) => a);
+
+  // 3. Fix double spaces, double periods, space before punctuation
+  r = r.replace(/\s{2,}/g, " ");
+  r = r.replace(/\.{2}(?!\.)/g, ".");
+  r = r.replace(/\s+([.!?,])/g, "$1");
+  r = r.replace(/([.!?])\1+/g, "$1");
+
+  // 4. Remove trailing orphaned dashes or connectors
+  r = r.replace(/\s*[—–-]\s*$/, ".");
+  r = r.replace(/\s*(?:but|and|so|plus|also|actually)\s*$/i, ".");
+
+  // 5. Cap excessive exclamation (pipeline enthusiasm stacking)
+  let excCount = (r.match(/!/g) || []).length;
+  if (excCount > 2) {
+    let kept = 0;
+    r = r.replace(/!/g, () => ++kept <= 2 ? "!" : ".");
+  }
+
+  // 6. Remove redundant "by the way" / "actually" / "oh" stacking
+  const fillers = ["actually", "by the way", "honestly", "you know what", "I mean"];
+  for (const filler of fillers) {
+    const rx = new RegExp(filler, "gi");
+    const matches = r.match(rx);
+    if (matches && matches.length > 1) {
+      let count = 0;
+      r = r.replace(rx, (m) => ++count === 1 ? m : "");
+    }
+  }
+
+  // 7. If response starts with multiple prefixed observations, keep only the first
+  // (catches: "Oh wait — X. I notice Y. Also Z. [actual response]")
+  const prefixPatterns = /^(?:Oh wait|Hold on|I notice|I just realized|Hmm)[^.!?]*[.!?]\s*/;
+  let prefixCount = 0;
+  while (prefixPatterns.test(r) && prefixCount < 1) {
+    prefixCount++;
+    if (prefixCount > 1) {
+      r = r.replace(prefixPatterns, "");
+    } else {
+      break;
+    }
+  }
+
+  return r.trim();
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -9963,6 +10034,9 @@ export function getAIResponse(input) {
 
   // ═══ Discourse coherence: guard against tonal clashes from pipeline ═══
   response = guardCoherence(response, plan);
+
+  // ═══ Final output polish: clean pipeline artifacts, deduplicate, tighten ═══
+  response = polishOutput(response);
 
   // Update discourse state for next turn
   lastDiscourseMove = plan.flavor;
