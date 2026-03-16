@@ -9333,6 +9333,124 @@ function applyTrajectoryAwareness(response, sent) {
   return response;
 }
 
+/* ── Conversational Pacing Intelligence (Round 54) ──
+ * Tracks inter-message timing to understand the user's texting rhythm.
+ * Rapid bursts → match with snappy, short energy. Long pauses → acknowledge
+ * the gap warmly. Gradual slowdown → don't over-respond. Accelerating →
+ * ride the wave. Also adjusts typing simulation to match the cadence.
+ */
+
+let messageTimings = [];     // [{ gap: ms, len: wordCount, turn }]
+let lastPacingTurn = 0;
+let currentPaceMode = "normal";  // "rapid", "thoughtful", "normal", "returning"
+
+function trackMessagePacing(text) {
+  const now = Date.now();
+  const gap = now - lastMessageTime; // uses existing lastMessageTime
+  const len = text.split(/\s+/).length;
+  messageTimings.push({ gap, len, turn: mem.turn, ts: now });
+  if (messageTimings.length > 10) messageTimings.shift();
+
+  // Classify current pace mode
+  const recent = messageTimings.slice(-3);
+  const avgGap = recent.reduce((a, t) => a + t.gap, 0) / recent.length;
+
+  if (avgGap < 3000 && recent.length >= 2) {
+    currentPaceMode = "rapid";          // <3s between messages = texting fast
+  } else if (gap > 120000) {
+    currentPaceMode = "returning";      // >2min gap = they went away and came back
+  } else if (avgGap > 30000) {
+    currentPaceMode = "thoughtful";     // >30s average = deliberate, thoughtful
+  } else {
+    currentPaceMode = "normal";
+  }
+}
+
+// Detect pace shifts: were they fast and now slow? Or slow and now fast?
+function detectPaceShift() {
+  if (messageTimings.length < 4) return null;
+  const older = messageTimings.slice(-4, -2);
+  const newer = messageTimings.slice(-2);
+  const oldAvg = older.reduce((a, t) => a + t.gap, 0) / older.length;
+  const newAvg = newer.reduce((a, t) => a + t.gap, 0) / newer.length;
+
+  if (oldAvg < 5000 && newAvg > 20000) return "decelerating";  // was rapid, now slow
+  if (oldAvg > 20000 && newAvg < 5000) return "accelerating";  // was slow, now rapid
+  return null;
+}
+
+// Adapt response for current pacing context
+function applyPacingAwareness(response, text) {
+  if (mem.turn - lastPacingTurn < 6 || mem.turn < 3) return response;
+
+  const shift = detectPaceShift();
+
+  // Returning after a long absence (>2 min)
+  if (currentPaceMode === "returning" && messageTimings.length >= 2) {
+    const gap = messageTimings[messageTimings.length - 1].gap;
+    if (gap > 300000 && Math.random() > 0.4) { // >5 min
+      const returns = [
+        "Welcome back! I was just here, thinking. ",
+        "Oh hey — you're back! ",
+        "There you are! ",
+      ];
+      lastPacingTurn = mem.turn;
+      return returns[Math.floor(Math.random() * returns.length)] + response;
+    }
+    if (Math.random() > 0.5) {
+      const softReturns = [
+        "Hey again! ",
+        "Back at it — ",
+      ];
+      lastPacingTurn = mem.turn;
+      return softReturns[Math.floor(Math.random() * softReturns.length)] + response;
+    }
+  }
+
+  // Rapid fire mode — keep it short and punchy, trim response
+  if (currentPaceMode === "rapid" && Math.random() > 0.6) {
+    const sentences = response.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 2) {
+      // Trim to 1-2 sentences for rapid exchange
+      lastPacingTurn = mem.turn;
+      return sentences.slice(0, 2).join(" ").trim();
+    }
+  }
+
+  // Pace shift: was fast, now slow → they're thinking
+  if (shift === "decelerating" && Math.random() > 0.5) {
+    const decel = [
+      "I notice you're taking your time here — that's a good sign. ",
+      "Taking a moment to think — I respect that. ",
+    ];
+    lastPacingTurn = mem.turn;
+    return decel[Math.floor(Math.random() * decel.length)] + response;
+  }
+
+  // Pace shift: was slow, now fast → they got excited
+  if (shift === "accelerating" && Math.random() > 0.5) {
+    const accel = [
+      "Oh, the pace just picked up — I'm here for it! ",
+      "Love the energy shift! ",
+    ];
+    lastPacingTurn = mem.turn;
+    return accel[Math.floor(Math.random() * accel.length)] + response;
+  }
+
+  return response;
+}
+
+// Adjust typing speed based on pace mode
+function adjustTypingForPace(typingMs) {
+  if (currentPaceMode === "rapid") {
+    return Math.max(300, typingMs * 0.5);  // Much faster typing in rapid mode
+  }
+  if (currentPaceMode === "thoughtful") {
+    return typingMs * 1.15;  // Slightly slower, more deliberate
+  }
+  return typingMs;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -9341,6 +9459,9 @@ export function getAIResponse(input) {
 
   // ═══ Adaptive strategy: score how user reacted to our last response ═══
   scoreLastStrategy(text);
+
+  // ═══ Conversational pacing: track inter-message timing ═══
+  trackMessagePacing(text);
 
   // Parse for personality application
   const parsed = parseSentence(text);
@@ -9476,6 +9597,9 @@ export function getAIResponse(input) {
   response = calibrateResponseLength(response, text, inputEnergy);
   response = adjustResponseEnergy(response, inputEnergy);
 
+  // ═══ Conversational pacing: adapt response style to messaging rhythm ═══
+  response = applyPacingAwareness(response, text);
+
   // ═══ Detail seeding & specificity: replace vague fillers, inject vivid details ═══
   response = seedDetails(response, currentTopics);
 
@@ -9538,13 +9662,14 @@ export function getAIResponse(input) {
   // Track response shape for pattern-break detection
   trackResponseShape(response);
 
-  // Calculate realistic typing speed
-  const typingMs = calcTypingMs(response, sent, parsed);
+  // Calculate realistic typing speed (adjusted for conversation pace)
+  const rawTypingMs = calcTypingMs(response, sent, parsed);
+  const typingMs = adjustTypingForPace(rawTypingMs);
   const pause = calcTypingPause(typingMs);
 
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
