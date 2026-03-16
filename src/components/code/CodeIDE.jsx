@@ -697,6 +697,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [showBracketColors, setShowBracketColors] = React.useState(true);
   const [showIndentRainbow, setShowIndentRainbow] = React.useState(true);
   const [autoSave, setAutoSave] = React.useState(true);
+  const [showGhostText, setShowGhostText] = React.useState(true);
+  const [lineEnding, setLineEnding] = React.useState('LF');
+  const [mdPreview, setMdPreview] = React.useState(false);
 
   /* ---- Zen mode (distraction-free) ---- */
   const [zenMode, setZenMode] = React.useState(false);
@@ -1794,6 +1797,58 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return offsets;
   }, [lines]);
 
+  /* ---- Ghost text / inline completion ---- */
+  const ghostText = React.useMemo(() => {
+    if (!showGhostText || readonly || acOpen) return null;
+    const curLine = activeLn - 1;
+    if (curLine < 0 || curLine >= lines.length) return null;
+    const line = lines[curLine];
+    const col = cursor.col - 1;
+    if (col < line.length) return null; // only at end of line
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*')) return null;
+
+    // Pattern 1: Complete common statement patterns
+    if (/^\s*(const|let|var)\s+\w+\s*=$/.test(line)) return ' ';
+    if (/^\s*if\s*\($/.test(line)) return ')';
+    if (/^\s*for\s*\($/.test(line)) return 'let i = 0; i < ; i++)';
+    if (/^\s*(const|let)\s+\[\s*$/.test(line)) return '] = ';
+    if (/^\s*(const|let)\s+\{\s*$/.test(line)) return '} = ';
+    if (/^\s*import\s+$/.test(line)) return "{ } from '';";
+    if (/^\s*export\s+default\s*$/.test(line)) return 'function () {}';
+    if (/^\s*console\.$/.test(line)) return "log('');";
+    if (/^\s*return\s*$/.test(line)) return ';';
+
+    // Pattern 2: Complete similar lines from this file (find longest prefix match)
+    if (trimmed.length >= 3) {
+      const prefix = trimmed;
+      let bestMatch = null;
+      let bestLen = 0;
+      for (let li = 0; li < lines.length; li++) {
+        if (li === curLine) continue;
+        const other = lines[li].trim();
+        if (other.length > prefix.length && other.startsWith(prefix)) {
+          const remainder = other.slice(prefix.length);
+          if (remainder.length > bestLen && remainder.length < 60) {
+            bestMatch = remainder;
+            bestLen = remainder.length;
+          }
+        }
+      }
+      if (bestMatch) return bestMatch;
+    }
+
+    // Pattern 3: Auto-complete common JS patterns
+    if (/\.map\($/.test(trimmed)) return 'item => )';
+    if (/\.filter\($/.test(trimmed)) return 'item => )';
+    if (/\.forEach\($/.test(trimmed)) return 'item => { })';
+    if (/\.reduce\($/.test(trimmed)) return '(acc, item) => acc, )';
+    if (/\.then\($/.test(trimmed)) return 'res => )';
+    if (/\.catch\($/.test(trimmed)) return 'err => )';
+
+    return null;
+  }, [lines, activeLn, cursor.col, showGhostText, readonly, acOpen]);
+
   /* ---- Global search results ---- */
   const globalSearchResults = React.useMemo(() => {
     if (!globalSearchTerm || !globalSearchOpen) return [];
@@ -2040,6 +2095,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Notifications', key: 'notifs', hint: '' },
       { label: 'Extract Variable', key: 'extractvar', hint: '' },
       { label: 'Extract Function', key: 'extractfn', hint: '' },
+      { label: showGhostText ? 'Disable Ghost Text' : 'Enable Ghost Text', key: 'ghosttext', hint: '' },
+      { label: activeFile.endsWith('.md') ? (mdPreview ? 'Show Code' : 'Show Markdown Preview') : 'Markdown Preview (only for .md)', key: 'mdpreview', hint: '' },
+      { label: `Line Ending: ${lineEnding}`, key: 'lineending', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -2298,6 +2356,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         showToast('Extracted to function — rename it now', 'info');
       }
     }
+    else if (key === 'ghosttext') { setShowGhostText(v => !v); showToast(showGhostText ? 'Ghost text off' : 'Ghost text on', 'info'); }
+    else if (key === 'mdpreview') { if (activeFile.endsWith('.md')) setMdPreview(v => !v); else showToast('Only for .md files', 'warn'); }
+    else if (key === 'lineending') { setLineEnding(le => le === 'LF' ? 'CRLF' : 'LF'); showToast(`Line ending: ${lineEnding === 'LF' ? 'CRLF' : 'LF'}`, 'info'); }
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
@@ -3279,6 +3340,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           setTimeout(() => { el.selectionStart = el.selectionEnd = Math.max(lineStart, s - tabSize) }, 0);
         }
       } else {
+        // Accept ghost text inline completion
+        if (ghostText && s === en && s === (lineOffsets[activeLn - 1] || 0) + lines[activeLn - 1]?.length) {
+          setCode(code.substring(0, s) + ghostText + code.substring(s));
+          setTimeout(() => { el.selectionStart = el.selectionEnd = s + ghostText.length }, 0);
+          return;
+        }
         // Check for Emmet abbreviation before snippet
         const lineStart = code.lastIndexOf('\n', s - 1) + 1;
         const beforeCursor = code.substring(lineStart, s);
@@ -3542,6 +3609,43 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   };
 
   const stop = e => e.stopPropagation();
+
+  /* ---- Markdown inline renderer ---- */
+  const renderMdInline = (text) => {
+    const parts = [];
+    let i = 0, key = 0;
+    while (i < text.length) {
+      // Bold **text**
+      if (text[i] === '*' && text[i + 1] === '*') {
+        const end = text.indexOf('**', i + 2);
+        if (end > i) { parts.push(<strong key={key++} style={{ color: '#f9e2af' }}>{text.slice(i + 2, end)}</strong>); i = end + 2; continue; }
+      }
+      // Italic *text*
+      if (text[i] === '*' && text[i + 1] !== '*') {
+        const end = text.indexOf('*', i + 1);
+        if (end > i) { parts.push(<em key={key++} style={{ color: '#a6e3a1' }}>{text.slice(i + 1, end)}</em>); i = end + 1; continue; }
+      }
+      // Code `text`
+      if (text[i] === '`') {
+        const end = text.indexOf('`', i + 1);
+        if (end > i) { parts.push(<code key={key++} style={{ background: '#ffffff10', padding: '0 4px', borderRadius: 3, fontSize: '90%', color: '#fab387' }}>{text.slice(i + 1, end)}</code>); i = end + 1; continue; }
+      }
+      // Link [text](url)
+      if (text[i] === '[') {
+        const cbEnd = text.indexOf(']', i);
+        if (cbEnd > i && text[cbEnd + 1] === '(') {
+          const pEnd = text.indexOf(')', cbEnd + 2);
+          if (pEnd > cbEnd) { parts.push(<span key={key++} style={{ color: '#89b4fa', textDecoration: 'underline' }}>{text.slice(i + 1, cbEnd)}</span>); i = pEnd + 1; continue; }
+        }
+      }
+      // Plain text — collect until next special char
+      let j = i + 1;
+      while (j < text.length && !'*`['.includes(text[j])) j++;
+      parts.push(<span key={key++}>{text.slice(i, j)}</span>);
+      i = j;
+    }
+    return parts.length ? parts : text;
+  };
 
   /* ========== RENDER ========== */
   return (
@@ -4694,6 +4798,35 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           {/* Editor + Terminal split */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
+            {/* Markdown preview toggle */}
+            {activeFile.endsWith('.md') && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: '#181825', borderBottom: '1px solid #ffffff08', flexShrink: 0 }}>
+                <span onClick={() => setMdPreview(false)} onMouseDown={stop}
+                  style={{ fontSize: 8, color: !mdPreview ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 6px', borderRadius: 3, background: !mdPreview ? '#cba6f715' : 'transparent' }}>Code</span>
+                <span onClick={() => setMdPreview(true)} onMouseDown={stop}
+                  style={{ fontSize: 8, color: mdPreview ? '#cba6f7' : '#555', cursor: 'pointer', padding: '1px 6px', borderRadius: 3, background: mdPreview ? '#cba6f715' : 'transparent' }}>Preview</span>
+              </div>
+            )}
+
+            {/* Markdown preview */}
+            {mdPreview && activeFile.endsWith('.md') ? (
+              <div style={{ flex: 1, overflow: 'auto', padding: '12px 20px', background: '#1e1e2e', fontFamily: '-apple-system, sans-serif', fontSize: fs(10), lineHeight: 1.6, color: '#cdd6f4' }}>
+                {code.split('\n').map((line, i) => {
+                  const t = line.trim();
+                  if (!t) return <div key={i} style={{ height: 8 }} />;
+                  if (t.startsWith('### ')) return <h3 key={i} style={{ fontSize: fs(13), fontWeight: 600, color: '#cba6f7', margin: '8px 0 4px' }}>{t.slice(4)}</h3>;
+                  if (t.startsWith('## ')) return <h2 key={i} style={{ fontSize: fs(15), fontWeight: 600, color: '#89b4fa', margin: '12px 0 4px', borderBottom: '1px solid #ffffff10', paddingBottom: 4 }}>{t.slice(3)}</h2>;
+                  if (t.startsWith('# ')) return <h1 key={i} style={{ fontSize: fs(18), fontWeight: 700, color: '#f5c2e7', margin: '16px 0 8px' }}>{t.slice(2)}</h1>;
+                  if (t.startsWith('- ') || t.startsWith('* ')) return <div key={i} style={{ paddingLeft: 16, position: 'relative' }}><span style={{ position: 'absolute', left: 4, color: '#cba6f7' }}>{'\u2022'}</span>{renderMdInline(t.slice(2))}</div>;
+                  if (/^\d+\.\s/.test(t)) return <div key={i} style={{ paddingLeft: 16 }}>{renderMdInline(t)}</div>;
+                  if (t.startsWith('> ')) return <div key={i} style={{ paddingLeft: 12, borderLeft: '3px solid #cba6f740', color: '#a6adc8', fontStyle: 'italic' }}>{renderMdInline(t.slice(2))}</div>;
+                  if (t.startsWith('```')) return <div key={i} style={{ height: 1, background: '#ffffff10', margin: '4px 0' }} />;
+                  if (t.startsWith('---') || t.startsWith('***')) return <hr key={i} style={{ border: 'none', borderTop: '1px solid #ffffff15', margin: '8px 0' }} />;
+                  return <p key={i} style={{ margin: '2px 0' }}>{renderMdInline(t)}</p>;
+                })}
+              </div>
+            ) : <>
+
             {/* Code editor */}
             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative', outline: editorFocused ? '1px solid #cba6f720' : 'none', outlineOffset: -1, transition: 'outline-color .2s' }}>
               {/* Multi-level sticky scroll — show nested enclosing scopes when scrolled */}
@@ -5113,6 +5246,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               }}>{output.err}</span>
                             )}
                           </>)}
+                          {/* Ghost text inline completion */}
+                          {ghostText && i + 1 === activeLn && !lintMap[i] && (
+                            <span style={{
+                              position: 'absolute', left: l.length * charW, top: 0, height: '100%',
+                              display: 'flex', alignItems: 'center',
+                              color: '#585b70', fontFamily: MONO, fontSize: fs(10), lineHeight: lh,
+                              pointerEvents: 'none', whiteSpace: 'pre', opacity: .5,
+                              animation: 'ghostPulse 3s ease-in-out infinite',
+                            }}>{ghostText}</span>
+                          )}
                           {/* Inline lint warning (error lens style) */}
                           {lintMap[i] && output?.errLn !== i + 1 && (
                             <span style={{
@@ -5323,11 +5466,30 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       const kwFiltered = JS_KW.filter(k => k.toLowerCase().startsWith(partial) && k.toLowerCase() !== partial);
                       // Snippet triggers matching partial
                       const snippetMatches = Object.keys(SNIPPETS).filter(sn => sn.startsWith(partial) && sn !== partial);
+                      // Auto-import suggestions: find exported symbols from other files
+                      const importSuggestions = [];
+                      if (partial.length >= 2) {
+                        for (const [path, content] of Object.entries(editFiles)) {
+                          if (path === activeFile || typeof content !== 'string') continue;
+                          const exportRx = /export\s+(?:const|let|var|function|class)\s+(\w+)/g;
+                          let em;
+                          while ((em = exportRx.exec(content)) !== null) {
+                            if (em[1].toLowerCase().startsWith(partial) && em[1].toLowerCase() !== partial && !localIds.has(em[1])) {
+                              importSuggestions.push({ label: em[1], desc: `\u21E1 ${path.split('/').pop()}`, insert: em[1].slice(partial.length), autoImport: path });
+                            }
+                          }
+                          const defExport = content.match(/export\s+default\s+(?:function\s+)?(\w+)/);
+                          if (defExport && defExport[1].toLowerCase().startsWith(partial) && defExport[1].toLowerCase() !== partial && !localIds.has(defExport[1])) {
+                            importSuggestions.push({ label: defExport[1], desc: `\u21E1 ${path.split('/').pop()} (default)`, insert: defExport[1].slice(partial.length), autoImport: path });
+                          }
+                        }
+                      }
                       const combined = [
                         ...locals.map(id => ({ label: id, desc: 'local', insert: id.slice(partial.length) })),
                         ...snippetMatches.map(sn => ({ label: sn, desc: '\u2702 ' + SNIPPETS[sn].replace(/\$\{\d+:?([^}]*)}/g, '$1').split('\n')[0].substring(0, 30), insert: sn.slice(partial.length) })),
                         ...kwFiltered.map(k => ({ label: k, desc: 'keyword', insert: k.slice(partial.length) })),
-                      ].slice(0, 12);
+                        ...importSuggestions.slice(0, 3),
+                      ].slice(0, 14);
                       if (combined.length) {
                         setAcItems(combined);
                         setAcIdx(0); setAcOpen(true);
@@ -6191,6 +6353,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 }}>read-only</div>
               )}
             </div>
+            </>}
 
             {/* Terminal */}
             {termOpen && (
@@ -6674,7 +6837,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
             }} onMouseDown={stop} style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }} title="File info">
               {activeFile.endsWith('.jsx') ? 'React JSX' : activeFile.endsWith('.tsx') ? 'React TSX' : activeFile.endsWith('.ts') ? 'TypeScript' : activeFile.endsWith('.js') ? 'JavaScript' : activeFile.endsWith('.json') ? 'JSON' : activeFile.endsWith('.css') ? 'CSS' : activeFile.endsWith('.md') ? 'Markdown' : 'Text'}
             </span>
-            <span style={{ fontSize: fs(8), color: '#555' }}>{code.length > 1024 ? `${(code.length / 1024).toFixed(1)}KB` : `${code.length}B`}</span>
+            <span onClick={() => {
+              const words = code.trim().split(/\s+/).filter(Boolean).length;
+              const chars = code.length;
+              const lns = lines.length;
+              const funcs = (code.match(/(?:function\s+\w|(?:const|let|var)\s+\w+\s*=\s*(?:\(|function|=>))/g) || []).length;
+              showToast(`${lns} lines \u2022 ${words} words \u2022 ${chars} chars \u2022 ${funcs} functions`, 'info');
+            }} onMouseDown={stop}
+              style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }}
+              title="Click for file stats">{code.length > 1024 ? `${(code.length / 1024).toFixed(1)}KB` : `${code.length}B`}</span>
             {(() => {
               const totalH = lines.length * Math.round(16 * zf);
               const viewH = el?.clientHeight || 1;
@@ -6683,6 +6854,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 {scrollTop <= 0 ? 'Top' : pct >= 99 ? 'Bot' : `${pct}%`}
               </span>;
             })()}
+            <span onClick={() => setLineEnding(le => le === 'LF' ? 'CRLF' : 'LF')} onMouseDown={stop}
+              style={{ fontSize: fs(8), color: '#555', cursor: 'pointer' }}
+              title="Click to toggle line ending">{lineEnding}</span>
             <span style={{ fontSize: fs(8), color: '#555' }}>UTF-8</span>
             <span onClick={() => setNotifOpen(n => !n)} onMouseDown={stop} style={{ position: 'relative' }}>
               <span style={{ fontSize: fs(8), color: notifHistory.length ? '#cba6f7' : '#555', cursor: 'pointer', opacity: .6 }}
