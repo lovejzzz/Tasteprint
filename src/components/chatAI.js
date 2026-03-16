@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 8: Emotional intelligence — nuanced emotion detection & response
+   Round 9: Deep knowledge base — explainers, comparisons, how-it-works
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -604,6 +604,177 @@ const KB = {
   },
 };
 
+/* ── Deep Knowledge: Explainers ──
+ * Structured explanations for common "what is X?" and "how does X work?"
+ * questions. Each entry has: brief (one-liner), deep (2-3 sentence explanation),
+ * and hook (follow-up question). The response generator picks based on
+ * conversation context — brief for casual, deep for genuine curiosity.
+ */
+const EXPLAIN = {
+  // ─── Languages & Frameworks ───
+  react:       { brief:"React is a JavaScript library for building user interfaces with reusable components.",
+                 deep:"React uses a virtual DOM to efficiently update only what changes, and its component model lets you break UI into small, reusable pieces. Hooks (like useState and useEffect) let you manage state and side effects without class components. It's maintained by Meta and powers Facebook, Instagram, and tons of other apps.",
+                 hook:"Are you building something with React right now?" },
+  vue:         { brief:"Vue is a progressive JavaScript framework for building UIs — it's designed to be incrementally adoptable.",
+                 deep:"Vue's reactivity system automatically tracks dependencies and updates the DOM when data changes. Single-file components (.vue files) keep template, script, and styles together. The Composition API (Vue 3) gives you React-hooks-like flexibility while keeping Vue's gentle learning curve.",
+                 hook:"What made you curious about Vue?" },
+  angular:     { brief:"Angular is a full-featured TypeScript framework by Google for building enterprise web applications.",
+                 deep:"Angular is opinionated — it comes with routing, forms, HTTP, and dependency injection built in. It uses two-way data binding and a component architecture. The CLI scaffolds everything, and its strict TypeScript foundation catches bugs early. It's great for large teams and complex apps.",
+                 hook:"Are you evaluating frameworks for a project?" },
+  svelte:      { brief:"Svelte is a compiler-based framework that shifts work from the browser to build time — no virtual DOM needed.",
+                 deep:"Unlike React or Vue, Svelte compiles your components into efficient imperative code at build time. There's no runtime framework shipped to the browser, so the bundle is tiny and fast. Reactivity is built into the language itself — just assign a variable and the DOM updates.",
+                 hook:"The compiler approach is fascinating, right?" },
+  nextjs:      { brief:"Next.js is a React framework that adds server-side rendering, routing, and full-stack capabilities out of the box.",
+                 deep:"Next.js handles the hard parts of React: file-based routing, SSR/SSG, API routes, and image optimization. The App Router (v13+) introduced React Server Components, letting you fetch data right in your components without useEffect. It's the default choice for production React apps.",
+                 hook:"Are you using the App Router or the Pages Router?" },
+  typescript:  { brief:"TypeScript is JavaScript with static types — it catches bugs at compile time instead of runtime.",
+                 deep:"TypeScript adds a type system on top of JavaScript that compiles away to plain JS. You get autocomplete, refactoring safety, and entire categories of bugs caught before your code even runs. Generics, union types, and type inference make it powerful without being verbose.",
+                 hook:"Do you use strict mode?" },
+  javascript:  { brief:"JavaScript is the programming language of the web — it runs in every browser and on servers via Node.js.",
+                 deep:"JS started as a simple scripting language but has evolved into a full-featured language. Modern JS (ES6+) has classes, modules, async/await, destructuring, and arrow functions. It's single-threaded but uses an event loop for non-blocking I/O. It's the most widely used language in the world.",
+                 hook:"Are you more frontend or backend JS?" },
+  python:      { brief:"Python is a high-level language known for its readability and versatility — from web dev to AI/ML.",
+                 deep:"Python's clean syntax (indentation-based) makes it read almost like English. It dominates in data science (NumPy, Pandas), machine learning (TensorFlow, PyTorch), automation, and web backends (Django, FastAPI). The ecosystem has a library for basically everything.",
+                 hook:"What are you using Python for?" },
+  rust:        { brief:"Rust is a systems programming language focused on safety, speed, and concurrency — without a garbage collector.",
+                 deep:"Rust's ownership system ensures memory safety at compile time — no null pointers, no data races, no use-after-free. The borrow checker is strict but once your code compiles, it's incredibly reliable. It's as fast as C/C++ but way safer. Great for systems programming, WebAssembly, and CLI tools.",
+                 hook:"What drew you to Rust?" },
+  go:          { brief:"Go (Golang) is Google's language for building fast, reliable, concurrent server-side applications.",
+                 deep:"Go was designed for simplicity: there's usually one obvious way to do things. Goroutines make concurrency trivially easy — you can spin up thousands of lightweight threads. It compiles to a single binary with no dependencies. The standard library is incredibly complete for web servers and networking.",
+                 hook:"Building APIs or services with it?" },
+  node:        { brief:"Node.js lets you run JavaScript on the server — it uses Chrome's V8 engine and an event-driven architecture.",
+                 deep:"Node's non-blocking I/O model makes it great for handling many concurrent connections — perfect for real-time apps, APIs, and streaming. npm gives you access to over 2 million packages. Express is the classic framework, but Fastify and Hono are gaining traction for performance.",
+                 hook:"What are you building on Node?" },
+  tailwind:    { brief:"Tailwind CSS is a utility-first CSS framework — you style by composing small, single-purpose classes.",
+                 deep:"Instead of writing custom CSS, you apply classes like 'flex', 'p-4', 'text-blue-500' directly in HTML. It feels wrong at first but it's incredibly productive once it clicks. The design system constraints (spacing scale, color palette) keep things consistent. Unused classes get purged so the final CSS is tiny.",
+                 hook:"Do you customize the config much or use defaults?" },
+
+  // ─── Concepts ───
+  flexbox:     { brief:"Flexbox is a CSS layout model for distributing space along a single axis — row or column.",
+                 deep:"Flexbox solves the centering problem forever: `display: flex; justify-content: center; align-items: center`. It handles main axis (justify-content) and cross axis (align-items) separately. flex-grow, flex-shrink, and flex-basis control how items share space. It's perfect for navbars, card rows, and form layouts.",
+                 hook:"Are you struggling with a specific layout?" },
+  grid:        { brief:"CSS Grid is a two-dimensional layout system — it handles both rows and columns simultaneously.",
+                 deep:"Grid lets you define rows and columns with `grid-template-columns` and `grid-template-rows`, then place items anywhere in the grid. `fr` units distribute remaining space proportionally. `auto-fit` and `minmax()` create responsive layouts without media queries. It's perfect for page layouts, dashboards, and gallery grids.",
+                 hook:"Grid or Flexbox person? (Or both?)" },
+  api:         { brief:"An API (Application Programming Interface) is a way for software programs to talk to each other using defined rules.",
+                 deep:"Think of an API as a waiter in a restaurant — you tell it what you want (request), it goes to the kitchen (server), and brings back your food (response). REST APIs use HTTP methods (GET, POST, PUT, DELETE) with JSON data. GraphQL lets you request exactly the fields you need. APIs are the backbone of modern web apps.",
+                 hook:"Are you building or consuming an API?" },
+  git:         { brief:"Git is a distributed version control system that tracks changes to your code across time and team members.",
+                 deep:"Every Git repo is a full copy of the project history. You work in branches (parallel timelines), commit changes (save points), and merge branches together. The staging area (git add) lets you choose exactly what to commit. Remote repos (GitHub, GitLab) enable collaboration. git log, diff, and blame help you understand code history.",
+                 hook:"Are you team rebase or team merge?" },
+  docker:      { brief:"Docker packages your app and all its dependencies into containers — portable environments that run anywhere.",
+                 deep:"A Docker container is like a lightweight virtual machine but way faster. You define your environment in a Dockerfile (base image, dependencies, commands), build it once, and it runs identically on any machine. Docker Compose lets you orchestrate multiple containers (app + database + cache) together.",
+                 hook:"Using it for development or production?" },
+  hooks:       { brief:"React Hooks are functions that let you use state and lifecycle features in functional components.",
+                 deep:"useState gives you state variables, useEffect handles side effects (data fetching, subscriptions), useContext shares data without prop drilling, and useRef holds mutable references. Custom hooks let you extract and reuse stateful logic across components. They replaced class components for most use cases.",
+                 hook:"Which hook do you use most?" },
+  ssr:         { brief:"Server-Side Rendering means generating HTML on the server instead of in the browser — faster first paint, better SEO.",
+                 deep:"With SSR, the server renders the full HTML page before sending it to the browser. The user sees content immediately instead of a blank page while JavaScript loads. Frameworks like Next.js, Nuxt, and SvelteKit handle SSR automatically. The tradeoff is server load vs. client-side rendering simplicity.",
+                 hook:"Are you optimizing for SEO or performance?" },
+  closure:     { brief:"A closure is a function that remembers the variables from the scope where it was created, even after that scope is gone.",
+                 deep:"In JavaScript, when a function is created inside another function, the inner function 'closes over' the outer function's variables. This is how callbacks, event handlers, and module patterns work. It's also why useState in React can persist values between renders — closures capture the state.",
+                 hook:"Closures clicked for you, or still a bit fuzzy?" },
+  promise:     { brief:"A Promise is JavaScript's way of handling asynchronous operations — it represents a value that will be available later.",
+                 deep:"A Promise can be pending (waiting), fulfilled (resolved with a value), or rejected (failed with an error). You use .then() for success and .catch() for errors, or async/await syntax for cleaner code. Promises solved callback hell by chaining operations instead of nesting them. Promise.all runs multiple async operations in parallel.",
+                 hook:"Do you prefer .then() chains or async/await?" },
+  recursion:   { brief:"Recursion is when a function calls itself to solve a problem by breaking it into smaller sub-problems.",
+                 deep:"A recursive function needs a base case (when to stop) and a recursive step (calling itself with a smaller input). Classic example: factorial(5) = 5 × factorial(4) = 5 × 4 × factorial(3)... It's elegant for tree traversal, nested structures, and divide-and-conquer algorithms. Watch out for stack overflow with deep recursion — use tail recursion or iteration when needed.",
+                 hook:"Have you hit a problem where recursion just clicked?" },
+  restapi:     { brief:"A REST API uses standard HTTP methods (GET, POST, PUT, DELETE) to perform CRUD operations on resources.",
+                 deep:"REST (Representational State Transfer) organizes your API around resources (users, posts, comments) with URLs like /api/users/123. GET reads, POST creates, PUT updates, DELETE removes. It's stateless — each request contains all the info the server needs. JSON is the standard format. It's the most common API style.",
+                 hook:"Building REST or looking at GraphQL too?" },
+  graphql:     { brief:"GraphQL is a query language for APIs — you request exactly the data you need in a single request.",
+                 deep:"Instead of multiple REST endpoints returning fixed data shapes, GraphQL has one endpoint where you specify exactly which fields you want. No over-fetching, no under-fetching. The schema defines all available types and relationships. Mutations handle writes. It's great for complex data relationships and mobile apps where bandwidth matters.",
+                 hook:"Have you used it in a project yet?" },
+  websocket:   { brief:"WebSockets create a persistent two-way connection between client and server — perfect for real-time communication.",
+                 deep:"Unlike HTTP (request-response), WebSockets keep the connection open so either side can send data anytime. This enables live chat, real-time dashboards, multiplayer games, and collaborative editing. The connection starts as an HTTP handshake then upgrades to the WebSocket protocol. Libraries like Socket.io add fallbacks and rooms.",
+                 hook:"Building something real-time?" },
+  oauth:       { brief:"OAuth is an authorization protocol that lets users grant apps limited access to their accounts without sharing passwords.",
+                 deep:"When you click 'Sign in with Google', that's OAuth. The app redirects you to Google, you approve the permissions, Google sends back an access token. The app uses that token to access your data — it never sees your password. OAuth 2.0 uses access tokens (short-lived) and refresh tokens (for renewal). It separates authentication from authorization.",
+                 hook:"Implementing login or third-party integrations?" },
+
+  // ─── Design ───
+  designsystem:{ brief:"A design system is a collection of reusable components, patterns, and guidelines that ensure visual and behavioral consistency.",
+                 deep:"It's more than a component library — it includes design tokens (colors, spacing, typography), component specs, usage guidelines, and principles. Think of it as a shared language between design and engineering. Companies like Google (Material), Apple (HIG), and IBM (Carbon) have massive design systems.",
+                 hook:"Are you building one or using an existing one?" },
+  accessibility:{ brief:"Web accessibility (a11y) means designing and building so everyone can use your site, including people with disabilities.",
+                 deep:"This includes screen reader support (semantic HTML, ARIA labels), keyboard navigation (focus management, tab order), color contrast (4.5:1 minimum for text), and motion preferences (prefers-reduced-motion). WCAG 2.1 AA is the standard to aim for. It's not just nice to have — it's often legally required and always the right thing to do.",
+                 hook:"Do you test with screen readers?" },
+  responsive:  { brief:"Responsive design means building layouts that adapt to any screen size — from phones to 4K monitors.",
+                 deep:"The core tools: media queries to adjust styles at breakpoints, fluid widths (%, vw, vh), CSS Grid/Flexbox for flexible layouts, and clamp()/min()/max() for fluid typography. Mobile-first means starting with the smallest screen and adding complexity for larger ones. Container queries (new!) let components respond to their own size, not just the viewport.",
+                 hook:"Do you design mobile-first?" },
+  darkmode:    { brief:"Dark mode is an alternative color scheme using dark backgrounds and light text — easier on eyes in low light.",
+                 deep:"Implementation usually involves CSS custom properties (variables) that swap values based on a theme class or prefers-color-scheme media query. The key challenges: not just inverting colors (some need specific dark variants), images/shadows need adjustment, and you need to respect the user's OS preference while allowing manual toggle.",
+                 hook:"Do you prefer dark or light mode?" },
+};
+
+/* ── Deep Knowledge: Comparisons ──
+ * Specific "X vs Y" entries with real, opinionated takes.
+ */
+const COMPARISONS = {
+  "react_vue":     { a:"React", b:"Vue", take:"React gives you more flexibility and has a bigger ecosystem, but Vue is easier to learn and its single-file components are beautiful. React wins for large teams, Vue wins for getting stuff done fast. Both are great — it's honestly about what clicks with your brain.", hook:"What matters more to you — ecosystem size or developer experience?" },
+  "react_angular": { a:"React", b:"Angular", take:"React is a library (you choose the pieces), Angular is a framework (batteries included). React is more flexible, Angular is more opinionated. Small-to-medium apps? React. Large enterprise app with a big team? Angular's structure helps. React has a gentler learning curve, Angular has a steeper one but more guardrails.", hook:"How big is the project you're planning?" },
+  "react_svelte":  { a:"React", b:"Svelte", take:"React has the massive ecosystem and job market. Svelte has the better developer experience and smaller bundles because it compiles away. For new projects where you have freedom? I'd seriously look at Svelte. For team projects and hiring? React is the safer bet.", hook:"Is this a personal project or team project?" },
+  "typescript_javascript": { a:"TypeScript", b:"JavaScript", take:"TypeScript is JavaScript with guardrails. For small scripts? JS is fine. For anything you'll maintain, collaborate on, or scale? TypeScript saves so many headaches. The initial setup cost pays for itself the first time the compiler catches a bug you'd have spent hours debugging.", hook:"How big is your codebase?" },
+  "node_python":   { a:"Node.js", b:"Python", take:"Node is great for real-time apps, APIs, and when your frontend is already JavaScript. Python wins for data science, ML, scripting, and readability. If you're building a web API and already know JS? Node. If you're doing anything data-related? Python. Both have huge ecosystems.", hook:"What are you building?" },
+  "rest_graphql":  { a:"REST", b:"GraphQL", take:"REST is simpler, more cacheable, and every developer knows it. GraphQL is more flexible — you get exactly the data you ask for in one request. REST is fine for most CRUD apps. GraphQL shines when you have complex data relationships, mobile apps (bandwidth matters), or multiple clients needing different data shapes.", hook:"Is overfetching a problem for you right now?" },
+  "tailwind_css":  { a:"Tailwind", b:"vanilla CSS", take:"Tailwind is utility-first — you style by composing classes instead of writing CSS files. It looks messy at first but it's wildly productive. Vanilla CSS gives you full control and teaches you the fundamentals. My take: learn CSS well first, then try Tailwind. Once you go utility-first, it's hard to go back.", hook:"Have you tried Tailwind yet?" },
+  "flexbox_grid":  { a:"Flexbox", b:"CSS Grid", take:"They're not competitors — they solve different problems! Flexbox is one-dimensional (row OR column). Grid is two-dimensional (rows AND columns). Use Flexbox for components (navbars, card rows, centering). Use Grid for page layouts and anything with both rows and columns. Most real layouts use both.", hook:"What layout are you trying to build?" },
+  "docker_vms":    { a:"Docker", b:"VMs", take:"Docker containers share the host OS kernel — they start in seconds, use less RAM, and are way more portable. VMs include a full OS — more isolation but heavier (minutes to boot, GBs of disk). Containers for apps, VMs when you need full OS isolation or different OS entirely.", hook:"Are you containerizing an app?" },
+  "mysql_postgres": { a:"MySQL", b:"PostgreSQL", take:"MySQL is simpler and faster for basic read-heavy workloads. PostgreSQL is more feature-rich — JSON support, full-text search, better SQL standards compliance, and extensibility. For most new projects I'd lean PostgreSQL. MySQL is fine for simple CRUD apps and has massive hosting support.", hook:"What kind of data are you working with?" },
+  "mongo_postgres": { a:"MongoDB", b:"PostgreSQL", take:"MongoDB is document-based (JSON-like) — great for flexible schemas and rapid prototyping. PostgreSQL is relational with incredible JSON support too. If your data has clear relationships (users → orders → items), go relational. If your data shape varies a lot or you need extreme horizontal scale, consider Mongo.", hook:"How structured is your data?" },
+};
+
+function lookupComparison(a, b) {
+  const key1 = `${a}_${b}`, key2 = `${b}_${a}`;
+  const entry = COMPARISONS[key1] || COMPARISONS[key2];
+  if (!entry) return null;
+  const swapped = !!COMPARISONS[key2] && !COMPARISONS[key1];
+  return { ...entry, swapped };
+}
+
+function lookupExplainer(text) {
+  const lower = text.toLowerCase().replace(/[?!.,]/g, "").trim();
+
+  // "what is X" / "what are X" / "what does X do"
+  let subject = null;
+  const whatMatch = lower.match(/(?:what (?:is|are|does)|explain|tell me about|how does|how do|what's)\s+(.+)/);
+  if (whatMatch) subject = whatMatch[1].replace(/\b(a|an|the|work|mean|do)\b/g, "").trim();
+
+  // "how does X work" / "how X works"
+  if (!subject) {
+    const howMatch = lower.match(/how (?:does |do )?(.+?)(?:\s+work|\s+function)?$/);
+    if (howMatch) subject = howMatch[1].trim();
+  }
+
+  if (!subject || subject.length < 2) return null;
+
+  // Normalize common aliases
+  const aliases = {
+    "react js":"react", "reactjs":"react", "react.js":"react",
+    "vue js":"vue", "vuejs":"vue", "vue.js":"vue",
+    "next js":"nextjs", "next.js":"nextjs",
+    "node js":"node", "nodejs":"node", "node.js":"node",
+    "tailwind css":"tailwind", "tailwindcss":"tailwind",
+    "ts":"typescript", "js":"javascript", "py":"python",
+    "flex box":"flexbox", "css grid":"grid", "css flexbox":"flexbox",
+    "rest api":"restapi", "rest apis":"restapi",
+    "web socket":"websocket", "web sockets":"websocket", "websockets":"websocket",
+    "design systems":"designsystem", "design token":"designsystem",
+    "a11y":"accessibility", "web accessibility":"accessibility",
+    "dark mode":"darkmode", "dark theme":"darkmode",
+    "responsive design":"responsive",
+    "closures":"closure", "promises":"promise",
+    "react hooks":"hooks",
+    "server side rendering":"ssr", "server rendering":"ssr",
+    "graphql api":"graphql",
+    "o auth":"oauth", "oauth2":"oauth", "oauth 2":"oauth",
+  };
+  const normalized = aliases[subject] || subject.replace(/\s+/g, "").toLowerCase();
+  const entry = EXPLAIN[normalized] || EXPLAIN[subject.split(/\s+/)[0]];
+  return entry || null;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    COMPOSITIONAL NLG ENGINE — The fundamental shift from templates
    to generated, contextual, unique responses every time.
@@ -808,27 +979,28 @@ function handleComparison(text) {
   if (!vsMatch) return null;
 
   const a = vsMatch[1].toLowerCase(), b = vsMatch[2].toLowerCase();
-  const assocA = ASSOC[a], assocB = ASSOC[b];
 
+  // Try structured comparison first
+  const comp = lookupComparison(a, b);
+  if (comp) {
+    return `${comp.a} vs ${comp.b} — ooh, classic! ${comp.take} ${comp.hook}`;
+  }
+
+  // Fall back to ASSOC-based comparison
+  const assocA = ASSOC[a], assocB = ASSOC[b];
   if (!assocA && !assocB) return null;
 
   const parts = [`${a} vs ${b} — great question!`];
-
   if (assocA?.opinions) parts.push(`${a}: ${pick(assocA.opinions)}.`);
   if (assocB?.opinions) parts.push(`${b}: ${pick(assocB.opinions)}.`);
 
-  // Give a nuanced take
   const nuances = [
     `Honestly, they're both solid — it depends on what you're optimizing for.`,
     `I'd say ${a} wins for some use cases and ${b} wins for others.`,
     `They each have their strengths — it's less about which is "better" and more about which fits your situation.`,
-    `The community around both is great, so you can't really go wrong.`,
   ];
   parts.push(pick(nuances));
-
-  // Hook
-  parts.push(`What's your use case? That'll help narrow it down.`);
-
+  parts.push(`What's your use case?`);
   return parts.join(" ");
 }
 
@@ -1058,11 +1230,21 @@ function answerQuestion(text, parsed, intents, topics) {
     }
   }
 
-  // General "what is" / "what does" questions
+  // Deep knowledge explainers — "what is X", "how does X work", "explain X"
+  const explainer = lookupExplainer(text);
+  if (explainer) {
+    // Decide depth based on conversation context — curiosity gets the deep version
+    const lastEmo = recentEmotions[recentEmotions.length - 1] || "neutral";
+    const wantDeep = lastEmo === "curious" || /explain|how|detail|deep|thorough/i.test(lower) || parsed.qType;
+    const explanation = wantDeep ? explainer.deep : explainer.brief;
+    return explanation + " " + explainer.hook;
+  }
+
+  // General "what is" / "what does" questions (no explainer match)
   if (/^what (is|are|does|do)\b/i.test(lower)) {
     const subject = lower.replace(/^what (is|are|does|do)\s+/i, "").replace(/\?$/, "").trim();
     if (subject.length > 0 && subject.length < 30) {
-      return `Hmm, ${subject} is a big topic! I can share some thoughts but I might not have all the details since I'm a tiny model. What specifically about ${subject} are you curious about?`;
+      return `Hmm, ${subject} is a big topic! I know a bit but I'm a tiny model. What specifically about ${subject} are you curious about?`;
     }
   }
 
