@@ -1319,7 +1319,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       </div>
     </div>}
     /* v4 Glass — frosted glassmorphism panel with aurora orb, ring gauge, sparkline, staggered stats */
-    {const sparkPts=bars.map((h,i)=>[i*(80/(bars.length-1)),24-h*0.2]);const sparkPath="M"+sparkPts.map(([x,y])=>`${x},${y}`).join(" L");return <div style={{...b,background:p.card+"e0",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,border:`1px solid ${p.ac}15`,padding:16,display:"flex",flexDirection:"column",gap:12,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 rgba(255,255,255,0.06)`,animation:"tp-fadein .4s ease-out both"}}>
+    if(v===4){const sparkPts=bars.map((h,i)=>[i*(80/(bars.length-1)),24-h*0.2]);const sparkPath="M"+sparkPts.map(([x,y])=>`${x},${y}`).join(" L");return <div style={{...b,background:p.card+"e0",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,border:`1px solid ${p.ac}15`,padding:16,display:"flex",flexDirection:"column",gap:12,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 rgba(255,255,255,0.06)`,animation:"tp-fadein .4s ease-out both"}}>
       <div style={{position:"absolute",top:-30,right:-30,width:100,height:100,borderRadius:999,background:`radial-gradient(circle,${p.ac}15,${p.ac2||p.ac}08,transparent 70%)`,pointerEvents:"none"}}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:1}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1354,6 +1354,87 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
           <div style={{display:"flex",alignItems:"center",gap:4,color:p.mu}}>{m.icon}<span style={{fontSize:f(8),textTransform:"uppercase",letterSpacing:".04em"}}>{m.l}</span></div>
           <T k={`s${i}`} s={{fontSize:f(11),fontWeight:600,color:p.tx}}>{m.v}</T>
         </div>)}
+      </div>
+    </div>}
+    /* v5 Brutal — neo-brutalist dashboard: thick borders, hard offset shadows, dot-grid bg, squared bars, bold mono type */
+    if(v===5)return <div style={{...b,background:p.card,borderRadius:3,border:`2.5px solid ${p.tx}`,boxShadow:`6px 6px 0 ${p.ac}`,padding:14,display:"flex",flexDirection:"column",gap:10,position:"relative",overflow:"hidden",animation:"tp-fadein .25s ease-out"}}>
+      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${p.tx}10 1px,transparent 1px)`,backgroundSize:"10px 10px",pointerEvents:"none"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",zIndex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:26,height:26,borderRadius:3,background:p.ac,border:`2px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`2px 2px 0 ${p.tx}`}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2.5" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></div>
+          <T k="title" s={{fontSize:f(11),fontWeight:900,color:p.tx,textTransform:"uppercase",letterSpacing:"0.06em"}}>Metrics</T>
+        </div>
+        <div style={{background:p.ac+"20",border:`2px solid ${p.tx}`,borderRadius:2,padding:"2px 8px"}}><span style={{fontSize:f(8),fontWeight:800,color:p.tx,letterSpacing:"0.08em"}}>LIVE</span></div>
+      </div>
+      <div style={{display:"flex",gap:10,alignItems:"center",position:"relative",zIndex:1}}>
+        <div style={{position:"relative",width:60,height:60,flexShrink:0}}>
+          <svg width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke={p.tx+"20"} strokeWidth="5"/><circle cx="30" cy="30" r="24" fill="none" stroke={p.ac} strokeWidth="5" strokeDasharray={`${ring/100*150} ${150}`} strokeLinecap="butt" transform="rotate(-90 30 30)"/></svg>
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <T k="ring" s={{fontSize:f(14),fontWeight:900,color:p.tx,lineHeight:1}}>{ring}%</T>
+          </div>
+        </div>
+        <div>
+          <T k="value" s={{fontSize:f(22),fontWeight:900,color:p.tx,lineHeight:1,letterSpacing:"-0.02em"}}>2,847</T>
+          <T k="sub" s={{fontSize:f(8),color:p.mu,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginTop:3}}>Events</T>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:3,alignItems:"flex-end",height:40,position:"relative",zIndex:1}}>
+        {bars.map((h,i)=><div key={i} style={{flex:1,height:`${h}%`,minHeight:3,background:p.ac,border:`1.5px solid ${p.tx}`,borderRadius:1,transformOrigin:"bottom",animation:`tp-bar-grow .4s ease-out ${i*0.06}s both`}}/>)}
+      </div>
+      <div style={{display:"flex",gap:6,position:"relative",zIndex:1}}>
+        {[{l:"LAT",v:"12ms"},{l:"ERR",v:"0.1%"},{l:"THR",v:"98%"}].map((m,i)=><div key={i} style={{flex:1,padding:"6px 8px",border:`2px solid ${p.tx}`,borderRadius:2,background:p.card,boxShadow:`2px 2px 0 ${i===0?p.ac:p.tx}`,animation:`tp-fadein .2s ease-out ${.2+i*.08}s both`}}>
+          <div style={{fontSize:f(7),fontWeight:800,color:p.mu,textTransform:"uppercase",letterSpacing:"0.1em"}}>{m.l}</div>
+          <T k={`s${i}`} s={{fontSize:f(11),fontWeight:900,color:p.tx,marginTop:2}}>{m.v}</T>
+        </div>)}
+      </div>
+    </div>;
+    /* v6 Gradient glow — aurora gradient header, glowing ring, shimmer bars, pulsing accent dots */
+    {const sparkPts=bars.map((h,i)=>[i*(80/(bars.length-1)),24-h*0.2]);const sparkPath="M"+sparkPts.map(([x,y])=>`${x},${y}`).join(" L");return <div style={{...b,background:p.card,borderRadius:18,overflow:"hidden",border:`1px solid ${p.bd}`,boxShadow:`0 12px 40px ${p.ac}12`,display:"flex",flexDirection:"column",animation:"tp-fadein .4s ease-out both"}}>
+      <div style={{background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,padding:"12px 16px",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)`,animation:"tp-shimmer-slide 3s ease-in-out infinite",pointerEvents:"none"}}/>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:28,height:28,borderRadius:9,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></div>
+            <T k="title" s={{fontSize:f(11),color:"#fff",fontWeight:600}}>Analytics</T>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:4}}>
+            <div style={{width:5,height:5,borderRadius:999,background:"#4ADE80",boxShadow:"0 0 6px #4ADE8060",animation:"tp-pulse 2s ease infinite"}}/>
+            <span style={{fontSize:f(8),color:"rgba(255,255,255,0.7)"}}>Live</span>
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:12,flex:1}}>
+        <div style={{display:"flex",gap:14,alignItems:"center"}}>
+          <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
+            <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke={p.ac+"12"} strokeWidth="5"/><circle cx="32" cy="32" r="26" fill="none" stroke={`url(#dpgr)`} strokeWidth="5" strokeDasharray={`${ring/100*163} ${163}`} strokeLinecap="round" transform="rotate(-90 32 32)" style={{animation:"tp-ring 1s ease-out forwards",filter:`drop-shadow(0 0 6px ${p.ac}50)`}}/><defs><linearGradient id="dpgr" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={p.ac}/><stop offset="100%" stopColor={p.ac2||p.ac}/></linearGradient></defs></svg>
+            <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <T k="ring" s={{fontSize:f(14),fontWeight:700,color:p.tx,lineHeight:1}}>{ring}%</T>
+              <span style={{fontSize:7,color:p.mu}}>uptime</span>
+            </div>
+          </div>
+          <div style={{flex:1}}>
+            <T k="value" s={{fontSize:f(22),fontWeight:700,color:p.tx,lineHeight:1,letterSpacing:"-0.02em"}}>2,847</T>
+            <T k="sub" s={{fontSize:f(8),color:p.mu,display:"block",marginTop:3}}>Total events</T>
+            <svg width="80" height="20" viewBox="0 0 80 20" style={{overflow:"visible",marginTop:6}}>
+              <defs><linearGradient id="dpgf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={p.ac} stopOpacity=".2"/><stop offset="100%" stopColor={p.ac} stopOpacity="0"/></linearGradient></defs>
+              <path d={sparkPath+" L80,20 L0,20 Z"} fill="url(#dpgf)" style={{animation:"tp-fadein .5s ease-out .3s both"}}/>
+              <path d={sparkPath} fill="none" stroke={`url(#dpgr)`} strokeWidth="1.5" strokeLinecap="round" style={{strokeDasharray:200,animation:"tp-draw 1s ease-out forwards"}}/>
+              <circle cx={sparkPts[sparkPts.length-1][0]} cy={sparkPts[sparkPts.length-1][1]} r="2.5" fill={p.ac} style={{animation:"tp-fadein .3s ease-out .8s both",filter:`drop-shadow(0 0 4px ${p.ac}60)`}}/>
+            </svg>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:3,alignItems:"flex-end",height:36}}>
+          {bars.map((h,i)=><div key={i} style={{flex:1,height:`${h}%`,minHeight:3,background:`linear-gradient(180deg,${p.ac},${p.ac2||p.ac}80)`,borderRadius:3,transformOrigin:"bottom",animation:`tp-bar-grow .5s ease-out ${i*0.07}s both`,boxShadow:i===bars.length-1?`0 0 8px ${p.ac}30`:"none"}}/>)}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          {[{l:"Latency",v:"12ms"},{l:"Errors",v:"0.1%"},{l:"Throughput",v:"98%"}].map((m,i)=><div key={i} style={{flex:1,background:`linear-gradient(135deg,${p.ac}06,${p.ac2||p.ac}06)`,borderRadius:10,padding:"7px 10px",border:`1px solid ${p.ac}12`,animation:`tp-fadein .3s ease-out ${.3+i*.1}s both`}}>
+            <div style={{display:"flex",alignItems:"center",gap:3}}>
+              <div style={{width:4,height:4,borderRadius:99,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,boxShadow:`0 0 4px ${p.ac}40`,animation:"tp-pulse 2.5s ease infinite"}}/>
+              <span style={{fontSize:f(7),color:p.mu,textTransform:"uppercase",letterSpacing:".04em"}}>{m.l}</span>
+            </div>
+            <T k={`s${i}`} s={{fontSize:f(11),fontWeight:600,color:p.tx,marginTop:2}}>{m.v}</T>
+          </div>)}
+        </div>
       </div>
     </div>}
   }

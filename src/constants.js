@@ -47,7 +47,7 @@ export const VARIANTS = {
   tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered","Brutal","Gradient"],
   heading:   ["Clean","Accent bar","Overline","Gradient","Badge","Brutal","Gradient glow"],
   "stat-card":["Outlined","Tinted icon","Left accent","Inverted","Terminal","Brutal","Gradient"],
-  "dash-panel":["Telemetry","Signal","Minimal","Gradient","Glass"],
+  "dash-panel":["Telemetry","Signal","Minimal","Gradient","Glass","Brutal","Gradient glow"],
   "image-placeholder":["Subtle","Gradient","Dashed","Glass","Brutal"],
   "avatar-row":["Circular","Small tight","Rounded sq","Glass","Gradient ring"],
   "list-item":["Card row","Divider","Tinted","Glass","Settings","Brutal","Gradient"],
