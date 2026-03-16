@@ -13899,6 +13899,164 @@ function applyVocabRegister(response) {
   return r;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   GENUINE MICRO-REACTIONS (Round 86)
+   Humans don't just respond — they *react* first. A quick "Oh!" or
+   "Wait, seriously?" or "Ha —" before launching into their actual
+   reply. These micro-reactions are involuntary emotional leakage
+   that makes conversation feel alive.
+
+   Detects the "charge" of user input across 8 dimensions:
+   surprising, personal, funny, impressive, sad, relatable,
+   provocative, wholesome. Prepends a matching micro-reaction.
+
+   Fire rate: ~22% of eligible turns (4+). 4-turn cooldown.
+   Never fires on questions the AI asked back, or on very short
+   "ok"/"yeah" messages. Max 1 reaction per response.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastReactionTurn = 0;
+let recentReactions = []; // track last 5 to avoid repetition
+
+// Reaction pools keyed by charge type
+const MICRO_REACTIONS = {
+  surprising: [
+    "Oh wow —", "Wait, really?", "Huh!", "Oh —", "Whoa.",
+    "No way —", "Oh, interesting —", "Wait —",
+    "Hold on —", "Oh!", "Hm, that's unexpected —",
+  ],
+  personal: [
+    "Oh, I appreciate you sharing that.", "Aw —", "Oh, that's real.",
+    "I hear you.", "That's actually really honest.", "Oh —",
+    "Yeah, I get that.", "That hits different.",
+  ],
+  funny: [
+    "Ha —", "Okay that's funny.", "Pfft —", "Ha, okay —",
+    "Lol wait —", "That got me.", "Heh —",
+    "Okay I laughed.", "Ha! —",
+  ],
+  impressive: [
+    "Oh nice!", "That's legit impressive.", "Whoa, okay —",
+    "Oh, that's cool.", "Damn —", "Oh that's solid.",
+    "Okay I'm impressed.", "Nice —",
+  ],
+  sad: [
+    "Oh no.", "Aw, I'm sorry.", "Oh —", "That's rough.",
+    "Ugh, that sucks.", "Oh, that's tough.", "Man...",
+  ],
+  relatable: [
+    "Oh, totally.", "YES.", "Oh I feel that.", "Right?!",
+    "So true.", "Okay, same.", "Honestly, yeah.",
+  ],
+  provocative: [
+    "Ooh, spicy take.", "Oh, interesting angle.", "Hmm —",
+    "Okay, I see where you're going.", "Bold claim —",
+    "Oh, that's a take.", "Hm, let me think about that.",
+  ],
+  wholesome: [
+    "Aw, that's sweet.", "Oh that's lovely.", "That's wholesome.",
+    "I love that.", "That's genuinely nice.", "Oh, that's great.",
+  ],
+};
+
+function detectMessageCharge(text, sent, emo, topics) {
+  const lower = text.toLowerCase();
+  const tokens = tokenize(text);
+  const charges = {};
+
+  // ── Surprising: unexpected facts, twists, counter-intuitive claims
+  if (/\b(actually|turns out|didn'?t (know|expect|realize)|surprisingly|never knew|plot twist|get this)\b/i.test(lower)) charges.surprising = 2;
+  if (/\b(found out|discovered|it hit me|just realized|mind.?blown)\b/i.test(lower)) charges.surprising = (charges.surprising||0) + 1.5;
+  if (/!{2,}/.test(text) && !/\?/.test(text)) charges.surprising = (charges.surprising||0) + 0.8;
+
+  // ── Personal: sharing vulnerable info, feelings, life events
+  if (/\b(i('m| am) (going through|dealing with|struggling|trying to|afraid|nervous|worried))\b/i.test(lower)) charges.personal = 2.5;
+  if (/\b(my (mom|dad|partner|friend|family|boss|therapist|doctor))\b/i.test(lower)) charges.personal = (charges.personal||0) + 1.5;
+  if (/\b(honestly|truth is|real talk|to be honest|i've never told|between us)\b/i.test(lower)) charges.personal = (charges.personal||0) + 1.5;
+  if (/\b(i (love|hate|miss|lost|broke up|quit|got fired|got promoted|graduated))\b/i.test(lower)) charges.personal = (charges.personal||0) + 1.5;
+
+  // ── Funny: humor, jokes, absurdity
+  if (emo?.emotion === "amused") charges.funny = 2;
+  if (/\b(haha|lmao|lol|rofl|😂|🤣|💀)\b/i.test(text)) charges.funny = (charges.funny||0) + 1;
+  if (/\b(imagine|picture this|what if.*literally|plot twist)\b/i.test(lower) && sent >= 0) charges.funny = (charges.funny||0) + 1;
+
+  // ── Impressive: achievements, skills, cool things they've done
+  if (/\b(i (built|made|created|finished|shipped|launched|won|got into))\b/i.test(lower)) charges.impressive = 2;
+  if (/\b(i('ve| have) been (working on|building|learning|studying))\b/i.test(lower) && tokens.length > 8) charges.impressive = (charges.impressive||0) + 1.5;
+  if (/\b(just (finished|completed|shipped|deployed|published|released))\b/i.test(lower)) charges.impressive = (charges.impressive||0) + 1.5;
+
+  // ── Sad: loss, frustration, disappointment
+  if (emo?.emotion === "venting" || emo?.emotion === "frustrated") charges.sad = 1.5;
+  if (/\b(died|passed away|lost (my|a)|funeral|grief|depressed|heartbroken|devastated)\b/i.test(lower)) charges.sad = 3;
+  if (/\b(failed|rejected|didn'?t (get|make|pass)|let .* down)\b/i.test(lower)) charges.sad = (charges.sad||0) + 1.5;
+  if (sent <= -2) charges.sad = (charges.sad||0) + 1;
+
+  // ── Relatable: universal experiences, shared sentiments
+  if (/\b(we all|everyone|you know (that|when|how)|don'?t you (hate|love)|isn'?t it (weird|funny|crazy))\b/i.test(lower)) charges.relatable = 2;
+  if (/\b(me too|same here|i feel (you|that)|been there|story of my life)\b/i.test(lower)) charges.relatable = (charges.relatable||0) + 1.5;
+  if (/\b(mondays|traffic|wifi|deadlines|alarm clock|coffee)\b/i.test(lower) && sent !== 0) charges.relatable = (charges.relatable||0) + 1;
+
+  // ── Provocative: strong opinions, hot takes, debate starters
+  if (/\b(unpopular opinion|hot take|fight me|change my mind|overrated|underrated)\b/i.test(lower)) charges.provocative = 2.5;
+  if (/\b(is (actually|basically) (terrible|trash|genius|perfect))\b/i.test(lower)) charges.provocative = (charges.provocative||0) + 1.5;
+  if (/\b(tabs|spaces|vim|emacs|react|vue|angular|python|javascript)\b/i.test(lower) && /\b(better|worse|best|worst|superior)\b/i.test(lower)) charges.provocative = (charges.provocative||0) + 1.5;
+
+  // ── Wholesome: kindness, gratitude, warmth
+  if (emo?.emotion === "affectionate") charges.wholesome = 2;
+  if (/\b(thank(s| you)|you('re| are) (the best|awesome|amazing|so (nice|kind|helpful)))\b/i.test(lower)) charges.wholesome = (charges.wholesome||0) + 2;
+  if (/\b(my (kid|child|pet|dog|cat) (just|did|said))\b/i.test(lower) && sent >= 0) charges.wholesome = (charges.wholesome||0) + 1.5;
+  if (/\b(proud of|grateful|blessed|lucky|appreciate)\b/i.test(lower)) charges.wholesome = (charges.wholesome||0) + 1.5;
+
+  // Find dominant charge
+  let best = null, bestScore = 1.5; // minimum threshold
+  for (const [type, score] of Object.entries(charges)) {
+    if (score > bestScore) { best = type; bestScore = score; }
+  }
+
+  return best;
+}
+
+function applyMicroReaction(response, text, sent, emo, topics) {
+  const turn = mem.turn;
+  if (turn < 3) return response; // let conversation warm up
+  if (turn - lastReactionTurn < 4) return response; // 4-turn cooldown
+  if (text.trim().length < 12) return response; // skip very short messages
+  if (Math.random() > 0.22) return response; // ~22% fire rate
+
+  // Don't react to messages that are just answering our question
+  const lastAI = mem.lastAI();
+  if (lastAI && lastAI.text.endsWith("?") && text.length < 30) return response;
+
+  // Don't react if response already starts with an interjection
+  if (/^(Oh|Wow|Ha|Aw|Hmm|Whoa|Wait|Huh|Yes|No way|Okay)\b/i.test(response)) return response;
+
+  const charge = detectMessageCharge(text, sent, emo, topics);
+  if (!charge) return response;
+
+  const pool = MICRO_REACTIONS[charge];
+  if (!pool || pool.length === 0) return response;
+
+  // Pick a reaction we haven't used recently
+  let reaction;
+  let attempts = 0;
+  do {
+    reaction = pool[Math.floor(Math.random() * pool.length)];
+    attempts++;
+  } while (recentReactions.includes(reaction) && attempts < 6);
+
+  // Still got a repeat after 6 tries? Skip this turn
+  if (recentReactions.includes(reaction)) return response;
+
+  // Track usage
+  recentReactions.push(reaction);
+  if (recentReactions.length > 8) recentReactions.shift();
+  lastReactionTurn = turn;
+
+  // Prepend reaction with natural spacing
+  const spacer = reaction.endsWith("—") ? " " : " ";
+  return reaction + spacer + response;
+}
+
 function applySurpriseInsight(response, topics) {
   const turn = mem.turn;
   if (turn < 4) return response; // let conversation warm up
@@ -14330,6 +14488,9 @@ export function getAIResponse(input) {
   // ═══ Pattern breaking: detect structural ruts and inject surprise ═══
   response = breakPattern(response, text, currentTopics, inputEnergy);
 
+  // ═══ Genuine micro-reactions: spontaneous emotional leakage ("Oh wow —", "Wait, really?") ═══
+  response = applyMicroReaction(response, text, sent, emo, currentTopics);
+
   // ═══ Conversational hooks & open loops: create forward pull and curiosity ═══
   response = addConversationalHooks(response, currentTopics, inputEnergy);
 
@@ -14464,6 +14625,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
