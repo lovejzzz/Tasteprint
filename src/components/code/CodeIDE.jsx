@@ -353,9 +353,6 @@ function genDevice(tp) {
 /* ========== Component ========== */
 export default function CodeIDE({ b, p, fsize = 1 }) {
   const tp = React.useContext(TpContext);
-  const zf = fsize * editorZoom;
-  const fs = n => Math.round(n * zf);
-  const lh = Math.round(16 * zf) + 'px';
 
   /* ---- File system ---- */
   const initFiles = React.useMemo(() => ({
@@ -515,6 +512,11 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ---- Editor zoom ---- */
   const [editorZoom, setEditorZoom] = React.useState(1);
+
+  /* ---- Zoom-derived values ---- */
+  const zf = fsize * editorZoom;
+  const fs = n => Math.round(n * zf);
+  const lh = Math.round(16 * zf) + 'px';
 
   /* ---- Notification history ---- */
   const [notifHistory, setNotifHistory] = React.useState([]);
@@ -989,6 +991,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: outlineOpen ? 'Hide Outline' : 'Show Outline', key: 'outline', hint: '' },
       { label: 'Fold All', key: 'foldall', hint: '' },
       { label: 'Unfold All', key: 'unfoldall', hint: '' },
+      { label: 'Go to Line...', key: 'goto', hint: 'Ctrl+G' },
+      { label: 'Toggle Minimap', key: 'minimap', hint: '' },
+      { label: 'Toggle Bookmark', key: 'bookmark', hint: '\u2318+B' },
+      { label: 'Next Bookmark', key: 'nextbm', hint: 'F2' },
+      { label: 'Previous Bookmark', key: 'prevbm', hint: 'Shift+F2' },
+      { label: 'Clear All Bookmarks', key: 'clearbm', hint: '' },
+      { label: 'Keyboard Shortcuts', key: 'help', hint: '\u2318+K' },
+      { label: showBracketColors ? 'Disable Bracket Colors' : 'Enable Bracket Colors', key: 'bracketcolor', hint: '' },
+      { label: showIndentRainbow ? 'Disable Indent Rainbow' : 'Enable Indent Rainbow', key: 'indentrainbow', hint: '' },
+      { label: 'Zoom In', key: 'zoomin', hint: '\u2318+=' },
+      { label: 'Zoom Out', key: 'zoomout', hint: '\u2318+-' },
+      { label: 'Reset Zoom', key: 'zoomreset', hint: '\u2318+0' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -1013,6 +1027,18 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'outline') setSidebarMode(m => m === 'outline' ? 'files' : 'outline');
     else if (key === 'foldall') { setFoldedLines(new Set(Object.keys(foldableRanges).map(Number))); showToast('All folded', 'info'); }
     else if (key === 'unfoldall') { setFoldedLines(new Set()); showToast('All unfolded', 'info'); }
+    else if (key === 'goto') { setGotoOpen(true); setGotoVal(''); setTimeout(() => gotoRef.current?.focus(), 50); }
+    else if (key === 'minimap') setShowMinimap(m => !m);
+    else if (key === 'bookmark') { toggleBookmark(activeLn); showToast(bookmarks.has(activeLn) ? 'Bookmark removed' : 'Bookmark added', 'info'); }
+    else if (key === 'nextbm') jumpBookmark(1);
+    else if (key === 'prevbm') jumpBookmark(-1);
+    else if (key === 'clearbm') { setBookmarks(new Set()); showToast('Bookmarks cleared', 'info'); }
+    else if (key === 'help') setHelpOpen(h => !h);
+    else if (key === 'bracketcolor') setShowBracketColors(v => !v);
+    else if (key === 'indentrainbow') setShowIndentRainbow(v => !v);
+    else if (key === 'zoomin') setEditorZoom(z => Math.min(2, z + 0.1));
+    else if (key === 'zoomout') setEditorZoom(z => Math.max(0.6, z - 0.1));
+    else if (key === 'zoomreset') setEditorZoom(1);
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
@@ -1453,6 +1479,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ========== RENDER ========== */
   return (
     <div data-ide-scroll style={{ ...b, background: '#1e1e2e', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: MONO }}>
+      {/* Custom scrollbar styling */}
+      <style>{`
+        [data-ide-scroll] *::-webkit-scrollbar { width: 6px; height: 6px; }
+        [data-ide-scroll] *::-webkit-scrollbar-track { background: transparent; }
+        [data-ide-scroll] *::-webkit-scrollbar-thumb { background: #ffffff15; border-radius: 3px; }
+        [data-ide-scroll] *::-webkit-scrollbar-thumb:hover { background: #ffffff25; }
+        [data-ide-scroll] *::-webkit-scrollbar-corner { background: transparent; }
+        [data-ide-scroll] textarea::selection { background: #cba6f730; }
+      `}</style>
 
       {/* Title bar — drag handle for moving IDE on canvas */}
       <div data-ide-drag style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', borderBottom: '1px solid #ffffff10', gap: 6, flexShrink: 0, background: '#181825', cursor: 'grab' }}>
@@ -1982,30 +2017,39 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
           {/* Command palette */}
           {cmdOpen && (
-            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 200 }}>
-              <input ref={cmdRef} value={cmdQuery} onChange={e => { setCmdQuery(e.target.value); setCmdIdx(0); }}
-                placeholder="Type a command or file..." spellCheck={false}
-                onKeyDown={e => {
-                  e.stopPropagation();
-                  if (e.key === 'Escape') { setCmdOpen(false); taRef.current?.focus(); }
-                  if (e.key === 'ArrowDown') { e.preventDefault(); setCmdIdx(i => Math.min(i + 1, Math.min(commands.length, 8) - 1)); }
-                  if (e.key === 'ArrowUp') { e.preventDefault(); setCmdIdx(i => Math.max(i - 1, 0)); }
-                  if (e.key === 'Enter' && commands.length) { runCommand(commands[Math.min(cmdIdx, commands.length - 1)].key); }
-                }}
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid #ffffff08', padding: '6px 10px', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
-              <div style={{ maxHeight: 150, overflow: 'auto' }}>
-                {commands.slice(0, 8).map((c, ci) => (
-                  <div key={c.key} onClick={() => runCommand(c.key)}
-                    onMouseEnter={() => setCmdIdx(ci)}
-                    style={{
-                      display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9,
-                      color: ci === cmdIdx ? '#cdd6f4' : '#a6adc8', cursor: 'pointer', gap: 6,
-                      background: ci === cmdIdx ? '#ffffff10' : 'transparent',
-                    }}>
-                    <span style={{ flex: 1 }}>{c.label}</span>
-                    {c.hint && <span style={{ fontSize: 8, color: '#555' }}>{c.hint}</span>}
-                  </div>
-                ))}
+            <div onMouseDown={stop} style={{ position: 'absolute', top: 30, left: '10%', right: '10%', zIndex: 20, background: '#181825', border: '1px solid #ffffff15', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.5)', overflow: 'hidden', maxHeight: 260 }}>
+              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #ffffff08', padding: '0 10px', gap: 4 }}>
+                <span style={{ fontSize: 10, color: '#cba6f7', flexShrink: 0 }}>{'\u2318'}</span>
+                <input ref={cmdRef} value={cmdQuery} onChange={e => { setCmdQuery(e.target.value); setCmdIdx(0); }}
+                  placeholder="Type a command or file..." spellCheck={false}
+                  onKeyDown={e => {
+                    e.stopPropagation();
+                    if (e.key === 'Escape') { setCmdOpen(false); taRef.current?.focus(); }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setCmdIdx(i => Math.min(i + 1, Math.min(commands.length, 12) - 1)); }
+                    if (e.key === 'ArrowUp') { e.preventDefault(); setCmdIdx(i => Math.max(i - 1, 0)); }
+                    if (e.key === 'Enter' && commands.length) { runCommand(commands[Math.min(cmdIdx, commands.length - 1)].key); }
+                  }}
+                  style={{ flex: 1, background: 'transparent', border: 'none', padding: '6px 0', fontSize: 10, color: '#cdd6f4', outline: 'none', fontFamily: MONO }} />
+                {cmdQuery && <span onClick={() => { setCmdQuery(''); setCmdIdx(0); }} style={{ fontSize: 8, color: '#555', cursor: 'pointer' }}>{'\u2715'}</span>}
+              </div>
+              <div style={{ maxHeight: 210, overflow: 'auto' }}>
+                {commands.slice(0, 12).map((c, ci) => {
+                  const isFile = c.key.startsWith('file:');
+                  return (
+                    <div key={c.key} onClick={() => runCommand(c.key)}
+                      onMouseEnter={() => setCmdIdx(ci)}
+                      style={{
+                        display: 'flex', alignItems: 'center', padding: '4px 10px', fontSize: 9,
+                        color: ci === cmdIdx ? '#cdd6f4' : '#a6adc8', cursor: 'pointer', gap: 6,
+                        background: ci === cmdIdx ? '#ffffff10' : 'transparent',
+                      }}>
+                      <span style={{ fontSize: 8, color: isFile ? '#89b4fa' : '#cba6f7', width: 12, textAlign: 'center', flexShrink: 0 }}>{isFile ? '\u2630' : '\u25B8'}</span>
+                      <span style={{ flex: 1 }}>{c.label}</span>
+                      {c.hint && <span style={{ fontSize: 7, color: '#555', background: '#ffffff08', padding: '1px 4px', borderRadius: 3 }}>{c.hint}</span>}
+                    </div>
+                  );
+                })}
+                {commands.length === 0 && <div style={{ padding: '8px 10px', fontSize: 9, color: '#555' }}>No matching commands</div>}
               </div>
             </div>
           )}
@@ -2201,11 +2245,31 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               onMouseLeave={e => { if (isFoldable) e.currentTarget.style.color = isFolded ? '#cba6f7' : '#555'; }}
                             >{isFoldable ? (isFolded ? '\u25B8' : '\u25BE') : ' '}</span>
                             <span
-                              onClick={() => {
+                              onMouseDown={e => {
+                                e.preventDefault(); e.stopPropagation();
+                                const startLine = i;
                                 const lineStart = code.split('\n').slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
                                 const lineEnd = lineStart + lines[i].length;
                                 setActiveLn(i + 1); setCursor({ ln: i + 1, col: 1 });
                                 setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = lineStart; el.selectionEnd = lineEnd; el.focus(); } }, 0);
+                                // Drag to select multiple lines
+                                const onMove = ev => {
+                                  const lineH = Math.round(16 * zf);
+                                  const gutter = lnRef.current;
+                                  if (!gutter) return;
+                                  const rect = gutter.getBoundingClientRect();
+                                  const relY = ev.clientY - rect.top + scrollTop - 8;
+                                  const hoverLine = Math.max(0, Math.min(lines.length - 1, Math.floor(relY / lineH)));
+                                  const fromLine = Math.min(startLine, hoverLine);
+                                  const toLine = Math.max(startLine, hoverLine);
+                                  const selStart = code.split('\n').slice(0, fromLine).join('\n').length + (fromLine > 0 ? 1 : 0);
+                                  const selEnd = code.split('\n').slice(0, toLine).join('\n').length + (toLine > 0 ? 1 : 0) + lines[toLine].length;
+                                  const el = taRef.current;
+                                  if (el) { el.selectionStart = selStart; el.selectionEnd = selEnd; el.focus(); }
+                                };
+                                const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+                                document.addEventListener('mousemove', onMove);
+                                document.addEventListener('mouseup', onUp);
                               }}
                               style={{
                                 fontSize: fs(9), lineHeight: lh, cursor: 'pointer', flex: 1,
@@ -2662,18 +2726,28 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           searchMatchLines.add(ln);
                         }
                       }
+                      // Precompute word occurrence lines for minimap
+                      const wordMatchLines = new Set();
+                      if (selectedWord) {
+                        wordOccurrences.forEach(ln => wordMatchLines.add(ln));
+                      }
                       return lines.map((l, i) => {
                         const trimLen = Math.min(l.trimStart().length, 36);
                         const isErr = output?.errLn === i + 1;
                         const isActive = i + 1 === activeLn;
                         const isSearch = searchMatchLines.has(i + 1);
+                        const isWordMatch = wordMatchLines.has(i + 1);
+                        const isBookmark = bookmarks.has(i + 1);
                         return <div key={i} style={{
                           height: Math.max(1, Math.min(2, 120 / lines.length)),
                           marginBottom: lines.length > 100 ? 0 : 1,
                           width: `${Math.max(4, (trimLen / 36) * 100)}%`,
-                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
+                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isBookmark ? '#89b4fa' : isWordMatch ? '#cba6f750' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
                           borderRadius: 1,
-                        }} />;
+                          position: 'relative',
+                        }}>
+                          {isBookmark && <span style={{ position: 'absolute', right: -2, top: -1, width: 3, height: 3, borderRadius: 99, background: '#89b4fa' }} />}
+                        </div>;
                       });
                     })()}
                   </div>
