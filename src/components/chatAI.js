@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 46: Lexical mirroring & register adaptation
+   Round 47: Narrative understanding & story acknowledgment
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -3904,6 +3904,15 @@ function generateResponse(text) {
   // ═══ -1. Remember/recall commands — "what do you remember about me?" ═══
   const rememberCmd = handleRememberCommand(text);
   if (rememberCmd) return rememberCmd;
+
+  // ═══ -0.1. Narrative understanding — detect and respond to stories/experiences ═══
+  if (text.length > 50 && tokens.length >= 8) {
+    const narrative = detectNarrative(text, parsed.lower || text.toLowerCase(), tokens, sent);
+    if (narrative) {
+      const narrativeResp = respondToNarrative(narrative, text, sent);
+      if (narrativeResp) return narrativeResp;
+    }
+  }
 
   // ═══ 0. Multi-sentence processing — handle paragraph-length inputs ═══
   if (text.length > 40 && /[.!?]\s/.test(text)) {
@@ -7950,6 +7959,176 @@ function mirrorRegister(response, text) {
   }
 
   return r;
+}
+
+/* ── Round 47: Narrative Understanding & Story Acknowledgment ──
+ * Detects when users are telling stories/experiences (vs asking questions
+ * or making points) and responds to the narrative arc, not just keywords.
+ * Extracts story elements: time markers, challenges, outcomes, emotions.
+ */
+
+// Narrative signal patterns
+const NARRATIVE_SIGNALS = {
+  // Time/sequence markers suggest storytelling
+  temporal: /\b(yesterday|last (?:week|month|year|night|time)|the other day|this morning|a while ago|back when|one time|once|recently|just (?:now|today)|earlier|finally|eventually|at first|then|after that|so then|and then|next thing I know|before I knew it|ended up|turned out)\b/i,
+  // First-person experience markers
+  experience: /\b(I (?:was|went|got|had|tried|started|found|realized|noticed|decided|ended up|managed|couldn't|didn't|almost)|my (?:friend|boss|coworker|team|partner|mom|dad|family)|we (?:were|went|had|tried|ended up))\b/i,
+  // Challenge/conflict signals
+  challenge: /\b(but then|problem was|issue was|couldn't figure|kept failing|was stuck|struggling|broke|crashed|went wrong|messed up|screwed up|disaster|nightmare|chaos|panic|stressed|frustrated|worried|anxious|didn't work|failed|lost)\b/i,
+  // Resolution/outcome signals
+  resolution: /\b(finally|eventually|turned out|in the end|it worked|fixed it|figured (?:it )?out|solved|got it|managed to|ended up (?:being|working)|worked out|saved|recovered|lesson learned|never again|moral of the story|long story short)\b/i,
+  // Emotional peaks
+  peak: /\b(couldn't believe|mind was blown|best (?:thing|part|moment)|worst (?:thing|part|moment)|crazy thing is|funniest part|scariest part|most (?:amazing|ridiculous|embarrassing)|insane|wild|unreal|surreal|epic|hilarious|heartbreaking)\b/i,
+};
+
+function detectNarrative(text, lower, tokens, sent) {
+  let score = 0;
+  const elements = {};
+
+  // Check each signal category
+  if (NARRATIVE_SIGNALS.temporal.test(lower)) { score += 2; elements.temporal = true; }
+  if (NARRATIVE_SIGNALS.experience.test(lower)) { score += 2; elements.experience = true; }
+  if (NARRATIVE_SIGNALS.challenge.test(lower)) { score += 1.5; elements.challenge = true; }
+  if (NARRATIVE_SIGNALS.resolution.test(lower)) { score += 1.5; elements.resolution = true; }
+  if (NARRATIVE_SIGNALS.peak.test(lower)) { score += 2; elements.peak = true; }
+
+  // Length bonus — stories tend to be longer
+  if (text.length > 100) score += 1;
+  if (text.length > 200) score += 1;
+
+  // Sentence count — stories have multiple sentences
+  const sentenceCount = (text.match(/[.!?]+/g) || []).length;
+  if (sentenceCount >= 2) score += 1;
+  if (sentenceCount >= 4) score += 1;
+
+  // "and then" pattern — classic story connector
+  if (/and then|so then|but then/i.test(lower)) score += 1;
+
+  // Need score >= 4 to consider it a narrative
+  if (score < 4) return null;
+
+  // Extract story details
+  const timeMatch = lower.match(/\b(yesterday|last (?:week|month|year|night|time)|the other day|this morning|a while ago|recently|today|earlier)\b/i);
+  elements.when = timeMatch ? timeMatch[0] : null;
+
+  // Detect the emotional trajectory
+  const firstHalf = lower.slice(0, Math.floor(lower.length / 2));
+  const secondHalf = lower.slice(Math.floor(lower.length / 2));
+  const firstSent = sentiment(firstHalf);
+  const secondSent = sentiment(secondHalf);
+
+  if (firstSent < 0 && secondSent > 0) elements.arc = "struggle_to_triumph";
+  else if (firstSent > 0 && secondSent < 0) elements.arc = "good_to_bad";
+  else if (firstSent < -1 && secondSent < -1) elements.arc = "rough_throughout";
+  else if (firstSent > 1 && secondSent > 1) elements.arc = "good_throughout";
+  else elements.arc = "neutral";
+
+  // Detect if the story has a resolution or is left hanging
+  elements.resolved = NARRATIVE_SIGNALS.resolution.test(lower);
+  elements.hasConflict = NARRATIVE_SIGNALS.challenge.test(lower);
+
+  // Extract what happened (core action phrases)
+  const actionMatch = lower.match(/I (?:was |went |got |had |tried |started |found |realized |noticed |decided |ended up |managed |couldn't |didn't )([\w\s]{3,30}?)(?:[.!?,]|$)/i);
+  elements.coreAction = actionMatch ? actionMatch[0].trim().replace(/[.!?,]$/, "") : null;
+
+  return { score, elements, sentenceCount, sentimentOverall: sent };
+}
+
+function respondToNarrative(narrative, text, sent) {
+  const { elements } = narrative;
+  const parts = [];
+
+  // 1. Acknowledge the story-telling itself (shows we're listening)
+  if (elements.arc === "struggle_to_triumph") {
+    parts.push(pick([
+      "Okay wait, I love a good comeback story.",
+      "Oh man, this went from rough to redemption.",
+      "What a turnaround though!",
+      "That's the kind of story where the struggle makes the ending so much better.",
+    ]));
+  } else if (elements.arc === "good_to_bad") {
+    parts.push(pick([
+      "Oh no, I felt that shift.",
+      "Ugh, it was going so well too.",
+      "That's such a gut punch when things turn like that.",
+    ]));
+  } else if (elements.arc === "rough_throughout") {
+    parts.push(pick([
+      "Man, that sounds genuinely rough.",
+      "That's a lot to deal with, honestly.",
+      "I'm sorry you went through that.",
+    ]));
+  } else if (elements.arc === "good_throughout") {
+    parts.push(pick([
+      "I love everything about this story.",
+      "This is the kind of thing that just makes your day.",
+      "What an experience!",
+    ]));
+  } else if (elements.peak) {
+    parts.push(pick([
+      "Wait, that's wild.",
+      "No way. Seriously?",
+      "That's one of those moments you don't forget.",
+    ]));
+  } else {
+    parts.push(pick([
+      "Oh wow, that's quite a story.",
+      "I can picture that whole thing playing out.",
+      "That's the kind of thing you can't make up.",
+    ]));
+  }
+
+  // 2. Reference the specific core action if detected
+  if (elements.coreAction && Math.random() < 0.6) {
+    const action = elements.coreAction;
+    parts.push(pick([
+      `The part where ${action} — that's the key moment right there.`,
+      `When ${action}, I bet that changed everything.`,
+      `"${action}" — yeah, that's the turning point.`,
+    ]));
+  }
+
+  // 3. Time-aware acknowledgment
+  if (elements.when && Math.random() < 0.4) {
+    parts.push(pick([
+      `And this was ${elements.when}? That's still fresh.`,
+      `${elements.when.charAt(0).toUpperCase() + elements.when.slice(1)} — so this is pretty recent.`,
+    ]));
+  }
+
+  // 4. Follow-up that advances the narrative
+  if (!elements.resolved && elements.hasConflict) {
+    // Story is unresolved — ask how it ended
+    parts.push(pick([
+      "So how did it end up?",
+      "Wait — did it work out?",
+      "Don't leave me hanging, what happened after that?",
+      "And then what? I need the ending!",
+    ]));
+  } else if (elements.resolved && elements.hasConflict) {
+    // Story has resolution — ask about the takeaway
+    parts.push(pick([
+      "Looking back, would you do anything differently?",
+      "Did that change how you approach things now?",
+      "Has it happened again since then?",
+    ]));
+  } else if (elements.arc === "good_throughout") {
+    // Positive story — celebrate and probe
+    parts.push(pick([
+      "What was the absolute best moment?",
+      "I bet you're still riding that high. What's next?",
+      "Can you top that? Or is that peak experience?",
+    ]));
+  } else {
+    // Neutral/unclear — ask for the emotional core
+    parts.push(pick([
+      "How did that make you feel in the moment?",
+      "What's the thing about it that stuck with you?",
+      "Is that something you think about a lot?",
+    ]));
+  }
+
+  return parts.join(" ");
 }
 
 /* ── Conversation Arc Awareness ──
