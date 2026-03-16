@@ -929,7 +929,65 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
   if(type==="profile-card"){
     if(v===0)return <div style={{...b,background:p.card,borderRadius:16,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column"}}><div style={{height:60,background:`linear-gradient(135deg,${p.ac}30,${p.ac2}30)`}}/><div style={{padding:"0 16px 16px",marginTop:-24,display:"flex",flexDirection:"column",gap:8}}><Img k="avatar" s={{width:48,height:48,borderRadius:999,background:p.su,border:`3px solid ${p.card}`}}/><div><T k="name" s={{fontSize:14,fontWeight:600,color:p.tx}}>Jane Doe</T><T k="role" s={{fontSize:11,color:p.mu,display:"block"}}>Product Designer</T></div><T k="bio" s={{fontSize:10,color:p.mu,lineHeight:1.5}}>Crafting interfaces that feel alive. Previously at Vercel.</T><div style={{display:"flex",gap:8}}><div style={{flex:1,textAlign:"center"}}><T k="posts" s={{fontSize:14,fontWeight:600,color:p.tx,display:"block"}}>142</T><span style={{fontSize:9,color:p.mu}}>Posts</span></div><div style={{flex:1,textAlign:"center"}}><T k="followers" s={{fontSize:14,fontWeight:600,color:p.tx,display:"block"}}>2.4k</T><span style={{fontSize:9,color:p.mu}}>Followers</span></div><div style={{flex:1,textAlign:"center"}}><T k="following" s={{fontSize:14,fontWeight:600,color:p.tx,display:"block"}}>318</T><span style={{fontSize:9,color:p.mu}}>Following</span></div></div></div></div>;
     if(v===1)return <div style={{...b,background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:14,display:"flex",gap:12,alignItems:"center"}}><Img k="avatar" s={{width:44,height:44,borderRadius:999,background:p.ac+"18",flexShrink:0}}/><div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}><T k="name" s={{fontSize:13,fontWeight:600,color:p.tx}}>Jane Doe</T><T k="role" s={{fontSize:10,color:p.mu}}>Product Designer</T></div><div style={{height:30,width:70,borderRadius:8,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{color:onAc,fontSize:10,fontWeight:500}}>Follow</T></div></div>;
-    return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:14,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:36,height:36,borderRadius:2,background:p.ac+"15",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:14,color:p.ac,opacity:.6}}>◈</span></div><div><T k="name" s={{fontSize:11,fontWeight:600,color:p.ac,letterSpacing:"0.04em"}}>JANE_DOE</T><T k="role" s={{fontSize:9,color:"#555",display:"block"}}>RANK: DESIGNER // LVL 42</T></div></div><div style={{height:1,background:p.ac+"15"}}/><div style={{display:"flex",gap:12}}>{[{l:"CMTS",v:"142"},{l:"FLLW",v:"2.4K"},{l:"REP",v:"★★★"}].map((s,i)=><div key={i} style={{flex:1}}><div style={{fontSize:7,color:"#555",letterSpacing:"0.08em"}}>{s.l}</div><T k={`s${i}`} s={{fontSize:10,color:i===2?p.ac:"#aaa",animation:`tp-count .4s ease-out ${i*0.1}s both`}}>{s.v}</T></div>)}</div><div style={{height:24,borderRadius:2,border:`1px solid ${p.ac}25`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:9,color:p.ac,letterSpacing:"0.06em"}}>CONNECT</T></div></div>;
+    if(v===2)return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:14,display:"flex",flexDirection:"column",gap:8,fontFamily:"'JetBrains Mono',monospace"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:36,height:36,borderRadius:2,background:p.ac+"15",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:14,color:p.ac,opacity:.6}}>◈</span></div><div><T k="name" s={{fontSize:11,fontWeight:600,color:p.ac,letterSpacing:"0.04em"}}>JANE_DOE</T><T k="role" s={{fontSize:9,color:"#555",display:"block"}}>RANK: DESIGNER // LVL 42</T></div></div><div style={{height:1,background:p.ac+"15"}}/><div style={{display:"flex",gap:12}}>{[{l:"CMTS",v:"142"},{l:"FLLW",v:"2.4K"},{l:"REP",v:"★★★"}].map((s,i)=><div key={i} style={{flex:1}}><div style={{fontSize:7,color:"#555",letterSpacing:"0.08em"}}>{s.l}</div><T k={`s${i}`} s={{fontSize:10,color:i===2?p.ac:"#aaa",animation:`tp-count .4s ease-out ${i*0.1}s both`}}>{s.v}</T></div>)}</div><div style={{height:24,borderRadius:2,border:`1px solid ${p.ac}25`,display:"flex",alignItems:"center",justifyContent:"center"}}><T k="cta" s={{fontSize:9,color:p.ac,letterSpacing:"0.06em"}}>CONNECT</T></div></div>;
+    /* v3 Glass — frosted glassmorphism with gradient avatar ring + status */
+    if(v===3)return <div style={{...b,background:p.card+"cc",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:20,border:`1px solid ${p.bd}`,padding:20,display:"flex",flexDirection:"column",alignItems:"center",gap:12,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}88`,animation:"tp-fadein .35s ease-out"}}>
+      <div style={{position:"absolute",top:-30,right:-30,width:100,height:100,borderRadius:999,background:`radial-gradient(circle,${p.ac}18,transparent 70%)`,pointerEvents:"none"}}/>
+      <div style={{position:"absolute",bottom:-20,left:-20,width:80,height:80,borderRadius:999,background:`radial-gradient(circle,${(p.ac2||p.ac)}12,transparent 70%)`,pointerEvents:"none"}}/>
+      <div style={{position:"relative",animation:"tp-fadein .4s ease-out .1s both"}}>
+        <div style={{width:60,height:60,borderRadius:999,padding:3,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Img k="avatar" s={{width:54,height:54,borderRadius:999,background:p.su,border:`2px solid ${p.card}`}}/>
+        </div>
+        <div style={{position:"absolute",bottom:2,right:2,width:14,height:14,borderRadius:999,background:"#22c55e",border:`2.5px solid ${p.card}`,boxShadow:"0 0 6px #22c55e60"}}/>
+      </div>
+      <div style={{textAlign:"center",animation:"tp-fadein .4s ease-out .15s both"}}>
+        <T k="name" s={{fontSize:f(15),fontWeight:700,color:p.tx,display:"block",letterSpacing:"-0.01em"}}>Jane Doe</T>
+        <T k="role" s={{fontSize:f(11),color:p.mu,display:"block",marginTop:2}}>Product Designer</T>
+      </div>
+      <T k="bio" s={{fontSize:f(10),color:p.mu,lineHeight:1.5,textAlign:"center",maxWidth:"90%",animation:"tp-fadein .4s ease-out .2s both"}}>Crafting interfaces that feel alive</T>
+      <div style={{display:"flex",gap:10,animation:"tp-fadein .4s ease-out .25s both"}}>
+        {[{icon:"M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z",},{icon:"M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2zM4 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z",},{icon:"M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"}].map((s,i)=><div key={i} style={{width:30,height:30,borderRadius:10,background:p.ac+"10",border:`1px solid ${p.ac}18`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={s.icon}/></svg>
+        </div>)}
+      </div>
+      <div style={{display:"flex",gap:16,padding:"8px 0",width:"100%",animation:"tp-fadein .4s ease-out .3s both"}}>
+        {[{l:"Posts",v:"142"},{l:"Followers",v:"2.4k"},{l:"Following",v:"318"}].map((s,i)=><div key={i} style={{flex:1,textAlign:"center"}}>
+          <T k={`s${i}`} s={{fontSize:f(14),fontWeight:700,color:p.tx,display:"block"}}>{s.v}</T>
+          <span style={{fontSize:f(9),color:p.mu}}>{s.l}</span>
+        </div>)}
+      </div>
+      <div style={{width:"100%",height:36,borderRadius:12,background:p.ac+"12",border:`1px solid ${p.ac}28`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"tp-fadein .4s ease-out .35s both"}}>
+        <T k="cta" s={{fontSize:f(11),fontWeight:600,color:p.ac}}>Follow</T>
+      </div>
+    </div>;
+    /* v4 Gradient — bold gradient bg with centered avatar + stat pills */
+    return <div style={{...b,background:`linear-gradient(145deg,${p.ac},${p.ac2||p.ac})`,borderRadius:18,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 60%)",pointerEvents:"none"}}/>
+      <div style={{padding:"24px 20px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,position:"relative"}}>
+        <div style={{width:56,height:56,borderRadius:999,border:`3px solid ${onAc}44`,padding:2,animation:"tp-fadein .4s ease-out .08s both"}}>
+          <Img k="avatar" s={{width:"100%",height:"100%",borderRadius:999,background:onAc+"18"}}/>
+        </div>
+        <div style={{textAlign:"center",animation:"tp-fadein .4s ease-out .14s both"}}>
+          <T k="name" s={{fontSize:f(16),fontWeight:800,color:onAc,display:"block",letterSpacing:"-0.02em"}}>Jane Doe</T>
+          <T k="role" s={{fontSize:f(10),color:onAc,display:"block",marginTop:3,opacity:.7}}>Product Designer</T>
+        </div>
+        <T k="bio" s={{fontSize:f(10),color:onAc,opacity:.65,lineHeight:1.5,textAlign:"center",animation:"tp-fadein .4s ease-out .2s both"}}>Crafting beautiful user experiences</T>
+        <div style={{display:"flex",gap:8,marginTop:2,animation:"tp-fadein .4s ease-out .26s both"}}>
+          {[{v:"142",l:"posts"},{v:"2.4k",l:"followers"},{v:"318",l:"following"}].map((s,i)=><div key={i} style={{background:onAc+"18",borderRadius:999,padding:"4px 12px",display:"flex",alignItems:"center",gap:4,backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)"}}>
+            <T k={`s${i}`} s={{fontSize:f(11),fontWeight:700,color:onAc}}>{s.v}</T>
+            <span style={{fontSize:f(9),color:onAc,opacity:.6}}>{s.l}</span>
+          </div>)}
+        </div>
+      </div>
+      <div style={{padding:"0 20px 16px",display:"flex",gap:8,animation:"tp-fadein .4s ease-out .32s both"}}>
+        <div style={{flex:1,height:36,borderRadius:10,background:onAc,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 12px ${p.ac}40`}}>
+          <T k="cta" s={{fontSize:f(11),fontWeight:700,color:p.ac}}>Follow</T>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:onAc+"22",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",border:`1px solid ${onAc}22`}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+      </div>
+    </div>;
   }
 
   /* ---- CODE BLOCK ---- */
