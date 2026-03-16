@@ -175,9 +175,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Bubble variant (v===0) — iMessage style ── */
   if (v === 0) return (
-    <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column" }}>
       {/* Header — draggable */}
-      <div data-ide-drag style={{ padding: "8px 14px", borderBottom: `1px solid ${p.bd}`, display: "flex", alignItems: "center", gap: 8, cursor: "grab" }}>
+      <div data-ide-drag style={{ padding: "8px 14px", borderBottom: `1px solid ${p.bd}`, display: "flex", alignItems: "center", gap: 8, cursor: "grab", borderRadius: "16px 16px 0 0" }}>
         <div style={{ width: 8, height: 8, borderRadius: 999, background: "#4CAF50", boxShadow: "0 0 6px #4CAF5060" }} />
         <span style={{ fontSize: 11, fontWeight: 600, color: p.tx }}>Chat</span>
         <span style={{ fontSize: 9, color: p.mu, marginLeft: "auto" }}>online</span>
@@ -270,7 +270,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Thread variant (v===1) — Slack/Discord style ── */
   if (v === 1) return (
-    <div style={{ ...b, display: "flex", flexDirection: "column", gap: 0, overflow: "hidden" }}>
+    <div style={{ ...b, display: "flex", flexDirection: "column", gap: 0 }}>
       {/* Drag handle */}
       <div data-ide-drag style={{ padding: "6px 8px", display: "flex", alignItems: "center", gap: 6, cursor: "grab", borderBottom: `1px solid ${p.bd}` }}>
         <div style={{ width: 6, height: 6, borderRadius: 999, background: "#4CAF50" }} />
@@ -362,7 +362,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Terminal variant (v===2) — CLI style ── */
   if (v === 2) return (
-    <div style={{ ...b, background: "#0c0c0e", borderRadius: 2, border: `1px solid ${p.ac}20`, display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "'JetBrains Mono',monospace" }}>
+    <div style={{ ...b, background: "#0c0c0e", borderRadius: 2, border: `1px solid ${p.ac}20`, display: "flex", flexDirection: "column", fontFamily: "'JetBrains Mono',monospace" }}>
       {/* Header — draggable */}
       <div data-ide-drag style={{ padding: "4px 10px", borderBottom: `1px solid ${p.ac}15`, display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
         <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
@@ -429,7 +429,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Glass variant (v===3) — frosted glassmorphism AI chat ── */
   if (v === 3) return (
-    <div style={{ ...b, background: `${p.card}55`, backdropFilter: "blur(20px) saturate(140%)", WebkitBackdropFilter: "blur(20px) saturate(140%)", borderRadius: 20, border: `1px solid ${p.ac}15`, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: `0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}50`, position: "relative" }}>
+    <div style={{ ...b, background: `${p.card}55`, backdropFilter: "blur(20px) saturate(140%)", WebkitBackdropFilter: "blur(20px) saturate(140%)", borderRadius: 20, border: `1px solid ${p.ac}15`, display: "flex", flexDirection: "column", boxShadow: `0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}50`, position: "relative" }}>
       {/* Aurora orb */}
       <div style={{ position: "absolute", top: -40, right: -40, width: 100, height: 100, borderRadius: 999, background: `radial-gradient(circle, ${p.ac}18, ${p.ac2}10, transparent 70%)`, pointerEvents: "none", animation: "tp-pulse 5s ease infinite" }} />
       {/* Header */}
@@ -486,9 +486,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Gradient variant (v===4) — modern gradient AI assistant ── */
   return (
-    <div style={{ ...b, background: p.card, borderRadius: 18, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+    <div style={{ ...b, background: p.card, borderRadius: 18, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", position: "relative" }}>
       {/* Gradient header */}
-      <div data-ide-drag style={{ padding: "10px 14px", background: `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})`, display: "flex", alignItems: "center", gap: 10, cursor: "grab", position: "relative" }}>
+      <div data-ide-drag style={{ padding: "10px 14px", background: `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})`, borderRadius: "18px 18px 0 0", display: "flex", alignItems: "center", gap: 10, cursor: "grab", position: "relative" }}>
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.12), transparent 70%)`, pointerEvents: "none" }} />
         <div style={{ width: 26, height: 26, borderRadius: 999, background: onAc + "20", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
