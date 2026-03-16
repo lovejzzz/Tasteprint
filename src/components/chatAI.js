@@ -13783,6 +13783,92 @@ function applyPerspectiveAcknowledgment(response, text) {
   return joined;
 }
 
+/* ── Conversational Bookends (Round 95) ──
+ * Tracks what topics and claims the user made at the START of the conversation.
+ * Later in the conversation, references those early moments to create satisfying
+ * "full circle" callbacks. Different from temporal callback (which references
+ * mid-conversation claims) — bookends specifically link the beginning to now.
+ */
+
+let conversationStart = { topics: [], claims: [], turn: 0, captured: false };
+let lastBookendTurn = 0;
+let usedBookends = new Set();
+
+function captureConversationStart(text, topics) {
+  if (conversationStart.captured && mem.turn > 4) return;
+  if (mem.turn <= 3) {
+    if (topics.length > 0) {
+      for (const t of topics) {
+        if (!conversationStart.topics.includes(t)) conversationStart.topics.push(t);
+      }
+    }
+    // Extract a memorable opening claim
+    const claimPatterns = [
+      /\bi (?:really )?(?:love|hate|like|enjoy|want|need|wish) (.{6,40}?)(?:\.|!|,|$)/i,
+      /\bi(?:'m| am) (?:trying to|working on|thinking about|interested in) (.{6,40}?)(?:\.|!|,|$)/i,
+      /\bmy (?:favorite|biggest|main) (.{6,30}?)(?:\.|!|,|$)/i,
+    ];
+    for (const pat of claimPatterns) {
+      const m = text.match(pat);
+      if (m && m[1] && !conversationStart.claims.includes(m[1].trim())) {
+        conversationStart.claims.push(m[1].trim());
+        if (conversationStart.claims.length > 3) break;
+      }
+    }
+    if (mem.turn >= 3) conversationStart.captured = true;
+  }
+}
+
+const BOOKEND_TEMPLATES = [
+  "Full circle — remember when we kicked this off talking about {topic}? Look how far we've come.",
+  "We started this whole conversation with {topic} — and honestly, that thread is still running through everything.",
+  "Going all the way back to {topic} from when we started — I think that's still the core of this.",
+  "Funny how this connects right back to {topic}, which is where we started.",
+  "This is giving me {topic} vibes from the beginning of our chat. Everything circles back.",
+];
+
+function applyConversationBookend(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 10) return response; // need enough conversation
+  if (turn - lastBookendTurn < 12) return response; // 12-turn cooldown
+  if (Math.random() > 0.10) return response; // 10% fire rate
+  if (response.length > 200) return response;
+  if (!conversationStart.captured || conversationStart.topics.length === 0) return response;
+
+  // Check if current topics overlap with opening topics
+  let matchedTopic = null;
+  for (const ct of topics) {
+    if (conversationStart.topics.includes(ct) && !usedBookends.has(ct)) {
+      matchedTopic = ct;
+      break;
+    }
+  }
+  // Also check if current text mentions an early claim
+  if (!matchedTopic && conversationStart.claims.length > 0) {
+    const lower = text.toLowerCase();
+    for (const claim of conversationStart.claims) {
+      if (lower.includes(claim.toLowerCase().substring(0, 12)) && !usedBookends.has(claim)) {
+        matchedTopic = claim;
+        break;
+      }
+    }
+  }
+
+  if (!matchedTopic) return response;
+
+  const template = BOOKEND_TEMPLATES[Math.floor(Math.random() * BOOKEND_TEMPLATES.length)];
+  const bookend = template.replace("{topic}", matchedTopic);
+
+  lastBookendTurn = turn;
+  usedBookends.add(matchedTopic);
+  if (usedBookends.size > 6) {
+    const first = usedBookends.values().next().value;
+    usedBookends.delete(first);
+  }
+
+  return response + " " + bookend;
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -15423,6 +15509,9 @@ export function getAIResponse(input) {
   // ═══ Conversational disfluency: natural speech patterns (self-correction, false starts) ═══
   response = addDisfluency(response);
 
+  // ═══ Conversational bookends: capture opening topics for later full-circle callbacks ═══
+  captureConversationStart(text, currentTopics);
+
   // ═══ Pattern breaking: detect structural ruts and inject surprise ═══
   response = breakPattern(response, text, currentTopics, inputEnergy);
 
@@ -15508,6 +15597,9 @@ export function getAIResponse(input) {
   // ═══ Perspective acknowledgment: validate user's viewpoint before offering alternatives ═══
   response = applyPerspectiveAcknowledgment(response, text);
 
+  // ═══ Conversational bookends: full-circle callbacks to opening topics ═══
+  response = applyConversationBookend(response, text, currentTopics);
+
   // ═══ Digression & self-correction: brief tangent then catch-self for natural wandering mind ═══
   response = applyDigression(response, text, currentTopics);
 
@@ -15587,6 +15679,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };

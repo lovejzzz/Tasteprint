@@ -222,6 +222,7 @@ export const DEFAULT_PROPS = {
   navbar:        { active: 0 },
   breadcrumb:    { active: 2 },
   input:         { focused: false },
+  select:        { active: 0 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
