@@ -2709,7 +2709,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 <span style={{ fontSize: 7, color: '#555', transition: 'transform .15s', display: 'inline-block',
                   transform: openFolders[folder.name] ? 'rotate(90deg)' : 'rotate(0deg)' }}>{'\u25B8'}</span>
                 <span style={{ fontSize: 10, opacity: .6 }}>{openFolders[folder.name] ? '\uD83D\uDCC2' : '\uD83D\uDCC1'}</span>
-                <span>{folder.name}</span>
+                <span style={{ flex: 1 }}>{folder.name}</span>
+                <span style={{ fontSize: 7, color: '#444', marginLeft: 'auto' }}>{folder.children.length}</span>
               </div>
               {(openFolders[folder.name] || explorerFilter) && folder.children.filter(f => !explorerFilter || f.name.toLowerCase().includes(explorerFilter.toLowerCase())).map(f => {
                 const isActive = f.path === activeFile;
@@ -3750,7 +3751,21 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           borderLeft: i + 1 === activeLn ? '2px solid #cba6f730' : '2px solid transparent',
                         }}>
                           {guides}
-                          {searchHighlights || wordHighlights || <HighlightLine text={l} />}
+                          {searchHighlights || wordHighlights || (() => {
+                            // Underline import paths when Cmd is held
+                            if (cmdHeld && /(?:import|from)\s+.*?['"]([^'"]+)['"]/.test(l)) {
+                              const impM = l.match(/['"]([^'"]+)['"]/);
+                              if (impM) {
+                                const idx = l.indexOf(impM[0]);
+                                return <>
+                                  <HighlightLine text={l.substring(0, idx)} />
+                                  <span style={{ textDecoration: 'underline', textDecorationColor: '#89b4fa', cursor: 'pointer' }}><HighlightLine text={impM[0]} /></span>
+                                  <HighlightLine text={l.substring(idx + impM[0].length)} />
+                                </>;
+                              }
+                            }
+                            return <HighlightLine text={l} />;
+                          })()}
                           {isFolded && (
                             <span onClick={() => toggleFold(i)} style={{
                               background: '#cba6f715', border: '1px solid #cba6f730', borderRadius: 3,
@@ -3912,15 +3927,81 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 }}
                 onClick={e => {
                   updateCursor(e.target);
-                  // Cmd+Click: peek definition for tp methods
+                  // Cmd+Click: go-to-definition
                   if (e.metaKey || e.ctrlKey) {
                     const el = e.target;
                     const pos = el.selectionStart;
-                    const before = code.substring(Math.max(0, pos - 30), pos);
-                    const after = code.substring(pos, Math.min(code.length, pos + 30));
-                    const m = (before + after).match(/tp\.(\w+)/);
-                    if (m && TP_DOCS[m[1]]) {
-                      setPeekDef({ method: m[1], line: activeLn });
+                    const before = code.substring(Math.max(0, pos - 50), pos);
+                    const after = code.substring(pos, Math.min(code.length, pos + 50));
+                    const ctx = before + after;
+
+                    // 1. tp.method peek
+                    const tpM = ctx.match(/tp\.(\w+)/);
+                    if (tpM && TP_DOCS[tpM[1]]) {
+                      setPeekDef({ method: tpM[1], line: activeLn });
+                      return;
+                    }
+
+                    // 2. Import path navigation: detect import ... from "path"
+                    const lineStart = code.lastIndexOf('\n', pos - 1) + 1;
+                    const lineEnd = code.indexOf('\n', pos);
+                    const line = code.substring(lineStart, lineEnd === -1 ? code.length : lineEnd);
+                    const impMatch = line.match(/(?:import|from)\s+.*?['"]([^'"]+)['"]/);
+                    if (impMatch) {
+                      const impPath = impMatch[1];
+                      // Resolve to a file in our tree
+                      const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+                      const baseName = impPath.replace(/^[./]+/, '').replace(/\.(jsx?|tsx?)$/, '');
+                      const resolved = allPaths.find(p => {
+                        const pBase = p.replace(/\.(jsx?|tsx?)$/, '');
+                        return pBase.endsWith(baseName) || pBase.endsWith('/' + baseName);
+                      });
+                      if (resolved) {
+                        openFile(resolved);
+                        showToast(`Opened ${resolved.split('/').pop()}`, 'info');
+                        return;
+                      }
+                    }
+
+                    // 3. Symbol navigation: find definition in all files
+                    const wordBefore = before.match(/(\w+)$/)?.[1] || '';
+                    const wordAfter = after.match(/^(\w*)/)?.[1] || '';
+                    const word = wordBefore + wordAfter;
+                    if (word.length >= 2) {
+                      const defRx = new RegExp(`(?:const|let|var|function|class)\\s+${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+                      // Search current file first
+                      const localMatch = code.match(defRx);
+                      if (localMatch) {
+                        const defLn = code.substring(0, localMatch.index).split('\n').length;
+                        if (defLn !== activeLn) {
+                          goToLine(defLn);
+                          showToast(`Definition: line ${defLn}`, 'info');
+                          return;
+                        }
+                      }
+                      // Search other files
+                      for (const [path, content] of Object.entries(editFiles)) {
+                        if (path === activeFile) continue;
+                        const m = content.match(defRx);
+                        if (m) {
+                          const ln = content.substring(0, m.index).split('\n').length;
+                          openFile(path);
+                          setTimeout(() => goToLine(ln), 100);
+                          showToast(`Found in ${path.split('/').pop()}:${ln}`, 'info');
+                          return;
+                        }
+                      }
+                      for (const [path, gen] of Object.entries(GEN_FILES)) {
+                        const content = gen();
+                        const m = content.match(defRx);
+                        if (m) {
+                          const ln = content.substring(0, m.index).split('\n').length;
+                          openFile(path);
+                          setTimeout(() => goToLine(ln), 100);
+                          showToast(`Found in ${path.split('/').pop()}:${ln}`, 'info');
+                          return;
+                        }
+                      }
                     }
                   }
                 }}
@@ -3961,6 +4042,31 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       }
                     }
                   }
+                    // Hover on import path: show resolved file
+                    if (lineIdx >= 0 && lineIdx < lines.length) {
+                      const impLine = lines[lineIdx];
+                      const impM = impLine.match(/(?:import|from)\s+.*?['"]([^'"]+)['"]/);
+                      if (impM) {
+                        const impPath = impM[1];
+                        const strStart = impLine.indexOf(impPath);
+                        if (colIdx >= strStart && colIdx <= strStart + impPath.length) {
+                          const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
+                          const baseName = impPath.replace(/^[./]+/, '').replace(/\.(jsx?|tsx?)$/, '');
+                          const resolved = allPaths.find(p => {
+                            const pBase = p.replace(/\.(jsx?|tsx?)$/, '');
+                            return pBase.endsWith(baseName) || pBase.endsWith('/' + baseName);
+                          });
+                          if (resolved) {
+                            const fc = getFile(resolved);
+                            const lineCount = fc ? fc.content.split('\n').length : 0;
+                            hoverTimer.current = setTimeout(() => {
+                              setHoverDoc({ text: `→ ${resolved}\n${lineCount} lines${fc?.readonly ? ' (read-only)' : ''}\n⌘+Click to open`, x: Math.min(x, 220), y: (lineIdx + 1) * lineH - el.scrollTop });
+                            }, 300);
+                            return;
+                          }
+                        }
+                      }
+                    }
                   setHoverDoc(null);
                 }}
                 onMouseLeave={() => { clearTimeout(hoverTimer.current); setHoverDoc(null); }}
@@ -4249,6 +4355,19 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     { label: 'Go to Line', action: () => { setGotoOpen(true); setTimeout(() => gotoRef.current?.focus(), 50); }, hint: 'Ctrl+G' },
                     { label: 'Rename Symbol', action: () => { const el = taRef.current; if (el) { const s = el.selectionStart; const bef = code.substring(0, s); const aft = code.substring(s); const wB = bef.match(/(\w+)$/); const wA = aft.match(/^(\w*)/); const word = (wB ? wB[1] : '') + (wA ? wA[1] : ''); if (word.length >= 2) { setRenameSymbol({ word, newName: word }); setTimeout(() => renameSymbolRef.current?.focus(), 50); } } }, disabled: readonly, hint: '\u2318R' },
                     { label: 'Surround With...', action: () => { const el = taRef.current; if (el && el.selectionStart !== el.selectionEnd) { setSurroundMenu({ s: el.selectionStart, en: el.selectionEnd }); } else { showToast('Select code to surround', 'warn'); } }, disabled: readonly, hint: '\u2318\u21E7S' },
+                    { label: 'Find All References', action: () => {
+                      const el = taRef.current;
+                      if (!el) return;
+                      const s = el.selectionStart, en = el.selectionEnd;
+                      const word = s !== en ? code.substring(s, en).trim() : (() => {
+                        const bef = code.substring(0, s).match(/(\w+)$/)?.[1] || '';
+                        const aft = code.substring(s).match(/^(\w*)/)?.[1] || '';
+                        return bef + aft;
+                      })();
+                      if (word.length < 2) { showToast('Select a symbol first', 'warn'); return; }
+                      setGlobalSearchTerm(word); setGlobalSearchOpen(true); setSidebarMode('search');
+                      showToast(`Searching "${word}" across all files`, 'info');
+                    }},
                     null,
                     { label: 'Format Document', action: formatCode, disabled: readonly },
                     { label: 'Run', action: runCode, hint: '\u2318+Enter', disabled: readonly },
