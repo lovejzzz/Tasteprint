@@ -34,7 +34,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   /* Active index (tabs, navbar, sidebar, cmd-palette, dropdown, stepper, timeline, sub-toggle) */
   if ("active" in defaults) {
     const active = G("active");
-    const counts = { tabs: 3, navbar: 3, sidebar: 4, pagination: 5, stepper: 3, timeline: 3, accordion: 3, dropdown: 3, "cmd-palette": 4, "sub-toggle": 2, kanban: 3, "avatar-row": 4, "tag-input": 3 };
+    const counts = { tabs: 3, navbar: 3, sidebar: 4, pagination: 5, stepper: 3, timeline: 3, accordion: 3, dropdown: 3, "cmd-palette": 4, "sub-toggle": 2, kanban: 3, "avatar-row": 4, "tag-input": 3, footer: 4 };
     const n = counts[type] || 4;
     const isPage = type === "pagination";
     controls.push(<React.Fragment key="active"><span style={label}>{isPage ? "Page" : "Active"}</span>
