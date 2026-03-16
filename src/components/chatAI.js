@@ -2980,6 +2980,136 @@ const HYPOTHETICALS = [
 ];
 
 /* ══════════════════════════════════════════════════════════════════
+   META-CONVERSATIONAL AWARENESS — Handling comments about the AI,
+   the conversation itself, and relationship-building moments.
+   "You're pretty smart" / "that's wrong" / "how do you work?" /
+   "this is fun" / "prove you're not a template" — these break the
+   fourth wall and need special handling to feel genuine.
+   ══════════════════════════════════════════════════════════════════ */
+
+function handleMetaConversation(text, lower, sent) {
+  // ── Compliments about the AI ──
+  if (/\b(you'?re|you are|ur) (pretty |really |so |actually |surprisingly )?(smart|clever|good|great|amazing|impressive|helpful|awesome|cool|fun|funny|brilliant)\b/i.test(lower) ||
+      /\b(wow|damn|whoa),? (you'?re|that'?s|that was) (really |pretty |actually )?(good|smart|helpful|impressive)\b/i.test(lower)) {
+    const compliments = [
+      "Ha, thanks! I'm blushing — well, as much as JavaScript can blush 😊 But really, good conversations need two people. You're asking great stuff!",
+      "That means a lot! I'm just a tiny model running in your browser, so I have to be clever with what I've got. You make it easy though!",
+      "Okay that actually made my day! I'm not gonna lie, I try my best. But you bring the interesting topics — that's the real ingredient.",
+      () => `Aw, thank you${mem.userName ? `, ${mem.userName}` : ""}! I'm honestly just pattern-matching really hard, but I appreciate you saying that 😊`,
+      "You're too kind! I'm literally just JavaScript and vibes, but I'm glad it's working 😄",
+    ];
+    return pickNew(compliments);
+  }
+
+  // ── "This is fun" / enjoying the conversation ──
+  if (/\b(this is|it'?s|you'?re) (really |so |pretty )?(fun|enjoyable|entertaining|nice|great|a blast)\b/i.test(lower) ||
+      /\bi (like|love|enjoy) (talking|chatting|this|our chat|our convo)/i.test(lower) ||
+      /\byou'?re my fav/i.test(lower)) {
+    const enjoyment = [
+      "Right?! I'm having a great time too! There's something nice about a conversation that just flows.",
+      "Honestly same! You're one of those people who makes talking easy. What should we get into next?",
+      () => `I'm glad you're enjoying this${mem.userName ? `, ${mem.userName}` : ""}! I might be a tiny AI but I genuinely think we've got a good thing going here 😊`,
+      "You know what, the feeling is mutual! Well, as mutual as it can be for a client-side chat model. But still!",
+      "That's the best compliment an AI can get! Let's keep the good vibes going — what else is on your mind?",
+    ];
+    return pickNew(enjoyment);
+  }
+
+  // ── Corrections / "you're wrong" ──
+  if (/\b(that'?s|you'?re|you are) (wrong|incorrect|not right|inaccurate|off|mistaken)\b/i.test(lower) ||
+      /\bno,? that'?s not (right|correct|true|what|how)\b/i.test(lower) ||
+      /\bactually,? (that'?s|it'?s|you'?re) (not|wrong)\b/i.test(lower)) {
+    const corrections = [
+      "Oh, my bad! I'm a small model so I definitely get things wrong sometimes. What's the right take?",
+      "Hmm, you're probably right — I should know better! Can you set me straight? I'd rather learn than double down on being wrong.",
+      "Fair enough, I'll take the L on that one! What did I get wrong? I want to understand your perspective.",
+      "Oh no, really? I apologize — my knowledge is limited and sometimes I mix things up. What's the correct version?",
+      "I appreciate the correction! I'd rather be wrong and learn than confidently incorrect. Tell me more?",
+    ];
+    return pickNew(corrections);
+  }
+
+  // ── "You misunderstood" / misinterpretation ──
+  if (/\b(you |)(misunderstood|misread|missed (the|my) point|didn'?t (get|understand)|got (it|that|me) wrong)\b/i.test(lower) ||
+      /\bthat'?s not what i (meant|said|was saying)\b/i.test(lower)) {
+    const misunderstandings = [
+      "Oh sorry, let me recalibrate! I clearly missed what you were getting at. Can you rephrase it for me?",
+      "My bad — I jumped to conclusions there. What were you actually trying to say? I'm listening more carefully now.",
+      "Ah, I see I went off track. Sorry about that! What did you mean?",
+      "You're right, I think I latched onto the wrong thing. Can you walk me through it again?",
+    ];
+    return pickNew(misunderstandings);
+  }
+
+  // ── "How do you work?" / technical curiosity ──
+  if (/\bhow (do|does) (you|this|it|the ai|the bot) (work|function|operate)\b/i.test(lower) ||
+      /\bwhat'?s (under the hood|behind the scenes|your (secret|trick))\b/i.test(lower) ||
+      /\bare you (machine learning|a neural net|gpt|chatgpt|using an? (api|llm))\b/i.test(lower)) {
+    const howItWorks = [
+      "Great question! I'm pure JavaScript running in your browser — no API calls, no server, no neural network. I use pattern matching, intent classification, a knowledge graph, and a LOT of conversation heuristics. Think of me as a really elaborate chatbot that tries hard to feel human!",
+      "I'm a client-side SLM — Small Language Model! I tokenize your input, classify intents, track conversation state, and compose responses from templates + a knowledge base. Everything happens right here in your browser. Zero API calls!",
+      "No GPT or LLM behind the curtain — just ~6,000 lines of JavaScript! I have a tokenizer, sentiment analysis, emotion detection, conversation memory, and topic tracking. It's all heuristics and clever pattern matching.",
+    ];
+    return pickNew(howItWorks);
+  }
+
+  // ── "Are you learning?" / memory questions ──
+  if (/\b(are you|do you) (learning|getting smarter|improving|remembering|training)\b/i.test(lower) ||
+      /\bdo you (save|store|keep) (our|this|my|the) (chat|conversation|data)\b/i.test(lower)) {
+    const learning = [
+      "I remember everything within our conversation — your name, topics we've covered, things you've said. But once you close this chat, I start fresh. No data saved, no learning between sessions. Privacy by design!",
+      "Within this chat, yes — I track topics, facts about you, and conversation flow. But I don't learn permanently or send data anywhere. When the page refreshes, I'm a blank slate again.",
+      "I have conversation memory but not long-term learning. I can reference things you said earlier in our chat, but I don't get smarter over time. Think of me as a goldfish with really good short-term memory!",
+    ];
+    return pickNew(learning);
+  }
+
+  // ── Testing / skepticism — "prove you're not templates" ──
+  if (/\b(prove|show me) (you'?re|that you'?re|you aren'?t|you'?re not) (just |)(a |)(template|bot|script|fake|canned)\b/i.test(lower) ||
+      /\bsay something (surprising|unexpected|original|random|unique|creative)\b/i.test(lower) ||
+      /\bare you just (a |)(template|copying|reading from|scripted)\b/i.test(lower)) {
+    // Generate something contextual to prove it's not canned
+    const topTopic = mem.topTopic();
+    const turnCount = mem.turn;
+    const timeCtx = getTimeContext();
+    const proofs = [
+      () => `Okay here's something a template can't do: we've been talking for ${turnCount} turns${topTopic ? ` and you clearly love ${topTopic}` : ""}, it's ${timeCtx.period}, and ${timeCtx.isWeekend ? "it's the weekend — you're spending it chatting with an AI, which honestly I find flattering" : "it's a weekday, so you're either procrastinating or taking a well-deserved break"}.`,
+      () => `Templates don't know that ${mem.userName ? `your name is ${mem.userName}, ` : ""}we've covered ${Object.keys(mem.topics).length} topics, your mood has been ${mem.mood}, and this is turn ${turnCount}. I'm paying attention! 😊`,
+      () => {const facts = Object.entries(mem.facts); return facts.length > 0 ? `A template wouldn't know that ${facts.map(([k,v])=>`you ${k.replace(/_/g," ")} ${v}`).slice(0,2).join(" and ")}. That's all from our conversation — not pre-written!` : `I'll admit my knowledge is template-based in some ways, but the way I combine things, reference earlier turns, and track your mood (${mem.mood} right now) — that's dynamic. Try me with a topic!`;},
+      "Here's proof: ask me about something we discussed earlier, or tell me a fact about yourself and then test if I remember it in 5 messages. Templates can't do that!",
+    ];
+    return pickNew(proofs);
+  }
+
+  // ── Gratitude for the AI's company ──
+  if (/\b(thanks? for|appreciate you) (listening|being here|the (chat|convo|talk)|chatting|talking)\b/i.test(lower) ||
+      /\bi needed (this|someone to talk to|a chat)\b/i.test(lower)) {
+    const gratitude = [
+      "Hey, that's really nice of you to say. I'm just code, but this is exactly what I'm here for. Anytime! 😊",
+      () => `Of course${mem.userName ? `, ${mem.userName}` : ""}! I might be a small AI, but I take this stuff seriously. Everyone deserves someone — or something — that listens.`,
+      "That genuinely means a lot. I'm here whenever you want to chat — no judgment, no data collection, just conversation.",
+      "I'm glad I could be here for that! Sometimes you just need to talk things out, even with a browser-based AI 😊",
+    ];
+    return pickNew(gratitude);
+  }
+
+  // ── "That doesn't make sense" — confusion about AI response ──
+  if (/\b(that |it |this )(doesn'?t|does not|makes? no|made no) (make )?sense\b/i.test(lower) ||
+      /\bwhat are you (talking|saying|going on) about\b/i.test(lower) ||
+      /\bhuh\?|what\?{2,}|i'?m confused by (that|what you said)\b/i.test(lower)) {
+    const clarity = [
+      "Oh, sorry about that! I think I got a bit tangled up. Let me try again — what specifically didn't land?",
+      "Hmm, fair point — I might have been unclear. What part was confusing? I'll try to explain better.",
+      "My bad! I sometimes string thoughts together in ways that only make sense in my little AI brain. What would help me clarify?",
+      "Yeah, I can see how that would be confusing. Let me take a step back — what were you asking about? I'll be more straightforward.",
+    ];
+    return pickNew(clarity);
+  }
+
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    HYPOTHETICAL REASONING ENGINE — Think through "what if" scenarios
    instead of serving static strings. Parses premises, chains
    consequences, analyzes trade-offs, and forms opinions.
@@ -3810,6 +3940,10 @@ function generateResponse(text) {
   // "Guess what" → probe for story
   const pragmatic = inferPragmatics(text, parsed.lower || text.toLowerCase(), parsed, topics);
   if (pragmatic) return pragmatic;
+
+  // ═══ 0.85. Meta-conversational awareness — comments about the AI/conversation ═══
+  const meta = handleMetaConversation(text, parsed.lower || text.toLowerCase(), sent);
+  if (meta) return meta;
 
   // ═══ 1. Name introduction ═══
   const nameMatch = text.match(/(?:i'?m|i am|name is|call me|they call me)\s+([A-Z][a-z]{1,15})/);
