@@ -205,6 +205,15 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Align (heading) */
+  if ("align" in defaults) {
+    const al = G("align");
+    const alLabels = ["L", "C", "R"];
+    controls.push(<React.Fragment key="align"><span style={label}>Align</span>
+      {alLabels.map((l, i) => <button key={i} style={btn(al === i)} onMouseDown={stop} onClick={() => onProp("align", i)}>{l}</button>)}
+    </React.Fragment>);
+  }
+
   /* Quantity (cart-item) */
   if ("qty" in defaults) {
     const qty = G("qty");
