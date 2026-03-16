@@ -9655,6 +9655,102 @@ function buildOnAgreement(response, text) {
   return builder + response;
 }
 
+/* ── Spontaneous Micro-Gifts (Round 57) ──
+ * Small, unexpected conversational treats that create delight:
+ * 1. Thought bubbles: "Oh wait, I just thought of something —"
+ * 2. Mini-challenges: quick questions that engage the user playfully
+ * 3. Appreciation sparks: specific, genuine praise for something the user said
+ * 4. Knowledge nuggets: contextually relevant "did you know" moments
+ * These fire rarely (≤10% combined) but when they do, they feel special.
+ */
+
+let lastGiftTurn = 0;
+let giftHistory = [];  // track types to avoid repetition
+
+function addSpontaneousGift(response, topics, text) {
+  if (mem.turn - lastGiftTurn < 8 || mem.turn < 6) return response;
+  if (Math.random() > 0.12) return response;
+
+  // Don't gift during negative/heavy moments
+  if (mem.avgSent() < -0.5) return response;
+
+  // Pick a gift type we haven't used recently
+  const types = ["thought_bubble", "mini_challenge", "appreciation_spark", "knowledge_nugget"];
+  const available = types.filter(t => !giftHistory.slice(-2).includes(t));
+  const giftType = available[Math.floor(Math.random() * available.length)] || types[0];
+
+  let gift = null;
+
+  switch (giftType) {
+    case "thought_bubble": {
+      // "Wait, I just thought of something" — connects current topic to something unexpected
+      const topic = topics[0];
+      const assoc = topic && typeof ASSOC !== "undefined" ? ASSOC[topic] : null;
+      if (assoc && assoc.related && assoc.related.length > 0) {
+        const related = assoc.related[Math.floor(Math.random() * assoc.related.length)];
+        const starters = [
+          `Oh wait — random thought: have you ever noticed how ${topic} and ${related} are kind of the same problem from different angles?`,
+          `Hm, this is going to sound random, but ${topic} just made me think of ${related} and now I can't un-see the connection.`,
+          `Okay tangent alert — but ${topic} and ${related} have this really interesting overlap that most people miss.`,
+        ];
+        gift = starters[Math.floor(Math.random() * starters.length)];
+      }
+      break;
+    }
+    case "mini_challenge": {
+      // Quick, playful engagement
+      const challenges = [
+        "Quick challenge: explain what you're working on right now in exactly five words. Go!",
+        "Pop quiz — what's one thing you believed about this topic a year ago that you've since changed your mind on?",
+        "Okay speed round: if you had to teach someone one thing about this in 30 seconds, what would it be?",
+        "Fun question: if this topic were a movie genre, what would it be and why?",
+      ];
+      gift = challenges[Math.floor(Math.random() * challenges.length)];
+      break;
+    }
+    case "appreciation_spark": {
+      // Specific, genuine praise for something the user said/did
+      const words = text.split(/\s+/).length;
+      const sparks = words > 15
+        ? [
+            "Actually — pause. The way you just articulated that was really clear. That's not easy to do.",
+            "I want to flag something: you just explained a complex thing in a really accessible way. That's a skill.",
+            "Side note: your ability to think through this out loud is genuinely impressive.",
+          ]
+        : [
+            "You know what I appreciate? You're concise. Most people over-explain. You don't.",
+            "The fact that you can get to the point that quickly tells me you understand this well.",
+          ];
+      gift = sparks[Math.floor(Math.random() * sparks.length)];
+      break;
+    }
+    case "knowledge_nugget": {
+      // Contextual "did you know" from ASSOC facts
+      const topic = topics[0];
+      const assoc = topic && typeof ASSOC !== "undefined" ? ASSOC[topic] : null;
+      if (assoc && assoc.facts && assoc.facts.length > 0) {
+        const fact = assoc.facts[Math.floor(Math.random() * assoc.facts.length)];
+        const intros = [
+          `Oh — random ${topic} fact that I think you'd find interesting: ${fact}.`,
+          `Completely tangential, but this is too good not to share: ${fact}.`,
+          `You made me think of this: ${fact}. Wild, right?`,
+        ];
+        gift = intros[Math.floor(Math.random() * intros.length)];
+      }
+      break;
+    }
+  }
+
+  if (!gift) return response;
+
+  lastGiftTurn = mem.turn;
+  giftHistory.push(giftType);
+  if (giftHistory.length > 6) giftHistory.shift();
+
+  // Append gift after response (it's a bonus, not a replacement)
+  return response + " " + gift;
+}
+
 /* ── Public API ── */
 
 export function getAIResponse(input) {
@@ -9845,6 +9941,9 @@ export function getAIResponse(input) {
   // ═══ Nuanced stance: occasionally push back, play devil's advocate, take positions ═══
   response = addStance(response, text, currentTopics);
 
+  // ═══ Spontaneous micro-gifts: unexpected delight moments ═══
+  response = addSpontaneousGift(response, currentTopics, text);
+
   // ═══ Subtext-aware tone adjustment: soften/adjust based on what user actually means ═══
   response = adjustForSubtext(response, subtext);
 
@@ -9885,6 +9984,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
