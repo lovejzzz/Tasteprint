@@ -486,6 +486,7 @@ const SHORTCUTS = [
   { cat: 'Terminal', items: [
     ['\u2318+J', 'Toggle terminal'],
     ['\u2318+L (in REPL)', 'Clear terminal output'],
+    ['Ctrl+R (in REPL)', 'Reverse search history'],
     ['Shift+Enter (REPL)', 'Multi-line input'],
   ]},
 ];
@@ -564,6 +565,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const [termInput, setTermInput] = React.useState('');
   const [termHistory, setTermHistory] = React.useState([]);
   const [termHistIdx, setTermHistIdx] = React.useState(-1);
+  const [termReverseSearch, setTermReverseSearch] = React.useState(null); // null | { query, matchIdx }
   const termInputRef = React.useRef(null);
 
   /* ---- Search state ---- */
@@ -788,6 +790,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Breadcrumb dropdown ---- */
   const [breadcrumbDrop, setBreadcrumbDrop] = React.useState(null);
 
+  /* ---- Linked tag editing: track the tag being edited so we can sync open/close ---- */
+  const linkedTagRef = React.useRef(null); // { pos, oldTag, isOpen }
+
   /* ---- Cmd key held (for go-to-definition underline) ---- */
   const [cmdHeld, setCmdHeld] = React.useState(false);
   React.useEffect(() => {
@@ -958,6 +963,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
           if (subcmd.startsWith('head')) { const n = parseInt(subcmd.match(/\d+/)?.[0]) || 10; return pipedInput.split('\n').slice(0, n).join('\n'); }
           if (subcmd.startsWith('tail')) { const n = parseInt(subcmd.match(/\d+/)?.[0]) || 10; return pipedInput.split('\n').slice(-n).join('\n'); }
           if (subcmd.startsWith('wc')) { const lns = pipedInput.split('\n'); return `${lns.length} lines, ${pipedInput.length} chars`; }
+          if (subcmd === 'rev') { return pipedInput.split('\n').map(l => l.split('').reverse().join('')).join('\n'); }
+          if (subcmd.startsWith('tr ')) { const trM = subcmd.match(/^tr\s+['"]([^'"]+)['"]\s+['"]([^'"]+)['"]/); if (trM) { const from = trM[1], to = trM[2]; return pipedInput.split('').map(c => { const idx = from.indexOf(c); return idx >= 0 && idx < to.length ? to[idx] : c; }).join(''); } return pipedInput; }
+          if (subcmd.startsWith('cut ')) { const cutM = subcmd.match(/^cut\s+-d\s*['"]?(.)['"']?\s+-f(\d+(?:,\d+)*)/); if (cutM) { const d = cutM[1], fs2 = cutM[2].split(',').map(Number); return pipedInput.split('\n').map(l => { const p = l.split(d); return fs2.map(f => p[f-1]||'').join(d); }).join('\n'); } return pipedInput; }
           return pipedInput; // passthrough
         };
         pipedInput = getSubOutput(parts[pi].trim() === 'sort' || parts[pi].trim() === 'uniq' || parts[pi].trim().startsWith('head') || parts[pi].trim().startsWith('tail') || parts[pi].trim().startsWith('wc') ? parts[pi].trim() : pcmd);
@@ -998,8 +1006,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: '  man <m>    — Show docs for tp method' },
         { t: 'log', v: '  which <m>  — Show docs for tp method' },
         { t: 'log', v: '  tree       — Show file tree structure' },
+        { t: 'log', v: '  rev [f]    — Reverse lines of file' },
+        { t: 'log', v: "  tr 'a' 'b' — Transliterate characters" },
+        { t: 'log', v: "  cut -d',' -f1 f — Extract fields" },
         { t: 'log', v: '  alias      — Show terminal shortcuts' },
         { t: 'log', v: '  cmd | cmd  — Pipe output between commands' },
+        { t: 'log', v: '  Ctrl+R     — Reverse search history' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -1381,12 +1393,49 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F tree' }, ...treeLines.map(l => ({ t: 'log', v: l }))], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
     }
+    if (cmd.startsWith('rev')) {
+      const arg = cmd.slice(3).trim();
+      const text = arg ? (getFile(arg)?.content || '') : '';
+      const result = text.split('\n').map(l => l.split('').reverse().join('')).join('\n');
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F ${cmd}` }, { t: 'log', v: result || '(empty)' }], ms: null, err: null, errLn: null }));
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('tr ')) {
+      // Simple tr: tr 'abc' 'xyz' — character transliteration
+      const trM = cmd.match(/^tr\s+['"]([^'"]+)['"]\s+['"]([^'"]+)['"]\s*(.*)?$/);
+      if (trM) {
+        const from = trM[1], to = trM[2], file = trM[3]?.trim();
+        const text = file ? (getFile(file)?.content || '') : '';
+        const result = text.split('').map(c => { const idx = from.indexOf(c); return idx >= 0 && idx < to.length ? to[idx] : c; }).join('');
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F ${cmd}` }, { t: 'log', v: result }], ms: null, err: null, errLn: null }));
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: "Usage: tr 'from' 'to' [file]" }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('cut ')) {
+      // cut -d',' -f1 file — extract fields
+      const cutM = cmd.match(/^cut\s+-d\s*['"]?(.)['"']?\s+-f(\d+(?:,\d+)*)\s+(.+)$/);
+      if (cutM) {
+        const delim = cutM[1], fields = cutM[2].split(',').map(Number), file = cutM[3].trim();
+        const text = getFile(file)?.content || '';
+        const result = text.split('\n').map(l => {
+          const parts = l.split(delim);
+          return fields.map(f => parts[f - 1] || '').join(delim);
+        }).join('\n');
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F ${cmd}` }, { t: 'log', v: result }], ms: null, err: null, errLn: null }));
+      } else {
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: "Usage: cut -d',' -f1,2 <file>" }], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
     if (cmd === 'alias' || cmd === 'aliases') {
       setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F alias' },
         { t: 'log', v: '  Shortcuts:' },
         { t: 'log', v: '    run     → execute active file' },
         { t: 'log', v: '    man <m> → show docs for tp method' },
         { t: 'log', v: '    \u2191/\u2193    → navigate history' },
+        { t: 'log', v: '    Ctrl+R → reverse search history' },
         { t: 'log', v: '    Tab    → autocomplete commands' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -1691,6 +1740,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   const lintMap = React.useMemo(() => {
     const map = {};
     if (readonly) return map;
+    // Collect declared variables for unused detection
+    const declared = new Map(); // name → lineIdx
+    const used = new Set();
+    lines.forEach((ll, li) => {
+      const declM = ll.match(/(?:const|let)\s+(\w+)\s*=/);
+      if (declM && !/^\s*\/\//.test(ll) && !/export/.test(ll)) declared.set(declM[1], li);
+      // Track usage of identifiers
+      const ids = ll.match(/\b[a-zA-Z_$]\w*\b/g);
+      if (ids) ids.forEach(id => used.add(id));
+    });
     lines.forEach((ll, li) => {
       if (/^\s*\/\//.test(ll)) return;
       if (/\bvar\b/.test(ll)) map[li] = { msg: 'Prefer const/let', sev: 'warn' };
@@ -1700,8 +1759,26 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       else if (/\bdebugger\b/.test(ll.trim())) map[li] = { msg: 'Debugger statement', sev: 'warn' };
       else if (/\balert\s*\(/.test(ll)) map[li] = { msg: 'Avoid alert()', sev: 'warn' };
       else if (/;\s*;/.test(ll)) map[li] = { msg: 'Double semicolon', sev: 'warn' };
+      else if (/\bnew\s+Array\s*\(/.test(ll)) map[li] = { msg: 'Use [] instead of new Array()', sev: 'info' };
+      else if (/\bnew\s+Object\s*\(/.test(ll)) map[li] = { msg: 'Use {} instead of new Object()', sev: 'info' };
+      else if (/\btypeof\s+\w+\s*===?\s*['"]undefined['"]/.test(ll) === false && /\btypeof\s+\w+\s*==\s*/.test(ll)) map[li] = { msg: 'Use === with typeof', sev: 'warn' };
+      else if (/\.forEach\(.*\breturn\b/.test(ll)) map[li] = { msg: 'return in forEach has no effect — use .map() or for...of', sev: 'info' };
       else if (ll.length > 150 && !ll.trim().startsWith('//') && !ll.trim().startsWith('*')) map[li] = { msg: `Long line (${ll.length})`, sev: 'info' };
     });
+    // Unused variable detection (only for files with < 200 lines to avoid noise)
+    if (lines.length < 200) {
+      for (const [name, li] of declared) {
+        // Count uses (must appear more than just the declaration)
+        let count = 0;
+        lines.forEach((ll, i) => {
+          if (i === li) return; // skip declaration line
+          if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(ll)) count++;
+        });
+        if (count === 0 && !map[li]) {
+          map[li] = { msg: `'${name}' is declared but never used`, sev: 'info' };
+        }
+      }
+    }
     return map;
   }, [lines, readonly]);
 
@@ -5067,8 +5144,79 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               <textarea
                 ref={taRef} value={code}
                 onChange={e => {
-                  const val = e.target.value;
+                  let val = e.target.value;
                   const pos = e.target.selectionStart;
+                  /* ---- Linked JSX tag editing: sync opening ↔ closing tag names ---- */
+                  if (!readonly && (activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx'))) {
+                    const oldCode = code;
+                    const delta = val.length - oldCode.length;
+                    // Detect if user is editing inside a tag name
+                    // Find the tag context around cursor
+                    const before = val.substring(0, pos);
+                    const tagCtx = before.match(/<\/?([A-Za-z][A-Za-z0-9.-]*)$/);
+                    if (tagCtx && delta !== 0) {
+                      const isClose = before[before.length - tagCtx[0].length] === '/' || tagCtx[0].startsWith('</');
+                      const newTag = tagCtx[1];
+                      // Find the old tag name by looking at same position in old code
+                      const oldBefore = oldCode.substring(0, pos - delta);
+                      const oldTagCtx = oldBefore.match(/<\/?([A-Za-z][A-Za-z0-9.-]*)$/);
+                      if (oldTagCtx) {
+                        const oldTag = oldTagCtx[1];
+                        if (oldTag !== newTag) {
+                          if (isClose) {
+                            // Editing closing tag: find and update the matching opening tag
+                            const closeStart = before.lastIndexOf('</');
+                            // Scan backwards for the matching open tag
+                            let depth = 0;
+                            const rx = new RegExp(`<(/?)${oldTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^>]*?>`, 'g');
+                            const matches = [];
+                            let m2;
+                            while ((m2 = rx.exec(val.substring(0, closeStart))) !== null) {
+                              matches.push({ pos: m2.index, isClose: m2[1] === '/' });
+                            }
+                            // Find the matching open tag by counting depth
+                            let openIdx = -1;
+                            depth = 1;
+                            for (let mi = matches.length - 1; mi >= 0; mi--) {
+                              if (matches[mi].isClose) depth++;
+                              else { depth--; if (depth === 0) { openIdx = matches[mi].pos; break; } }
+                            }
+                            if (openIdx >= 0) {
+                              const openTagM = val.substring(openIdx).match(/^<([A-Za-z][A-Za-z0-9.-]*)/);
+                              if (openTagM && openTagM[1] === oldTag) {
+                                val = val.substring(0, openIdx + 1) + newTag + val.substring(openIdx + 1 + oldTag.length);
+                                // Adjust cursor if the replacement shifted positions
+                              }
+                            }
+                          } else {
+                            // Editing opening tag: find and update the matching closing tag
+                            const openStart = before.lastIndexOf('<');
+                            const afterOpen = val.substring(openStart);
+                            // Find the matching closing tag
+                            const rx = new RegExp(`<(/?)${oldTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^>]*?>`, 'g');
+                            let depth2 = 0;
+                            let closeIdx = -1;
+                            let m3;
+                            const searchFrom = pos;
+                            const restCode = val.substring(searchFrom);
+                            const rx2 = new RegExp(`<(/?)(?:${oldTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|${newTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b[^>]*?>`, 'g');
+                            while ((m3 = rx2.exec(restCode)) !== null) {
+                              if (m3[1] === '/') {
+                                if (depth2 === 0) { closeIdx = searchFrom + m3.index; break; }
+                                depth2--;
+                              } else { depth2++; }
+                            }
+                            if (closeIdx >= 0) {
+                              const closeM = val.substring(closeIdx).match(/^<\/([A-Za-z][A-Za-z0-9.-]*)/);
+                              if (closeM && closeM[1] === oldTag) {
+                                val = val.substring(0, closeIdx + 2) + newTag + val.substring(closeIdx + 2 + oldTag.length);
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                   setCode(val); updateCursor(e.target);
                   // Autocomplete trigger: check if cursor is after "tp."
                   const before = val.substring(0, pos);
@@ -5364,6 +5512,54 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                   const text = e.clipboardData?.getData('text');
                   if (text) clipHistory.current = [text, ...clipHistory.current.filter(c => c !== text)].slice(0, 10);
                   if (!text) return;
+                  // Auto-convert HTML to JSX on paste into .jsx/.tsx files
+                  if ((activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx')) && text.trim() && /<[a-z][\s\S]*>/i.test(text)) {
+                    // Detect if pasted text looks like HTML (has HTML-specific attributes)
+                    const htmlAttrs = /\b(class|for|tabindex|readonly|maxlength|onclick|onchange|onsubmit|onfocus|onblur|onkeydown|onkeyup|onmouseover|onmouseout|charset|http-equiv|accept-charset|accesskey|contenteditable|crossorigin|dirname|enctype|formaction|hreflang|novalidate|spellcheck)\s*=/i;
+                    if (htmlAttrs.test(text)) {
+                      let jsx = text
+                        .replace(/\bclass=/g, 'className=')
+                        .replace(/\bfor=/g, 'htmlFor=')
+                        .replace(/\btabindex=/g, 'tabIndex=')
+                        .replace(/\breadonly\b/g, 'readOnly')
+                        .replace(/\bmaxlength=/g, 'maxLength=')
+                        .replace(/\bautofocus\b/g, 'autoFocus')
+                        .replace(/\bautoplay\b/g, 'autoPlay')
+                        .replace(/\bautocomplete=/g, 'autoComplete=')
+                        .replace(/\bcellpadding=/g, 'cellPadding=')
+                        .replace(/\bcellspacing=/g, 'cellSpacing=')
+                        .replace(/\bcolspan=/g, 'colSpan=')
+                        .replace(/\browspan=/g, 'rowSpan=')
+                        .replace(/\benctype=/g, 'encType=')
+                        .replace(/\bformaction=/g, 'formAction=')
+                        .replace(/\bnovalidate\b/g, 'noValidate')
+                        .replace(/\bspellcheck=/g, 'spellCheck=')
+                        .replace(/\bcontenteditable=/g, 'contentEditable=')
+                        .replace(/\bcrossorigin=/g, 'crossOrigin=')
+                        .replace(/\bon([a-z]+)=/gi, (_, ev) => `on${ev.charAt(0).toUpperCase() + ev.slice(1)}=`);
+                      // Convert style="..." strings to style={{...}} objects
+                      jsx = jsx.replace(/style="([^"]*)"/g, (_, styles) => {
+                        const props = styles.split(';').filter(Boolean).map(s => {
+                          const [prop, ...vals] = s.split(':');
+                          if (!prop || !vals.length) return null;
+                          const camelProp = prop.trim().replace(/-([a-z])/g, (__, c) => c.toUpperCase());
+                          const value = vals.join(':').trim();
+                          const numVal = /^\d+(\.\d+)?(px|em|rem|%|vh|vw)?$/.test(value) ? parseFloat(value) : null;
+                          return `${camelProp}: ${numVal !== null && !value.includes('%') && !value.includes('v') ? numVal : `'${value}'`}`;
+                        }).filter(Boolean).join(', ');
+                        return `style={{${props}}}`;
+                      });
+                      if (jsx !== text) {
+                        e.preventDefault();
+                        const el = e.target;
+                        const s = el.selectionStart, en = el.selectionEnd;
+                        setCode(code.substring(0, s) + jsx + code.substring(en));
+                        setTimeout(() => { el.selectionStart = el.selectionEnd = s + jsx.length; }, 0);
+                        showToast('HTML → JSX converted', 'info');
+                        return;
+                      }
+                    }
+                  }
                   // Auto-format JSON on paste into .json files
                   if (activeFile.endsWith('.json') && text.trim()) {
                     try {
@@ -6189,6 +6385,45 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     })()}
                   </>)}
                 </div>
+                {/* Reverse search (Ctrl+R) */}
+                {termReverseSearch && (
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px', borderTop: '1px solid #cba6f720', gap: 4, flexShrink: 0, background: '#cba6f708' }}>
+                    <span style={{ fontSize: fs(8), color: '#cba6f7', flexShrink: 0 }}>(reverse-i-search)`</span>
+                    <input autoFocus value={termReverseSearch.query}
+                      onChange={e => {
+                        const q = e.target.value;
+                        let matchIdx = -1;
+                        for (let ri = termHistory.length - 1; ri >= 0; ri--) {
+                          if (termHistory[ri].toLowerCase().includes(q.toLowerCase())) { matchIdx = ri; break; }
+                        }
+                        setTermReverseSearch({ query: q, matchIdx });
+                      }}
+                      onKeyDown={e => {
+                        e.stopPropagation();
+                        if (e.key === 'Escape') { setTermReverseSearch(null); }
+                        else if (e.key === 'Enter') {
+                          if (termReverseSearch.matchIdx >= 0) setTermInput(termHistory[termReverseSearch.matchIdx]);
+                          setTermReverseSearch(null);
+                        }
+                        else if (e.key === 'r' && e.ctrlKey) {
+                          e.preventDefault();
+                          const q = termReverseSearch.query;
+                          const idx = termReverseSearch.matchIdx;
+                          let next = -1;
+                          for (let ri = idx - 1; ri >= 0; ri--) { if (termHistory[ri].toLowerCase().includes(q.toLowerCase())) { next = ri; break; } }
+                          if (next >= 0) setTermReverseSearch({ query: q, matchIdx: next });
+                        }
+                      }}
+                      style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: fs(9), color: '#cdd6f4', fontFamily: MONO, padding: 0 }}
+                    />
+                    <span style={{ fontSize: fs(8), color: '#cba6f7', flexShrink: 0 }}>':</span>
+                    <span style={{ fontSize: fs(8), color: termReverseSearch.matchIdx >= 0 ? '#a6e3a1' : '#f38ba8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
+                      {termReverseSearch.matchIdx >= 0 ? termHistory[termReverseSearch.matchIdx] : 'no match'}
+                    </span>
+                    <span onClick={() => setTermReverseSearch(null)} onMouseDown={stop}
+                      style={{ fontSize: 7, color: '#555', cursor: 'pointer', marginLeft: 'auto' }}>Esc</span>
+                  </div>
+                )}
                 {/* REPL input */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', padding: '2px 10px 4px', borderTop: '1px solid #ffffff06', gap: 4, flexShrink: 0, position: 'relative' }}>
                   <span style={{ fontSize: fs(9), color: '#cba6f7', flexShrink: 0, lineHeight: Math.round(15 * zf) + 'px', paddingTop: 2 }}>{termInput.includes('\n') ? '\u22EE' : '\u276F'}</span>
@@ -6244,8 +6479,13 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       e.stopPropagation();
                       if (e.key === 'Enter' && e.shiftKey) { return; /* allow newline */ }
                       if (e.key === 'Enter' && termInput.trim()) { e.preventDefault(); runTermInput(termInput); }
-                      if (e.key === 'ArrowUp' && !termInput.includes('\n')) { e.preventDefault(); if (termHistory.length) { const idx = termHistIdx < 0 ? termHistory.length - 1 : Math.max(0, termHistIdx - 1); setTermHistIdx(idx); setTermInput(termHistory[idx]); } }
-                      if (e.key === 'ArrowDown' && !termInput.includes('\n')) { e.preventDefault(); if (termHistIdx >= 0) { const idx = termHistIdx + 1; if (idx >= termHistory.length) { setTermHistIdx(-1); setTermInput(''); } else { setTermHistIdx(idx); setTermInput(termHistory[idx]); } } }
+                      if (e.key === 'ArrowUp' && !termInput.includes('\n')) { e.preventDefault(); if (termReverseSearch) { const q = termReverseSearch.query; const idx = termReverseSearch.matchIdx; let next = -1; for (let ri = idx - 1; ri >= 0; ri--) { if (termHistory[ri].toLowerCase().includes(q.toLowerCase())) { next = ri; break; } } if (next >= 0) setTermReverseSearch({ query: q, matchIdx: next }); } else if (termHistory.length) { const idx = termHistIdx < 0 ? termHistory.length - 1 : Math.max(0, termHistIdx - 1); setTermHistIdx(idx); setTermInput(termHistory[idx]); } }
+                      if (e.key === 'ArrowDown' && !termInput.includes('\n')) { e.preventDefault(); if (termReverseSearch) { const q = termReverseSearch.query; const idx = termReverseSearch.matchIdx; let next = -1; for (let ri = idx + 1; ri < termHistory.length; ri++) { if (termHistory[ri].toLowerCase().includes(q.toLowerCase())) { next = ri; break; } } if (next >= 0) setTermReverseSearch({ query: q, matchIdx: next }); } else if (termHistIdx >= 0) { const idx = termHistIdx + 1; if (idx >= termHistory.length) { setTermHistIdx(-1); setTermInput(''); } else { setTermHistIdx(idx); setTermInput(termHistory[idx]); } } }
+                      if (e.key === 'r' && e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); if (!termReverseSearch) { setTermReverseSearch({ query: '', matchIdx: -1 }); } }
+                      if (termReverseSearch) {
+                        if (e.key === 'Escape') { e.preventDefault(); setTermReverseSearch(null); return; }
+                        if (e.key === 'Enter') { e.preventDefault(); const q = termReverseSearch.query; const idx = termReverseSearch.matchIdx; if (idx >= 0) setTermInput(termHistory[idx]); setTermReverseSearch(null); return; }
+                      }
                       if (e.key === 'Tab') {
                         e.preventDefault();
                         const val = termInput;
@@ -6261,7 +6501,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           if (spaceIdx > 0) {
                             const cmd = val.substring(0, spaceIdx);
                             const argPartial = val.substring(spaceIdx + 1).toLowerCase();
-                            const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find', 'sort', 'uniq'];
+                            const fileCmds = ['cat', 'open', 'head', 'tail', 'wc', 'rm', 'grep', 'cp', 'mv', 'sed', 'find', 'sort', 'uniq', 'rev', 'cut'];
                             if (fileCmds.includes(cmd) && argPartial) {
                               const allPaths = [...Object.keys(editFiles), ...Object.keys(GEN_FILES)];
                               const match = allPaths.find(p => p.toLowerCase().startsWith(argPartial) && p.toLowerCase() !== argPartial)
@@ -6269,10 +6509,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               if (match) { setTermInput(cmd + ' ' + match); return; }
                             }
                           }
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq', 'tree'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias', 'sort', 'uniq', 'tree', 'rev', 'tr', 'cut'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp', 'man', 'which', 'sort', 'uniq'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp', 'man', 'which', 'sort', 'uniq', 'rev', 'tr', 'cut'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'l' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setOutput(null); }
