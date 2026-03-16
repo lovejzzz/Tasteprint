@@ -1425,7 +1425,55 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     const cols=[{title:"To Do",items:["Research","Wireframes"]},{title:"In Progress",items:["Components"]},{title:"Done",items:["Setup"]}];
     if(v===0)return <div style={{...b,display:"flex",gap:8}}>{cols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:6}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}><T k={`h${ci}`} s={{fontSize:10,fontWeight:600,color:p.tx}}>{col.title}</T><div style={{background:p.su,borderRadius:999,padding:"1px 6px"}}><span style={{fontSize:9,color:p.mu}}>{col.items.length}</span></div></div>{col.items.map((it,ii)=><div key={ii} style={{background:p.card,borderRadius:10,border:`1px solid ${p.bd}`,padding:10,animation:`tp-slidein .3s ease-out ${(ci*2+ii)*0.06}s both`}}><T k={`c${ci}i${ii}`} s={{fontSize:11,fontWeight:500,color:p.tx}}>{it}</T><div style={{display:"flex",gap:4,marginTop:6}}><div style={{width:16,height:16,borderRadius:999,background:p.ac+"20"}}/><div style={{width:16,height:16,borderRadius:999,background:p.mu+"15",marginLeft:-4}}/></div></div>)}</div>)}</div>;
     if(v===1)return <div style={{...b,display:"flex",gap:6}}>{cols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:4}}><T k={`h${ci}`} s={{fontSize:9,fontWeight:600,color:p.mu,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:2}}>{col.title}</T>{col.items.map((it,ii)=><div key={ii} style={{background:p.su,borderRadius:6,padding:"6px 8px",animation:`tp-fadein .2s ease-out ${(ci*2+ii)*0.05}s both`}}><T k={`c${ci}i${ii}`} s={{fontSize:10,color:p.tx}}>{it}</T></div>)}</div>)}</div>;
-    return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:10,display:"flex",gap:6,fontFamily:"'JetBrains Mono',monospace"}}>{cols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:4,borderRight:ci<2?`1px solid ${p.ac}10`:"none",paddingRight:ci<2?6:0}}><T k={`h${ci}`} s={{fontSize:8,fontWeight:600,color:ci===1?p.ac:"#555",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:2}}>{col.title}</T>{col.items.map((it,ii)=><div key={ii} style={{borderRadius:2,border:`1px solid ${ci===1?p.ac+"25":"#ffffff08"}`,padding:"5px 6px",animation:`tp-fadein .2s ease-out ${(ci*2+ii)*0.06}s both`}}><T k={`c${ci}i${ii}`} s={{fontSize:9,color:ci===1?p.ac:"#888"}}>{it}</T></div>)}</div>)}</div>;
+    if(v===2)return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:10,display:"flex",gap:6,fontFamily:"'JetBrains Mono',monospace"}}>{cols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:4,borderRight:ci<2?`1px solid ${p.ac}10`:"none",paddingRight:ci<2?6:0}}><T k={`h${ci}`} s={{fontSize:8,fontWeight:600,color:ci===1?p.ac:"#555",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:2}}>{col.title}</T>{col.items.map((it,ii)=><div key={ii} style={{borderRadius:2,border:`1px solid ${ci===1?p.ac+"25":"#ffffff08"}`,padding:"5px 6px",animation:`tp-fadein .2s ease-out ${(ci*2+ii)*0.06}s both`}}><T k={`c${ci}i${ii}`} s={{fontSize:9,color:ci===1?p.ac:"#888"}}>{it}</T></div>)}</div>)}</div>;
+    /* v3 Gradient — Linear/Notion-inspired with priority dots, tag pills, assignee avatars, gradient headers */
+    if(v===3){const priorities=["#EF4444","#F59E0B","#10B981"];const tags=[["Design"],["Dev","Urgent"],[""]];const gcols=[{title:"To Do",count:2,color:p.mu,items:["Research competitors","Create wireframes"]},{title:"In Progress",count:1,color:p.ac,items:["Build components"]},{title:"Done",count:1,color:"#10B981",items:["Project setup"]}];return <div style={{...b,display:"flex",gap:8,animation:"tp-fadein .3s ease-out both"}}>{gcols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+        <div style={{width:8,height:8,borderRadius:999,background:col.color,flexShrink:0,boxShadow:`0 0 6px ${col.color}40`}}/>
+        <T k={`h${ci}`} s={{fontSize:f(10),fontWeight:700,color:p.tx,flex:1}}>{col.title}</T>
+        <div style={{background:p.su,borderRadius:6,padding:"1px 6px",border:`1px solid ${p.bd}`}}><span style={{fontSize:8,color:p.mu,fontWeight:600}}>{col.count}</span></div>
+      </div>
+      {col.items.map((it,ii)=>{const pri=priorities[(ci+ii)%3];const cardTags=tags[(ci+ii)%3];return <div key={ii} style={{background:p.card,borderRadius:12,border:`1px solid ${p.bd}`,padding:10,display:"flex",flexDirection:"column",gap:7,animation:`tp-slidein .3s ease-out ${(ci*2+ii)*0.07}s both`,transition:"transform .15s, box-shadow .15s",cursor:"grab"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow=`0 4px 12px ${p.tx}08`}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
+        <div style={{display:"flex",alignItems:"center",gap:5}}>
+          <div style={{width:6,height:6,borderRadius:999,background:pri,flexShrink:0}}/>
+          <T k={`c${ci}i${ii}`} s={{fontSize:f(11),fontWeight:500,color:p.tx,flex:1}}>{it}</T>
+        </div>
+        {cardTags.length>0&&cardTags[0]!==""&&<div style={{display:"flex",gap:3}}>
+          {cardTags.map((tag,ti)=><div key={ti} style={{background:ti===1?`${priorities[0]}15`:p.ac+"12",borderRadius:999,padding:"1px 7px"}}><span style={{fontSize:7,fontWeight:600,color:ti===1?priorities[0]:p.ac}}>{tag}</span></div>)}
+        </div>}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:1}}>
+          <div style={{display:"flex",marginLeft:0}}>{[0,1].map(i=><div key={i} style={{width:16,height:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac}${i===0?"30":"18"},${(p.ac2||p.ac)}${i===0?"25":"12"})`,border:`1.5px solid ${p.card}`,marginLeft:i>0?-5:0}}/>)}</div>
+          <div style={{display:"flex",alignItems:"center",gap:3}}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span style={{fontSize:7,color:p.mu}}>2d</span>
+          </div>
+        </div>
+      </div>})}
+    </div>)}</div>}
+    /* v4 Glass — frosted glassmorphism with aurora orbs, status icons, badge cards */
+    {const gcols=[{title:"To Do",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/></svg>,items:["Research competitors","Create wireframes"]},{title:"In Progress",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,items:["Build components"]},{title:"Done",icon:<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,items:["Project setup"]}];const statColors=[p.mu,p.ac,"#10B981"];return <div style={{...b,background:p.card+"e0",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:18,border:`1px solid ${p.ac}12`,padding:12,display:"flex",gap:8,position:"relative",overflow:"hidden",boxShadow:`0 8px 32px ${p.tx}06, inset 0 1px 0 rgba(255,255,255,0.05)`,animation:"tp-fadein .3s ease-out both"}}>
+      <div style={{position:"absolute",top:-20,left:"40%",width:80,height:80,borderRadius:999,background:`radial-gradient(circle,${p.ac}10,${p.ac2||p.ac}06,transparent 70%)`,pointerEvents:"none"}}/>
+      {gcols.map((col,ci)=><div key={ci} style={{flex:1,display:"flex",flexDirection:"column",gap:6,position:"relative",zIndex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2}}>
+          <div style={{width:22,height:22,borderRadius:7,background:ci===2?`${statColors[ci]}15`:p.su+"80",display:"flex",alignItems:"center",justifyContent:"center",color:statColors[ci],border:`1px solid ${ci===2?statColors[ci]+"20":p.bd}`}}>{col.icon}</div>
+          <T k={`h${ci}`} s={{fontSize:f(9),fontWeight:700,color:p.tx,flex:1}}>{col.title}</T>
+          <span style={{fontSize:8,color:p.mu,background:p.su,borderRadius:999,padding:"1px 5px"}}>{col.items.length}</span>
+        </div>
+        {col.items.map((it,ii)=><div key={ii} style={{background:p.su+"90",borderRadius:12,border:`1px solid ${p.bd}`,padding:10,display:"flex",flexDirection:"column",gap:6,animation:`tp-slidein .3s ease-out ${(ci*2+ii)*0.06}s both`,transition:"transform .15s",cursor:"grab"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-1px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
+            <div style={{width:4,height:4,borderRadius:999,background:statColors[ci],marginTop:5,flexShrink:0,boxShadow:`0 0 4px ${statColors[ci]}50`}}/>
+            <T k={`c${ci}i${ii}`} s={{fontSize:f(10),fontWeight:500,color:p.tx,lineHeight:1.3}}>{it}</T>
+          </div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",gap:3}}>
+              {ci<2&&<div style={{background:p.ac+"10",borderRadius:6,padding:"1px 6px",border:`1px solid ${p.ac}10`}}><span style={{fontSize:7,color:p.ac,fontWeight:500}}>{ci===0?"Todo":"Active"}</span></div>}
+              {ci===2&&<div style={{background:"#10B98110",borderRadius:6,padding:"1px 6px",border:"1px solid #10B98115"}}><span style={{fontSize:7,color:"#10B981",fontWeight:500}}>Done</span></div>}
+            </div>
+            <div style={{width:14,height:14,borderRadius:999,background:`linear-gradient(135deg,${p.ac}20,${(p.ac2||p.ac)}15)`,border:`1.5px solid ${p.card}`}}/>
+          </div>
+        </div>)}
+      </div>)}
+    </div>}
   }
 
   return <div style={{...b,background:p.su,borderRadius:12}}/>;

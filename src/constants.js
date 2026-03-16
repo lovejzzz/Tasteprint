@@ -92,7 +92,7 @@ export const VARIANTS = {
   "code-block":["Dark","Light","Terminal","Live IDE","Typewriter","Diff","Notebook","Review","Minimap","ASCII Art","Benchmark"],
   notification:["List","Compact","Dot","Card","Glass"],
   "tag-input":["Rounded","Square","Outlined","Colorful","Input"],
-  kanban:    ["Cards","Compact","Terminal"],
+  kanban:    ["Cards","Compact","Terminal","Gradient","Glass"],
 };
 
 export const LIB = [
