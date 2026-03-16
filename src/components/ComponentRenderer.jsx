@@ -823,7 +823,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       </div>
     </div>;
     /* v4 Glass — frosted glassmorphic card with gradient overlay */
-    return <div style={{...b,background:p.card+"cc",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:18,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",boxShadow:`0 8px 32px ${p.tx}08`,animation:"tp-fadein .3s ease-out"}}>
+    if(v===4)return <div style={{...b,background:p.card+"cc",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderRadius:18,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",boxShadow:`0 8px 32px ${p.tx}08`,animation:"tp-fadein .3s ease-out"}}>
       <div style={{position:"relative"}}>
         <Img k="media" s={{height:0,paddingBottom:"60%",background:`linear-gradient(135deg,${p.ac}18,${p.ac2||p.ac}18)`}}/>
         <div style={{position:"absolute",inset:0,background:`linear-gradient(180deg,transparent 40%,${p.card}cc 100%)`}}/>
@@ -843,6 +843,65 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
           <T k="price" s={{fontSize:f(17),fontWeight:800,color:p.tx}}>$49.00</T>
           <div style={{height:34,paddingInline:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 12px ${p.ac}30`}}>
             <T k="cta" s={{color:onAc,fontSize:f(11),fontWeight:600}}>Buy now</T>
+          </div>
+        </div>
+      </div>
+    </div>;
+    /* v5 Brutal — thick borders, hard offset shadow, squared geometry, bold pricing, dot-grid bg */
+    if(v===5)return <div style={{...b,background:p.card,borderRadius:4,border:`2.5px solid ${p.tx}`,overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:`5px 5px 0 ${p.ac}`,position:"relative",animation:"tp-fadein .2s ease-out"}}>
+      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${p.tx}08 1px, transparent 1px)`,backgroundSize:"8px 8px",pointerEvents:"none",zIndex:0}}/>
+      <div style={{position:"relative",zIndex:1}}>
+        <Img k="media" s={{height:0,paddingBottom:"55%",background:p.su,borderBottom:`2.5px solid ${p.tx}`}}/>
+        <div style={{position:"absolute",top:8,left:8,background:p.ac,borderRadius:2,padding:"2px 8px",border:`2px solid ${p.tx}`,boxShadow:`2px 2px 0 ${p.tx}`}}>
+          <T k="badge" s={{fontSize:f(8),fontWeight:900,color:onAc,textTransform:"uppercase",letterSpacing:"0.08em"}}>HOT</T>
+        </div>
+        <div style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:3,border:`2px solid ${p.tx}`,background:wl?"#EF4444":p.card,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`2px 2px 0 ${p.tx}`,transition:"all .15s"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("wishlisted",!wl)}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill={wl?"#fff":"none"} stroke={wl?"#fff":p.tx} strokeWidth="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+      </div>
+      <div style={{padding:"12px 14px 14px",display:"flex",flexDirection:"column",gap:6,flex:1,position:"relative",zIndex:1}}>
+        <T k="title" s={{fontSize:f(14),fontWeight:900,color:p.tx,textTransform:"uppercase",letterSpacing:"0.02em"}}>Wireless Headphones</T>
+        <T k="desc" s={{fontSize:f(10),color:p.mu,fontWeight:600}}>Active noise canceling · 30hr</T>
+        <div style={{display:"flex",alignItems:"center",gap:3}}>
+          {[1,2,3,4,5].map(i=><div key={i} style={{width:10,height:10,borderRadius:1,border:`1.5px solid ${p.tx}`,background:i<=4?p.ac:"transparent"}}/>)}
+          <span style={{fontSize:f(9),fontWeight:800,color:p.tx,marginLeft:3}}>4.0</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto",paddingTop:4}}>
+          <div style={{background:p.tx,borderRadius:2,padding:"2px 10px"}}>
+            <T k="price" s={{fontSize:f(18),fontWeight:900,color:p.card,letterSpacing:"-0.02em"}}>$49</T>
+          </div>
+          <div style={{height:32,paddingInline:14,borderRadius:3,background:p.ac,border:`2px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`3px 3px 0 ${p.tx}`,transition:"transform .1s, box-shadow .1s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translate(1px,1px)";e.currentTarget.style.boxShadow="none"}} onMouseLeave={e=>{e.currentTarget.style.transform="translate(0,0)";e.currentTarget.style.boxShadow=`3px 3px 0 ${p.tx}`}}>
+            <T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em"}}>ADD</T>
+          </div>
+        </div>
+      </div>
+    </div>;
+    /* v6 Gradient — animated gradient overlay, shimmer sweep, glowing CTA, pulsing accent dots */
+    return <div style={{...b,background:p.card,borderRadius:18,border:`1px solid ${p.ac}20`,overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",boxShadow:`0 8px 32px ${p.ac}12, 0 0 0 1px ${p.ac}08`,animation:"tp-fadein .3s ease-out"}}>
+      <div style={{position:"relative"}}>
+        <Img k="media" s={{height:0,paddingBottom:"58%",background:`linear-gradient(135deg,${p.ac}15,${p.ac2||p.ac}12)`}}/>
+        <div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent,${p.ac}08,transparent)`,animation:"tp-shimmer-slide 3s ease-in-out infinite",pointerEvents:"none"}}/>
+        <div style={{position:"absolute",inset:0,background:`linear-gradient(180deg,transparent 50%,${p.card} 100%)`}}/>
+        <div style={{position:"absolute",top:10,left:10,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,borderRadius:999,padding:"3px 10px",boxShadow:`0 2px 8px ${p.ac}30`}}>
+          <T k="badge" s={{fontSize:f(9),fontWeight:700,color:onAc}}>Trending</T>
+        </div>
+        <div style={{position:"absolute",top:10,right:10,width:30,height:30,borderRadius:999,background:p.card+"dd",border:`1px solid ${p.ac}20`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:wl?"#EF4444":p.mu,boxShadow:wl?`0 0 10px #EF444430`:"none",transition:"all .2s"}} onMouseDown={e=>e.stopPropagation()} onClick={()=>cProp?.("wishlisted",!wl)}>{heart}</div>
+      </div>
+      <div style={{padding:"10px 14px 16px",display:"flex",flexDirection:"column",gap:6,flex:1}}>
+        <T k="title" s={{fontSize:f(14),fontWeight:700,color:p.tx,letterSpacing:"-0.01em"}}>Wireless Headphones</T>
+        <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Premium ANC · 30hr battery</T>
+        <div style={{display:"flex",alignItems:"center",gap:3}}>
+          {[1,2,3,4,5].map(i=><svg key={i} width="12" height="12" viewBox="0 0 24 24" fill={i<=4?p.ac:"none"} stroke={i<=4?p.ac:p.mu+"40"} strokeWidth="1.5" style={{filter:i<=4?`drop-shadow(0 0 3px ${p.ac}40)`:"none",animation:i<=4?`tp-pulse 2.5s ease-in-out ${i*0.1}s infinite`:"none"}}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>)}
+          <span style={{fontSize:f(9),color:p.ac,fontWeight:600,marginLeft:2}}>4.8</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto",paddingTop:4}}>
+          <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+            <T k="price" s={{fontSize:f(18),fontWeight:800,color:p.tx}}>$49.00</T>
+            <div style={{width:5,height:5,borderRadius:999,background:p.ac,boxShadow:`0 0 6px ${p.ac}`,animation:"tp-pulse 2s ease-in-out infinite"}}/>
+          </div>
+          <div style={{height:34,paddingInline:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.ac}35`,position:"relative",overflow:"hidden",transition:"transform .15s, box-shadow .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow=`0 6px 20px ${p.ac}45`}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow=`0 4px 16px ${p.ac}35`}}>
+            <div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent)`,animation:"tp-shimmer-slide 2.5s ease-in-out infinite",pointerEvents:"none"}}/>
+            <T k="cta" s={{color:onAc,fontSize:f(11),fontWeight:600,position:"relative",zIndex:1}}>Buy now</T>
           </div>
         </div>
       </div>
