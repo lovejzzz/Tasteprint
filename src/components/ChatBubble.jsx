@@ -1,6 +1,50 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { getAIResponse } from "./chatAI";
 
+/* ── Emoji Picker ── */
+const EMOJI_CATS = [
+  { label: "😊", emojis: ["😊","😂","🥹","😍","🤣","😎","🥰","😭","🤔","😅","🙃","😇","🤩","😏","🫠","😬","🤗","🫡"] },
+  { label: "👋", emojis: ["👋","👍","👎","🤝","✌️","🤞","🫶","💪","👏","🙌","🤙","👀","🫣","🤷","💅","🙏","✋","🖐️"] },
+  { label: "❤️", emojis: ["❤️","🔥","✨","💯","⭐","💀","🎉","💡","🚀","🎯","💎","🏆","⚡","🌟","💫","🪄","🎪","🌈"] },
+  { label: "🍕", emojis: ["🍕","☕","🍔","🌮","🍣","🍜","🎂","🍩","🥤","🍿","🥑","🍦","🧁","🥐","🍫","🍪","🌶️","🧀"] },
+];
+
+function EmojiPicker({ onPick, p }) {
+  const [cat, setCat] = useState(0);
+  return (
+    <div
+      onMouseDown={e => e.stopPropagation()}
+      style={{
+        position: "absolute", bottom: "100%", right: 0, marginBottom: 6,
+        background: p.card, borderRadius: 12, border: `1px solid ${p.bd}`,
+        boxShadow: `0 8px 24px ${p.tx}10`, padding: 8, width: 210,
+        animation: "tp-tooltip-in .15s ease-out both", zIndex: 100,
+      }}
+    >
+      {/* Category tabs */}
+      <div style={{ display: "flex", gap: 2, marginBottom: 6, borderBottom: `1px solid ${p.bd}`, paddingBottom: 4 }}>
+        {EMOJI_CATS.map((c, i) => (
+          <button key={i} onClick={() => setCat(i)}
+            style={{ flex: 1, background: i === cat ? p.su : "transparent", border: "none", borderRadius: 6, padding: "3px 0", cursor: "pointer", fontSize: 13, transition: "background .15s" }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+      {/* Emoji grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2, maxHeight: 120, overflowY: "auto" }}>
+        {EMOJI_CATS[cat].emojis.map((e, i) => (
+          <button key={i} onClick={() => onPick(e)}
+            style={{ background: "transparent", border: "none", borderRadius: 6, padding: 4, cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "background .1s" }}
+            onMouseEnter={ev => ev.currentTarget.style.background = p.su}
+            onMouseLeave={ev => ev.currentTarget.style.background = "transparent"}>
+            {e}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Editable message bubble ── */
 function EditableMsg({ text, style, onEdit }) {
   const ref = useRef(null);
@@ -48,6 +92,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   const [inputVal, setInputVal] = useState("");
   const [typing, setTyping] = useState(false);
   const [sending, setSending] = useState(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const idRef = useRef(3);
@@ -116,6 +161,12 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     }
   }, [sendMessage]);
 
+  const pickEmoji = useCallback((emoji) => {
+    setInputVal(prev => prev + emoji);
+    setEmojiOpen(false);
+    inputRef.current?.focus();
+  }, []);
+
   /* ── Bubble variant (v===0) — iMessage style ── */
   if (v === 0) return (
     <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -164,7 +215,15 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       </div>
 
       {/* Input bar */}
-      <div style={{ padding: "6px 10px", borderTop: `1px solid ${p.bd}`, display: "flex", gap: 6, alignItems: "center" }}>
+      <div style={{ padding: "6px 10px", borderTop: `1px solid ${p.bd}`, display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setEmojiOpen(o => !o)}
+            onMouseDown={e => e.stopPropagation()}
+            style={{ width: 32, height: 32, borderRadius: 999, border: "none", background: emojiOpen ? p.su : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, transition: "background .15s" }}
+          >😊</button>
+          {emojiOpen && <EmojiPicker onPick={pickEmoji} p={p} />}
+        </div>
         <input
           ref={inputRef}
           value={inputVal}
@@ -249,7 +308,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       </div>
 
       {/* Input */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 4px 2px" }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 4px 2px", position: "relative" }}>
         <input
           ref={inputRef}
           value={inputVal}
@@ -263,6 +322,14 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             fontFamily: "inherit", outline: "none",
           }}
         />
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setEmojiOpen(o => !o)}
+            onMouseDown={e => e.stopPropagation()}
+            style={{ width: 28, height: 28, borderRadius: 8, border: "none", background: emojiOpen ? p.su : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13, transition: "background .15s" }}
+          >😊</button>
+          {emojiOpen && <EmojiPicker onPick={pickEmoji} p={p} />}
+        </div>
         <button
           onClick={sendMessage}
           onMouseDown={e => e.stopPropagation()}
@@ -319,7 +386,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       </div>
 
       {/* Input */}
-      <div style={{ padding: "4px 10px 6px", display: "flex", gap: 6, alignItems: "center", borderTop: `1px solid ${p.ac}10` }}>
+      <div style={{ padding: "4px 10px 6px", display: "flex", gap: 6, alignItems: "center", borderTop: `1px solid ${p.ac}10`, position: "relative" }}>
         <span style={{ fontSize: 9, color: p.ac, opacity: 0.5 }}>CMD&gt;</span>
         <input
           ref={inputRef}
@@ -335,6 +402,14 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             caretColor: p.ac,
           }}
         />
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setEmojiOpen(o => !o)}
+            onMouseDown={e => e.stopPropagation()}
+            style={{ width: 20, height: 20, borderRadius: 4, border: "none", background: emojiOpen ? p.ac + "20" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 11, transition: "background .15s" }}
+          >😊</button>
+          {emojiOpen && <EmojiPicker onPick={pickEmoji} p={p} />}
+        </div>
         <span style={{ fontSize: 9, color: p.ac + "30" }}>⏎</span>
       </div>
     </div>

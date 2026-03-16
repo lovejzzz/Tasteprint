@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 4: Personality system + typing speed simulation
+   Round 7: Multi-turn reasoning — question-answer linking
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -65,7 +65,7 @@ class Memory {
     this.lastIntent = null;
     this.turn = 0;
     this.facts = {};        // key facts about user: { likes_coding: true, favorite_food: "pizza" }
-    this.lastQuestion = null;
+    this.lastQuestion = null; // { text, topic, options, expectation }
     this.mood = "neutral";  // overall conversation mood
   }
   add(role, text, intents=[], topics=[], sent=0) {
@@ -104,6 +104,151 @@ class Memory {
 }
 
 const mem = new Memory();
+
+/* ── Question-Answer Linking ── */
+/*
+ * When the AI asks a question, we store it with context so that the next
+ * user message can be recognized as an answer rather than a brand-new topic.
+ * This fixes the biggest coherence gap: the AI asks "frontend or backend?"
+ * and then ignores the answer.
+ */
+
+function trackAIQuestion(response) {
+  // Extract the question from the AI's response (last sentence ending with ?)
+  const sentences = response.split(/(?<=[.!?])\s+/);
+  const question = sentences.filter(s => s.includes("?")).pop();
+  if (!question) { mem.lastQuestion = null; return; }
+
+  // Classify what kind of answer we expect
+  const lower = question.toLowerCase();
+  let expectation = "open"; // default: any answer
+  let options = [];
+
+  // "X or Y?" pattern — either/or question
+  const orMatch = lower.match(/(?:are you|do you|would you|you more|prefer|team)\s+(.+?)\s+or\s+(.+?)\??$/);
+  if (orMatch) {
+    options = [orMatch[1].trim(), orMatch[2].trim()];
+    expectation = "choice";
+  }
+  // "what/which/who" — expects a noun/topic answer
+  else if (/^(what|which|who)/.test(lower)) expectation = "noun";
+  // "how" — expects a description
+  else if (/^how/.test(lower)) expectation = "describe";
+  // yes/no questions
+  else if (/^(do you|are you|have you|is it|would you|can you|did you)/.test(lower)) expectation = "yesno";
+  // "why" — expects reasoning
+  else if (/^why/.test(lower)) expectation = "reason";
+
+  // Extract topic from question context
+  const topic = mem.recentTopics(1)[0] || mem.lastIntent || null;
+
+  mem.lastQuestion = { text: question, topic, options, expectation, askedAt: mem.turn };
+}
+
+function detectAnswerToQuestion(text, parsed) {
+  const q = mem.lastQuestion;
+  if (!q) return null;
+
+  // Don't link if question was asked more than 3 turns ago
+  if (mem.turn - q.askedAt > 3) { mem.lastQuestion = null; return null; }
+
+  const lower = text.toLowerCase().trim();
+  const tokens = tokenize(text);
+
+  // ── Choice questions ("X or Y?") ──
+  if (q.expectation === "choice" && q.options.length === 2) {
+    const [a, b] = q.options;
+    const pickedA = lower.includes(a) || tokens.some(t => stem(t) === stem(a));
+    const pickedB = lower.includes(b) || tokens.some(t => stem(t) === stem(b));
+    if (pickedA && !pickedB) return { type: "choice", picked: a, other: b, topic: q.topic };
+    if (pickedB && !pickedA) return { type: "choice", picked: b, other: a, topic: q.topic };
+    // "both" / "neither"
+    if (/^(both|all|either|why not both|all of)/i.test(lower)) return { type: "choice_both", options: q.options, topic: q.topic };
+    if (/^(neither|none|nah)/i.test(lower)) return { type: "choice_neither", options: q.options, topic: q.topic };
+  }
+
+  // ── Yes/no questions ──
+  if (q.expectation === "yesno") {
+    if (/^(yes|yeah|yep|yup|sure|absolutely|definitely|totally|of course|for sure)/i.test(lower)) return { type: "yes", topic: q.topic, question: q.text };
+    if (/^(no|nah|nope|not really|not at all)/i.test(lower)) return { type: "no", topic: q.topic, question: q.text };
+  }
+
+  // ── Short answers to "what/which" questions ──
+  if (q.expectation === "noun" && tokens.length <= 5) {
+    const content = tokens.filter(t => !STOP.has(t) && t.length > 1);
+    if (content.length > 0) return { type: "noun_answer", answer: content.join(" "), topic: q.topic, question: q.text };
+  }
+
+  // ── Any non-trivial reply within 1 turn of a question — treat as an answer ──
+  if (mem.turn - q.askedAt <= 1 && tokens.length >= 2) {
+    return { type: "continuation", text, topic: q.topic, question: q.text };
+  }
+
+  return null;
+}
+
+function respondToAnswer(answer, sent) {
+  const { type, picked, other, topic, options, question } = answer;
+
+  const acks = {
+    choice: [
+      `${picked.charAt(0).toUpperCase() + picked.slice(1)}, nice! I can see why over ${other}. What draws you to it?`,
+      `Oh, ${picked} for sure! That's a solid choice. What's your favorite thing about it?`,
+      `${picked}! Good call. What got you into that over ${other}?`,
+      `Definitely get the ${picked} appeal! Is that a recent thing or have you always leaned that way?`,
+    ],
+    choice_both: [
+      `Ha, the diplomat answer! Both ${options[0]} and ${options[1]} have their strengths. Which do you lean toward more?`,
+      `Why not both, right? 😄 Do you find yourself switching between ${options[0]} and ${options[1]} a lot?`,
+    ],
+    choice_neither: [
+      "Ha! Fair enough — those weren't the right options. What would you pick instead?",
+      "Neither? Okay, now I'm curious — what's YOUR answer then? 😄",
+    ],
+    yes: [
+      "Awesome! I had a feeling. What's your favorite part about it?",
+      "Nice! That's cool. Tell me more!",
+      "Great! So what do you like most about it?",
+    ],
+    no: [
+      "Fair enough! What do you prefer instead?",
+      "Interesting! I'm curious — what would you choose instead?",
+      "No worries! What's more your thing then?",
+    ],
+    noun_answer: () => {
+      const ans = answer.answer;
+      return [
+        `${ans.charAt(0).toUpperCase() + ans.slice(1)}! Good choice. What draws you to that?`,
+        `Oh, ${ans}! That's a great pick. Have you been into that for a while?`,
+        `${ans} — nice! What made you pick that?`,
+      ];
+    },
+    continuation: [
+      "Oh, interesting! That makes a lot of sense.",
+      "Ah, I see where you're coming from!",
+      "Gotcha! That's a good perspective.",
+    ],
+  };
+
+  let pool = acks[type];
+  if (typeof pool === "function") pool = pool();
+  if (!pool) return null;
+
+  let response = pick(pool);
+
+  // If we know the topic, sometimes weave it back
+  if (topic && Math.random() > 0.6) {
+    const topicBridges = [
+      ` I find the whole ${topic} space fascinating.`,
+      ` ${topic} is such an interesting area honestly.`,
+    ];
+    response += pick(topicBridges);
+  }
+
+  // Clear the question — it's been answered
+  mem.lastQuestion = null;
+  return response;
+}
 
 /* ── Sentence Parser (lightweight NLU) ── */
 
@@ -511,6 +656,110 @@ function handleComparison(text) {
   return parts.join(" ");
 }
 
+/* ── Conversational Rhythm Engine ──
+ * Maps how humans actually talk: statement→question→reaction→deeper→pivot.
+ * Tracks the pattern of recent exchanges and ensures the AI follows
+ * natural rhythms instead of always doing the same thing.
+ */
+
+const RHYTHM = {
+  // What move types exist in conversation
+  moves: ["question","statement","reaction","story","opinion","callback","challenge"],
+
+  // After each move type, what should come next? (weighted)
+  transitions: {
+    question:  { statement:.2, reaction:.1, story:.1, opinion:.3, callback:.1, question:.1, challenge:.1 },
+    statement: { question:.4, reaction:.2, story:.1, opinion:.1, callback:.1, challenge:.1 },
+    reaction:  { question:.3, statement:.2, story:.2, opinion:.2, callback:.1 },
+    story:     { question:.4, reaction:.2, opinion:.2, callback:.1, challenge:.1 },
+    opinion:   { question:.3, reaction:.1, story:.2, callback:.2, challenge:.2 },
+    callback:  { question:.3, statement:.2, reaction:.2, story:.2, opinion:.1 },
+    challenge: { reaction:.2, statement:.2, opinion:.3, question:.2, story:.1 },
+  },
+};
+
+// Track recent AI moves
+let recentMoves = [];
+
+function classifyMove(text) {
+  if (text.endsWith("?")) return "question";
+  if (/^(ooh|oh|wow|nice|ha|yes|love|cool|right|exactly|amazing)/i.test(text)) return "reaction";
+  if (/I think|I feel|in my|honestly|the thing about/i.test(text)) return "opinion";
+  if (/you mentioned|earlier|back to|remember when/i.test(text)) return "callback";
+  if (/but what if|have you considered|what about|challenge/i.test(text)) return "challenge";
+  if (text.length > 80) return "story";
+  return "statement";
+}
+
+function pickNextMove() {
+  const lastMove = recentMoves[recentMoves.length - 1] || "statement";
+  const trans = RHYTHM.transitions[lastMove] || RHYTHM.transitions.statement;
+
+  // Weighted random selection
+  const r = Math.random();
+  let cumulative = 0;
+  for (const [move, weight] of Object.entries(trans)) {
+    cumulative += weight;
+    if (r <= cumulative) return move;
+  }
+  return "question"; // default
+}
+
+function recordMove(response) {
+  const move = classifyMove(response);
+  recentMoves.push(move);
+  if (recentMoves.length > 6) recentMoves.shift();
+}
+
+/* Shape a response to match the target rhythm move */
+function shapeToRhythm(response, targetMove) {
+  // Don't reshape very short or very specific responses
+  if (response.length < 15 || response.length > 200) return response;
+
+  switch (targetMove) {
+    case "question":
+      // If response doesn't end with a question, try to add one
+      if (!response.includes("?")) {
+        const qs = ["What do you think?","Curious to hear your take!","How about you?","What's your experience been?","Does that resonate?"];
+        return response.replace(/[.!]?$/, ". " + pick(qs));
+      }
+      break;
+    case "callback":
+      // Reference something from earlier in conversation
+      if (mem.turn > 4 && Object.keys(mem.facts).length > 0) {
+        const factKeys = Object.keys(mem.facts);
+        const fact = pick(factKeys);
+        if (fact === "project" && Math.random() > 0.5) {
+          return response + ` Oh, and that connects to your ${mem.facts.project} project!`;
+        }
+        if (fact.startsWith("likes_") && Math.random() > 0.5) {
+          return response + ` That reminds me of what you said about ${mem.facts[fact]}!`;
+        }
+      }
+      break;
+    case "challenge":
+      // Add a gentle counter-perspective
+      if (Math.random() > 0.5) {
+        const challenges = ["But here's a thought —","Though, devil's advocate —","That said,","On the flip side though,"];
+        const counterPts = ["there's an argument for the other side too.","some people might see it differently.","it depends on the context, right?","what about the edge cases?"];
+        return response + " " + pick(challenges) + " " + pick(counterPts);
+      }
+      break;
+    case "story":
+      // Add a brief anecdote or example
+      if (Math.random() > 0.6) {
+        const stories = [
+          "It's like when you're building something and the simplest solution turns out to be the best.",
+          "Reminds me of how the best conversations happen when you least expect them.",
+          "It's similar to how the best ideas come when you step away from the screen.",
+        ];
+        return response + " " + pick(stories);
+      }
+      break;
+  }
+  return response;
+}
+
 /* ── Dynamic Response Composition ── */
 
 function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
@@ -730,6 +979,15 @@ function generateResponse(text) {
   // Record in memory
   mem.add("user", text, nonMod.map(i=>i.intent), topics, sent);
   extractFacts(text, parsed);
+
+  // ═══ 0.5. Question-answer linking — check if user is answering our question ═══
+  if (mem.lastQuestion) {
+    const answerLink = detectAnswerToQuestion(text, parsed);
+    if (answerLink) {
+      const answerResponse = respondToAnswer(answerLink, sent);
+      if (answerResponse) return answerResponse;
+    }
+  }
 
   // ═══ 1. Name introduction ═══
   const nameMatch = text.match(/(?:i'?m|i am|name is|call me|they call me)\s+([A-Z][a-z]{1,15})/);
@@ -1246,8 +1504,16 @@ export function getAIResponse(input) {
   // Generate core response
   let response = generateResponse(text);
 
+  // Apply conversational rhythm — shape response to follow natural patterns
+  const targetMove = pickNextMove();
+  response = shapeToRhythm(response, targetMove);
+  recordMove(response);
+
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
+
+  // Track questions the AI asks for answer-linking
+  trackAIQuestion(response);
 
   // Record in memory
   mem.add("ai", response);
