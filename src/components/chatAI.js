@@ -9934,6 +9934,113 @@ function applyRapportCalibration(response, text) {
   return r;
 }
 
+/* ── Topic Fatigue Detection & Conversational Pivot (Round 60) ──
+ * Real conversationalists sense when a topic has been exhausted — when
+ * responses get shorter, the same keywords recycle, or depth plateaus.
+ * This system detects "topic fatigue" by measuring staleness signals
+ * and gently suggests pivots, preventing the conversation from grinding
+ * into a rut while still respecting the user if they want to stay.
+ */
+
+let topicStamina = {};     // { topic: { turns, lastEnergy, declineCount, peakDepth } }
+let lastFatigueTurn = 0;
+let lastPivotTopic = "";
+
+function trackTopicStamina(topics, inputEnergy) {
+  for (const t of topics) {
+    if (!topicStamina[t]) {
+      topicStamina[t] = { turns: 0, lastEnergy: inputEnergy, declineCount: 0, peakDepth: 0 };
+    }
+    const s = topicStamina[t];
+    s.turns++;
+    // Track energy decline (user getting bored sends shorter/flatter messages)
+    if (inputEnergy < s.lastEnergy - 0.1) {
+      s.declineCount++;
+    } else if (inputEnergy > s.lastEnergy + 0.15) {
+      // Energy spike resets decline — user re-engaged
+      s.declineCount = Math.max(0, s.declineCount - 1);
+    }
+    s.lastEnergy = inputEnergy;
+    // Track depth from topicDepth system
+    const entry = topicDepth[t];
+    if (entry && entry.depth > s.peakDepth) s.peakDepth = entry.depth;
+  }
+}
+
+function detectTopicFatigue(topics) {
+  if (mem.turn < 8) return null;
+
+  for (const t of topics) {
+    const s = topicStamina[t];
+    if (!s) continue;
+
+    // Fatigue signals: long run + declining energy + depth plateau
+    const longRun = s.turns >= 5;
+    const energyDeclining = s.declineCount >= 2;
+    const depthPlateau = s.peakDepth >= 2 && topicDepth[t]?.depth >= 2;
+
+    // Need at least 2 of 3 fatigue signals
+    const fatigueScore = (longRun ? 1 : 0) + (energyDeclining ? 1 : 0) + (depthPlateau ? 1 : 0);
+    if (fatigueScore >= 2) {
+      return { topic: t, turns: s.turns, score: fatigueScore };
+    }
+  }
+  return null;
+}
+
+function findPivotSuggestion(currentTopic) {
+  // Look for related but unexplored adjacent topics from our knowledge
+  const adjacencies = {
+    tech: ["design", "productivity", "career", "learning"],
+    design: ["creativity", "tech", "psychology", "branding"],
+    music: ["creativity", "culture", "emotions", "memories"],
+    work: ["career", "balance", "goals", "skills"],
+    food: ["travel", "culture", "health", "memories"],
+    fitness: ["health", "goals", "routine", "mindset"],
+    travel: ["culture", "food", "adventure", "photography"],
+    movies: ["storytelling", "culture", "creativity", "emotions"],
+    gaming: ["tech", "design", "community", "storytelling"],
+    coding: ["tech", "creativity", "problem-solving", "learning"],
+    ai: ["tech", "creativity", "future", "ethics"],
+  };
+
+  // Find adjacent topics that haven't been discussed much
+  const adj = adjacencies[currentTopic] || adjacencies[Object.keys(adjacencies).find(k => currentTopic.includes(k))] || ["something different"];
+  const fresh = adj.filter(t => !topicStamina[t] || topicStamina[t].turns < 2);
+  return fresh.length > 0 ? fresh[Math.floor(Math.random() * fresh.length)] : adj[Math.floor(Math.random() * adj.length)];
+}
+
+function applyTopicFatigue(response, topics, inputEnergy) {
+  const turn = mem.turn;
+  if (turn - lastFatigueTurn < 8) return response;
+
+  trackTopicStamina(topics, inputEnergy);
+  const fatigue = detectTopicFatigue(topics);
+  if (!fatigue) return response;
+  if (Math.random() > 0.35) return response; // 35% fire rate when fatigue detected
+
+  lastFatigueTurn = turn;
+  const pivot = findPivotSuggestion(fatigue.topic);
+  lastPivotTopic = pivot;
+
+  // Different approaches based on fatigue severity
+  const pivotStyles = fatigue.score >= 3 ? [
+    `We've been deep in ${fatigue.topic} territory — want to shift gears? I'm curious about your take on ${pivot}.`,
+    `I feel like we've covered a lot of ground on ${fatigue.topic}. Random thought — how do you feel about ${pivot}?`,
+    `Okay real talk — we've gone pretty deep here. Want to keep going or pivot? ${pivot} has been on my mind.`,
+  ] : [
+    `Speaking of ${fatigue.topic} — this might be a tangent, but have you thought about how it connects to ${pivot}?`,
+    `This ${fatigue.topic} thread is great. Curious if you have thoughts on ${pivot} too?`,
+  ];
+
+  const pivotLine = pivotStyles[Math.floor(Math.random() * pivotStyles.length)];
+
+  // Trim response and append pivot suggestion
+  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+  const trimmed = sentences.length > 2 ? sentences.slice(0, 2).join(" ").trim() : response;
+  return trimmed + " " + pivotLine;
+}
+
 /* ── Output Polish & Deduplication (Round 58) ──
  * Final-pass cleanup that catches artifacts from 30+ pipeline stages stacking.
  * Runs just before output to ensure the response reads naturally regardless
@@ -10201,6 +10308,9 @@ export function getAIResponse(input) {
   // ═══ Nuanced stance: occasionally push back, play devil's advocate, take positions ═══
   response = addStance(response, text, currentTopics);
 
+  // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
+  response = applyTopicFatigue(response, currentTopics, inputEnergy);
+
   // ═══ Spontaneous micro-gifts: unexpected delight moments ═══
   response = addSpontaneousGift(response, currentTopics, text);
 
@@ -10247,6 +10357,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
