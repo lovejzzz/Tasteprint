@@ -43,8 +43,10 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     if(!editable)return hasHtml
       ?<span style={fs} dangerouslySetInnerHTML={{__html:sanitizeHtml(val)}}/>
       :<span style={fs}>{val}</span>;
+    /* Editable text: use onBlur to sync instead of onInput to avoid React re-render
+       stealing focus from the contentEditable span mid-editing */
     const ceProps={"data-text-key":k,contentEditable:true,suppressContentEditableWarning:true,
-      onInput:e=>{onText?.(k,e.target.innerHTML)},
+      onBlur:e=>{onText?.(k,e.target.innerHTML)},
       onMouseDown:e=>e.stopPropagation(),
       onKeyDown:e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}if(e.key==="Backspace"||e.key==="Delete"){e.stopPropagation()}},
       style:{...fs,outline:"none",cursor:"text",minWidth:8}};
