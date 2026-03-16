@@ -1294,6 +1294,46 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     return null;
   }, [code, activeLn, cursor]);
 
+  /* ---- JSX tag matching ---- */
+  const matchTag = React.useMemo(() => {
+    if (!taRef.current) return null;
+    const pos = taRef.current.selectionStart;
+    // Check if cursor is inside a JSX tag name
+    const before = code.substring(Math.max(0, code.lastIndexOf('\n', pos - 1) + 1), pos);
+    const after = code.substring(pos, code.indexOf('\n', pos) === -1 ? code.length : code.indexOf('\n', pos));
+    // Opening tag: <TagName| or <Tag|Name
+    const openM = (before + after).match(/<\/?([A-Za-z][A-Za-z0-9.-]*)/);
+    if (!openM) return null;
+    const tag = openM[1];
+    const isClose = openM[0].startsWith('</');
+    const lineStart = code.lastIndexOf('\n', pos - 1) + 1;
+    const tagStart = lineStart + (before + after).indexOf(openM[0]);
+    // Verify cursor is actually within the tag name region
+    if (pos < tagStart || pos > tagStart + openM[0].length + 10) return null;
+    // Find the matching tag
+    if (isClose) {
+      // Search backward for matching open tag
+      let depth = 1;
+      const rx = new RegExp(`<(/?)(${tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?=[\\s/>])`, 'g');
+      const allMatches = [...code.substring(0, tagStart).matchAll(rx)].reverse();
+      for (const m of allMatches) {
+        if (m[1] === '/') depth++;
+        else { depth--; if (depth === 0) return { open: m.index, close: tagStart, tag }; }
+      }
+    } else {
+      // Search forward for matching close tag
+      let depth = 1;
+      const rx = new RegExp(`<(/?)(${tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?=[\\s/>])`, 'g');
+      rx.lastIndex = tagStart + openM[0].length;
+      let m;
+      while ((m = rx.exec(code)) !== null) {
+        if (m[1] === '/') { depth--; if (depth === 0) return { open: tagStart, close: m.index, tag }; }
+        else depth++;
+      }
+    }
+    return null;
+  }, [code, activeLn, cursor]);
+
   /* ---- Word occurrences (must be after code) ---- */
   const wordOccurrences = React.useMemo(() => {
     if (!selectedWord || selectedWord.length < 2) return new Set();
@@ -1735,6 +1775,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Toggle Auto Save', key: 'autosave', hint: '' },
       { label: 'Clear Terminal', key: 'clearterm', hint: '' },
       { label: 'Notifications', key: 'notifs', hint: '' },
+      { label: 'Extract Variable', key: 'extractvar', hint: '' },
+      { label: 'Extract Function', key: 'extractfn', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -1942,16 +1984,49 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     else if (key === 'autosave') { setAutoSave(v => !v); showToast(autoSave ? 'Auto save off' : 'Auto save on', 'info'); }
     else if (key === 'clearterm') { setOutput(null); showToast('Terminal cleared', 'info'); }
     else if (key === 'notifs') setNotifOpen(n => !n);
+    else if (key === 'extractvar' || key === 'extractfn') {
+      // Delegate to context menu action — find the matching action
+      const el = taRef.current;
+      if (!el || el.selectionStart === el.selectionEnd) { showToast('Select code first', 'warn'); return; }
+      const s = el.selectionStart, en = el.selectionEnd;
+      if (key === 'extractvar') {
+        const expr = code.substring(s, en).trim();
+        const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+        const indent = code.substring(lineStart).match(/^(\s*)/)[0];
+        const varLine = `${indent}const extracted = ${expr};\n`;
+        const nc = code.substring(0, lineStart) + varLine + code.substring(lineStart, s) + 'extracted' + code.substring(en);
+        setCode(nc);
+        const nameStart = lineStart + indent.length + 6;
+        setTimeout(() => { el.selectionStart = nameStart; el.selectionEnd = nameStart + 9; el.focus(); }, 0);
+        showToast('Extracted to variable — rename it now', 'info');
+      } else {
+        const sel = code.substring(s, en);
+        const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+        const indent = code.substring(lineStart).match(/^(\s*)/)[0];
+        const fnDef = `${indent}function extracted() {\n${sel.split('\n').map(l => indent + '  ' + l.trimStart()).join('\n')}\n${indent}}\n\n`;
+        const nc = code.substring(0, lineStart) + fnDef + `${indent}extracted();` + code.substring(en);
+        setCode(nc);
+        const nameStart = lineStart + indent.length + 9;
+        setTimeout(() => { el.selectionStart = nameStart; el.selectionEnd = nameStart + 9; el.focus(); }, 0);
+        showToast('Extracted to function — rename it now', 'info');
+      }
+    }
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
   /* ---- Code execution ---- */
+  const runCountRef = React.useRef(0);
   const runCode = () => {
     if (readonly) return;
     if (autoSave && tp) { tp.save(); }
     setBusy(true);
     setTermOpen(true);
-    const logs = [];
+    runCountRef.current++;
+    const runNum = runCountRef.current;
+    const prevLogs = output?.logs || [];
+    const logs = prevLogs.length > 0
+      ? [...prevLogs.slice(-50), { t: 'sep', v: `\u2500\u2500 Run #${runNum} \u2500\u2500 ${new Date().toLocaleTimeString()} \u2500\u2500` }]
+      : [];
     const ts = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const fc = {
       log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' '), ts: ts() }),
@@ -4385,6 +4460,25 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               borderRadius: '0 0 2px 2px',
                             }} />
                           )}
+                          {/* JSX tag match highlight */}
+                          {matchTag && (() => {
+                            const lineStart = lineOffsets[i] || 0;
+                            const lineEnd = lineStart + l.length;
+                            const openEnd = matchTag.open + matchTag.tag.length + 1; // +1 for <
+                            const closeEnd = matchTag.close + matchTag.tag.length + 2; // +2 for </
+                            // Check if this line contains the open or close tag
+                            if (matchTag.open >= lineStart && matchTag.open < lineEnd) {
+                              const col = matchTag.open - lineStart;
+                              const w = Math.min(openEnd - matchTag.open, lineEnd - matchTag.open);
+                              return <span style={{ position: 'absolute', left: col * charW, top: 0, width: w * charW, height: '100%', background: '#89b4fa15', borderBottom: '1px solid #89b4fa40', borderRadius: '0 0 2px 2px' }} />;
+                            }
+                            if (matchTag.close >= lineStart && matchTag.close < lineEnd) {
+                              const col = matchTag.close - lineStart;
+                              const w = Math.min(closeEnd - matchTag.close, lineEnd - matchTag.close);
+                              return <span style={{ position: 'absolute', left: col * charW, top: 0, width: w * charW, height: '100%', background: '#89b4fa15', borderBottom: '1px solid #89b4fa40', borderRadius: '0 0 2px 2px' }} />;
+                            }
+                            return null;
+                          })()}
                           {output?.errLn === i + 1 && (<>
                             <span style={{
                               position: 'absolute', left: 0, right: 0, bottom: 0, height: 2,
@@ -4997,6 +5091,43 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                       showToast(`Searching "${word}" across all files`, 'info');
                     }},
                     null,
+                    { label: 'Extract Variable', action: () => {
+                      const el = taRef.current; if (!el) return;
+                      const s = el.selectionStart, en = el.selectionEnd;
+                      if (s === en) { showToast('Select an expression first', 'warn'); return; }
+                      const expr = code.substring(s, en).trim();
+                      const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+                      const indent = code.substring(lineStart).match(/^(\s*)/)[0];
+                      const varLine = `${indent}const extracted = ${expr};\n`;
+                      const nc = code.substring(0, lineStart) + varLine + code.substring(lineStart, s) + 'extracted' + code.substring(en);
+                      setCode(nc);
+                      // Select the variable name for quick rename
+                      const nameStart = lineStart + indent.length + 6; // "const ".length
+                      setTimeout(() => { el.selectionStart = nameStart; el.selectionEnd = nameStart + 9; el.focus(); }, 0);
+                      showToast('Extracted to variable — rename it now', 'info');
+                    }, disabled: readonly },
+                    { label: 'Extract Function', action: () => {
+                      const el = taRef.current; if (!el) return;
+                      const s = el.selectionStart, en = el.selectionEnd;
+                      if (s === en) { showToast('Select code to extract', 'warn'); return; }
+                      const sel = code.substring(s, en);
+                      const lineStart = code.lastIndexOf('\n', s - 1) + 1;
+                      const indent = code.substring(lineStart).match(/^(\s*)/)[0];
+                      // Detect free variables in selection (rough heuristic)
+                      const ids = new Set();
+                      const rx = /\b([a-zA-Z_$]\w*)\b/g; let m;
+                      while ((m = rx.exec(sel)) !== null) ids.add(m[1]);
+                      const KW = new Set(['const','let','var','function','return','if','else','for','while','console','true','false','null','undefined','new','typeof','this','class','import','export','from','async','await','try','catch','throw','switch','case','break','continue','default']);
+                      const params = [...ids].filter(id => !KW.has(id)).slice(0, 5);
+                      const fnDef = `${indent}function extracted(${params.join(', ')}) {\n${sel.split('\n').map(l => indent + '  ' + l.trimStart()).join('\n')}\n${indent}}\n\n`;
+                      const call = `${indent}extracted(${params.join(', ')});`;
+                      const nc = code.substring(0, lineStart) + fnDef + call + code.substring(en);
+                      setCode(nc);
+                      const nameStart = lineStart + indent.length + 9;
+                      setTimeout(() => { el.selectionStart = nameStart; el.selectionEnd = nameStart + 9; el.focus(); }, 0);
+                      showToast('Extracted to function — rename it now', 'info');
+                    }, disabled: readonly },
+                    null,
                     { label: 'Format Document', action: formatCode, disabled: readonly },
                     { label: 'Run', action: runCode, hint: '\u2318+Enter', disabled: readonly },
                     { label: 'Run Selection', action: () => { const el = taRef.current; if (el && el.selectionStart !== el.selectionEnd) runSelection(); else showToast('Select code to run', 'warn'); }, disabled: readonly },
@@ -5143,7 +5274,14 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                 <div ref={termRef} style={{ flex: 1, overflow: 'auto', padding: '4px 10px' }}>
                   {termTab === 'output' ? (<>
                     {output ? (<>
-                      {output.logs.filter(l => termFilter === 'all' || l.t === termFilter).map((l, i) => {
+                      {output.logs.filter(l => l.t === 'sep' || termFilter === 'all' || l.t === termFilter).map((l, i) => {
+                        // Run separator
+                        if (l.t === 'sep') return (
+                          <div key={i} style={{
+                            fontSize: 7, color: '#555', padding: '4px 0 2px', margin: '4px 0 2px',
+                            borderTop: '1px solid #ffffff08', fontFamily: MONO, letterSpacing: '.04em',
+                          }}>{l.v}</div>
+                        );
                         // Detect if output is a JSON object/array that can be collapsed
                         const isExpandable = l.v && (l.v.trim().startsWith('{') || l.v.trim().startsWith('[')) && l.v.length > 60;
                         const isExpanded = expandedLogs.has(i);
