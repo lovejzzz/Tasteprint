@@ -80,7 +80,7 @@ export const VARIANTS = {
   "sub-toggle":["Cards","Switch","Pill","Glass","Brutal","Gradient"],
   tooltip:   ["Light","Dark","Arrow","Glass","Rich","Brutal","Gradient"],
   breadcrumb:["Slash","Arrow","Dots","Pill","Underline","Brutal","Gradient"],
-  skeleton:  ["Card","List","Profile","Feed","Dashboard"],
+  skeleton:  ["Card","List","Profile","Feed","Dashboard","Brutal","Gradient glow"],
   chart:     ["Bar","Line","Donut","Sparkline","Area","Brutal","Gradient glow"],
   testimonial:["Card","Minimal","Bubble","Glass","Hero","Brutal","Gradient"],
   "cmd-palette":["Full","Minimal","Grouped","Spotlight","Glass","Brutal","Gradient glow"],
