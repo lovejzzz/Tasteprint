@@ -1225,14 +1225,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       setTermInput(''); return;
     }
     const logs = [];
+    const ts = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const fc = {
-      log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
-      error: (...a) => logs.push({ t: 'err', v: a.map(String).join(' ') }),
-      warn: (...a) => logs.push({ t: 'warn', v: a.map(String).join(' ') }),
-      info: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ') }),
-      debug: (...a) => logs.push({ t: 'dbg', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' ') }),
+      log: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' '), ts: ts() }),
+      error: (...a) => logs.push({ t: 'err', v: a.map(String).join(' '), ts: ts() }),
+      warn: (...a) => logs.push({ t: 'warn', v: a.map(String).join(' '), ts: ts() }),
+      info: (...a) => logs.push({ t: 'log', v: a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '), ts: ts() }),
+      debug: (...a) => logs.push({ t: 'dbg', v: a.map(x => typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x)).join(' '), ts: ts() }),
       clear: () => { logs.length = 0 },
-      table: (...a) => logs.push({ t: 'log', v: a.map(x => JSON.stringify(x, null, 2)).join(' ') }),
+      table: (...a) => logs.push({ t: 'log', v: a.map(x => JSON.stringify(x, null, 2)).join(' '), ts: ts() }),
     };
     const isAsync = /\bawait\b/.test(input);
     if (isAsync) {
@@ -1460,9 +1461,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (/^\s*\/\//.test(ll)) return;
       if (/\bvar\b/.test(ll)) map[li] = { msg: 'Prefer const/let', sev: 'warn' };
       else if (/==(?!=)/.test(ll) && !/===/.test(ll)) map[li] = { msg: 'Use === instead of ==', sev: 'warn' };
+      else if (/!=(?!=)/.test(ll) && !/!==/.test(ll)) map[li] = { msg: 'Use !== instead of !=', sev: 'warn' };
       else if (/\beval\s*\(/.test(ll)) map[li] = { msg: 'Avoid eval()', sev: 'warn' };
       else if (/\bdebugger\b/.test(ll.trim())) map[li] = { msg: 'Debugger statement', sev: 'warn' };
       else if (/\balert\s*\(/.test(ll)) map[li] = { msg: 'Avoid alert()', sev: 'warn' };
+      else if (/;\s*;/.test(ll)) map[li] = { msg: 'Double semicolon', sev: 'warn' };
+      else if (ll.length > 150 && !ll.trim().startsWith('//') && !ll.trim().startsWith('*')) map[li] = { msg: `Long line (${ll.length})`, sev: 'info' };
     });
     return map;
   }, [lines, readonly]);
@@ -1711,6 +1715,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       { label: 'Close All Tabs', key: 'closeall', hint: '' },
       { label: 'Close Saved Tabs', key: 'closesaved', hint: '' },
       { label: 'Reopen Closed Tab', key: 'reopentab', hint: '' },
+      { label: 'Copy File Path', key: 'copypath', hint: '' },
+      { label: 'Copy File Name', key: 'copyname', hint: '' },
+      { label: 'Toggle Line Numbers', key: 'linenums', hint: '' },
+      { label: 'Toggle Color Decorators', key: 'colordecorators', hint: '' },
+      { label: 'Collapse All Folders', key: 'collapsefolders', hint: '' },
+      { label: 'Expand All Folders', key: 'expandfolders', hint: '' },
+      { label: 'Toggle Auto Save', key: 'autosave', hint: '' },
+      { label: 'Clear Terminal', key: 'clearterm', hint: '' },
+      { label: 'Notifications', key: 'notifs', hint: '' },
       ...ALL_FILES.map(f => ({ label: f, key: 'file:' + f, hint: '' })),
     ];
     if (!cmdQuery) return cmds;
@@ -1904,6 +1917,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       if (last) { openFile(last); showToast(`Reopened ${last.split('/').pop()}`, 'info'); }
       else showToast('No closed tabs', 'warn');
     }
+    else if (key === 'copypath') { navigator.clipboard?.writeText(activeFile); showToast('Path copied!', 'info'); }
+    else if (key === 'copyname') { navigator.clipboard?.writeText(activeFile.split('/').pop()); showToast('Name copied!', 'info'); }
+    else if (key === 'linenums') { setShowLineNumbers(v => !v); showToast(showLineNumbers ? 'Line numbers hidden' : 'Line numbers shown', 'info'); }
+    else if (key === 'colordecorators') { setShowColorDecorators(v => !v); showToast(showColorDecorators ? 'Color decorators off' : 'Color decorators on', 'info'); }
+    else if (key === 'collapsefolders') { setOpenFolders(prev => { const n = {}; Object.keys(prev).forEach(k => n[k] = false); return n; }); showToast('All folders collapsed', 'info'); }
+    else if (key === 'expandfolders') { setOpenFolders(prev => { const n = {}; Object.keys(prev).forEach(k => n[k] = true); return n; }); showToast('All folders expanded', 'info'); }
+    else if (key === 'autosave') { setAutoSave(v => !v); showToast(autoSave ? 'Auto save off' : 'Auto save on', 'info'); }
+    else if (key === 'clearterm') { setOutput(null); showToast('Terminal cleared', 'info'); }
+    else if (key === 'notifs') setNotifOpen(n => !n);
     else if (key.startsWith('file:')) openFile(key.slice(5));
   };
 
@@ -2098,7 +2120,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
   /* ---- Navigate to line (set cursor + scroll) ---- */
   const goToLine = (ln) => {
     setActiveLn(ln); setCursor({ ln, col: 1 });
-    const pos = code.split('\n').slice(0, ln - 1).join('\n').length + (ln > 1 ? 1 : 0);
+    const pos = lineOffsets[ln - 1] ?? 0;
     scrollToLine(ln);
     setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
   };
@@ -2828,6 +2850,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         [data-ide-scroll] [data-ide-tabs]::-webkit-scrollbar { display: none; }
         @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes fadeInLine { from { background: #cba6f718; } to { background: transparent; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
       {/* Title bar — drag handle for moving IDE on canvas */}
@@ -3874,7 +3898,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     {scopes.map((s, si) => (
                       <div key={s.line} onClick={() => {
                         setActiveLn(s.line + 1); setCursor({ ln: s.line + 1, col: 1 });
-                        const pos = lines.slice(0, s.line).join('\n').length + (s.line > 0 ? 1 : 0);
+                        const pos = lineOffsets[s.line] || 0;
                         if (taRef.current) { taRef.current.scrollTop = s.line * lineH; taRef.current.selectionStart = taRef.current.selectionEnd = pos; }
                       }} style={{
                         padding: '1px 8px', fontSize: fs(9), lineHeight: lh,
@@ -3954,7 +3978,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               onMouseDown={e => {
                                 e.preventDefault(); e.stopPropagation();
                                 const startLine = i;
-                                const lineStart = code.split('\n').slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
+                                const lineStart = lineOffsets[i] || 0;
                                 const lineEnd = lineStart + lines[i].length;
                                 setActiveLn(i + 1); setCursor({ ln: i + 1, col: 1 });
                                 setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = lineStart; el.selectionEnd = lineEnd; el.focus(); } }, 0);
@@ -3968,8 +3992,8 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                                   const hoverLine = Math.max(0, Math.min(lines.length - 1, Math.floor(relY / lineH)));
                                   const fromLine = Math.min(startLine, hoverLine);
                                   const toLine = Math.max(startLine, hoverLine);
-                                  const selStart = code.split('\n').slice(0, fromLine).join('\n').length + (fromLine > 0 ? 1 : 0);
-                                  const selEnd = code.split('\n').slice(0, toLine).join('\n').length + (toLine > 0 ? 1 : 0) + lines[toLine].length;
+                                  const selStart = lineOffsets[fromLine] || 0;
+                                  const selEnd = (lineOffsets[toLine] || 0) + lines[toLine].length;
                                   const el = taRef.current;
                                   if (el) { el.selectionStart = selStart; el.selectionEnd = selEnd; el.focus(); }
                                 };
@@ -4969,7 +4993,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         if (output.errLn) {
                           setActiveLn(output.errLn);
                           setCursor({ ln: output.errLn, col: 1 });
-                          const pos = code.split('\n').slice(0, output.errLn - 1).join('\n').length + (output.errLn > 1 ? 1 : 0);
+                          const pos = lineOffsets[output.errLn - 1] ?? 0;
                           setTimeout(() => { const el = taRef.current; if (el) { el.selectionStart = el.selectionEnd = pos; el.focus(); } }, 0);
                         }
                       }}>
@@ -5139,7 +5163,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
               style={{ fontSize: fs(8), color: '#89b4fa', cursor: 'pointer', opacity: .7 }}
               title="Reset zoom (⌘0)">{Math.round(editorZoom * 100)}%</span>}
             <span style={{ fontSize: fs(8), color: '#555' }}>
-              {activeFile.endsWith('.jsx') ? 'React JSX' : activeFile.endsWith('.js') ? 'JavaScript' : 'Text'}
+              {activeFile.endsWith('.jsx') ? 'React JSX' : activeFile.endsWith('.tsx') ? 'React TSX' : activeFile.endsWith('.ts') ? 'TypeScript' : activeFile.endsWith('.js') ? 'JavaScript' : activeFile.endsWith('.json') ? 'JSON' : activeFile.endsWith('.css') ? 'CSS' : activeFile.endsWith('.md') ? 'Markdown' : 'Text'}
             </span>
             <span style={{ fontSize: fs(8), color: '#555' }}>{code.length > 1024 ? `${(code.length / 1024).toFixed(1)}KB` : `${code.length}B`}</span>
             {(() => {
