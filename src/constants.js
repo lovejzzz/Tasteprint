@@ -82,7 +82,7 @@ export const VARIANTS = {
   breadcrumb:["Slash","Arrow","Dots"],
   skeleton:  ["Card","List","Profile"],
   chart:     ["Bar","Line","Donut"],
-  testimonial:["Card","Minimal","Bubble"],
+  testimonial:["Card","Minimal","Bubble","Glass","Hero"],
   "cmd-palette":["Full","Minimal","Grouped"],
   stepper:   ["Horizontal","Vertical","Dots"],
   timeline:  ["Left","Centered","Minimal"],
