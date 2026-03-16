@@ -90,7 +90,7 @@ export const VARIANTS = {
   "media-player":["Minimal","Full","Terminal","Glass","Vinyl"],
   "profile-card":["Standard","Compact","Terminal","Glass","Gradient"],
   "code-block":["Dark","Light","Terminal","Live IDE","Typewriter","Diff","Notebook","Review","Minimap","ASCII Art","Benchmark"],
-  notification:["List","Compact","Dot","Card","Glass"],
+  notification:["List","Compact","Dot","Card","Glass","Brutal","Gradient"],
   "tag-input":["Rounded","Square","Outlined","Colorful","Input"],
   kanban:    ["Cards","Compact","Terminal","Gradient","Glass"],
 };
