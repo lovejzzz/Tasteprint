@@ -11800,6 +11800,143 @@ function applyMetacognition(response, text, topics, intents) {
   return response;
 }
 
+/* ── Conversational Depth Scaling (Round 72) ──
+ * Tracks how deeply the user engages with specific topics over time.
+ * When a topic recurs across multiple turns, the AI progressively
+ * "levels up" its responses — moving from surface observations to
+ * nuanced takes, second-order insights, and expert-sounding depth.
+ *
+ * Depth levels (per topic):
+ *   0 = first mention  → light, approachable, "intro" level
+ *   1 = 2-3 mentions   → more specific, show you're tracking
+ *   2 = 4-5 mentions   → deeper analysis, connect to broader patterns
+ *   3 = 6+ mentions    → expert mode, nuanced takes, "hot takes"
+ *
+ * This creates the illusion of someone who knows more than they
+ * initially let on — depth is revealed, not dumped up front.
+ */
+
+let topicEngagement = {};  // { stemmedTopic: { count, lastTurn, depth } }
+let lastDepthTurn = 0;
+
+function updateTopicEngagement(topics) {
+  const turn = mem.turn;
+  for (const topic of topics) {
+    const key = stem(topic);
+    if (!key || key.length < 3) continue;
+    if (!topicEngagement[key]) {
+      topicEngagement[key] = { count: 0, lastTurn: 0, depth: 0 };
+    }
+    const te = topicEngagement[key];
+    // Only count if it's a different turn (not same-turn double-fire)
+    if (te.lastTurn !== turn) {
+      te.count++;
+      te.lastTurn = turn;
+      // Compute depth level based on sustained engagement
+      if (te.count >= 6) te.depth = 3;
+      else if (te.count >= 4) te.depth = 2;
+      else if (te.count >= 2) te.depth = 1;
+    }
+  }
+}
+
+function getTopicDepthLevel(topics) {
+  let maxDepth = 0;
+  let deepestTopic = null;
+  for (const topic of topics) {
+    const key = stem(topic);
+    const te = topicEngagement[key];
+    if (te && te.depth > maxDepth) {
+      maxDepth = te.depth;
+      deepestTopic = topic;
+    }
+  }
+  return { depth: maxDepth, topic: deepestTopic };
+}
+
+// Depth 1: Show you're tracking — add specificity markers
+function applyDepth1(response, topic) {
+  const markers = [
+    `Since we keep coming back to ${topic} — `,
+    `On the ${topic} front — `,
+    `Building on that ${topic} thread — `,
+  ];
+  // Add a specificity boost: replace vague words with more precise ones
+  let r = response;
+  r = r.replace(/\b(thing|stuff)\b/gi, "aspect");
+  r = r.replace(/\b(good|nice)\b/gi, m => Math.random() > 0.5 ? "solid" : "effective");
+  r = r.replace(/\b(bad|not great)\b/gi, "problematic");
+
+  if (Math.random() > 0.5) {
+    return markers[Math.floor(Math.random() * markers.length)] + r;
+  }
+  return r;
+}
+
+// Depth 2: Deeper analysis — connect to broader patterns
+function applyDepth2(response, topic) {
+  const deepeners = [
+    ` The thing people miss about ${topic} is that it's rarely just one thing — it's usually tangled up with other stuff.`,
+    ` What's interesting is how ${topic} keeps showing up in totally different contexts with the same underlying pattern.`,
+    ` The more I think about ${topic}, the more I realize the surface-level take misses the real story.`,
+    ` There's a second-order effect with ${topic} that most people don't talk about.`,
+  ];
+  const deepener = deepeners[Math.floor(Math.random() * deepeners.length)];
+
+  // Append after first sentence to create a "going deeper" feel
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length >= 2) {
+    return sentences[0].trim() + deepener + " " + sentences.slice(1).join(" ").trim();
+  }
+  return response + deepener;
+}
+
+// Depth 3: Expert mode — nuanced hot takes
+function applyDepth3(response, topic) {
+  const hotTakes = [
+    `Okay, honest take on ${topic} at this point: `,
+    `Here's where I actually land on ${topic} after thinking about it: `,
+    `Real talk about ${topic} — `,
+    `The unpopular opinion about ${topic}: `,
+  ];
+  const prefix = hotTakes[Math.floor(Math.random() * hotTakes.length)];
+
+  // Make the response more confident and direct at depth 3
+  let r = response;
+  r = r.replace(/^(I think|Maybe|Perhaps|It seems like)\s*/i, "");
+  r = r.replace(/\b(might|could|possibly)\b/gi, m => {
+    const swaps = { might: "will", could: "does", possibly: "clearly" };
+    return swaps[m.toLowerCase()] || m;
+  });
+
+  // Capitalize first letter after stripping tentative opener
+  if (r.length > 0) r = r.charAt(0).toUpperCase() + r.slice(1);
+
+  return prefix + r;
+}
+
+function applyDepthScaling(response, text, topics) {
+  const turn = mem.turn;
+  updateTopicEngagement(topics);
+
+  if (turn < 4) return response;
+  if (turn - lastDepthTurn < 3) return response;  // min 3-turn gap
+  if (response.length > 220) return response;       // don't bloat
+  if (Math.random() > 0.35) return response;         // 35% fire rate
+
+  const { depth, topic } = getTopicDepthLevel(topics);
+  if (depth === 0 || !topic) return response;
+
+  lastDepthTurn = turn;
+
+  switch (depth) {
+    case 1: return applyDepth1(response, topic);
+    case 2: return applyDepth2(response, topic);
+    case 3: return applyDepth3(response, topic);
+    default: return response;
+  }
+}
+
 function findSurpriseForTopics(topics) {
   for (const topic of topics) {
     const stemmed = stem(topic);
@@ -12288,6 +12425,9 @@ export function getAIResponse(input) {
   // ═══ Metacognition: visible thinking, course correction, uncertainty surfacing ═══
   response = applyMetacognition(response, text, currentTopics, intents);
 
+  // ═══ Depth scaling: progressively deeper engagement on recurring topics ═══
+  response = applyDepthScaling(response, text, currentTopics);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -12340,6 +12480,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
