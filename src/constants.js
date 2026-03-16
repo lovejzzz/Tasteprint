@@ -84,7 +84,7 @@ export const VARIANTS = {
   chart:     ["Bar","Line","Donut","Sparkline","Area"],
   testimonial:["Card","Minimal","Bubble","Glass","Hero"],
   "cmd-palette":["Full","Minimal","Grouped","Spotlight","Glass"],
-  stepper:   ["Horizontal","Vertical","Dots","Pill","Icon"],
+  stepper:   ["Horizontal","Vertical","Dots","Pill","Icon","Brutal","Gradient"],
   timeline:  ["Left","Centered","Minimal","Card","Activity"],
   chat:      ["Bubble","Thread","Terminal","Glass","Gradient"],
   "media-player":["Minimal","Full","Terminal","Glass","Vinyl"],
