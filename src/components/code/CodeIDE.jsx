@@ -266,8 +266,16 @@ const SNIPPETS = {
   'log': 'console.log(${0});',
   'try': 'try {\n  ${0}\n} catch (e) {\n  console.error(e);\n}',
   'imp': "import ${1:name} from '${0}';",
+  'sw': 'switch (${1:expr}) {\n  case ${2:val}:\n    ${0}\n    break;\n  default:\n    break;\n}',
+  'cl': 'console.log(${0});',
+  'ce': 'console.error(${0});',
+  'cw': 'console.warn(${0});',
+  'fil': '${1:arr}.filter((${2:item}) => ${0});',
+  'red': '${1:arr}.reduce((${2:acc}, ${3:item}) => {\n  ${0}\n  return ${2:acc};\n}, ${4:init});',
+  'prom': 'new Promise((resolve, reject) => {\n  ${0}\n});',
   'tpa': "const id = tp.add('${1:type}', { x: ${2:50}, y: ${3:100}, w: ${4:200}, h: ${5:48} });",
   'tpf': "const ids = tp.find('${0:type}');",
+  'tps': "tp.shapes().forEach(s => {\n  ${0}\n});",
 };
 
 /* Parameter hints for tp methods */
@@ -748,6 +756,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
         { t: 'log', v: "  tail [n] f — Show last n lines of file" },
         { t: 'log', v: "  sed 's/p/r/' f — Find and replace in file" },
         { t: 'log', v: '  cp <f> <t> — Copy a file' },
+        { t: 'log', v: '  man <m>    — Show docs for tp method' },
+        { t: 'log', v: '  which <m>  — Show docs for tp method' },
+        { t: 'log', v: '  alias      — Show terminal shortcuts' },
         { t: 'log', v: '\nOr type any JavaScript expression (tp.shapes(), etc.)' },
       ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
@@ -1042,6 +1053,32 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       } else {
         setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'err', v: 'Usage: cp <source> <dest>' }], ms: null, err: null, errLn: null }));
       }
+      setTermInput(''); return;
+    }
+    if (cmd.startsWith('man ') || cmd.startsWith('which ')) {
+      const method = cmd.split(' ')[1]?.replace('tp.', '').replace('()', '');
+      if (method && TP_DOCS[method]) {
+        const lines = TP_DOCS[method].split('\n');
+        setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: `\u276F ${cmd}` },
+          ...lines.map(l => ({ t: 'log', v: `  ${l}` })),
+          ...(PARAM_HINTS[method] ? [{ t: 'log', v: '' }, { t: 'log', v: '  Parameters:' }, ...PARAM_HINTS[method].map(p => ({ t: 'log', v: `    ${p}` }))] : []),
+        ], ms: null, err: null, errLn: null }));
+      } else {
+        const suggestions = Object.keys(TP_DOCS).filter(k => k.toLowerCase().includes((method || '').toLowerCase()));
+        setOutput(prev => ({ logs: [...(prev?.logs || []),
+          { t: 'err', v: `No docs for "${method}". ${suggestions.length ? 'Did you mean: ' + suggestions.join(', ') + '?' : 'Use: man <tp-method>'}` },
+        ], ms: null, err: null, errLn: null }));
+      }
+      setTermInput(''); return;
+    }
+    if (cmd === 'alias' || cmd === 'aliases') {
+      setOutput(prev => ({ logs: [...(prev?.logs || []), { t: 'log', v: '\u276F alias' },
+        { t: 'log', v: '  Shortcuts:' },
+        { t: 'log', v: '    run     → execute active file' },
+        { t: 'log', v: '    man <m> → show docs for tp method' },
+        { t: 'log', v: '    \u2191/\u2193    → navigate history' },
+        { t: 'log', v: '    Tab    → autocomplete commands' },
+      ], ms: null, err: null, errLn: null }));
       setTermInput(''); return;
     }
     const logs = [];
@@ -2406,6 +2443,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
     if (')]}"\'`'.includes(e.key) && code[s] === e.key) {
       e.preventDefault(); setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0); return;
     }
+    /* Smart semicolon: skip duplicate at end of line */
+    if (e.key === ';' && s === en) {
+      const lineEnd = code.indexOf('\n', s);
+      const afterCursor = code.substring(s, lineEnd === -1 ? code.length : lineEnd).trimEnd();
+      if (afterCursor === ';') {
+        e.preventDefault();
+        setTimeout(() => { el.selectionStart = el.selectionEnd = s + 1 }, 0);
+        return;
+      }
+    }
     if (e.key === 'Backspace' && s === en && s > 0) {
       const ch = code[s - 1];
       if (PAIRS[ch] && code[s] === PAIRS[ch]) {
@@ -2598,7 +2645,15 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     ) : (
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name}</span>
                     )}
-                    {isModified && <span style={{ fontSize: 6, color: '#f9e2af', flexShrink: 0 }} title="Modified">{'\u25CF'}</span>}
+                    {(() => {
+                      const fc = getFile(f.path);
+                      if (fc) {
+                        const sz = fc.content.length;
+                        return <span style={{ fontSize: 7, color: '#333', flexShrink: 0, marginLeft: 'auto' }}>{sz > 1024 ? `${(sz / 1024).toFixed(0)}K` : `${sz}B`}</span>;
+                      }
+                      return null;
+                    })()}
+                    {isModified && <span style={{ fontSize: 6, color: '#f9e2af', flexShrink: 0, marginLeft: 2 }} title="Modified">{'\u25CF'}</span>}
                     {isReadonly && <span style={{ fontSize: 7, color: '#555', flexShrink: 0 }}>{'\uD83D\uDD12'}</span>}
                   </div>
                 );
@@ -3396,6 +3451,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                     else if (lines[li] !== origLines[li]) lineChanges[li] = 'modified';
                   }
                 }
+                // Compute selection range for gutter highlight
+                const selGutter = {};
+                const el = taRef.current;
+                if (el && el.selectionStart !== el.selectionEnd) {
+                  const ss = Math.min(el.selectionStart, el.selectionEnd);
+                  const se = Math.max(el.selectionStart, el.selectionEnd);
+                  const sl1 = code.substring(0, ss).split('\n').length;
+                  const sl2 = code.substring(0, se).split('\n').length;
+                  for (let gl = sl1; gl <= sl2; gl++) selGutter[gl] = true;
+                }
                 return (
                   <div ref={lnRef} style={{
                     padding: '8px 0', width: gutterW, textAlign: 'right', userSelect: 'none',
@@ -3407,6 +3472,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           code.substring(0, matchBracket[0]).split('\n').length === i + 1 ||
                           code.substring(0, matchBracket[1]).split('\n').length === i + 1
                         );
+                        const isInSel = selGutter[i + 1];
                         const isFoldable = foldableRanges[i] !== undefined;
                         const isFolded = foldedLines.has(i);
                         return (
@@ -3452,9 +3518,9 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                               }}
                               style={{
                                 fontSize: fs(9), lineHeight: lh, cursor: 'pointer', flex: 1,
-                                color: i + 1 === activeLn ? '#cdd6f4' : isBracketLine ? '#cba6f7' : output?.errLn === i + 1 ? '#f38ba8' : '#444',
+                                color: i + 1 === activeLn ? '#cdd6f4' : isBracketLine ? '#cba6f7' : output?.errLn === i + 1 ? '#f38ba8' : isInSel ? '#a6adc8' : '#444',
                                 paddingRight: 4,
-                                background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : 'transparent'
+                                background: i + 1 === activeLn ? '#ffffff06' : output?.errLn === i + 1 ? '#f38ba810' : isInSel ? '#cba6f708' : 'transparent'
                               }}>{i + 1}</span>
                             {isFolded && <span style={{ position: 'absolute', right: -2, fontSize: 6, color: '#cba6f760' }}>...</span>}
                             {bookmarks.has(i + 1) && <span style={{ position: 'absolute', left: 0, top: 0, fontSize: 7, color: '#89b4fa', lineHeight: lh }}>{'\u25CF'}</span>}
@@ -4010,11 +4076,12 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                         const isWordMatch = wordMatchLines.has(i + 1);
                         const isBookmark = bookmarks.has(i + 1);
                         const isSel = selRange[i + 1];
+                        const isScope = activeScope && i + 1 >= activeScope.startLn && i + 1 <= activeScope.endLn;
                         return <div key={i} style={{
                           height: Math.max(1, Math.min(2, 120 / lines.length)),
                           marginBottom: lines.length > 100 ? 0 : 1,
                           width: `${Math.max(4, (trimLen / 36) * 100)}%`,
-                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isBookmark ? '#89b4fa' : isLint ? '#f9e2af60' : isWordMatch ? '#cba6f750' : isSel ? '#cba6f740' : isActive ? '#cba6f760' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
+                          background: isErr ? '#f38ba8' : isSearch ? '#f9e2af' : isBookmark ? '#89b4fa' : isLint ? '#f9e2af60' : isWordMatch ? '#cba6f750' : isSel ? '#cba6f740' : isActive ? '#cba6f760' : isScope ? '#cba6f718' : l.trim().startsWith('//') ? '#585b7030' : '#a6adc820',
                           borderRadius: 1,
                           position: 'relative',
                         }}>
@@ -4398,10 +4465,10 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
                           const match = methods.find(m => m.toLowerCase().startsWith(partial) && m.toLowerCase() !== partial);
                           if (match) setTermInput(val.replace(/tp\.\w*$/, 'tp.' + match + '('));
                         } else {
-                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp'];
+                          const cmds = ['clear', 'help', 'ls', 'cat', 'echo', 'pwd', 'run', 'date', 'whoami', 'history', 'touch', 'grep', 'wc', 'env', 'time', 'open', 'diff', 'mv', 'head', 'tail', 'rm', 'export', 'find', 'sed', 'cp', 'man', 'which', 'alias'];
                           const partial = val.toLowerCase();
                           const match = cmds.find(c => c.startsWith(partial) && c !== partial);
-                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp'].includes(match) ? ' ' : ''));
+                          if (match) setTermInput(match + (['cat', 'echo', 'touch', 'grep', 'wc', 'time', 'open', 'mv', 'head', 'tail', 'rm', 'find', 'sed', 'cp', 'man', 'which'].includes(match) ? ' ' : ''));
                         }
                       }
                       if (e.key === 'l' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setOutput(null); }
