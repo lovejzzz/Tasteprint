@@ -68,7 +68,7 @@ export const VARIANTS = {
   checkbox:  ["Square","Round","Toggle row","Card","Chip"],
   slider:    ["Round","Thin","Stepped","Gradient","Glass"],
   alert:     ["Tinted","Card","Banner","Glass"],
-  pagination:["Numbered","Dots","Minimal"],
+  pagination:["Numbered","Dots","Minimal","Pill","Glass"],
   "pricing-card":["Clean","Featured","Minimal"],
   "product-card":["Standard","Sale badge","Horizontal"],
   "cart-item":["Standard","Compact","Detailed","Swipe","Brutal"],
