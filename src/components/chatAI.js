@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 14: Deep world model — richer fact extraction & personalized responses
+   Round 15: Contextual humor & storytelling engine
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -499,7 +499,7 @@ const INTENTS = {
   farewell:    { kw: {bye:3,goodbye:3,later:1.5,cya:3,peace:1.5,ttyl:3,night:1.5,gotta:1.5,leaving:2}, th:2.5, boost:true },
   thanks:      { kw: {thank:3,thanks:3,thx:3,ty:2.5,appreciate:2.5,grateful:2}, th:2.5 },
   howAreYou:   { kw: {how:1.5,go:1,feel:1.5,doing:1.5}, pats:[/how\s+(are|r)\s+(you|u|ya)/i,/how('?s| is) it going/i,/what'?s (up|good|new)/i,/you doing/i], th:2 },
-  joke:        { kw: {joke:4,funny:2.5,laugh:2.5,humor:3,hilarious:2,pun:3}, th:2.5 },
+  joke:        { kw: {joke:4,funny:2.5,laugh:2.5,humor:3,hilarious:2,pun:3,riddle:4,brainteaser:3,funfact:3,fact:1.5,hypothetical:3,scenario:2}, th:2.5 },
   help:        { kw: {help:3,assist:2.5,stuck:2,trouble:2}, th:2.5 },
   code:        { kw: {code:3,program:3,javascript:4,react:4,python:4,css:3,html:3,bug:3,error:2.5,function:2,api:3,debug:3,typescript:4,node:2.5,git:3,deploy:2,server:2,database:2.5,frontend:3,backend:3,component:2,algorithm:3,rust:3,java:3,swift:3,sql:3,framework:2,npm:3,vite:3,nextjs:3,vue:3,angular:3,svelte:3,tailwind:3}, th:2.5 },
   design:      { kw: {design:3,ui:4,ux:4,color:2,font:2.5,layout:2.5,figma:4,prototype:2.5,wireframe:3,typography:3,mockup:3,brand:2,logo:2.5,animation:2,gradient:2,theme:2}, th:2.5 },
@@ -1094,14 +1094,10 @@ function shapeToRhythm(response, targetMove) {
       }
       break;
     case "story":
-      // Add a brief anecdote or example
-      if (Math.random() > 0.6) {
-        const stories = [
-          "It's like when you're building something and the simplest solution turns out to be the best.",
-          "Reminds me of how the best conversations happen when you least expect them.",
-          "It's similar to how the best ideas come when you step away from the screen.",
-        ];
-        return response + " " + pick(stories);
+      // Add a contextual anecdote using the storytelling engine
+      if (Math.random() > 0.5) {
+        const recentTopics = mem.recentTopics();
+        return response + " " + getStoryFragment(recentTopics);
       }
       break;
   }
@@ -1500,19 +1496,235 @@ const HOW_ARE_YOU = [
   "I'm great! Always happy to chat. How's your day going?",
 ];
 
-const JOKES = [
-  "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
-  "I told my computer I needed a break... now it won't stop sending me vacation ads 🏖️",
-  "A SQL query walks into a bar, sees two tables and asks... Can I JOIN you?",
-  "What's a pirate's favorite programming language? R! 🏴‍☠️",
-  "Why do Java developers wear glasses? Because they don't C#! 😂",
-  "I would tell you a UDP joke, but you might not get it.",
-  "There are 10 types of people — those who understand binary and those who don't.",
-  "A programmer's wife tells him: 'Buy a carton of milk. If they have eggs, get twelve.' He comes back with 12 cartons of milk. 🥛",
-  "How many programmers does it take to change a light bulb? None — that's a hardware problem!",
-  "Why was the JavaScript developer sad? Because he didn't Node how to Express himself!",
-  "What's the object-oriented way to become wealthy? Inheritance! 💰",
+/* ── Contextual Humor & Storytelling Engine ──
+ * Topic-aware jokes, riddles, fun facts, hypothetical scenarios, and
+ * mini-stories that tie into conversation context. Makes the AI
+ * genuinely entertaining, not just responsive.
+ */
+
+const TOPIC_JOKES = {
+  code: [
+    "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
+    "A SQL query walks into a bar, sees two tables and asks... Can I JOIN you?",
+    "Why do Java developers wear glasses? Because they don't C#! 😂",
+    "I would tell you a UDP joke, but you might not get it.",
+    "How many programmers does it take to change a light bulb? None — that's a hardware problem!",
+    "Why was the JavaScript developer sad? Because he didn't Node how to Express himself!",
+    "What's the object-oriented way to become wealthy? Inheritance! 💰",
+    "A programmer's wife tells him: 'Buy milk. If they have eggs, get twelve.' He comes back with 12 milks. 🥛",
+    "!false — it's funny because it's true.",
+    "A QA engineer walks into a bar. Orders 1 beer. Orders 0 beers. Orders 99999 beers. Orders -1 beers. Orders a lizard.",
+  ],
+  design: [
+    "A designer walks into a bar... and spends 3 hours choosing which stool has the best kerning.",
+    "How many designers does it take to change a light bulb? Does it have to be a light bulb? What about a candle?",
+    "A designer's favorite meal? Alignment pasta — everything has to be perfectly centered 🍝",
+    "Why did the designer break up with Helvetica? Because they needed more space.",
+    "I asked a UX designer for directions. They gave me a 47-page research report on optimal wayfinding.",
+  ],
+  food: [
+    "What do you call a fake noodle? An impasta! 🍝",
+    "Why did the coffee file a police report? It got mugged! ☕",
+    "What did the grape say when it got stepped on? Nothing — it just let out a little wine! 🍷",
+    "Why don't eggs tell jokes? They'd crack each other up!",
+    "What do you call cheese that isn't yours? Nacho cheese! 🧀",
+  ],
+  music: [
+    "Why did the musician get arrested? For fingering A minor and getting caught with a broken G-string 🎸... on a guitar!",
+    "What do you get when you drop a piano down a mine shaft? A flat minor.",
+    "Why couldn't the string quartet find their composer? Because he was Haydn! 🎵",
+    "I wrote a song about a tortilla. Actually, it was more of a wrap.",
+  ],
+  gaming: [
+    "Why don't gamers ever get sunburns? They always have plenty of shade... and the screen brightness is at 100%.",
+    "A gamer's last words: 'I can take one more hit, I'm fine.'",
+    "What's a gamer's favorite letter? GG! Wait, that's two letters... 🎮",
+    "I told my friends I'd stop gaming to study. That was 5 matches ago.",
+  ],
+  general: [
+    "I told my computer I needed a break... now it won't stop sending me vacation ads 🏖️",
+    "There are 10 types of people — those who understand binary and those who don't.",
+    "Parallel lines have so much in common... it's a shame they'll never meet.",
+    "I'm reading a book on anti-gravity. It's impossible to put down!",
+    "What do you call a bear with no teeth? A gummy bear! 🐻",
+    "I used to hate facial hair, but then it grew on me.",
+    "Why don't scientists trust atoms? Because they make up everything!",
+  ],
+};
+
+const RIDDLES = [
+  { q: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?", a: "An echo! 🗣️ Pretty poetic, right?" },
+  { q: "I have cities, but no houses live there. I have mountains, but no trees grow. I have water, but no fish swim. What am I?", a: "A map! 🗺️ Did you get it?" },
+  { q: "What has keys but no locks, space but no room, and you can enter but can't go inside?", a: "A keyboard! ⌨️ Too easy for you?" },
+  { q: "I'm not alive but I grow. I don't have lungs but I need air. I don't have a mouth but water kills me. What am I?", a: "Fire! 🔥 Classic one." },
+  { q: "The more you take, the more you leave behind. What am I?", a: "Footsteps! 👣 A good one to think about." },
 ];
+
+const FUN_FACTS = {
+  code: [
+    "Fun fact: the first computer bug was an actual bug — a moth found in a Harvard Mark II computer in 1947! 🦋",
+    "Did you know? The first programmer was Ada Lovelace in the 1840s — she wrote programs for a computer that didn't even exist yet!",
+    "Random fact: there are ~700 programming languages in existence. Most programmers use about 3. 😄",
+    "Fun fact: the average developer writes about 10 lines of finished code per day. The rest is debugging!",
+    "Did you know Git was created by Linus Torvalds in just 10 days? He literally speedran version control.",
+  ],
+  design: [
+    "Fun fact: the human eye can distinguish about 10 million different colors, but designers still argue about which blue is best 😄",
+    "Did you know? Comic Sans was designed for Microsoft Bob in 1994. It was never meant to leave that program!",
+    "Random fact: users form a first impression of a website in 50 milliseconds. That's faster than a blink!",
+    "Fun fact: the golden ratio (1.618) appears everywhere in nature — and great designers use it instinctively.",
+  ],
+  food: [
+    "Fun fact: honey never spoils. Archaeologists have found 3,000-year-old honey in Egyptian tombs that was still edible! 🍯",
+    "Did you know? Bananas are technically berries, but strawberries aren't. Botany is wild!",
+    "Random fact: the most expensive pizza in the world costs $12,000 and takes 72 hours to make! 🍕",
+  ],
+  music: [
+    "Fun fact: 'Happy Birthday' was copyrighted until 2016. People had to pay royalties to sing it in movies!",
+    "Did you know? Listening to music releases dopamine — the same chemical triggered by food and... other pleasures 🎵",
+    "Random fact: the longest concert ever was 639 years long. It started in 2001 and is still playing in Germany!",
+  ],
+  general: [
+    "Fun fact: octopuses have three hearts, blue blood, and can taste with their arms! 🐙",
+    "Did you know? A group of flamingos is called a 'flamboyance.' Best collective noun ever.",
+    "Random fact: there are more possible chess games than atoms in the observable universe!",
+    "Fun fact: sharks have been around longer than trees. They're 400 million years old!",
+    "Did you know? Astronauts grow about 2 inches taller in space because there's no gravity compressing their spine!",
+  ],
+};
+
+const HYPOTHETICALS = [
+  "Hypothetical: if you could have any superpower but only for 1 hour a day, what would you pick?",
+  "Random scenario: you wake up and discover you can read animals' thoughts for a day. What's the first animal you find? 🐕",
+  "Thought experiment: if you had to explain the internet to someone from 1850, where would you start?",
+  "Fun question: would you rather be able to fly but only at walking speed, or run at 200mph but only on the ground?",
+  "Hypothetical: if you could master any skill instantly but had to forget one you already have, what would you trade?",
+  "What if: you can live in any fictional universe for a month. Where do you go?",
+  "Scenario: you're in charge of naming a new color that's never been seen before. What do you call it?",
+];
+
+let lastJokeTurn = 0;
+let pendingRiddle = null;
+
+function getTopicJoke(topics) {
+  for (const topic of topics) {
+    if (TOPIC_JOKES[topic]) return pickNew(TOPIC_JOKES[topic]);
+  }
+  // Fall back based on user's known interests from facts
+  if (mem.getFact("role")?.match(/developer|engineer|programmer/i)) return pickNew(TOPIC_JOKES.code);
+  if (mem.getFact("role")?.match(/designer/i)) return pickNew(TOPIC_JOKES.design);
+  return pickNew(TOPIC_JOKES.general);
+}
+
+function getTopicFact(topics) {
+  for (const topic of topics) {
+    if (FUN_FACTS[topic]) return pickNew(FUN_FACTS[topic]);
+  }
+  return pickNew(FUN_FACTS.general);
+}
+
+function handleJokeRequest(text, topics) {
+  const lower = text.toLowerCase();
+  lastJokeTurn = mem.turn;
+
+  // Riddle request
+  if (/riddle|brain\s*teaser|puzzle/i.test(lower)) {
+    const riddle = pick(RIDDLES);
+    pendingRiddle = riddle;
+    return `Okay, here's one: ${riddle.q}`;
+  }
+
+  // Fun fact request
+  if (/fun fact|random fact|did you know|tell me something/i.test(lower)) {
+    return getTopicFact(topics.length > 0 ? topics : mem.recentTopics());
+  }
+
+  // Hypothetical/scenario request
+  if (/hypothetical|what if|would you rather|scenario/i.test(lower)) {
+    return pickNew(HYPOTHETICALS);
+  }
+
+  // Specific topic joke
+  if (/about (\w+)/i.test(lower)) {
+    const aboutMatch = lower.match(/about (\w+)/);
+    if (aboutMatch) {
+      const topic = aboutMatch[1];
+      if (TOPIC_JOKES[topic]) return pickNew(TOPIC_JOKES[topic]);
+    }
+  }
+
+  // Default — pick based on conversation context
+  const recentTopics = topics.length > 0 ? topics : mem.recentTopics();
+  const joke = getTopicJoke(recentTopics);
+
+  // Sometimes follow up with a prompt
+  if (Math.random() > 0.6) {
+    return joke + pick([" 😄 Want another?", " Got more where that came from!", " Too cheesy? I have better ones 😄"]);
+  }
+  return joke;
+}
+
+function handleRiddleAnswer() {
+  if (!pendingRiddle) return null;
+  const riddle = pendingRiddle;
+  pendingRiddle = null;
+  return `${riddle.a} Want another riddle, or shall we talk about something else?`;
+}
+
+// Contextual humor injection — adds humor to non-joke responses when appropriate
+function injectHumor(response, topics) {
+  // Don't inject too often (every 6+ turns)
+  if (mem.turn - lastJokeTurn < 6) return response;
+  // Only inject into medium-length responses
+  if (response.length < 40 || response.length > 150) return response;
+  // ~10% chance
+  if (Math.random() > 0.1) return response;
+
+  lastJokeTurn = mem.turn;
+
+  // Topic-relevant fun facts are the safest humor injection
+  const recentTopics = topics.length > 0 ? topics : mem.recentTopics();
+  const fact = getTopicFact(recentTopics);
+  if (fact) return response + " Oh, and " + fact.charAt(0).toLowerCase() + fact.slice(1);
+
+  return response;
+}
+
+// Enhanced story fragments — contextual mini-stories
+function getStoryFragment(topics) {
+  const topicStories = {
+    code: [
+      "It's like that classic debugging story — you spend 6 hours hunting a bug only to find it was a missing semicolon. Every. Single. Time.",
+      "Reminds me of the first time I heard about 'rubber duck debugging' — apparently talking to a rubber duck helps you solve coding problems. Engineers are a special breed 🦆",
+      "It's similar to how the best code is the code you delete. Simplicity is harder than complexity.",
+      "That's like the old programmer's dilemma: 'I can automate this in 5 hours, or do it manually in 20 minutes.' We always choose automation 😄",
+    ],
+    design: [
+      "It's like that classic design principle — if you have to explain how a door works, the door is badly designed.",
+      "Reminds me of the 'less is more' philosophy. The hardest part of design isn't adding things — it's knowing what to take away.",
+      "That's like when Steve Jobs made his team redesign the calculator app 100 times. Obsession with detail pays off.",
+    ],
+    food: [
+      "It's like how Gordon Ramsay says the best dishes are the simplest ones done perfectly.",
+      "Reminds me of how every culture has their own version of 'bread + stuff inside.' We're all the same at the core 🌍",
+    ],
+    general: [
+      "It's like when you're building something and the simplest solution turns out to be the best.",
+      "Reminds me of how the best conversations happen when you least expect them.",
+      "It's similar to how the best ideas come when you step away from the screen.",
+      "That reminds me of the 'overnight success' myth — most took 10 years of quiet work first.",
+      "It's like that old saying: the best time to plant a tree was 20 years ago. The second best time is now.",
+    ],
+  };
+
+  for (const topic of topics) {
+    if (topicStories[topic]) return pickNew(topicStories[topic]);
+  }
+  return pickNew(topicStories.general);
+}
+
+// Legacy flat array for backward compat (used in one place)
+const JOKES = TOPIC_JOKES.general.concat(TOPIC_JOKES.code);
 
 const EMPATHY = [
   "I hear you — that sounds tough. Want to talk about it?",
@@ -1681,6 +1893,12 @@ function generateResponse(text) {
     if (multiResponse) return multiResponse;
   }
 
+  // ═══ 0.25. Riddle answer — check if we have a pending riddle ═══
+  if (pendingRiddle) {
+    const riddleResponse = handleRiddleAnswer();
+    if (riddleResponse) return riddleResponse;
+  }
+
   // ═══ 0.5. Question-answer linking — check if user is answering our question ═══
   if (mem.lastQuestion) {
     const answerLink = detectAnswerToQuestion(text, parsed);
@@ -1725,8 +1943,8 @@ function generateResponse(text) {
   // ═══ 5. How are you ═══
   if (primary?.intent === "howAreYou") return pickNew(HOW_ARE_YOU);
 
-  // ═══ 6. Joke request ═══
-  if (primary?.intent === "joke") return pickNew(JOKES);
+  // ═══ 6. Joke / humor / riddle / fun fact request ═══
+  if (primary?.intent === "joke") return handleJokeRequest(text, topics);
 
   // ═══ 7. Emotion-aware responses ═══
   const emo = detectEmotion(text, sent, parsed);
@@ -2724,6 +2942,9 @@ export function getAIResponse(input) {
 
   // Apply personality layer
   response = applyPersonality(response, sent, parsed);
+
+  // Contextual humor injection — occasionally add fun facts/humor
+  response = injectHumor(response, currentTopics);
 
   // Style matching — mirror the user's communication style
   const userStyle = analyzeUserStyle();
