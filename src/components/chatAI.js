@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 15: Contextual humor & storytelling engine
+   Round 16: Conversation threading & topic management
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokenizer & NLP Core ── */
@@ -958,15 +958,147 @@ function momentumResponse() {
     return pickNew(energizers);
   }
   if (m === "switching") {
-    // Acknowledge the topic switch
-    const prevTopics = mem.history.filter(h => h.role === "user").slice(-3, -1).flatMap(h => h.topics);
-    const newTopics = mem.history.filter(h => h.role === "user").slice(-1).flatMap(h => h.topics);
-    if (prevTopics.length > 0 && newTopics.length > 0) {
-      return `Oh, switching gears from ${prevTopics[0]} to ${newTopics[0]} — I'm here for it! `;
-    }
+    // Use the threading system for richer topic transitions
+    const transition = threadManager.handleTopicSwitch();
+    if (transition) return transition;
     return "Oh, new topic — I'm here for it! ";
   }
   return null; // steady/engaged = no intervention needed
+}
+
+/* ── Conversation Threading & Topic Management ──
+ * Tracks parallel conversation threads (user discusses work AND hobbies),
+ * manages smooth topic transitions, detects when users return to
+ * previously discussed topics, and enables natural thread resumption.
+ * Makes multi-topic conversations feel coherent instead of disjointed.
+ */
+
+class ThreadManager {
+  constructor() { this.reset(); }
+  reset() {
+    this.threads = {};     // { topicName: { depth, lastTurn, messages, suspended } }
+    this.activeThread = null;
+    this.threadHistory = []; // ordered list of topic transitions
+  }
+
+  // Record a topic being discussed at a given turn
+  touch(topic, turn, messageSnippet) {
+    if (!topic || topic.length < 2) return;
+    if (!this.threads[topic]) {
+      this.threads[topic] = { depth: 0, lastTurn: turn, messages: [], suspended: false, firstTurn: turn };
+    }
+    const thread = this.threads[topic];
+    thread.depth++;
+    thread.lastTurn = turn;
+    thread.suspended = false;
+    if (messageSnippet) thread.messages.push(messageSnippet.slice(0, 60));
+    if (thread.messages.length > 5) thread.messages.shift();
+
+    // Track transitions
+    if (this.activeThread && this.activeThread !== topic) {
+      // Suspend the old thread
+      if (this.threads[this.activeThread]) {
+        this.threads[this.activeThread].suspended = true;
+      }
+      this.threadHistory.push({ from: this.activeThread, to: topic, turn });
+      if (this.threadHistory.length > 10) this.threadHistory.shift();
+    }
+    this.activeThread = topic;
+  }
+
+  // Get suspended threads that could be naturally resumed
+  getSuspendedThreads() {
+    return Object.entries(this.threads)
+      .filter(([name, t]) => t.suspended && t.depth >= 2 && name !== this.activeThread)
+      .sort((a, b) => b[1].depth - a[1].depth)
+      .map(([name, t]) => ({ name, ...t }));
+  }
+
+  // Check if user is returning to a previously discussed topic
+  detectReturn(currentTopics, turn) {
+    for (const topic of currentTopics) {
+      const thread = this.threads[topic];
+      if (thread && thread.suspended && turn - thread.lastTurn >= 3) {
+        return { topic, gapTurns: turn - thread.lastTurn, depth: thread.depth };
+      }
+    }
+    return null;
+  }
+
+  // Generate a smooth topic transition when switching
+  handleTopicSwitch() {
+    const history = this.threadHistory;
+    if (history.length === 0) return null;
+    const last = history[history.length - 1];
+    const fromThread = this.threads[last.from];
+    const toThread = this.threads[last.to];
+
+    // If returning to a deep thread, acknowledge the return
+    if (toThread && toThread.depth >= 3 && toThread.suspended) {
+      return pickNew([
+        `Oh, back to ${last.to}! I was wondering if we'd circle back to this. Where were we?`,
+        `Ah, ${last.to} again! I like it — we had some good momentum on this topic.`,
+        `Returning to ${last.to} — I've been thinking about what you said earlier!`,
+      ]);
+    }
+
+    // First time on a new topic while leaving a deep one
+    if (fromThread && fromThread.depth >= 2) {
+      return pickNew([
+        `Switching from ${last.from} to ${last.to} — I'm following! We can always circle back to ${last.from} later.`,
+        `Oh, ${last.to} now! Cool — parking our ${last.from} conversation for a sec. What's on your mind?`,
+        `New direction — ${last.to}! I like it. We've got some good ${last.from} threads to pick up later if you want.`,
+      ]);
+    }
+
+    // Simple switch
+    return pickNew([
+      `Oh, ${last.to} — nice! Let's go there.`,
+      `Switching gears to ${last.to} — I'm here for it!`,
+      `${last.to.charAt(0).toUpperCase() + last.to.slice(1)}! New topic energy. What about it?`,
+    ]);
+  }
+
+  // Suggest resuming a suspended thread (used in proactive callbacks)
+  suggestResumption() {
+    const suspended = this.getSuspendedThreads();
+    if (suspended.length === 0) return null;
+    const thread = suspended[0]; // highest depth suspended thread
+
+    return pickNew([
+      `By the way, we never finished our ${thread.name} discussion — want to pick that back up?`,
+      `Oh, that reminds me — we were talking about ${thread.name} earlier. Any updates on that?`,
+      `Random thought: what happened with the ${thread.name} thing you mentioned before?`,
+    ]);
+  }
+
+  // Get conversation summary for context
+  getThreadSummary() {
+    const active = Object.entries(this.threads)
+      .filter(([, t]) => !t.suspended && t.depth >= 2)
+      .map(([name]) => name);
+    const parked = Object.entries(this.threads)
+      .filter(([, t]) => t.suspended && t.depth >= 2)
+      .map(([name]) => name);
+    return { active, parked, total: Object.keys(this.threads).length };
+  }
+}
+
+const threadManager = new ThreadManager();
+
+// Detect topic return and generate acknowledgment
+function handleTopicReturn(currentTopics) {
+  const ret = threadManager.detectReturn(currentTopics, mem.turn);
+  if (!ret) return null;
+
+  // Only acknowledge returns with significant gaps
+  if (ret.gapTurns < 4) return null;
+
+  return pickNew([
+    `Oh, we're back on ${ret.topic}! I remember we were getting into some good stuff there.`,
+    `${ret.topic.charAt(0).toUpperCase() + ret.topic.slice(1)} again — love it! I was hoping we'd come back to this.`,
+    `Circling back to ${ret.topic} — nice. I had a feeling this would come up again!`,
+  ]);
 }
 
 /* ── Comparison Engine ──
@@ -1883,6 +2015,17 @@ function generateResponse(text) {
   mem.add("user", text, nonMod.map(i=>i.intent), topics, sent);
   extractFacts(text, parsed);
 
+  // Feed topics into thread manager
+  for (const topic of topics) {
+    threadManager.touch(topic, mem.turn, text);
+  }
+
+  // ═══ -0.5. Topic return detection — "we're back on X!" ═══
+  if (topics.length > 0 && mem.turn > 5) {
+    const topicReturn = handleTopicReturn(topics);
+    if (topicReturn) return topicReturn;
+  }
+
   // ═══ -1. Remember/recall commands — "what do you remember about me?" ═══
   const rememberCmd = handleRememberCommand(text);
   if (rememberCmd) return rememberCmd;
@@ -2499,6 +2642,15 @@ function tryProactiveCallback(response, currentTopics) {
     }
   }
 
+  // ── Strategy 1.5: Thread resumption — suggest picking up a parked topic ──
+  if (mem.turn > 7 && Math.random() > 0.65) {
+    const suggestion = threadManager.suggestResumption();
+    if (suggestion) {
+      lastCallbackTurn = mem.turn;
+      return response + " " + suggestion;
+    }
+  }
+
   // ── Strategy 2: Fact callback — reference a stored fact naturally ──
   if (mem.turn > 6 && Object.keys(mem.facts).length > 0 && Math.random() > 0.7) {
     const factKeys = Object.keys(mem.facts);
@@ -2970,6 +3122,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
