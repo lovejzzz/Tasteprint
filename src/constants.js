@@ -51,7 +51,7 @@ export const VARIANTS = {
   "image-placeholder":["Subtle","Gradient","Dashed"],
   "avatar-row":["Circular","Small tight","Rounded sq"],
   "list-item":["Card row","Divider","Tinted"],
-  input:     ["Outlined","Labeled","Filled"],
+  input:     ["Outlined","Labeled","Filled","Underline","Glass"],
   search:    ["Bordered","Pill kbd","Underline"],
   toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass"],
   badge:     ["Tinted","Solid","Outline","Glass","Brutal"],
