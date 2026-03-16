@@ -13900,6 +13900,98 @@ function applyVocabRegister(response) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   EPISTEMIC HEDGING (Round 87)
+   Real humans don't speak in certainties. They hedge — "I think",
+   "from what I know", "I could be wrong but". This is epistemic
+   humility, and its absence is the #1 tell of synthetic text.
+
+   Detects high-confidence declarative statements and softens a
+   subset of them with natural hedge phrases. Avoids hedging on:
+   - Factual statements with numbers/dates (those should be confident)
+   - Short responses (< 60 chars) — hedging tiny replies is awkward
+   - Questions, exclamations, emotional responses
+   - Responses that already contain hedges
+
+   Fire rate: ~25% of eligible turns. 4-turn cooldown.
+   Max 1 hedge insertion per response to stay subtle.
+   ══════════════════════════════════════════════════════════════════ */
+
+let lastHedgeTurn = 0;
+
+// Phrases that indicate the response already hedges
+const EXISTING_HEDGE_PATTERNS = /\b(I think|I believe|I feel like|maybe|perhaps|probably|might be|could be|not sure|from what I|as far as I|I'd guess|I suspect|it seems|it looks like|if I'm not mistaken|I could be wrong|arguably|in my experience|to my knowledge|I imagine)\b/i;
+
+// Declarative sentence patterns — confident assertions worth softening
+const DECLARATIVE_PATTERNS = [
+  /^(That's|It's|This is|The \w+) (definitely|clearly|obviously|absolutely|certainly|the best|the worst|always|never)\b/i,
+  /^(You should|You need to|You have to|The way to|The answer is|The solution is|The problem is|The thing is)\b/i,
+  /^(Everyone|Nobody|All \w+|No \w+|People always|People never)\b/i,
+  /^[A-Z][a-z]+ (is|are|was|were) (the|a|an) /,
+  /^(It|That) (is|was) /,
+];
+
+// Hedge insertions — grouped by where they go
+const HEDGE_PREFIXES = [
+  "I think ", "Honestly, I think ", "From what I can tell, ",
+  "If I had to guess, ", "In my experience, ", "The way I see it, ",
+  "I'd say ", "My read is ", "Feels like ",
+];
+
+const HEDGE_INJECTS = [
+  // Replace "is" with softer version in mid-sentence
+  { find: /\b(is|are) (definitely|clearly|obviously)\b/i, replace: "$1 probably" },
+  { find: /\b(always|never)\b/i, replace: (m) => m.toLowerCase() === "always" ? "usually" : "rarely" },
+  { find: /\bshould\b/i, replace: "might want to" },
+  { find: /\bneed to\b/i, replace: "might want to" },
+  { find: /\bhave to\b/i, replace: "could try to" },
+  { find: /\bobviously\b/i, replace: "I think" },
+  { find: /\bclearly\b/i, replace: "it seems like" },
+  { find: /\bdefinitely\b/i, replace: "probably" },
+  { find: /\bcertainly\b/i, replace: "I'd say" },
+];
+
+function applyEpistemicHedge(response) {
+  const turn = mem.turn;
+  if (turn < 3) return response;
+  if (turn - lastHedgeTurn < 4) return response; // 4-turn cooldown
+  if (response.length < 60) return response; // skip short responses
+  if (Math.random() > 0.25) return response; // 25% fire rate
+
+  // Don't hedge if response already contains hedging language
+  if (EXISTING_HEDGE_PATTERNS.test(response)) return response;
+
+  // Don't hedge questions or exclamations (they're not assertions)
+  const firstSentence = response.match(/^[^.!?]+[.!?]?/)?.[0] || response;
+  if (/\?/.test(firstSentence)) return response;
+
+  // Don't hedge factual/numeric statements — those should be confident
+  if (/\b\d{2,}\b/.test(firstSentence) || /\b(in \d{4}|percent|%|\$\d)\b/i.test(firstSentence)) return response;
+
+  // Strategy 1: Softening overconfident words (preferred — more subtle)
+  for (const { find, replace } of HEDGE_INJECTS) {
+    if (find.test(response)) {
+      const r = response.replace(find, typeof replace === "function" ? replace : replace);
+      if (r !== response) {
+        lastHedgeTurn = turn;
+        return r;
+      }
+    }
+  }
+
+  // Strategy 2: Prefix hedge on declarative sentences
+  const isDeclarative = DECLARATIVE_PATTERNS.some(p => p.test(firstSentence));
+  if (isDeclarative) {
+    const hedge = HEDGE_PREFIXES[Math.floor(Math.random() * HEDGE_PREFIXES.length)];
+    // Lowercase the first letter of the original response when prepending
+    const softened = hedge + response.charAt(0).toLowerCase() + response.slice(1);
+    lastHedgeTurn = turn;
+    return softened;
+  }
+
+  return response; // no good hedge opportunity — skip
+}
+
+/* ══════════════════════════════════════════════════════════════════
    GENUINE MICRO-REACTIONS (Round 86)
    Humans don't just respond — they *react* first. A quick "Oh!" or
    "Wait, seriously?" or "Ha —" before launching into their actual
@@ -14570,6 +14662,9 @@ export function getAIResponse(input) {
   // ═══ Vocabulary register: adapt word sophistication to match user's register ═══
   response = applyVocabRegister(response);
 
+  // ═══ Epistemic hedging: soften overconfident assertions with natural uncertainty ═══
+  response = applyEpistemicHedge(response);
+
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
@@ -14625,6 +14720,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
