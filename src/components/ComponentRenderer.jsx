@@ -20,6 +20,8 @@ const ANIM_STYLE = `
 @keyframes tp-typing{from{width:0}to{width:100%}}
 @keyframes tp-cursor{0%,100%{border-color:currentColor}50%{border-color:transparent}}
 @keyframes tp-fadein{from{opacity:0}to{opacity:1}}
+@keyframes tp-stripe-move{from{background-position:0 0}to{background-position:32px 0}}
+@keyframes tp-shimmer-slide{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 `;
 
 function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1}){
@@ -219,8 +221,17 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- PROGRESS ---- */
   if(type==="progress"){
-    const rd=[999,4,0];
-    return <div style={{...b,background:p.su,borderRadius:rd[v],overflow:"hidden"}}><div style={{width:`${P("pct")}%`,height:"100%",background:v===1?`linear-gradient(90deg,${p.ac},${p.ac2})`:p.ac,borderRadius:rd[v],animation:"tp-fill .8s ease-out forwards"}}/></div>;
+    const pct=P("pct");
+    /* v0 Round */
+    if(v===0)return <div style={{...b,background:p.su,borderRadius:999,overflow:"hidden"}}><div style={{width:`${pct}%`,height:"100%",background:p.ac,borderRadius:999,animation:"tp-fill .8s ease-out forwards",transition:"width .3s ease"}}/></div>;
+    /* v1 Flat — gradient fill */
+    if(v===1)return <div style={{...b,background:p.su,borderRadius:4,overflow:"hidden"}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${p.ac},${p.ac2})`,borderRadius:4,animation:"tp-fill .8s ease-out forwards",transition:"width .3s ease"}}/></div>;
+    /* v2 Thin */
+    if(v===2)return <div style={{...b,background:p.su,borderRadius:0,overflow:"hidden"}}><div style={{width:`${pct}%`,height:"100%",background:p.ac,borderRadius:0,animation:"tp-fill .8s ease-out forwards",transition:"width .3s ease"}}/></div>;
+    /* v3 Striped — animated diagonal stripes */
+    if(v===3)return <div style={{...b,background:p.su,borderRadius:6,overflow:"hidden"}}><div style={{width:`${pct}%`,height:"100%",borderRadius:6,background:`repeating-linear-gradient(45deg,${p.ac},${p.ac} 8px,${p.ac2} 8px,${p.ac2} 16px)`,backgroundSize:"200% 100%",animation:"tp-stripe-move 1s linear infinite",transition:"width .3s ease"}}/></div>;
+    /* v4 Glow — gradient bar with shimmer + glow shadow */
+    return <div style={{...b,background:p.su,borderRadius:999,overflow:"hidden",position:"relative"}}><div style={{width:`${pct}%`,height:"100%",borderRadius:999,background:`linear-gradient(90deg,${p.ac},${p.ac2})`,boxShadow:`0 0 12px ${p.ac}50, 0 0 4px ${p.ac}30`,animation:"tp-fill .8s ease-out forwards",transition:"width .3s ease",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.3) 50%,transparent 100%)",animation:"tp-shimmer-slide 2s ease-in-out infinite"}}/></div></div>;
   }
 
   /* ---- MODAL ---- */
