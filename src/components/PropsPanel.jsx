@@ -115,6 +115,15 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Sort column (table) */
+  if ("sortCol" in defaults) {
+    const sc = G("sortCol");
+    const scLabels = ["Name", "Status", "Amt", "—"];
+    controls.push(<React.Fragment key="sortCol"><span style={label}>Sort</span>
+      {scLabels.map((l, i) => { const ci = i < 3 ? i : -1; return <button key={i} style={{ ...btn(sc === ci), fontSize: 8, minWidth: i < 3 ? 28 : 18, height: 18 }} onMouseDown={stop} onClick={() => onProp("sortCol", ci)}>{l}</button> })}
+    </React.Fragment>);
+  }
+
   /* Bar heights (chart) — mini draggable bars for adjusting chart data */
   if ("bars" in defaults) {
     const bars = G("bars") || defaults.bars;

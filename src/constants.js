@@ -206,7 +206,7 @@ export const DEFAULT_PROPS = {
   receipt:       { tip: 0, paid: 1 },
   "order-summary":{ discount: false, shipping: 0 },
   "promo-banner":{ dismissed: false },
-  table:         { highlight: 0 },
+  table:         { highlight: 0, sortCol: -1 },
   card:          { featured: false, liked: false },
   badge:         { level: 0 },
   modal:         { on: true },
