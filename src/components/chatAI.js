@@ -20411,6 +20411,31 @@ function polishOutput(response) {
     }
   }
 
+  // 8b. Exclamation mark dampening (Round 226).
+  // Friends use ! sparingly — it's reserved for genuine surprise or excitement.
+  // Templates are loaded with enthusiasm (!), but in real texting most sentences
+  // just end with nothing. Dampen: 30% of internal "!" → "," or nothing,
+  // plus 25% chance to drop the final "!" entirely.
+  {
+    // Count exclamations
+    const excCount = (r.match(/!/g) || []).length;
+    if (excCount >= 1) {
+      // Internal exclamations: "that's sick! I love it" → "that's sick, I love it"
+      if (excCount >= 2) {
+        let dampened = 0;
+        r = r.replace(/!(\s+[a-zA-Z])/g, (m, after) => {
+          if (dampened >= 1) return m; // only dampen 1 internal !
+          if (Math.random() < 0.40) { dampened++; return "," + after; }
+          return m;
+        });
+      }
+      // Final exclamation: sometimes just drop it
+      if (r.endsWith("!") && Math.random() < 0.25) {
+        r = r.slice(0, -1);
+      }
+    }
+  }
+
   // 9. Natural mid-sentence emoji (~12% of casual responses)
   // Real texters scatter emoji mid-thought: "that's so 💀 funny" / "ngl 😭 i can't"
   if (r.length > 25 && r.length < 180 && Math.random() < 0.12) {
