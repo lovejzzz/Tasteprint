@@ -2191,6 +2191,56 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Gradient border effects ──
+  // Replace solid borders with gradient borders for striking visual impact
+  // Uses border-image for linear/conic gradient borders per mood
+  if (!isNav && !isCode && !isSmall && s.border && s.border !== "none") {
+    const gbRoll = Math.random();
+    const borderWidth = parseInt(s.border) || 1;
+
+    if (moodId === "bold" && gbRoll < 0.22) {
+      // Bold: intense directional gradients, thick borders
+      const bw = Math.max(borderWidth, 2);
+      s.border = `${bw}px solid transparent`;
+      const angle = pick([45, 90, 135, 180, 225, 315]);
+      s.borderImage = pick([
+        `linear-gradient(${angle}deg, ${gcGlow}60, ${gc1}40, ${gc2}60) 1`,
+        `linear-gradient(${angle}deg, ${acHex}50, transparent, ${gcGlow}50) 1`,
+        `linear-gradient(${angle}deg, ${gc1}70, ${gc2}30, ${gcGlow}70) 1`,
+        `conic-gradient(from ${pick([0, 90, 180])}deg, ${gcGlow}50, ${gc1}40, ${gc2}50, ${gcGlow}50) 1`,
+      ]);
+      s.borderImageSlice = 1;
+    } else if (moodId === "elegant" && gbRoll < 0.18) {
+      // Elegant: subtle shimmer gradients, fine borders
+      s.border = `${Math.max(borderWidth, 1)}px solid transparent`;
+      const angle = pick([135, 160, 180, 200]);
+      s.borderImage = pick([
+        `linear-gradient(${angle}deg, ${gc1}18, ${acHex}30, ${gc1}18) 1`,
+        `linear-gradient(${angle}deg, ${acHex}20, ${gc2}12, ${gcGlow}20, ${gc1}12) 1`,
+        `linear-gradient(${angle}deg, transparent, ${acHex}25, transparent) 1`,
+      ]);
+      s.borderImageSlice = 1;
+    } else if (moodId === "playful" && gbRoll < 0.25) {
+      // Playful: rainbow/multi-stop gradients, fun angles
+      const bw = Math.max(borderWidth, 2);
+      s.border = `${bw}px solid transparent`;
+      s.borderImage = pick([
+        `linear-gradient(${pick([45, 135, 225, 315])}deg, ${gc1}50, ${gcGlow}40, ${gc2}50, ${gc1}40) 1`,
+        `conic-gradient(from ${pick([0, 45, 90, 135])}deg, ${gc1}45, ${gc2}45, ${gcGlow}45, ${acHex}45, ${gc1}45) 1`,
+        `linear-gradient(${pick([90, 180])}deg, ${gcGlow}55, ${gc1}35, ${gc2}55, ${gcGlow}35, ${gc1}55) 1`,
+      ]);
+      s.borderImageSlice = 1;
+    } else if (moodId === "minimal" && gbRoll < 0.06) {
+      // Minimal: barely-there gradient fade
+      s.border = `1px solid transparent`;
+      s.borderImage = pick([
+        `linear-gradient(180deg, ${acHex}15, transparent) 1`,
+        `linear-gradient(90deg, transparent, ${acHex}12, transparent) 1`,
+      ]);
+      s.borderImageSlice = 1;
+    }
+  }
+
   // ── Mood-based micro-animations ──
   // Subtle CSS animations that make designs feel alive without being distracting
   // Only fires ~20-30% of the time to keep it special

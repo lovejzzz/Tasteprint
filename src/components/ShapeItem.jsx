@@ -161,6 +161,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           boxShadow: ds.boxShadow && ds.boxShadow !== "none" ? ds.boxShadow : undefined,
           backdropFilter: ds.backdropFilter,
           border: ds.border || undefined,
+          borderImage: ds.borderImage || undefined,
+          borderImageSlice: ds.borderImageSlice || undefined,
           borderTop: ds.borderTop || undefined,
           borderBottom: ds.borderBottom || undefined,
           borderLeft: ds.borderLeft || undefined,
