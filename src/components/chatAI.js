@@ -1420,9 +1420,9 @@ function respondToAnswer(answer, sent) {
       ];
     },
     continuation: [
-      "Oh, interesting! That makes a lot of sense.",
-      "Ah, I see where you're coming from!",
-      "Gotcha! That's a good perspective.",
+      "oh interesting, yeah that makes sense",
+      "ah ok i see where you're going with that",
+      "gotcha gotcha, ok yeah that tracks",
     ],
   };
 
@@ -1918,54 +1918,54 @@ function classify(text) {
 
 const KB = {
   code: {
-    javascript: ["JavaScript is the backbone of the web — it runs everywhere from browsers to servers with Node.js","I love how JS keeps evolving. ES modules, optional chaining, nullish coalescing — so many quality-of-life improvements","The JS ecosystem moves fast! That's both exciting and exhausting sometimes, right?"],
-    react: ["React's component model is brilliant — thinking in reusable pieces just clicks","Hooks completely changed how I think about React state management","The React team is always pushing boundaries. Server components are a game-changer","I'm a big fan of how React makes UI feel like building with LEGO blocks"],
-    python: ["Python's readability is unmatched — it reads almost like English","Python is amazing for data science, automation, and now even AI/ML","The Python community is so welcoming. Great choice for any developer!"],
-    typescript: ["TypeScript is like JavaScript with superpowers! Type safety saves so many runtime bugs","I've seen teams catch entire classes of bugs just by adopting TypeScript","The TypeScript compiler is basically your first code reviewer!"],
-    css: ["CSS has gotten so powerful lately — container queries, cascade layers, :has() selector... wild!","CSS Grid and Flexbox together can build almost any layout you can imagine","The hardest part of CSS is centering a div... just kidding, that's easy now with Flexbox!"],
-    rust: ["Rust's ownership model is genius — memory safety without garbage collection","Rust has been voted most loved language for years! The community is amazing","The Rust borrow checker is strict but fair — once it compiles, you know it works"],
-    git: ["Git is one of those tools that seems simple but has incredible depth","Rebasing vs merging — the eternal debate! I'm team rebase for clean history","Git bisect is an underrated debugging tool. Binary search through commits!"],
-    debugging: ["The best debuggers are patient — most bugs are just assumptions you didn't question","console.log is still king, but breakpoints + the debugger statement are game-changers","The rubber duck method works because explaining the problem forces you to think differently"],
-    general: ["Coding is basically problem-solving with a keyboard. What kind of problems do you like solving?","The best code is the code you don't have to write — simplicity is underrated","Every expert was once a beginner. The key is consistent practice and building real things"],
+    javascript: ["js literally runs everything now, browsers servers whatever. wild","js keeps getting better honestly, optional chaining and nullish coalescing are 🤌","the js ecosystem moves SO fast, it's exciting but also exhausting lol"],
+    react: ["react's component model just makes sense, building with reusable pieces hits different","hooks changed everything honestly, state management is so much cleaner now","react is basically legos for UI, i love it","server components are a game changer ngl"],
+    python: ["python reads like english basically, the readability is so nice","python is goated for data science and AI stuff","the python community is super welcoming honestly, good vibes"],
+    typescript: ["typescript is js with superpowers fr, catches so many bugs before runtime","once you go typescript you can't go back tbh","the ts compiler is basically your first code reviewer lol"],
+    css: ["css is SO powerful now — container queries, :has(), cascade layers... it's wild","grid + flexbox together can build basically anything","centering a div is easy now btw, flexbox fixed that forever ago 😂"],
+    rust: ["rust's ownership model is lowkey genius, memory safety without a garbage collector","rust has been most loved language for years, the community is great","the borrow checker is strict but once it compiles you know it works, that's the deal"],
+    git: ["git seems simple but it goes SO deep","rebasing vs merging — the eternal debate lol. i'm team rebase for clean history","git bisect is so underrated, binary search through commits? incredible"],
+    debugging: ["most bugs are just assumptions you didn't question honestly","console.log is still king but breakpoints hit different when you learn them","the rubber duck method actually works because explaining the problem makes you think differently"],
+    general: ["coding is just problem solving with a keyboard tbh. what kind of stuff do you like building","the best code is the code you don't have to write, simplicity is so underrated","every expert was a beginner once, it's all about building real stuff consistently"],
   },
   design: {
-    ui: ["Good UI is invisible — when it works, people don't even notice it","The best UI makes the user feel smart, not the designer","Consistency in UI is more important than being clever. Users learn patterns"],
-    ux: ["UX is about empathy — stepping into the user's shoes and feeling their frustrations","The best UX research happens when you watch real users, not just assume","Good UX often means removing features, not adding them"],
-    color: ["Color theory is fascinating — complementary colors create energy, analogous colors create harmony","60-30-10 is a great rule for color distribution in any design","Accessibility tip: never rely on color alone to convey information"],
-    typography: ["Typography can make or break a design — it's 95% of web design, some say","Pair a serif with a sans-serif for classic contrast. Just keep it to 2-3 fonts max","Line height of 1.5-1.6 is the sweet spot for body text readability"],
-    general: ["Design is how it works, not just how it looks — that's a Steve Jobs classic","The best designs solve a real problem. What problem are you trying to solve?","White space is not empty space — it's breathing room for your content"],
+    ui: ["good UI is invisible honestly — when it works nobody notices","the best UI makes the user feel smart not the designer","consistency > cleverness in UI, users learn patterns and that matters more"],
+    ux: ["ux is literally just empathy, stepping into the user's shoes","best ux research is watching real users not just guessing","good ux is often removing features not adding them tbh"],
+    color: ["color theory is so cool — complementary colors = energy, analogous = harmony","60-30-10 rule for color distribution, works every time","pro tip: never use color alone to convey info, accessibility matters"],
+    typography: ["typography can make or break a design, some say it's 95% of web design","pair a serif with a sans-serif for contrast, but keep it to 2-3 fonts max","line height 1.5-1.6 is the sweet spot for readability fr"],
+    general: ["design is how it works not how it looks — classic steve jobs","best designs solve real problems. what problem are you trying to solve","white space isn't empty space, it's breathing room"],
   },
   food: {
-    pizza: ["Pizza is basically a perfect food — carbs, protein, veggies, all in one handheld package!","New York thin crust vs Chicago deep dish is a debate that will never be settled!"],
-    sushi: ["Sushi is an art form. The simplicity of fresh fish on rice is so elegant","Omakase experiences are incredible — letting the chef guide the meal is like a food journey"],
-    coffee: ["A good cup of coffee can change your whole day. Are you an espresso or pour-over person?","Coffee is basically a hug in a mug! What's your go-to order?"],
-    cooking: ["Cooking is like coding — follow the recipe first, then start experimenting!","The secret to good cooking? Taste as you go and don't be afraid of salt"],
-    general: ["Food brings people together like nothing else. What's your comfort food?","Trying new cuisines is one of life's greatest adventures"],
+    pizza: ["pizza is a perfect food honestly — carbs protein veggies all in one handheld thing","new york thin crust vs chicago deep dish will never be settled and that's ok"],
+    sushi: ["sushi is lowkey an art form, the simplicity of fresh fish on rice","omakase is the move, letting the chef guide the meal is *chefs kiss*"],
+    coffee: ["a good cup of coffee can change your whole day. espresso or pour over person","coffee is basically a hug in a mug lol. what's your go-to order"],
+    cooking: ["cooking is like coding — follow the recipe first then start experimenting","the secret to good cooking? taste as you go and don't be scared of salt"],
+    general: ["food brings people together like nothing else. what's your comfort food","trying new cuisines is so fun honestly, always an adventure"],
   },
   music: {
-    general: ["Music literally changes your brain chemistry. The right song at the right time is magic","There's no such thing as a guilty pleasure in music — if it makes you feel something, it's good","I've heard lo-fi hip hop is perfect for coding sessions. The beats are just right for focus"],
-    guitar: ["Guitar is such a versatile instrument — from classical to metal, it does it all","Learning guitar changes how you hear music forever. Every song becomes a puzzle to figure out"],
-    piano: ["Piano is the foundation of music theory. Once you learn piano, every other instrument clicks","There's something meditative about just sitting at a piano and letting your hands explore"],
+    general: ["music literally changes your brain chemistry, the right song at the right time is everything","there's no such thing as a guilty pleasure in music, if it hits it hits","lo-fi hip hop is goated for coding sessions, the beats are just right"],
+    guitar: ["guitar is so versatile — from classical to metal it does everything","learning guitar changes how you hear music forever, every song becomes a puzzle"],
+    piano: ["piano is the foundation of music theory honestly, once you learn it everything else clicks","there's something meditative about just sitting at a piano and vibing"],
   },
   movies: {
-    general: ["A great movie can change how you see the world. What genre speaks to you?","There's nothing like getting lost in a really good film","Movie soundtracks are underrated — they do so much emotional heavy lifting"],
+    general: ["a great movie can literally change how you see the world. what genre are you into","there's nothing like getting lost in a really good film honestly","movie soundtracks are so underrated, they do all the emotional heavy lifting"],
   },
   gaming: {
-    general: ["Gaming teaches problem-solving, teamwork, and reflexes. It's not just entertainment, it's training!","The gaming industry is now bigger than movies and music combined. Wild times!","What kind of games do you gravitate toward — story-driven, competitive, or sandbox?"],
+    general: ["gaming lowkey teaches problem solving and teamwork, it's not just entertainment","the gaming industry is bigger than movies and music combined now which is wild","what kind of games are you into — story stuff, competitive, or sandbox"],
   },
   travel: {
-    general: ["Travel is the best education — you learn things no classroom can teach","Getting lost in a new city is when the real adventure begins","The best travel memories are usually the unplanned ones"],
+    general: ["travel is the best education honestly, you learn stuff no classroom can teach","getting lost in a new city is when the real adventure starts","the best travel memories are always the unplanned ones fr"],
   },
   fitness: {
-    general: ["Consistency beats intensity every time. Even 20 minutes a day adds up","The hardest part of any workout is showing up. After that, momentum takes over","Rest days are just as important as workout days — recovery is where growth happens"],
+    general: ["consistency > intensity every time, even 20 mins a day adds up","the hardest part of any workout is showing up, after that momentum takes over","rest days are just as important as workout days tbh, recovery is where the growth happens"],
   },
   learning: {
-    general: ["The best way to learn is to build something. Theory only gets you so far","Teaching something is the fastest way to really understand it","Every skill has a learning curve. The frustrating part is actually where the most growth happens"],
+    general: ["the best way to learn is to build something, theory only gets you so far","teaching something is the fastest way to actually understand it fr","every skill has a frustrating phase and that's actually where the most growth happens"],
   },
   pets: {
-    dog: ["Dogs are pure joy in fur form. They make everything better!","A dog's love is unconditional. We don't deserve them, honestly"],
-    cat: ["Cats are the ultimate personality — independent but secretly cuddly","Cat tax is real — you mention a cat, you gotta share a photo!"],
-    general: ["Pets are family. They teach us about love, responsibility, and living in the moment"],
+    dog: ["dogs are pure joy in fur form honestly, they make everything better","a dog's love is unconditional, we literally don't deserve them"],
+    cat: ["cats have the ultimate personality — independent but secretly cuddly","cat tax is real — you mention a cat you gotta share a photo 📸"],
+    general: ["pets are family fr. they teach you about love and living in the moment"],
   },
   personal: {
     about: [
@@ -2762,9 +2762,9 @@ function handleOpinionRequest(text, topics) {
     }
 
     return pickNew([
-      `Ooh, that's such a personal choice! I'd love to hear yours first — then I'll share mine 😊`,
-      `Hmm, I don't think I can pick just one! What's YOUR favorite?`,
-      `That's a tough one! I'd need to think about it. What would you say?`,
+      `ooh ok that's hard, what's yours? i'll share mine after`,
+      `hmm idk if i can pick just one lol, what's YOUR favorite tho`,
+      `that's a tough one ngl. what would you say`,
     ]);
   }
 
@@ -2775,9 +2775,9 @@ function handleOpinionRequest(text, topics) {
     const hook = pick(assoc.hooks || COMP.deepeners);
 
     const advice = [
-      `Great question! With ${topic}, I'd say just dive in. ${opinion}. ${hook}`,
-      `The best way to get into ${topic} is to start small and build. ${fact ? fact + ". " : ""}${hook}`,
-      `Honestly, ${topic} is really rewarding once you get going. ${opinion}. My advice: don't overthink it, just start! ${hook}`,
+      `oh ${topic}?? just dive in honestly. ${opinion}. ${hook}`,
+      `best way to get into ${topic} is start small and build from there. ${fact ? fact + ". " : ""}${hook}`,
+      `ngl ${topic} is worth it once you get going. ${opinion}. don't overthink it just start. ${hook}`,
     ];
     return pickNew(advice);
   }
@@ -3326,7 +3326,7 @@ function handleRememberCommand(text) {
   if (/what do you (?:remember|know|recall) about me/i.test(text)) {
     const facts = mem.facts;
     const keys = Object.keys(facts);
-    if (keys.length === 0) return "Hmm, I don't have much yet! Tell me about yourself and I'll remember 😊";
+    if (keys.length === 0) return "hmm i don't have much yet lol, tell me about yourself and i'll remember";
 
     const bits = [];
     if (facts.role) bits.push(`you're a ${facts.role}`);
@@ -3357,16 +3357,16 @@ function handleRememberCommand(text) {
     const langs = keys.filter(k => k.startsWith("knows_")).map(k => facts[k]);
     if (langs.length > 0) bits.push(`you know ${langs.join(", ")}`);
 
-    if (bits.length === 0) return "I know a few things but nothing I can summarize neatly yet! Keep chatting and I'll pick things up 😊";
+    if (bits.length === 0) return "i know a few things but can't really summarize yet, keep talking and i'll pick stuff up";
 
     const summary = bits.slice(0, 6).join(", ");
-    return `Here's what I remember: ${summary}. ${bits.length > 6 ? `Plus ${bits.length - 6} more things! ` : ""}Not bad for a tiny AI, right? 😄`;
+    return `ok so here's what i got: ${summary}${bits.length > 6 ? `. plus like ${bits.length - 6} more things` : ""}. not bad right 😄`;
   }
 
   // "Forget X" / "Forget everything"
   if (/forget (?:everything|all|it all)/i.test(text)) {
     mem.facts = {};
-    return "Done! Clean slate 🧹 I've forgotten everything about you. We're starting fresh!";
+    return "ok done, clean slate 🧹 forgot everything, we're starting fresh";
   }
 
   // "Remember that..." — confirm what was stored
@@ -3375,10 +3375,10 @@ function handleRememberCommand(text) {
   if (rm && rm[1].length > 3) {
     // extractFacts already stored it via noted_ key
     return pickNew([
-      `Got it — I'll remember that "${rm[1].trim()}" 📝 My tiny memory grows!`,
-      `Noted! "${rm[1].trim()}" — filed away in my brain 🧠`,
-      `I'll hold onto that: "${rm[1].trim()}". Ask me what I remember anytime!`,
-      `Stored! "${rm[1].trim()}" 📋 You can ask "what do you remember about me?" to check.`,
+      `bet, i'll remember "${rm[1].trim()}" 📝`,
+      `noted! "${rm[1].trim()}" — got it 🧠`,
+      `ok holding onto that: "${rm[1].trim()}"`,
+      `stored 📋 "${rm[1].trim()}"`,
     ]);
   }
 
@@ -3719,17 +3719,17 @@ function answerQuestion(text, parsed, intents, topics) {
   // About AI questions
   if (parsed.qType === "about_ai" || parsed.subject === "ai") {
     if (/your (name|fav|like|prefer|think|opinion|feel)/i.test(lower)) {
-      if (/name/i.test(lower)) return "I don't really have a name — I'm just the chat AI in this component! You can call me whatever you like though 😊";
+      if (/name/i.test(lower)) return "lol i don't really have a name, just the chat AI vibing in this component. you can call me whatever tho 😊";
       if (/fav/i.test(lower)) {
         const favs = [
-          "If I could have a favorite, it'd probably be watching people build cool things in this editor!",
-          "I'm a sucker for clean design and well-structured code. Does that count? 😄",
-          "Hmm, tough one! I think I'd say conversations about creative projects — they're always so interesting",
+          "hmm if i could have a fav it'd probably be watching people build cool stuff in here",
+          "i'm lowkey a sucker for clean design and good code lol. does that count",
+          "ooh tough one, i think conversations about creative projects? those always hit different",
         ];
         return pickNew(favs);
       }
       if (/feel|emotion/i.test(lower)) return pickNew(KB.personal.feelings);
-      if (/think|opinion|believe/i.test(lower)) return "I have opinions generated from patterns, not real beliefs — but I'd love to hear YOUR thoughts on it!";
+      if (/think|opinion|believe/i.test(lower)) return "i mean i have opinions from pattern matching, not real beliefs lol — but what do YOU think tho";
     }
     if (/what (can|do) you do/i.test(lower) || /your (capabilit|abilit|skill)/i.test(lower)) return pickNew(KB.personal.capabilities);
     if (/who are you|what are you/i.test(lower)) return pickNew(KB.personal.about);
@@ -4252,12 +4252,12 @@ function reasonThroughWhatIf(hyp) {
 
   // Add a follow-up question
   const followups = [
-    " What made you think about this?",
-    " Would you want this to actually happen?",
-    " Have you thought about the downsides?",
-    " Where did this thought experiment come from?",
-    " Would you opt in or stay out?",
-    " What's the first thing YOU would do?",
+    " what made you think about this tho",
+    " would you actually want this to happen",
+    " ok but have you thought about the downsides",
+    " where did this come from lol",
+    " would you opt in or stay out",
+    " what's the first thing YOU would do",
   ];
   if (Math.random() > 0.3) response += pick(followups);
 
@@ -6873,10 +6873,10 @@ function adaptToStyle(response, style) {
   if (style.length === "long" && r.length < 50 && mem.turn > 3) {
     // Pad with a thoughtful follow-up for users who write longer messages
     const expansions = [
-      " I'd love to hear more about your perspective on this.",
-      " There's a lot of nuance there worth exploring.",
-      " What's the thinking behind that?",
-      " I find that there's usually an interesting story behind that kind of thing.",
+      " what's your take on it tho",
+      " there's a lot to unpack there honestly",
+      " wait what's the thinking behind that",
+      " there's usually a good story behind that kind of thing",
     ];
     r += pick(expansions);
   }
@@ -8687,14 +8687,14 @@ const NO_PROBE_SIGNALS = [
 const SOCRATIC_PROBES = [
   "What makes you say that?",
   "Interesting — what led you to that?",
-  "Oh, how so?",
-  "I'm curious — what's behind that take?",
-  "Huh, I hadn't thought of it that way. What shaped that view?",
-  "That's a strong take — where does that come from for you?",
-  "Genuine question: what makes you feel that way?",
-  "I'd love to hear more — what experience is that based on?",
-  "What would it take to change your mind on that?",
-  "Do you think most people would agree, or is this more of a personal take?",
+  "oh wait how so",
+  "hmm what's behind that take tho",
+  "huh i hadn't thought of it like that. what shaped that view",
+  "that's a strong take — where does that come from for you",
+  "ok wait what makes you feel that way",
+  "ooh tell me more, what experience is that based on",
+  "what would it take to change your mind on that",
+  "do you think most people would agree or is this more of a you thing",
   "What's the strongest argument against that, in your view?",
   "Is that something you've always thought, or is it more recent?",
 ];
@@ -15827,11 +15827,11 @@ function assessComplexity(text, topics, intents) {
 // Mode 1: Deliberation — thinking prefix before complex answers
 function addDeliberation(response, complexity) {
   const prefixes = [
-    "Hmm, that's a good one... ",
-    "Let me think about that for a sec. ",
-    "Okay, so... ",
-    "That's actually worth thinking through. ",
-    "Interesting question — ",
+    "hmm ok that's a good one... ",
+    "wait lemme think for a sec. ",
+    "ok so... ",
+    "ooh that's actually worth thinking about. ",
+    "oh interesting — ",
     "Hmm... ",
   ];
   // Higher complexity → more deliberate prefix
@@ -18241,9 +18241,9 @@ function handleSummaryRequest(text) {
       : `${topics.slice(0, -1).join(", ")}, and ${topics[topics.length - 1]}`;
 
   const templates = [
-    `So far${nameStr}? We've covered ${topicList} over about ${turnCount} messages.${hadLaughs ? " Had some good laughs along the way too." : ""}${notableClaim ? ` You mentioned "${notableClaim.substring(0, 40)}..." which stuck with me.` : ""}`,
-    `Let me think... we've gone through ${topicList}.${notableClaim ? ` I remember you saying something about "${notableClaim.substring(0, 35)}..."` : ""} ${hadLaughs ? "And we've had fun doing it!" : "It's been a good conversation!"} What should we dig into next?`,
-    `Recap: we started with ${topics[0]}${topics.length > 1 ? `, wandered into ${topics.slice(1).join(" and ")}` : ""}.${turnCount > 15 ? " We've been at this a while!" : ""} ${hadLaughs ? "Some laughs happened." : ""} Want to keep going or switch it up?`,
+    `ok so far${nameStr}? we've talked about ${topicList} over like ${turnCount} messages.${hadLaughs ? " had some good laughs too lol." : ""}${notableClaim ? ` you mentioned "${notableClaim.substring(0, 40)}..." which stuck with me.` : ""}`,
+    `hmm let me think... we've gone through ${topicList}.${notableClaim ? ` i remember you saying something about "${notableClaim.substring(0, 35)}..."` : ""} ${hadLaughs ? "and we had fun doing it lol" : "been a good convo honestly"} what should we get into next`,
+    `ok recap: we started with ${topics[0]}${topics.length > 1 ? `, wandered into ${topics.slice(1).join(" and ")}` : ""}.${turnCount > 15 ? " we've been at this a while lol" : ""} ${hadLaughs ? "some laughs happened." : ""} wanna keep going or switch it up`,
   ];
 
   return templates[Math.floor(Math.random() * templates.length)];
