@@ -2537,6 +2537,34 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Dual-blend overlay combos ──
+  // When a component already has gradientOverlay, add a complementary second overlay
+  // with blend modes to create rich visual depth — luminous veils, color washes, noise tints
+  if (!isNav && !isCode && !isSmall && s.gradientOverlay && !s.gradientOverlay2) {
+    const dbRoll = Math.random();
+    if (moodId === "elegant" && dbRoll < 0.20) {
+      // Elegant: luminous highlight veil + soft-light blend
+      const dir = pick([135, 160, 200, 315]);
+      s.gradientOverlay2 = `linear-gradient(${dir}deg, ${acHex}08 0%, transparent 50%, ${gcGlow || acHex}06 100%)`;
+      s.mixBlendMode2 = pick(["soft-light", "luminosity", "color"]);
+    } else if (moodId === "bold" && dbRoll < 0.18) {
+      // Bold: vivid color wash + overlay/multiply blend
+      const vividColor = pick([gc1, gc2, acHex]);
+      s.gradientOverlay2 = `radial-gradient(ellipse at ${pick(["20% 20%", "80% 80%", "50% 0%"])}, ${vividColor}12 0%, transparent 65%)`;
+      s.mixBlendMode2 = pick(["overlay", "multiply", "hard-light"]);
+    } else if (moodId === "playful" && dbRoll < 0.22) {
+      // Playful: rainbow corner blush + screen/color-dodge blend
+      const c1 = pick([gc1, gc2, acHex, gcGlow || acHex]);
+      const c2 = pick([gc1, gc2, acHex].filter(c => c !== c1)) || gc1;
+      s.gradientOverlay2 = `conic-gradient(from ${pick([0, 90, 180, 270])}deg at ${pick(["0% 0%", "100% 0%", "100% 100%", "0% 100%"])}, ${c1}10, ${c2}08, transparent 60%)`;
+      s.mixBlendMode2 = pick(["screen", "color-dodge", "overlay"]);
+    } else if (moodId === "minimal" && dbRoll < 0.08) {
+      // Minimal: barely-there tonal shift
+      s.gradientOverlay2 = `linear-gradient(180deg, ${acHex}04 0%, transparent 100%)`;
+      s.mixBlendMode2 = "soft-light";
+    }
+  }
+
   // ── Typography personality: line-height + text-decoration ──
   // Line-height creates breathing rhythm; text-decoration adds editorial flair
   if (!isNav && !isCode) {

@@ -194,7 +194,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
         }}>
         {/* Gradient overlay layer */}
         {ds.gradientOverlay && <div style={{ position: "absolute", inset: 0, background: ds.gradientOverlay, borderRadius: ds.borderRadius ?? 14, pointerEvents: "none", zIndex: 1, mixBlendMode: ds.mixBlendMode || "normal" }} />}
-        {ds.gradientOverlay2 && <div style={{ position: "absolute", inset: 0, background: ds.gradientOverlay2, borderRadius: ds.borderRadius ?? 14, pointerEvents: "none", zIndex: 2 }} />}
+        {ds.gradientOverlay2 && <div style={{ position: "absolute", inset: 0, background: ds.gradientOverlay2, borderRadius: ds.borderRadius ?? 14, pointerEvents: "none", zIndex: 2, mixBlendMode: ds.mixBlendMode2 || "normal" }} />}
         {ds.textureOverlay && <div style={{ position: "absolute", inset: 0, backgroundImage: ds.textureOverlay, backgroundSize: ds.textureSize || undefined, borderRadius: ds.borderRadius ?? 14, pointerEvents: "none", zIndex: 3 }} />}
         <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} fsize={s.fsize || 1} texture={texture} />
 
