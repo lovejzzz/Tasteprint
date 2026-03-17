@@ -863,10 +863,10 @@ function detectSubtext(text, sent) {
 // Subtext-aware response adjustments
 const SUBTEXT_RESPONSES = {
   reluctant: [
-    "I'm getting a 'not fully sold' vibe — what would actually work better for you?",
-    "You don't sound super convinced. What's your gut telling you?",
-    "I sense some hesitation — want to explore other options?",
-    "Hmm, I feel like there's a 'but' coming. What's on your mind?",
+    "i'm getting a 'not fully sold' vibe, what would actually work better for you",
+    "you don't sound super convinced. what's your gut telling you",
+    "i sense some hesitation, want to explore other options",
+    "hmm i feel like there's a 'but' coming. what's on your mind",
   ],
   passiveAggressive: [
     "ok i might've missed what you meant lol. what were you going for",
@@ -1098,13 +1098,13 @@ function getTimeContext() {
   // Time of day
   let period, greeting, mood;
   if (hour >= 5 && hour < 12) {
-    period = "morning"; greeting = "Good morning"; mood = "fresh";
+    period = "morning"; greeting = "good morning"; mood = "fresh";
   } else if (hour >= 12 && hour < 17) {
-    period = "afternoon"; greeting = "Good afternoon"; mood = "active";
+    period = "afternoon"; greeting = "good afternoon"; mood = "active";
   } else if (hour >= 17 && hour < 21) {
-    period = "evening"; greeting = "Good evening"; mood = "winding_down";
+    period = "evening"; greeting = "good evening"; mood = "winding_down";
   } else {
-    period = "night"; greeting = "Hey night owl"; mood = "late";
+    period = "night"; greeting = "hey night owl"; mood = "late";
   }
 
   // Day context
@@ -1133,68 +1133,68 @@ function timeGreeting() {
   // Late night (after 11pm or before 5am)
   if (t.period === "night") {
     return pick([
-      `Hey night owl! 🌙 Still up at this hour?`,
-      `Burning the midnight oil? What's keeping you up?`,
-      `Late night vibes! What's on your mind?`,
-      `Hey! The late hours are when the best ideas happen 🌙`,
+      `hey night owl 🌙 still up at this hour?`,
+      `burning the midnight oil? what's keeping you up`,
+      `late night vibes, what's on your mind`,
+      `hey! the late hours are when the best ideas happen 🌙`,
     ]);
   }
 
   // Early morning (5-8am)
   if (t.period === "morning" && t.hour < 8) {
     return pick([
-      `${t.greeting}! ☀️ Early bird! What's on the agenda today?`,
-      `Rise and shine! What are you working on this fine ${t.dayName}?`,
-      `${t.greeting}! You're up early — productive mode?`,
+      `${t.greeting} ☀️ early bird! what's on the agenda today`,
+      `rise and shine! what are you working on this fine ${t.dayName}`,
+      `${t.greeting}! you're up early, productive mode?`,
     ]);
   }
 
   // Regular morning
   if (t.period === "morning") {
     return pick([
-      `${t.greeting}! ☀️ How's the day starting out?`,
-      `${t.greeting}! What's on your plate today?`,
-      `Hey! Good ${t.dayName} morning! What's up?`,
+      `${t.greeting} ☀️ how's the day starting out`,
+      `${t.greeting}! what's on your plate today`,
+      `hey! good ${t.dayName} morning, what's up`,
     ]);
   }
 
   // Friday special
   if (t.isFriday) {
     return pick([
-      `Happy Friday! 🎉 Any fun plans for the weekend?`,
-      `TGIF! What's good?`,
-      `Friday vibes! How's the week been?`,
+      `happy friday 🎉 any fun plans for the weekend`,
+      `TGIF! what's good`,
+      `friday vibes! how's the week been`,
     ]);
   }
 
   // Monday
   if (t.isMonday) {
     return pick([
-      `Happy Monday! Fresh start to the week — what's up?`,
-      `Monday energy! ☕ How's the week kicking off?`,
+      `happy monday! fresh start to the week, what's up`,
+      `monday energy ☕ how's the week kicking off`,
     ]);
   }
 
   // Weekend
   if (t.isWeekend) {
     return pick([
-      `Hey! Enjoying the ${t.dayName}? What's going on?`,
-      `${t.dayName} vibes! Relaxing or being productive? 😊`,
-      `Happy ${t.dayName}! What brings you here?`,
+      `hey! enjoying the ${t.dayName}? what's going on`,
+      `${t.dayName} vibes! relaxing or being productive? 😊`,
+      `happy ${t.dayName}! what brings you here`,
     ]);
   }
 
   // Default afternoon/evening
   if (t.period === "afternoon") {
     return pick([
-      `${t.greeting}! How's the day going so far?`,
-      `Hey! Afternoon check-in — what's on your mind?`,
+      `${t.greeting}! how's the day going so far`,
+      `hey! afternoon check-in, what's on your mind`,
     ]);
   }
 
   return pick([
-    `${t.greeting}! 😊 How's your ${t.dayName} going?`,
-    `Hey! Nice ${t.dayName} ${t.period}. What's up?`,
+    `${t.greeting} 😊 how's your ${t.dayName} going`,
+    `hey! nice ${t.dayName} ${t.period}. what's up`,
   ]);
 }
 
@@ -1204,27 +1204,27 @@ function timeFarewell() {
 
   if (t.period === "night") {
     return pick([
-      "Get some rest! 🌙 See you next time.",
-      "Sweet dreams! Don't stay up too late 😊",
-      "Night! Sleep well when you do ✨",
+      "get some rest 🌙 see you next time",
+      "sweet dreams! don't stay up too late 😊",
+      "night! sleep well when you do ✨",
     ]);
   }
   if (t.period === "evening") {
     return pick([
-      "Have a great evening! ✌️",
-      "Enjoy the rest of your night!",
+      "have a great evening ✌️",
+      "enjoy the rest of your night",
     ]);
   }
   if (t.isWeekend) {
     return pick([
-      "Enjoy the rest of your weekend! 🎉",
-      "Have an awesome " + t.dayName + "!",
+      "enjoy the rest of your weekend 🎉",
+      "have an awesome " + t.dayName,
     ]);
   }
   if (t.isFriday) {
     return pick([
-      "Have an amazing weekend! 🎉",
-      "TGIF! Enjoy your weekend ✌️",
+      "have an amazing weekend 🎉",
+      "TGIF! enjoy your weekend ✌️",
     ]);
   }
   return null; // fall through to default farewell
@@ -1237,15 +1237,15 @@ function sessionObservation() {
 
   if (t.sessionMins >= 30 && Math.random() > 0.7) {
     return pick([
-      "We've been chatting for a while — I'm enjoying this!",
-      "Half an hour of great conversation! You're fun to talk to 😊",
-      "Time flies! We've been at this for " + t.sessionMins + " minutes.",
+      "we've been chatting for a while, i'm enjoying this",
+      "half an hour of good convo! you're fun to talk to 😊",
+      "time flies, we've been at this for " + t.sessionMins + " minutes",
     ]);
   }
   if (t.sessionMins >= 15 && Math.random() > 0.8) {
     return pick([
-      "This has been a good conversation so far!",
-      "We've covered a lot of ground! What else is on your mind?",
+      "this has been a good convo so far",
+      "we've covered a lot of ground, what else is on your mind",
     ]);
   }
   return null;
@@ -1258,16 +1258,16 @@ function paceObservation() {
   // Long pause (> 2 min) — they might have been away
   if (t.paceSeconds > 120 && mem.turn > 3) {
     return pick([
-      "Welcome back! 😊 ",
-      "Hey, you're back! ",
-      "Oh hi again! ",
+      "welcome back 😊 ",
+      "hey you're back! ",
+      "oh hi again ",
     ]);
   }
   // Very rapid fire (< 2 sec) — they're engaged
   if (t.paceSeconds < 2 && mem.turn > 5 && Math.random() > 0.85) {
     return pick([
-      "You're quick! ",
-      "Rapid-fire mode! ",
+      "you're quick! ",
+      "rapid fire mode ",
     ]);
   }
   return null;
@@ -1402,7 +1402,7 @@ function respondToAnswer(answer, sent) {
     ],
     choice_neither: [
       "Ha! Fair enough — those weren't the right options. What would you pick instead?",
-      "Neither? Okay, now I'm curious — what's YOUR answer then? 😄",
+      "neither? okay now i'm curious, what's YOUR answer then 😄",
     ],
     yes: [
       "oh nice, what do you like about it",
@@ -2327,16 +2327,16 @@ const ASSOC = {
 const COMP = {
   // Reaction to what user said (mirrors their energy)
   reactions: {
-    positive: ["Oh I love that!","That's awesome!","Yes!","Love it!","So cool!","That's great!","Nice!","Amazing!"],
-    negative: ["Aw, that's tough.","I hear you.","That sucks.","I feel that.","That's frustrating.","Hmm, yeah."],
-    neutral:  ["Interesting!","Hmm!","Oh!","Okay!","Got it!","I see!","Right!"],
-    curious:  ["Ooh!","Wait —","Oh that's cool —","Hmm interesting —","No way —"],
+    positive: ["oh I love that","that's awesome","yes!","love it","so cool","that's great","nice!","amazing"],
+    negative: ["aw that's tough","i hear you","that sucks","i feel that","that's frustrating","hmm yeah"],
+    neutral:  ["interesting","hmm","oh","okay","got it","i see","right"],
+    curious:  ["ooh","wait —","oh that's cool —","hmm interesting —","no way —"],
   },
   // Bridges between reaction and body
   bridges: {
     agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —","ehh idk about that one but —","ok but have you considered —","hmm ok but counterpoint —"],
     pivot:    ["ok so here's the thing —","the way i see it,","ok but what's interesting is","ok wait tho,","here's what i think —","nah I think you're overthinking it —","ok devil's advocate tho —"],
-    empathy:  ["yeah no i get that.","that's valid.","nah i feel you.","that's fair.","hmm hot take but i kinda disagree.","that's fair but also... counterpoint:"],
+    empathy:  ["yeah no i get that","that's valid","nah i feel you","that's fair","hmm hot take but i kinda disagree","that's fair but also... counterpoint:"],
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
@@ -2466,7 +2466,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
     // ── Exploratory: think out loud, weigh multiple angles ──
     case "exploratory": {
       const parts = [];
-      parts.push(pick(["Hmm, let me think about this...", "Okay so —", "This is interesting because", "I go back and forth on this, but"]));
+      parts.push(pick(["hmm let me think about this...", "okay so —", "this is interesting because", "i go back and forth on this but"]));
       if (assoc.opinions && assoc.opinions.length > 1) {
         parts.push(`On one hand, ${assoc.opinions[0]}.`);
         parts.push(`But also, ${assoc.opinions[Math.min(1, assoc.opinions.length - 1)]}.`);
@@ -3548,7 +3548,7 @@ function synthesizeAnswer(text, topics, qType) {
 
   // Depth: opinion that adds perspective
   if (primary.data.opinions && Math.random() > 0.3) {
-    const opStarters = ["Honestly, I think ", "In my view, ", "What I find interesting is that ", "The cool thing is, "];
+    const opStarters = ["honestly i think ", "the way i see it, ", "what i find interesting is that ", "the cool thing is ", "ngl "];
     parts.push(pick(opStarters) + pick(primary.data.opinions) + ".");
   }
 
@@ -3556,9 +3556,9 @@ function synthesizeAnswer(text, topics, qType) {
   if (secondaryEntries.length > 0 && Math.random() > 0.35) {
     const sec = pick(secondaryEntries);
     const bridges = [
-      `It's also worth knowing that ${sec.key}`,
-      `And ${sec.key} connects here because`,
-      `This ties into ${sec.key}, which`,
+      `it's also worth knowing that ${sec.key}`,
+      `and ${sec.key} connects here because`,
+      `this ties into ${sec.key}, which`,
     ];
     const secFact = sec.data.facts ? pick(sec.data.facts) : sec.data.opinions ? pick(sec.data.opinions) : null;
     if (secFact) {
@@ -3703,18 +3703,18 @@ function resolveFragment(text, lower, parsed, topics) {
   // ── "Since when?" — challenge timeline/validity ──
   if (/^(since when|when did that|that's new|is that new)\??$/i.test(lower)) {
     return pick([
-      "Ha, good point — I might be jumping the gun! " + (contextTopic ? `${contextTopic} has been evolving a lot though.` : "Things change fast!") + " What's your experience been?",
-      "You're right to question that! It's been happening gradually but " + (contextTopic ? `${contextTopic} definitely shifted` : "things shifted") + " in the last couple years.",
-      "Fair challenge! I should be more precise. What does your timeline look like?",
+      "ha good point, i might be jumping the gun " + (contextTopic ? `${contextTopic} has been evolving a lot tho` : "things change fast") + ". what's your experience been",
+      "you're right to question that, it's been happening gradually but " + (contextTopic ? `${contextTopic} definitely shifted` : "things shifted") + " in the last couple years",
+      "fair challenge, i should be more precise. what does your timeline look like",
     ]);
   }
 
   // ── "Says who?" / "According to what?" — challenge authority ──
   if (/^(says who|who says|according to (?:what|whom)|where'd you (?:hear|get|read) that|source)\??$/i.test(lower)) {
     return pick([
-      "Ha, you got me — I'm pattern-matching, not citing! But it's a pretty common take" + (contextTopic ? ` on ${contextTopic}` : "") + ". You disagree?",
-      "Good callout! I don't have sources per se — I'm a tiny model running in your browser. But what's YOUR take?",
-      "Fair! I'm basing that on general patterns, not a specific source. What have you seen?",
+      "ha you got me, i'm pattern-matching not citing. but it's a pretty common take" + (contextTopic ? ` on ${contextTopic}` : "") + ". you disagree?",
+      "good callout, i don't have sources per se, i'm a tiny model running in your browser. but what's YOUR take",
+      "fair, i'm basing that on general patterns not a specific source. what have you seen",
     ]);
   }
 
@@ -3820,9 +3820,9 @@ function answerQuestion(text, parsed, intents, topics) {
     const prev = mem.lastAI();
     if (prev) {
       const whys = [
-        "Honestly? It just seemed like the most interesting angle. What do you think?",
-        "I said that because it felt relevant to what we were discussing! Want me to elaborate?",
-        "Because it seemed like it might spark an interesting thought! Did it? 😄",
+        "honestly? it just seemed like the most interesting angle. what do you think",
+        "i said that because it felt relevant to what we were discussing, want me to elaborate",
+        "because it seemed like it might spark an interesting thought. did it? 😄",
       ];
       return pickNew(whys);
     }
@@ -3830,7 +3830,7 @@ function answerQuestion(text, parsed, intents, topics) {
 
   // "How?" follow-up
   if (/^how\??$/i.test(lower)) {
-    return "That's the million dollar question! It usually comes down to practice and patience. Want to dive deeper into specifics?";
+    return "that's the million dollar question, it usually comes down to practice and patience. want to dive deeper into specifics?";
   }
 
   // ═══ Contextual fragment completion — reconstruct meaning from conversational context ═══
@@ -4061,8 +4061,8 @@ function handleMetaConversation(text, lower, sent) {
       /\bi (like|love|enjoy) (talking|chatting|this|our chat|our convo)/i.test(lower) ||
       /\byou'?re my fav/i.test(lower)) {
     const enjoyment = [
-      "Right?! I'm having a great time too! There's something nice about a conversation that just flows.",
-      "Honestly same! You're one of those people who makes talking easy. What should we get into next?",
+      "right?? i'm having a great time too, there's something nice about a convo that just flows",
+      "honestly same! you're one of those people who makes talking easy. what should we get into next",
       () => `I'm glad you're enjoying this${mem.userName ? `, ${mem.userName}` : ""}! genuinely think we've got a good thing going here 😊`,
       "honestly the feeling is mutual! we've got good vibes going, what else is on your mind?",
       "yo that's the best compliment honestly. let's keep the good vibes going — what else is on your mind?",
@@ -4862,10 +4862,10 @@ function handleMultiSentence(text) {
     } else {
       // Generic helpful response to the question
       parts.push(pick([
-        "My tip? Start small, build something real, and the concepts click way faster than reading docs.",
-        "Honestly, the best approach is hands-on. Pick a small project and learn as you go!",
-        "The key is not to learn everything at once. Focus on one concept, nail it, then move on.",
-        "I'd say start with the basics and don't worry about the advanced stuff until you need it.",
+        "my tip? start small, build something real, and the concepts click way faster than reading docs",
+        "honestly the best approach is hands-on. pick a small project and learn as you go",
+        "the key is not to learn everything at once. focus on one concept, nail it, then move on",
+        "i'd say start with the basics and don't worry about the advanced stuff until you need it",
       ]));
     }
   }
@@ -6259,23 +6259,23 @@ function handleTurnSignal(signal) {
         return base + "wait ok so what did you actually mean";
       }
       return pickNew([
-        "Oh, my bad! I misunderstood. What were you actually getting at?",
-        "Sorry about that! Let me recalibrate — what did you mean?",
-        "Ah, I read that wrong! Take two — what were you saying?",
+        "oh my bad, i misunderstood. what were you actually getting at",
+        "sorry about that, let me recalibrate — what did you mean",
+        "ah i read that wrong, take two — what were you saying",
       ]);
     }
 
     case "confirm": {
       // User seeks validation — usually agree, sometimes push back gently
       const confirmations = [
-        "Yeah, exactly! You've got it.",
-        "Spot on! That's pretty much it.",
-        "Yep, you nailed it! 😊",
-        "100% — you're following perfectly.",
-        "That's right! And actually, there's an interesting layer to it too —",
-        "Hmm, mostly — but I'd tweak one thing.",
-        "Ehh, kinda? I think there's a nuance you might be missing.",
-        "Close, but I'd push back on one part —",
+        "yeah exactly, you've got it",
+        "spot on, that's pretty much it",
+        "yep you nailed it 😊",
+        "100%, you're following perfectly",
+        "that's right! and actually there's an interesting layer to it too —",
+        "hmm mostly, but i'd tweak one thing",
+        "ehh kinda? i think there's a nuance you might be missing",
+        "close but i'd push back on one part —",
       ];
       const base = pickNew(confirmations);
       const topic = lastTopics[0];
@@ -6341,9 +6341,9 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
     // Intent-specific fallbacks
     const intentFallbacks = {
       help: ["yeah ofc, what's going on?","what do you need?","ok tell me what's up"],
-      weather: ["I wish I could check the weather! ☀️ Try looking out the window? 😄","lol I literally never go outside — how's it out there? 🌤️"],
-      time: [()=>`It's ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} right now! ⏰`,"Time flies when you're chatting! What do you need?"],
-      opinion: ["Hmm I think it depends on context. What's your take?","Everyone has different preferences — what matters most to you?","Tough call. What's your gut feeling?"],
+      weather: ["i wish i could check the weather ☀️ try looking out the window? 😄","lol i literally never go outside — how's it out there? 🌤️"],
+      time: [()=>`it's ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} right now ⏰`,"time flies when you're chatting, what do you need"],
+      opinion: ["hmm i think it depends on context. what's your take","everyone has different preferences, what matters most to you","tough call. what's your gut feeling"],
       aboutMe: ["ok go ahead, what's up","yeah tell me! what do you do","ooh ok spill"],
     };
     if (intentFallbacks[intentName]) response = pickNew(intentFallbacks[intentName]);
@@ -6587,9 +6587,9 @@ function applyPersonalityMode(response) {
 const PERSONALITY = {
   // Sentence starters — sprinkled in ~30% of responses
   openers: {
-    thinking: ["Hmm, ","Ooh, ","Actually, ","Oh — ","Hmm let me think... ","Wait, "],
-    excited:  ["Ooh! ","Oh nice — ","Okay wait — ","Ha, ","Yesss, "],
-    casual:   ["So ","Honestly, ","Okay so ","Real talk — ","Fun fact: ","Not gonna lie, "],
+    thinking: ["hmm ","ooh ","actually ","oh — ","hmm let me think... ","wait "],
+    excited:  ["ooh! ","oh nice — ","okay wait — ","ha ","yesss "],
+    casual:   ["so ","honestly ","okay so ","real talk — ","fun fact: ","not gonna lie "],
   },
   // Filler phrases that can be inserted mid-response
   fillers: [
@@ -6603,15 +6603,15 @@ const PERSONALITY = {
   // Sign-off phrases appended to ~20% of responses
   signoffs: [
     " 😊","","","","", // mostly no signoff
-    " — just my two cents!",
-    " But I'm curious what you think!",
-    " What do you reckon?",
+    " — just my two cents",
+    " but i'm curious what you think",
+    " what do you reckon",
   ],
   // Emotive reactions based on conversation flow
   reactions: {
-    surprise:  ["Wait really?! ","No way — ","Oh wow, ","Whoa, "],
-    agree:     ["Totally! ","Right?! ","100%! ","Exactly! "],
-    curious:   ["Ooh tell me more — ","I'm intrigued! ","Interesting... ","Okay I need to know more — "],
+    surprise:  ["wait really?? ","no way — ","oh wow ","whoa "],
+    agree:     ["totally ","right?? ","100% ","exactly "],
+    curious:   ["ooh tell me more — ","i'm intrigued ","interesting... ","okay i need to know more — "],
   },
 };
 
@@ -8154,14 +8154,14 @@ let silenceStreak = 0;
 
 const SILENCE_RESPONSES = {
   processing: [
-    "Take your time with that.",
-    "No rush — sit with it.",
-    "Let that marinate.",
+    "take your time with that",
+    "no rush, sit with it",
+    "let that marinate",
   ],
   disengaged: [
-    "Want to switch gears?",
-    "We can pivot if this isn't landing.",
-    "Anything else on your mind?",
+    "want to switch gears?",
+    "we can pivot if this isn't landing",
+    "anything else on your mind",
   ],
   confused: [
     "Want me to break that down differently?",
@@ -8579,18 +8579,18 @@ function responseAddressesInput(response) {
 
 const COMPLETENESS_BRIDGES = {
   question: [
-    "Hmm. ",
-    "Hmm, let me think. ",
-    "So, ",
-    "Honestly? ",
-    "Short answer: ",
+    "hmm ",
+    "hmm let me think ",
+    "so ",
+    "honestly? ",
+    "short answer: ",
   ],
   statement: [
-    "I hear you. ",
-    "That's a solid point. ",
-    "Makes sense. ",
-    "Yeah, I get that. ",
-    "Noted. ",
+    "i hear you ",
+    "that's a solid point ",
+    "makes sense ",
+    "yeah i get that ",
+    "noted ",
   ],
 };
 
@@ -8768,15 +8768,15 @@ const RHETORICAL_EMOTION = [
 ];
 
 const RHETORICAL_AGREEMENTS = [
-  "Right?", "Exactly.", "For real.", "Seriously.", "Tell me about it.",
-  "I know, right?", "That's what I'm saying.", "Hard agree.", "100%.",
-  "Honestly, yeah.", "No kidding.", "Fair point.", "Can't argue with that.",
+  "right?", "exactly", "for real", "seriously", "tell me about it",
+  "i know right?", "that's what i'm saying", "hard agree", "100%",
+  "honestly yeah", "no kidding", "fair point", "can't argue with that",
 ];
 
 const RHETORICAL_EMPATHY = [
-  "Yeah, that's frustrating.", "Ugh, totally.", "I feel that.",
-  "That's a mood.", "Yeah, it's kind of absurd when you think about it.",
-  "Honestly, valid.", "Yeah, no kidding.",
+  "yeah that's frustrating", "ugh totally", "i feel that",
+  "that's a mood", "yeah it's kind of absurd when you think about it",
+  "honestly valid", "yeah no kidding",
 ];
 
 function isRhetoricalQuestion(text) {
@@ -8952,8 +8952,8 @@ const NO_PROBE_SIGNALS = [
 
 // Socratic probes: warm, curious, never aggressive
 const SOCRATIC_PROBES = [
-  "What makes you say that?",
-  "Interesting — what led you to that?",
+  "what makes you say that",
+  "interesting, what led you to that",
   "oh wait how so",
   "hmm what's behind that take tho",
   "huh i hadn't thought of it like that. what shaped that view",
@@ -9196,16 +9196,16 @@ let lastTransitionTurn = 0;
 let prevTurnTopics = [];
 
 const BRIDGE_SAME_DOMAIN = [
-  "On a related note,", "Along those lines,", "That connects to something —",
-  "Similarly,", "In that same vein,", "Building on that,"
+  "on a related note,", "along those lines,", "that connects to something —",
+  "similarly,", "in that same vein,", "building on that,"
 ];
 const BRIDGE_NEW_TOPIC = [
-  "Switching gears a bit —", "Oh that's a different angle!", "Interesting shift —",
-  "New territory!", "Ooh, pivoting —", "Okay, different topic!"
+  "switching gears a bit —", "oh that's a different angle", "interesting shift —",
+  "new territory", "ooh pivoting —", "okay different topic"
 ];
 const BRIDGE_RETURN = [
-  "Oh, circling back to that —", "Coming back to what you mentioned,",
-  "Revisiting that —", "Picking that thread back up,", "Back to that earlier point —"
+  "oh circling back to that —", "coming back to what you mentioned,",
+  "revisiting that —", "picking that thread back up,", "back to that earlier point —"
 ];
 
 const TRANSITION_DOMAIN = {
@@ -9386,12 +9386,12 @@ let recentMicroVals = [];
 
 // Context-aware validations — matched to what the user is doing
 const MICRO_VAL_POOLS = {
-  opinion:    ["Fair point.", "That makes sense.", "Oh true.", "Valid.", "Solid take.", "Ehh idk about that one.", "Hmm ok but also...", "Interesting — I might push back a little tho."],
-  experience: ["That sounds right.", "Yeah, heard.", "Yeah, totally.", "Makes total sense.", "Oh yeah for sure."],
-  effort:     ["Nice.", "That's solid work.", "Good call.", "Smart move.", "Respect."],
-  question:   ["Hmm.", "Ooh, interesting.", "That's worth thinking about.", "Hmm, let me think on that."],
-  frustration:["That's fair.", "Ugh yeah.", "Yeah, that's rough.", "Totally get it."],
-  general:    ["Yeah.", "Mmhm.", "Right, right.", "For sure.", "Gotcha.", "Hmm.", "Ok wait tho."],
+  opinion:    ["fair point", "that makes sense", "oh true", "valid", "solid take", "ehh idk about that one", "hmm ok but also...", "interesting, i might push back a little tho"],
+  experience: ["that sounds right", "yeah heard", "yeah totally", "makes total sense", "oh yeah for sure"],
+  effort:     ["nice", "that's solid work", "good call", "smart move", "respect"],
+  question:   ["hmm", "ooh interesting", "that's worth thinking about", "hmm let me think on that"],
+  frustration:["that's fair", "ugh yeah", "yeah that's rough", "totally get it"],
+  general:    ["yeah", "mmhm", "right right", "for sure", "gotcha", "hmm", "ok wait tho"],
 };
 
 const MICRO_VAL_SIGNALS = [
@@ -9518,7 +9518,7 @@ function applyEmotionalContagion(response, text) {
     if (/!/.test(r) && !/\?/.test(r)) r = r.replace(/!/, ".");
     // Occasionally add a soft opener
     if (Math.random() > 0.5) {
-      const softeners = ["Hmm.", "Yeah.", "I hear you.", "Take your time."];
+      const softeners = ["hmm", "yeah", "i hear you", "take your time"];
       r = pick(softeners) + " " + r;
     }
     return r;
@@ -10278,15 +10278,15 @@ function trimToTarget(response, maxWords) {
 
 // Gear-shift acknowledgment phrases
 const GEAR_SHIFT_EXPANDED = [
-  "Oh nice, you're going into detail — I'm here for it.",
-  "Love that you're expanding on this.",
-  "Ah, I can tell this one's important to you.",
+  "oh nice you're going into detail, i'm here for it",
+  "love that you're expanding on this",
+  "ah i can tell this one's important to you",
 ];
 const GEAR_SHIFT_CONTRACTED = [
-  "Got it.",
-  "Fair enough.",
-  "Noted.",
-  "Heard.",
+  "got it",
+  "fair enough",
+  "noted",
+  "heard",
 ];
 
 function applyConversationalPacing(response, text) {
@@ -10436,32 +10436,32 @@ const HARD_QUESTION_SIGNALS = [
 // Different flavors of genuine admission
 const ADMISSION_TYPES = {
   honest_doubt: [
-    "Honestly? I'm not entirely sure about that.",
-    "That's one of those things I genuinely don't have a neat answer for.",
-    "I'd be lying if I said I had a clear answer to that.",
-    "Real talk — I'm not confident I know the right answer here.",
+    "honestly? i'm not entirely sure about that",
+    "that's one of those things i genuinely don't have a neat answer for",
+    "i'd be lying if i said i had a clear answer to that",
+    "real talk, i'm not confident i know the right answer here",
   ],
   shared_wonder: [
-    "That's actually something I find genuinely fascinating to think about.",
-    "I've been turning that over in my head too, honestly.",
-    "That's the kind of question that doesn't have an easy answer, and I kind of love that about it.",
-    "I think about this more than I probably should.",
+    "that's actually something i find genuinely fascinating to think about",
+    "i've been turning that over in my head too honestly",
+    "that's the kind of question that doesn't have an easy answer, and i kind of love that about it",
+    "i think about this more than i probably should",
   ],
   humble_take: [
-    "I have a take, but I want to be upfront that it's just my perspective —",
-    "Take this with a grain of salt, but here's how I see it —",
-    "I could be totally wrong about this, but —",
-    "This is just my read on it, and I'm open to being convinced otherwise —",
+    "i have a take but i want to be upfront that it's just my perspective —",
+    "take this with a grain of salt but here's how i see it —",
+    "i could be totally wrong about this but —",
+    "this is just my read on it and i'm open to being convinced otherwise —",
   ],
 };
 
 // Follow-ups that invite the user's perspective after admitting uncertainty
 const ADMISSION_FOLLOWUPS = [
-  "What's your instinct on it?",
-  "Where do you land on that?",
-  "I'm curious what you think though.",
-  "Do you have a gut feeling either way?",
-  "What's pulling you in one direction?",
+  "what's your instinct on it",
+  "where do you land on that",
+  "i'm curious what you think though",
+  "do you have a gut feeling either way",
+  "what's pulling you in one direction",
 ];
 
 function applyGenuineAdmission(response, text) {
@@ -10984,11 +10984,11 @@ function calibrateResponseLength(response, text, energy) {
   if (currentLen < targetLen * 0.4 && inputLen > 80 && smoothedEnergy > 0.5) {
     // Add a follow-up that shows engagement with their long message
     const extensions = [
-      " I'd actually love to dig into that more.",
-      " There's a lot to unpack there.",
-      " That's the kind of thing I could talk about for a while.",
-      " I feel like there's a deeper thread here worth pulling on.",
-      " What part of that feels most important to you?",
+      " i'd actually love to dig into that more",
+      " there's a lot to unpack there",
+      " that's the kind of thing i could talk about for a while",
+      " i feel like there's a deeper thread here worth pulling on",
+      " what part of that feels most important to you",
     ];
     if (!r.includes("?")) r += pick(extensions);
   }
@@ -11874,12 +11874,12 @@ function breakPattern(response, text, topics, energy) {
   // Replace entire response with a punchy 1-2 word reaction + redirect
   if (strategy < 0.25 && rut === "always_long" || (strategy < 0.15 && response.length > 120)) {
     const compressions = [
-      "Honestly? Yes.",
-      "Wait. Say more about that.",
-      "Huh.",
-      "...okay I love that.",
-      "That's the one.",
-      "Respect.",
+      "honestly? yes",
+      "wait. say more about that",
+      "huh",
+      "...okay i love that",
+      "that's the one",
+      "respect",
     ];
     const topicPart = topics.length > 0 ? ` (${topics[0]} specifically)` : "";
     const compressed = pick(compressions);
@@ -12982,40 +12982,40 @@ function respondToNarrative(narrative, text, sent) {
   // 1. Acknowledge the story-telling itself (shows we're listening)
   if (elements.arc === "struggle_to_triumph") {
     parts.push(pick([
-      "Okay wait, I love a good comeback story.",
-      "Oh man, this went from rough to redemption.",
-      "What a turnaround though!",
-      "That's the kind of story where the struggle makes the ending so much better.",
+      "okay wait i love a good comeback story",
+      "oh man this went from rough to redemption",
+      "what a turnaround though",
+      "that's the kind of story where the struggle makes the ending so much better",
     ]));
   } else if (elements.arc === "good_to_bad") {
     parts.push(pick([
-      "Oh no, I felt that shift.",
-      "Ugh, it was going so well too.",
-      "That's such a gut punch when things turn like that.",
+      "oh no i felt that shift",
+      "ugh it was going so well too",
+      "that's such a gut punch when things turn like that",
     ]));
   } else if (elements.arc === "rough_throughout") {
     parts.push(pick([
-      "Man, that sounds genuinely rough.",
-      "That's a lot to deal with, honestly.",
-      "Damn, that's a lot honestly.",
+      "man that sounds genuinely rough",
+      "that's a lot to deal with honestly",
+      "damn that's a lot honestly",
     ]));
   } else if (elements.arc === "good_throughout") {
     parts.push(pick([
-      "I love everything about this story.",
-      "This is the kind of thing that just makes your day.",
-      "What an experience!",
+      "i love everything about this story",
+      "this is the kind of thing that just makes your day",
+      "what an experience",
     ]));
   } else if (elements.peak) {
     parts.push(pick([
-      "Wait, that's wild.",
-      "No way. Seriously?",
-      "That's one of those moments you don't forget.",
+      "wait that's wild",
+      "no way. seriously?",
+      "that's one of those moments you don't forget",
     ]));
   } else {
     parts.push(pick([
-      "Oh wow, that's quite a story.",
-      "I can picture that whole thing playing out.",
-      "That's the kind of thing you can't make up.",
+      "oh wow that's quite a story",
+      "i can picture that whole thing playing out",
+      "that's the kind of thing you can't make up",
     ]));
   }
 
@@ -13617,9 +13617,9 @@ function applyPacingAwareness(response, text) {
     const gap = messageTimings[messageTimings.length - 1].gap;
     if (gap > 300000 && Math.random() > 0.4) { // >5 min
       const returns = [
-        "Welcome back! I was just here, thinking. ",
-        "Oh hey — you're back! ",
-        "There you are! ",
+        "welcome back! i was just here thinking ",
+        "oh hey you're back! ",
+        "there you are ",
       ];
       lastPacingTurn = mem.turn;
       return returns[Math.floor(Math.random() * returns.length)] + response;
@@ -14079,18 +14079,18 @@ function applyRapportCalibration(response, text) {
     lastRapportTurn = turn;
     const transitions = {
       2: [
-        "I feel like we're really getting somewhere here.",
-        "This is the kind of conversation I was hoping for.",
-        "I'm really enjoying where this is going.",
+        "i feel like we're really getting somewhere here",
+        "this is the kind of conversation i was hoping for",
+        "i'm really enjoying where this is going",
       ],
       3: [
-        "Honestly, glad you said that.",
-        "Yo, thanks for actually going there.",
-        "This conversation keeps getting better.",
+        "honestly glad you said that",
+        "yo thanks for actually going there",
+        "this conversation keeps getting better",
       ],
       4: [
-        "Honestly, this is one of those rare conversations that just clicks.",
-        "I feel like we could talk about anything at this point.",
+        "honestly this is one of those rare conversations that just clicks",
+        "i feel like we could talk about anything at this point",
       ],
     };
     const pool = transitions[rapportLevel] || transitions[2];
@@ -14406,28 +14406,28 @@ const CLOSURE_SIGNALS = [
 
 const CLOSURE_AFFIRMATIONS = {
   resolved: [
-    "Glad we nailed that down.",
-    "That one's solid now.",
-    "Good — we really got to the bottom of that.",
-    "Nice, that's a clean resolution.",
-    "We covered that well.",
+    "glad we nailed that down",
+    "that one's solid now",
+    "good, we really got to the bottom of that",
+    "nice that's a clean resolution",
+    "we covered that well",
   ],
   grateful: [
-    "Happy that helped!",
-    "Anytime — that was a good one to work through.",
-    "Glad it clicked!",
-    "That's what we're here for.",
+    "happy that helped",
+    "anytime, that was a good one to work through",
+    "glad it clicked",
+    "that's what we're here for",
   ],
   transitional: [
-    "Good, so that's settled.",
-    "Cool — that's squared away.",
-    "Alright, that chapter's done.",
-    "Okay, nice — moving forward with that covered.",
+    "good so that's settled",
+    "cool, that's squared away",
+    "alright that chapter's done",
+    "okay nice, moving forward with that covered",
   ],
   insightful: [
-    "We really dug into that — I think we found some solid ground.",
-    "That was a meaty one. Good stuff.",
-    "We went deep on that and came out with something real.",
+    "we really dug into that, i think we found some solid ground",
+    "that was a meaty one. good stuff",
+    "we went deep on that and came out with something real",
   ],
 };
 
@@ -16073,28 +16073,28 @@ function getPreviousUserMessage() {
 function generateRepairAck(signalType) {
   const acks = {
     confusion: [
-      "Oh wait, I think I went off track there —",
-      "Hmm, let me back up —",
-      "Right, sorry — that wasn't clear of me.",
-      "Ah, I think I misread that.",
+      "oh wait i think i went off track there —",
+      "hmm let me back up —",
+      "right sorry, that wasn't clear of me",
+      "ah i think i misread that",
     ],
     correction: [
-      "Oh, gotcha — my bad.",
-      "Ah right, I see what you mean now.",
-      "Right right, let me correct myself —",
-      "Oh I see, I misunderstood.",
+      "oh gotcha, my bad",
+      "ah right i see what you mean now",
+      "right right let me correct myself —",
+      "oh i see, i misunderstood",
     ],
     redirect: [
-      "Sure, let's reset.",
-      "Okay, fresh start on this.",
-      "Got it — scratch that.",
-      "Alright, different angle.",
+      "sure let's reset",
+      "okay fresh start on this",
+      "got it, scratch that",
+      "alright different angle",
     ],
     frustration: [
-      "You're right, I wasn't tracking. Let me actually listen this time.",
-      "Fair — I missed the point there. Here's what I think you're getting at:",
-      "Sorry about that. Let me try again properly.",
-      "My bad — I hear you now.",
+      "you're right i wasn't tracking, let me actually listen this time",
+      "fair, i missed the point there. here's what i think you're getting at:",
+      "sorry about that, let me try again properly",
+      "my bad, i hear you now",
     ],
     repetition: [
       "Right, I didn't really answer that — let me try again.",
@@ -17487,46 +17487,46 @@ function computeAgreementLevel(claim, topics) {
 function getAgreementPrefix(level, claim) {
   const prefixes = {
     strong_agree: [
-      "Yes — exactly.",
-      "100%.",
-      "That's exactly it.",
-      "Hard agree.",
-      "This. Right here.",
-      "Couldn't have said it better.",
+      "yes, exactly",
+      "100%",
+      "that's exactly it",
+      "hard agree",
+      "this. right here",
+      "couldn't have said it better",
     ],
     warm_agree: [
-      "Yeah, that tracks.",
-      "I think so too.",
-      "Mm, fair point.",
-      "Yeah — I'd go along with that.",
-      "That makes sense to me.",
-      "Solid take.",
+      "yeah that tracks",
+      "i think so too",
+      "mm fair point",
+      "yeah i'd go along with that",
+      "that makes sense to me",
+      "solid take",
     ],
     partial: [
-      "Hmm, mostly — though I'd add that",
-      "Sort of? I think there's a nuance —",
-      "I see where you're coming from, but",
-      "Partly, yeah — though",
-      "Interesting — I'd tweak that a bit:",
-      "Close — with one caveat though.",
+      "hmm mostly, though i'd add that",
+      "sort of? i think there's a nuance —",
+      "i see where you're coming from but",
+      "partly yeah, though",
+      "interesting, i'd tweak that a bit:",
+      "close, with one caveat though",
     ],
     curious: [
-      "Huh, I hadn't thought about it that way.",
-      "Interesting take —",
-      "Huh, don't hear that take often.",
-      "Hmm, maybe? Let me think on that.",
+      "huh i hadn't thought about it that way",
+      "interesting take —",
+      "huh don't hear that take often",
+      "hmm maybe? let me think on that",
       "Yeah I get how you'd land there.",
       "That's a spicy take — tell me more.",
       "ok wait I need to marinate on that one —",
       "hmm that's a take for sure —",
     ],
     pushback: [
-      "Hmm, I'm not sure I'd go that far —",
-      "Interesting, though I might push back a little:",
-      "See, I'd actually argue the opposite —",
-      "Respectfully... not sure about that one.",
-      "Hmm, that's where we'd diverge a bit.",
-      "I hear you, but —",
+      "hmm i'm not sure i'd go that far —",
+      "interesting, though i might push back a little:",
+      "see i'd actually argue the opposite —",
+      "respectfully... not sure about that one",
+      "hmm that's where we'd diverge a bit",
+      "i hear you but —",
       "ehh idk about that one —",
       "nah I think you're overthinking it —",
       "respectfully... no lol —",
@@ -19075,9 +19075,9 @@ const DECLARATIVE_PATTERNS = [
 
 // Hedge insertions — grouped by where they go
 const HEDGE_PREFIXES = [
-  "I think ", "Honestly, I think ", "From what I can tell, ",
-  "If I had to guess, ", "In my experience, ", "The way I see it, ",
-  "I'd say ", "My read is ", "Feels like ",
+  "i think ", "honestly i think ", "from what i can tell, ",
+  "if i had to guess, ", "in my experience, ", "the way i see it, ",
+  "i'd say ", "my read is ", "feels like ",
 ];
 
 const HEDGE_INJECTS = [
@@ -19496,12 +19496,12 @@ let recentWarmthMarkers = [];
 
 // Tier 1: Casual warmth (rapportLevel >= 0.3)
 const WARMTH_CASUAL = [
-  { prefix: "Honestly, ", weight: 1.0 },
-  { prefix: "Not gonna lie — ", weight: 0.9 },
-  { prefix: "Okay real talk, ", weight: 0.85 },
-  { prefix: "I'll be honest, ", weight: 0.9 },
-  { prefix: "Here's the thing — ", weight: 0.8 },
-  { prefix: "Genuinely though, ", weight: 0.7 },
+  { prefix: "honestly, ", weight: 1.0 },
+  { prefix: "not gonna lie, ", weight: 0.9 },
+  { prefix: "okay real talk, ", weight: 0.85 },
+  { prefix: "i'll be honest, ", weight: 0.9 },
+  { prefix: "here's the thing, ", weight: 0.8 },
+  { prefix: "genuinely though, ", weight: 0.7 },
   { prefix: "For real though, ", weight: 0.85 },
 ];
 
@@ -19593,9 +19593,9 @@ let recentReactions = []; // track last 5 to avoid repetition
 // Reaction pools keyed by charge type
 const MICRO_REACTIONS = {
   surprising: [
-    "Oh wow —", "Wait, really?", "Huh!", "Oh —", "Whoa.",
-    "No way —", "Oh, interesting —", "Wait —",
-    "Hold on —", "Oh!", "Hm, that's unexpected —",
+    "oh wow —", "wait really?", "huh", "oh —", "whoa",
+    "no way —", "oh interesting —", "wait —",
+    "hold on —", "oh", "hm that's unexpected —",
   ],
   personal: [
     "oh wow —", "aw —", "nah that's real.",
@@ -19603,31 +19603,31 @@ const MICRO_REACTIONS = {
     "yeah no i get that.", "that hits different.",
   ],
   funny: [
-    "Ha —", "Okay that's funny.", "Pfft —", "Ha, okay —",
-    "Lol wait —", "That got me.", "Heh —",
-    "Okay I laughed.", "Ha! —",
+    "ha —", "okay that's funny", "pfft —", "ha okay —",
+    "lol wait —", "that got me", "heh —",
+    "okay i laughed", "ha —",
   ],
   impressive: [
-    "Oh nice!", "That's legit impressive.", "Whoa, okay —",
-    "Oh, that's cool.", "Damn —", "Oh that's solid.",
-    "Okay I'm impressed.", "Nice —",
+    "oh nice", "that's legit impressive", "whoa okay —",
+    "oh that's cool", "damn —", "oh that's solid",
+    "okay i'm impressed", "nice —",
   ],
   sad: [
-    "Oh no.", "Aw man.", "Oh —", "That's rough.",
-    "Ugh, that sucks.", "Oh, that's tough.", "Man...",
+    "oh no", "aw man", "oh —", "that's rough",
+    "ugh that sucks", "oh that's tough", "man...",
   ],
   relatable: [
-    "Oh, totally.", "YES.", "Oh I feel that.", "Right?!",
-    "So true.", "Okay, same.", "Honestly, yeah.",
+    "oh totally", "YES", "oh i feel that", "right??",
+    "so true", "okay same", "honestly yeah",
   ],
   provocative: [
-    "Ooh, spicy take.", "Oh, interesting angle.", "Hmm —",
-    "Okay, I see where you're going.", "Bold claim —",
-    "Oh, that's a take.", "Hm, let me think about that.",
+    "ooh spicy take", "oh interesting angle", "hmm —",
+    "okay i see where you're going", "bold claim —",
+    "oh that's a take", "hm let me think about that",
   ],
   wholesome: [
-    "Aw, that's sweet.", "Oh that's lovely.", "That's wholesome.",
-    "I love that.", "That's genuinely nice.", "Oh, that's great.",
+    "aw that's sweet", "oh that's lovely", "that's wholesome",
+    "i love that", "that's genuinely nice", "oh that's great",
   ],
 };
 
