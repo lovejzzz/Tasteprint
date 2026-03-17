@@ -6850,11 +6850,23 @@ function applyPersonalityMode(response) {
     r = r.replace(/\b(so|really|very|super|actually|literally)\b/gi, m => m.toUpperCase());
   }
 
-  // Emoji boost (~20% chance, add 1-2 relevant emojis)
+  // Emoji boost (~20% chance, add 1-2 relevant emojis — sometimes mid-sentence)
   if (mode.emojiBoost && Math.random() < 0.2) {
     const emoji = mode.emojiBoost[Math.floor(Math.random() * mode.emojiBoost.length)];
     if (!r.includes(emoji)) {
-      r += " " + emoji;
+      // 40% chance: inject mid-sentence at a natural break (after casual words)
+      if (Math.random() < 0.4 && r.length > 20) {
+        const midBreaks = /(\b(?:like|honestly|fr|ngl|tbh|so|literally|lowkey|wait)\b\s)/i;
+        const m = r.match(midBreaks);
+        if (m && m.index !== undefined) {
+          const pos = m.index + m[0].length;
+          r = r.slice(0, pos) + emoji + " " + r.slice(pos);
+        } else {
+          r += " " + emoji;
+        }
+      } else {
+        r += " " + emoji;
+      }
     }
   }
 
@@ -11510,15 +11522,25 @@ function addBreath(response, text, energy) {
     }
   }
 
-  // ── Strategy 2: Trailing thought (~20%) — end with "..." instead of clean period ──
-  else if (roll < 0.45 && energy < 0.5) {
-    // Low-energy conversations benefit from trailing, thoughtful endings
-    const trailingPhrases = [
-      "but I don't know, maybe that's just me...",
-      "or something like that, anyway...",
-      "but yeah, you know what I mean...",
-      "but it's hard to say for sure...",
-      "which is interesting when you think about it...",
+  // ── Strategy 2: Trailing thought (~25%) — end with organic incomplete thought ──
+  else if (roll < 0.50) {
+    // Casual trailing thoughts — friends trail off all the time, not just low-energy
+    const trailingPhrases = energy < 0.4 ? [
+      "idk tho...",
+      "but yeah...",
+      "or whatever idk...",
+      "anyway...",
+      "but like...yeah",
+      "idk it just hits different...",
+    ] : [
+      "but idk",
+      "ngl...",
+      "lowkey tho...",
+      "honestly tho",
+      "but yeah idk",
+      "or smth like that",
+      "but still tho",
+      "idk maybe that's just me",
     ];
     // Replace the last sentence's ending with a trailing thought
     const lastPeriod = r.lastIndexOf(".");
@@ -20101,9 +20123,9 @@ function polishOutput(response) {
   r = r.replace(/\s+([.!?,])/g, "$1");
   r = r.replace(/([.!?])\1+/g, "$1");
 
-  // 4. Remove trailing orphaned dashes or connectors
+  // 4. Remove trailing orphaned dashes (but keep trailing "but"/"so" — they're natural casual trailing)
   r = r.replace(/\s*[—–-]\s*$/, ".");
-  r = r.replace(/\s*(?:but|and|so|plus|also|actually)\s*$/i, ".");
+  r = r.replace(/\s*(?:and|plus|also)\s*$/i, ".");
 
   // 5. Cap excessive exclamation (pipeline enthusiasm stacking)
   let excCount = (r.match(/!/g) || []).length;
@@ -20157,7 +20179,27 @@ function polishOutput(response) {
     }
   }
 
-  // 9. Length check — friend texts are short. If over 200 chars with 3+ sentences,
+  // 9. Natural mid-sentence emoji (~12% of casual responses)
+  // Real texters scatter emoji mid-thought: "that's so 💀 funny" / "ngl 😭 i can't"
+  if (r.length > 25 && r.length < 180 && Math.random() < 0.12) {
+    const casualEmoji = ["💀", "😭", "😂", "🤔", "👀", "✨", "😤", "🫠"];
+    const insertPoints = [
+      { re: /(\b(?:so|literally|actually|honestly|fr|ngl|lowkey)\b)\s/i, after: true },
+      { re: /(\b(?:like|wait|omg|bruh|dude)\b)\s/i, after: true },
+    ];
+    let inserted = false;
+    for (const { re } of insertPoints) {
+      const m = r.match(re);
+      if (m && m.index !== undefined && !inserted) {
+        const pos = m.index + m[0].length;
+        const ej = casualEmoji[Math.floor(Math.random() * casualEmoji.length)];
+        r = r.slice(0, pos) + ej + " " + r.slice(pos);
+        inserted = true;
+      }
+    }
+  }
+
+  // 10. Length check — friend texts are short. If over 200 chars with 3+ sentences,
   // trim to first 2 sentences unless it's a knowledge/explanation response.
   if (r.length > 200) {
     const sentences = r.match(/[^.!?]+[.!?]+/g);
