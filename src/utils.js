@@ -3738,6 +3738,64 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- Glassmorphism & frosted glass effects ---
+  // Full glass treatment: backdrop blur + semi-transparent bg + inner glow + glass edge border
+  // Skip for nav/code/small and components that already have heavy gradient overlays
+  if (!isNav && !isCode && !isSmall && !s.gradientOverlay) {
+    const glassRate = moodId === "elegant" ? 0.15 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.08 : moodId === "minimal" ? 0.05 : 0.10;
+    if (Math.random() < glassRate) {
+      const bgBase = dark ? "0,0,0" : "255,255,255";
+      if (moodId === "elegant") {
+        // Heavy frosted glass — deep blur, muted tint, refined inner glow
+        const blr = pick([14, 16, 18, 20]);
+        s.backdropFilter = `blur(${blr}px)`;
+        s.glassBackground = `rgba(${bgBase},${randRange(0.12, 0.22).toFixed(2)})`;
+        s.glassBorder = `1px solid rgba(255,255,255,${randRange(0.14, 0.22).toFixed(2)})`;
+        s.glassInnerGlow = `inset 0 1px 0 rgba(255,255,255,${randRange(0.08, 0.15).toFixed(2)}), inset 0 0 20px rgba(255,255,255,${randRange(0.03, 0.06).toFixed(2)})`;
+      } else if (moodId === "bold") {
+        // Blur + saturate — vivid glass with strong color presence
+        const blr = pick([10, 12, 14, 16]);
+        s.backdropFilter = `blur(${blr}px) saturate(1.4)`;
+        s.glassBackground = `rgba(${bgBase},${randRange(0.15, 0.30).toFixed(2)})`;
+        s.glassBorder = `1px solid rgba(255,255,255,${randRange(0.12, 0.20).toFixed(2)})`;
+        s.glassInnerGlow = `inset 0 1px 0 rgba(255,255,255,${randRange(0.10, 0.18).toFixed(2)})`;
+      } else if (moodId === "playful") {
+        // Blur + hue-rotate — colorful refraction effect
+        const blr = pick([8, 10, 12, 14]);
+        const hue = pick([10, 15, 20, 30, -10, -15, -20]);
+        s.backdropFilter = `blur(${blr}px) hue-rotate(${hue}deg)`;
+        s.glassBackground = `rgba(${bgBase},${randRange(0.10, 0.25).toFixed(2)})`;
+        s.glassBorder = `1px solid rgba(255,255,255,${randRange(0.15, 0.25).toFixed(2)})`;
+        s.glassInnerGlow = `inset 0 1px 0 rgba(255,255,255,${randRange(0.10, 0.16).toFixed(2)}), inset 0 0 14px rgba(255,255,255,${randRange(0.03, 0.07).toFixed(2)})`;
+      } else if (moodId === "minimal") {
+        // Subtle blur — barely-there frosted glass, ultra clean
+        const blr = pick([8, 10, 12]);
+        s.backdropFilter = `blur(${blr}px)`;
+        s.glassBackground = `rgba(${bgBase},${randRange(0.10, 0.18).toFixed(2)})`;
+        s.glassBorder = `1px solid rgba(255,255,255,${randRange(0.10, 0.16).toFixed(2)})`;
+        s.glassInnerGlow = `inset 0 1px 0 rgba(255,255,255,${randRange(0.05, 0.10).toFixed(2)})`;
+      } else {
+        // Auto: moderate glass effect
+        const blr = pick([10, 12, 14, 16]);
+        s.backdropFilter = `blur(${blr}px)`;
+        s.glassBackground = `rgba(${bgBase},${randRange(0.12, 0.28).toFixed(2)})`;
+        s.glassBorder = `1px solid rgba(255,255,255,${randRange(0.12, 0.20).toFixed(2)})`;
+        s.glassInnerGlow = `inset 0 1px 0 rgba(255,255,255,${randRange(0.08, 0.14).toFixed(2)})`;
+      }
+      // Apply glass properties to actual CSS properties (only if not already set)
+      if (s.glassBackground && !s.background) s.background = s.glassBackground;
+      if (s.glassBorder && !s.border) s.border = s.glassBorder;
+      // Merge inner glow with existing boxShadow or set it
+      if (s.glassInnerGlow) {
+        if (s.boxShadow && s.boxShadow !== "none") {
+          s.boxShadow = s.boxShadow + ", " + s.glassInnerGlow;
+        } else {
+          s.boxShadow = s.glassInnerGlow;
+        }
+      }
+    }
+  }
+
   return s;
 }
 
