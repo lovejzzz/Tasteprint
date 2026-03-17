@@ -20617,6 +20617,52 @@ function tryUltraShortResponse(text, sent) {
   return null;
 }
 
+// ── Standalone reaction responses for medium-length casual statements ──
+// When someone texts a casual statement (not a question, not emotional),
+// sometimes a friend just reacts with 1-5 words instead of a full response.
+// Fires ~20% of the time for medium inputs (12-50 chars), not on early turns.
+function tryStandaloneReaction(text, sent) {
+  const lower = text.toLowerCase().trim();
+  const len = lower.length;
+
+  // Only for medium-length casual inputs
+  if (len < 12 || len > 50) return null;
+  // Only ~20% of the time
+  if (Math.random() > 0.20) return null;
+  // Don't on first 5 turns
+  if (mem.turn < 5) return null;
+  // Don't if user asked a question
+  if (text.includes("?")) return null;
+  // Don't if user is upset or very emotional
+  if (sent < -0.5 || sent > 0.8) return null;
+
+  // Pattern-matched reaction pools
+  const reactionPatterns = [
+    { re: /\b(hate|can'?t stand|sick of|tired of)\b/i, pool: ["honestly same", "fr fr", "mood", "felt that", "big mood honestly", "valid"] },
+    { re: /\b(love|obsessed with|can'?t stop)\b/i, pool: ["taste", "valid", "as you should", "fr fr", "the way i agree", "real"] },
+    { re: /\b(so (good|fire|bussin|amazing|great))\b/i, pool: ["fr fr", "no literally", "RIGHT", "taste", "^^ this", "facts"] },
+    { re: /\b(so (bad|mid|boring|trash|terrible))\b/i, pool: ["oof", "rip", "lol yeah", "fair honestly", "valid take", "nahhh really?"] },
+    { re: /\b(i (just|literally) (did|made|ate|watched|finished))\b/i, pool: ["wait how was it", "and??", "ok tell me everything", "how'd it go"] },
+    { re: /\b(monday|tuesday|wednesday|thursday|friday)\b/i, pool: ["mood", "felt that", "honestly same energy", "fr tho"] },
+    { re: /\b(ngl|tbh|honestly|lowkey)\b/i, pool: ["fr", "valid", "no literally", "real", "^^"] },
+    { re: /\b(vibes?|energy|mood)\b/i, pool: ["fr fr", "literally", "real", "this ^^", "felt that"] },
+    { re: /\b(wild|crazy|insane)\b/i, pool: ["LMAO", "no literally", "fr tho", "wait what", "stoppp"] },
+    { re: /\b(whatever|it is what it is|oh well)\b/i, pool: ["fr", "valid", "honestly", "mood", "felt that"] },
+  ];
+
+  for (const { re, pool } of reactionPatterns) {
+    if (re.test(lower)) return pick(pool);
+  }
+
+  // Generic casual statement reaction (lower probability)
+  if (Math.random() < 0.3) {
+    const genericReactions = ["honestly yeah", "fr", "felt that", "valid", "mood", "real"];
+    return pick(genericReactions);
+  }
+
+  return null;
+}
+
 // ── Excitement level detection ──
 // Returns 0-1 score for how excited/surprised the user's message is
 function measureExcitement(text) {
@@ -21241,6 +21287,17 @@ export async function getAIResponse(input) {
     // Ultra-short responses have very fast typing (50-200ms)
     const usTypingMs = 50 + Math.random() * 150;
     return { text: ultraShort, typingMs: usTypingMs, pause: null };
+  }
+
+  // ═══ Round 183: Standalone reactions for medium-length casual statements ═══
+  const standaloneReaction = tryStandaloneReaction(text, ultraShortSent);
+  if (standaloneReaction) {
+    mem.add("user", text, currentTopics || [], [], ultraShortSent);
+    mem.add("ai", standaloneReaction);
+    _questionHistory.push(standaloneReaction.includes("?"));
+    if (_questionHistory.length > 20) _questionHistory.shift();
+    const srTypingMs = 80 + Math.random() * 200;
+    return { text: standaloneReaction, typingMs: srTypingMs, pause: null };
   }
 
   // ═══ Round 153: Selective attention — analyze interest before response generation ═══
