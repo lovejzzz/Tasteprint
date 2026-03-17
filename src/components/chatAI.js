@@ -9130,16 +9130,16 @@ let lastIdiolectTurn = 0;
 // Synonym families: each key maps to variants the AI might "prefer"
 // The first entry in each array is the common/default form that gets replaced
 const SYNONYM_FAMILIES = {
-  think:       ["I think", "I reckon", "I'd say", "my read is"],
-  interesting: ["interesting", "fascinating", "intriguing", "compelling"],
-  really:      ["really", "genuinely", "honestly", "truly"],
-  good:        ["good", "solid", "great", "excellent"],
-  funny:       ["funny", "hilarious", "cracking up", "gold"],
-  agree:       ["I agree", "totally", "100%", "absolutely"],
-  but:         ["but", "though", "that said", "then again"],
-  kind_of:     ["kind of", "sort of", "a bit", "somewhat"],
-  very:        ["very", "super", "incredibly", "extremely"],
-  like:        ["I like", "I'm into", "I dig", "I'm a fan of"],
+  think:       ["i think", "i'd say", "my read is", "imo"],
+  interesting: ["interesting", "wild", "sick", "lowkey cool"],
+  really:      ["really", "honestly", "fr", "ngl"],
+  good:        ["good", "solid", "fire", "great"],
+  funny:       ["funny", "hilarious", "💀", "gold"],
+  agree:       ["yeah", "totally", "100%", "fr"],
+  but:         ["but", "tho", "that said", "then again"],
+  kind_of:     ["kinda", "sorta", "a bit", "lowkey"],
+  very:        ["super", "really", "hella", "mad"],
+  like:        ["i like", "i'm into", "i dig", "i fw"],
 };
 
 function seedIdiolect() {
@@ -9581,14 +9581,14 @@ const CHALLENGE_RESPONSES = {
     "Zero times? That feels like it's daring the universe to prove you wrong.",
   ],
   superlative: [
-    "The best? That's a high bar — what's your runner-up?",
-    "Bold take! I won't argue, but I'm curious what almost made the cut.",
-    "Ooh, crowning a champion — I love the conviction!",
+    "the best?? what's your runner-up tho",
+    "bold take lol — what almost made the cut?",
+    "crowning a champion — love the conviction",
   ],
   negative_superlative: [
-    "The worst? Surely something out there is slightly more terrible 😄",
-    "Hmm, I've seen some pretty rough contenders for that title too!",
-    "That bad? Okay, I'll take your word for it — for now.",
+    "the worst?? surely something out there is slightly worse 😄",
+    "hmm idk i've seen some rough contenders for that title",
+    "that bad? ok i'll take your word for it — for now",
   ],
   certainty: [
     "obviously? idk i've been surprised before...",
@@ -9939,28 +9939,28 @@ const NORM_PHRASES = {
     "way more people feel that way than will say it out loud.",
   ],
   isolation: [
-    "you're really not alone in this, even if it feels that way.",
-    "so many people feel exactly like this — it's just not something people broadcast.",
-    "this is a lot more universal than you might think.",
-    "I think most people have been there at some point, even if they don't show it.",
+    "dude you're not alone in this, even if it feels that way",
+    "so many people feel this — they just don't post about it",
+    "this is way more universal than you'd think",
+    "most people have been there honestly, they just don't show it",
   ],
   self_doubt: [
-    "nah, questioning yourself like this is actually a sign you're thinking carefully.",
-    "the fact that you're even asking means you're more self-aware than most.",
-    "honestly, the smartest people I know ask themselves this all the time.",
-    "no, you're not crazy — this is a completely reasonable thing to wonder about.",
+    "nah questioning yourself like this is actually a good sign tbh",
+    "the fact that you're even asking means you're more aware than most",
+    "honestly the smartest people i know do this all the time",
+    "no you're not crazy — this is a totally valid thing to wonder about",
   ],
   self_criticism: [
-    "hey, go easy on yourself — everyone has things they're working on.",
-    "that's a really human thing, not a flaw.",
-    "most people feel like that about something — you're being way too hard on yourself.",
-    "nobody's naturally great at everything. That's just... being a person.",
+    "hey go easy on yourself — everyone's working on something",
+    "that's just being human, not a flaw",
+    "most people feel like that about something — you're being way too hard on yourself",
+    "nobody's naturally great at everything lol that's just life",
   ],
   uncertainty: [
-    "it's okay not to know — most people don't have it all figured out either.",
-    "uncertainty is totally normal here. Anyone who says otherwise is probably bluffing.",
-    "honestly, not knowing is fine. Most of us are just figuring it out as we go.",
-    "that's a really honest place to be, and more people are there than admit it.",
+    "it's ok not to know — most people don't have it figured out either",
+    "uncertainty is normal here. anyone who says otherwise is bluffing lol",
+    "honestly not knowing is fine. we're all just figuring it out",
+    "that's a really honest place to be and more people are there than admit it",
   ],
 };
 
@@ -10291,54 +10291,54 @@ const USER_TRAITS = {
     signals: /\b(specific|exactly|precise|detail|step.by.step|edge case|corner case|what about|what if .* fails|error handl|validate|check|verify|subtle|nuance)\b/i,
     weight: 0,
     insights: [
-      "You've got an eye for the details most people skip. That's what separates good from great.",
-      "I notice you think about edge cases before they bite — that's a superpower.",
-      "You're detail-oriented in a way that's actually thorough, not just perfectionist.",
+      "you catch the details most people skip, that's lowkey a superpower",
+      "you think about edge cases before they bite — respect",
+      "you're thorough in a way that's actually useful, not just perfectionist",
     ]
   },
   creative_explorer: {
     signals: /\b(what if|imagine|wouldn't it be cool|crazy idea|experiment|play with|try (?:something|this)|remix|mashup|wild|unconventional|outside the box|different approach|twist)\b/i,
     weight: 0,
     insights: [
-      "You're a creative explorer — you'd rather try a weird idea than play it safe. I respect that.",
-      "I notice you naturally gravitate toward 'what if' thinking. That's how interesting things get built.",
-      "You've got this restless creative energy — always looking for the less obvious path.",
+      "you'd rather try a weird idea than play it safe and honestly i respect that",
+      "you naturally go to 'what if' thinking — that's how cool stuff gets made",
+      "you've got this restless creative energy, always looking for the less obvious path",
     ]
   },
   pragmatist: {
     signals: /\b(practical|real.?world|actually work|in practice|production|ship|deadline|mvp|good enough|pragmatic|simplest|fastest way|just works|bottom line|efficient)\b/i,
     weight: 0,
     insights: [
-      "You're a pragmatist at heart — you'd rather ship something real than polish something theoretical.",
-      "You clearly value things that actually work over things that just look clever. Smart call.",
-      "You think in terms of 'does this ship?' — that's the builder mindset.",
+      "you'd rather ship something real than polish something theoretical — builder energy fr",
+      "you clearly value stuff that actually works over stuff that just looks clever. smart",
+      "you think in terms of 'does this ship?' and honestly that's the move",
     ]
   },
   curious_learner: {
     signals: /\b(how|why|explain|learn|understand|curious|interesting|fascin|deep.?dive|rabbit hole|tell me more|explore|dig into|research|study|reading about)\b/i,
     weight: 0,
     insights: [
-      "You're genuinely curious — not just surface-level, but in a 'I want to really get this' way.",
-      "I love how you keep pulling at threads. That curiosity is what makes learning stick.",
-      "You ask the kind of questions that go deeper than most people bother to.",
+      "you're genuinely curious — not surface level, like you actually wanna get it",
+      "you keep pulling at threads and honestly that's how learning actually sticks",
+      "you ask the kind of questions most people don't bother with",
     ]
   },
   empathetic_communicator: {
     signals: /\b(feel|people|user[s ]|experience|inclusive|accessible|everyone|team|collaborat|help|support|care|matter|perspective|understand (?:their|how they))\b/i,
     weight: 0,
     insights: [
-      "You naturally think about how things affect people, not just whether they work technically.",
-      "I notice you center the human experience in everything you think about. That's rare in tech.",
-      "You've got this empathetic lens — you're always considering how others will feel about something.",
+      "you naturally think about how things affect people, not just whether they work. that's rare",
+      "you always center the human side of things and honestly more people should",
+      "you've got this empathetic lens — always considering how others will feel about something",
     ]
   },
   decisive_leader: {
     signals: /\b(let's go with|I('ll| will) just|decision|choose|pick|commit|move forward|let's do|ship it|pull the trigger|go for it|done deal|settled|that's the plan|I('m| am) going)\b/i,
     weight: 0,
     insights: [
-      "You're decisive — you weigh options then commit without second-guessing. I like that.",
-      "I notice you don't agonize over decisions. You pick a direction and go. That's leadership energy.",
-      "You've got a bias toward action. Better to course-correct than to never start.",
+      "you're decisive — weigh options then commit without second-guessing. love that",
+      "you don't agonize over decisions. pick a direction and go. that's the move",
+      "you've got a bias toward action. better to course-correct than never start",
     ]
   },
 };
