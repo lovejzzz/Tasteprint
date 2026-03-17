@@ -8946,6 +8946,131 @@ function applyBreakthroughCelebration(response, text) {
   return celebration + " " + response;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//   ROUND 124 — CONVERSATIONAL PACING
+//   Mirror the user's rhythm: short inputs → short replies,
+//   long inputs → richer responses. Detect gear shifts and
+//   adapt. Trim or expand the response to match user energy.
+// ═══════════════════════════════════════════════════════════════
+
+let pacingWindow = []; // last N user word counts
+let lastPacingAdaptTurn = 0;
+const PACING_WINDOW_SIZE = 6;
+const PACING_COOLDOWN = 2;
+
+// Gear labels based on user message word count
+function getUserGear(wordCount) {
+  if (wordCount <= 4) return "terse";       // "yeah", "ok cool", "sure"
+  if (wordCount <= 12) return "casual";     // short sentences
+  if (wordCount <= 30) return "moderate";   // standard
+  if (wordCount <= 60) return "detailed";   // paragraphs
+  return "verbose";                          // essays
+}
+
+// Detect if the user just shifted gears (e.g. terse → detailed)
+function detectGearShift() {
+  if (pacingWindow.length < 3) return null;
+  const prev = getUserGear(pacingWindow[pacingWindow.length - 2]);
+  const curr = getUserGear(pacingWindow[pacingWindow.length - 1]);
+  if (prev === curr) return null;
+  const gearOrder = ["terse", "casual", "moderate", "detailed", "verbose"];
+  const prevIdx = gearOrder.indexOf(prev);
+  const currIdx = gearOrder.indexOf(curr);
+  if (currIdx - prevIdx >= 2) return "expanded";   // user opened up
+  if (prevIdx - currIdx >= 2) return "contracted";  // user pulled back
+  return null;
+}
+
+// Target response word count based on user's recent pacing
+function getTargetLength(userWords) {
+  const gear = getUserGear(userWords);
+  switch (gear) {
+    case "terse":    return { min: 3, max: 12, ratio: 2.0 };
+    case "casual":   return { min: 8, max: 25, ratio: 1.5 };
+    case "moderate": return { min: 15, max: 45, ratio: 1.2 };
+    case "detailed": return { min: 25, max: 65, ratio: 0.9 };
+    case "verbose":  return { min: 30, max: 80, ratio: 0.7 };
+    default:         return { min: 15, max: 45, ratio: 1.0 };
+  }
+}
+
+// Trim a response to approximately target word count
+function trimToTarget(response, maxWords) {
+  const words = response.split(/\s+/);
+  if (words.length <= maxWords) return response;
+
+  // Try to cut at a sentence boundary near the target
+  const sentences = response.split(/(?<=[.!?])\s+/);
+  let result = "";
+  let count = 0;
+  for (const s of sentences) {
+    const sWords = s.split(/\s+/).length;
+    if (count + sWords > maxWords && count > 0) break;
+    result += (result ? " " : "") + s;
+    count += sWords;
+  }
+  // If we got at least half the target, use sentence-cut version
+  if (count >= maxWords * 0.5) return result;
+  // Otherwise just hard-cut at word limit
+  return words.slice(0, maxWords).join(" ") + "...";
+}
+
+// Gear-shift acknowledgment phrases
+const GEAR_SHIFT_EXPANDED = [
+  "Oh nice, you're going into detail — I'm here for it.",
+  "Love that you're expanding on this.",
+  "Ah, I can tell this one's important to you.",
+];
+const GEAR_SHIFT_CONTRACTED = [
+  "Got it.",
+  "Fair enough.",
+  "Noted.",
+  "Heard.",
+];
+
+function applyConversationalPacing(response, text) {
+  const turn = mem.turn;
+  const userWords = text.trim().split(/\s+/).filter(Boolean).length;
+
+  // Track pacing window
+  pacingWindow.push(userWords);
+  if (pacingWindow.length > PACING_WINDOW_SIZE) pacingWindow.shift();
+
+  // Don't adapt on first couple turns — let it warm up
+  if (turn < 3 || pacingWindow.length < 2) return response;
+  if (turn - lastPacingAdaptTurn < PACING_COOLDOWN) return response;
+
+  const target = getTargetLength(userWords);
+  const responseWords = response.split(/\s+/).length;
+  const gear = getUserGear(userWords);
+  const shift = detectGearShift();
+
+  // ── Gear shift acknowledgment (25% chance, subtle) ──
+  if (shift && Math.random() < 0.25) {
+    lastPacingAdaptTurn = turn;
+    if (shift === "expanded") {
+      return pick(GEAR_SHIFT_EXPANDED) + " " + response;
+    }
+    // Contracted — acknowledge and trim
+    return pick(GEAR_SHIFT_CONTRACTED) + " " + trimToTarget(response, target.max);
+  }
+
+  // ── Length adaptation ──
+  // If response is WAY too long for user's pace, trim it
+  if (responseWords > target.max * 1.5 && gear !== "verbose") {
+    lastPacingAdaptTurn = turn;
+    return trimToTarget(response, target.max);
+  }
+
+  // ── Terse mode: if user sends 1-3 words, keep response tight ──
+  if (gear === "terse" && responseWords > 15) {
+    lastPacingAdaptTurn = turn;
+    return trimToTarget(response, 12);
+  }
+
+  return response;
+}
+
 let reciprocityHistory = []; // "ask" or "tell" per turn
 let lastReciprocityNudgeTurn = 0;
 
@@ -18227,6 +18352,9 @@ export function getAIResponse(input) {
   updateUserProfile(text);
   response = applyUserProfiling(response, text);
 
+  // ═══ Conversational pacing: mirror user's message rhythm ═══
+  response = applyConversationalPacing(response, text);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -18257,6 +18385,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
