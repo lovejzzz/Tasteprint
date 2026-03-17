@@ -4020,9 +4020,9 @@ function resolveFragment(text, lower, parsed, topics) {
   // ── "Depends" / "It depends" — nuanced non-answer ──
   if (/^(it depends|depends|that depends|it'?s complicated|it'?s complex)\.?$/i.test(lower)) {
     return pick([
-      "You're right, it does! What's the specific situation you're thinking of?",
-      "Fair point — context matters a lot! " + (contextTopic ? `With ${contextTopic}, what's the variable that changes things most?` : "What factors are you weighing?"),
-      "Totally. Most interesting things are nuanced. What's the scenario?",
+      "lol fair, it does depend. what's the situation tho",
+      "nah you're right. " + (contextTopic ? `with ${contextTopic} specifically, what changes it` : "what's the context"),
+      "ok valid, it's complicated lol. what are you actually deciding between",
     ]);
   }
 
@@ -6647,8 +6647,8 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
   // Multi-intent blending
   if (intents.length > 1 && intents[1].conf > 0.5 && Math.random() > 0.6) {
     const bridges = [
-      ` Also — ${intents[1].intent}? I'm into that too!`,
-      ` And I noticed a ${intents[1].intent} angle there — happy to talk about that too!`,
+      ` oh wait also — ${intents[1].intent}? we can get into that too`,
+      ` and the ${intents[1].intent} part — yeah we can talk about that too lol`,
     ];
     response += pick(bridges);
   }
@@ -7513,8 +7513,8 @@ function phaseAwareAdjust(response, phase) {
         const topTopic = mem.topTopic();
         if (topTopic && !r.toLowerCase().includes(topTopic)) {
           const bridges = [
-            ` By the way, I'm enjoying our ${topTopic} conversation.`,
-            ` You clearly know your stuff about ${topTopic}.`,
+            ` ngl the ${topTopic} talk is fun.`,
+            ` you clearly know your ${topTopic} stuff lol.`,
           ];
           r += pick(bridges);
         }
@@ -7591,20 +7591,20 @@ function repairRepetition(response, repeatedType) {
   switch (repeatedType) {
     case "question":
       // Stop asking questions — make a statement instead
-      return response.replace(/\?[^?]*$/, ".") + " But I'm genuinely curious about your perspective.";
+      return response.replace(/\?[^?]*$/, ".") + pick([" ngl tho i'm curious what you think.", " but yeah.", " hmm."]);
     case "generic-ack":
       // Replace generic acknowledgment with something specific
       return pickNew([
-        "Okay, I'm going to be honest — I want to give you a better response than 'that's interesting.' What specifically about this matters to you?",
-        "Rather than just saying 'cool' again, let me ask — what's the real thing you want to dig into here?",
-        "I notice I keep giving surface-level reactions. Let's go deeper — what's the heart of what you're thinking about?",
+        "ok wait i wanna actually respond to this properly — what's the main thing on your mind here",
+        "hmm ok but like what specifically tho, i wanna actually engage with this",
+        "nah hold on, what part of this matters to you most",
       ]);
     case "probe":
       // Stop probing and share something instead
       return pickNew([
-        "ok you know what, instead of asking more questions — what's cool about what you're saying is you actually think about stuff deeply",
-        "ok flip side, instead of another question. from what we've been talking about you seem like someone who cares about substance fr",
-        "instead of another question from me — what keeps coming up in what you're saying is actually really interesting",
+        "ok you know what, you clearly think about stuff fr. that's kinda refreshing honestly",
+        "ngl you actually care about this and i respect that",
+        "ok instead of asking another question — what you're saying is lowkey interesting",
       ]);
     default:
       return response;
@@ -10317,9 +10317,9 @@ const USER_TRAITS = {
     signals: /\b(how (?:does|do|is) .*(?:work|connect|fit|relate)|architect|infrastructure|pattern|scale|system|pipeline|workflow|end.to.end|big picture|holistic|integrat|orchestrat)\b/i,
     weight: 0,
     insights: [
-      "You think in systems, not isolated pieces — that's a rare skill.",
-      "I notice you always zoom out to see how things connect. That's a systems-thinking brain.",
-      "You naturally map relationships between things. That's how architects think.",
+      "you always see the bigger picture, not just the pieces. that's kinda rare tbh",
+      "ngl you think about how everything connects and that's lowkey impressive",
+      "you have this thing where you always zoom out to see the whole system, i like that",
     ]
   },
   detail_oriented: {
@@ -13204,9 +13204,9 @@ function mirrorRegister(response, text) {
       // Only echo if the phrase isn't already in the response
       if (!r.toLowerCase().includes(echo.phrase.toLowerCase())) {
         const echoTemplates = [
-          `Like you said, "${echo.phrase}" —`,
-          `And going back to "${echo.phrase}" —`,
-          `Your point about "${echo.phrase}" is spot on.`,
+          `yeah the "${echo.phrase}" thing —`,
+          `going back to "${echo.phrase}" tho —`,
+          `ngl the "${echo.phrase}" take was good.`,
         ];
         // Prepend or append based on response structure
         if (r.endsWith("?")) {
@@ -13981,8 +13981,8 @@ function applyPacingAwareness(response, text) {
   // Pace shift: was fast, now slow → they're thinking
   if (shift === "decelerating" && Math.random() > 0.5) {
     const decel = [
-      "I notice you're taking your time here — that's a good sign. ",
-      "Taking a moment to think — I respect that. ",
+      "ok take your time lol. ",
+      "hmm thinking about it huh. ",
     ];
     lastPacingTurn = mem.turn;
     return decel[Math.floor(Math.random() * decel.length)] + response;
@@ -13991,8 +13991,8 @@ function applyPacingAwareness(response, text) {
   // Pace shift: was slow, now fast → they got excited
   if (shift === "accelerating" && Math.random() > 0.5) {
     const accel = [
-      "Oh, the pace just picked up — I'm here for it! ",
-      "Love the energy shift! ",
+      "oh we're going fast now lol ok. ",
+      "lol the energy shift, ok ok. ",
     ];
     lastPacingTurn = mem.turn;
     return accel[Math.floor(Math.random() * accel.length)] + response;
@@ -15035,9 +15035,9 @@ function enforcePersonaConsistency(response, topics) {
     if (prior.stance === "positive" && currentNegative) {
       // About to contradict — reframe as evolving, not flip-flopping
       const pivots = [
-        `Okay I realize earlier I said ${prior.text} — and I still stand by that, but`,
-        `Hmm actually, I was positive about ${topic} before — I think my view is more nuanced now.`,
-        `I know I was into ${topic} earlier — I think what I'm getting at is a different angle:`,
+        `ok wait i said ${prior.text} earlier and i still kinda think that, but`,
+        `hmm ok i was positive about ${topic} before but tbh my take is shifting.`,
+        `ngl i was into ${topic} earlier but i think what i mean is more like:`,
       ];
       const pivot = pivots[Math.floor(Math.random() * pivots.length)];
       // Replace the first sentence with the pivot + rest
