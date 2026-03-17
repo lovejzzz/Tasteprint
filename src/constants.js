@@ -187,7 +187,7 @@ export const DEFAULT_PROPS = {
   progress:      { pct: 68 },
   slider:        { pct: 65 },
   "media-player":{ pct: 42, playing: true },
-  testimonial:   { stars: 4 },
+  testimonial:   { stars: 4, verified: 1 },
   rating:        { stars: 4 },
   "sub-toggle":  { active: 1 },
   "dash-panel":  { bars: [65,42,78,35,55,88,48], ring: 72 },

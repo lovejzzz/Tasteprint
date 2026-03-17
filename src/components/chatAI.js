@@ -7101,6 +7101,113 @@ function applyEmotionalAfterglow(response, text) {
   return response;
 }
 
+/* ── Topic Expertise Calibration (Round 105) ──
+ * Users have varying expertise across topics. Someone fluent in
+ * psychology jargon but new to programming expects different depth
+ * per topic. This tracks per-topic signals (jargon usage, question
+ * sophistication, correction frequency) and adapts response complexity
+ * for each topic independently rather than applying a blanket level.
+ */
+
+let topicExpertise = {}; // { topic: { score: 0-1, signals: number } }
+let lastExpertiseTurn = 0;
+
+const EXPERTISE_HIGH_SIGNALS = [
+  /\b(specifically|nuance|caveat|tradeoff|paradigm|architecture|abstraction|heuristic|orthogonal|idiomatic)\b/i,
+  /\b(in my experience|from what I've seen|the real issue is|the subtle part is|what people miss is)\b/i,
+  /\b(stack|API|regex|async|latency|throughput|polymorphism|dependency injection|mutex|semaphore)\b/i,
+  /\b(neurotransmitter|cognitive load|attachment theory|metacognition|operant conditioning)\b/i,
+  /\b(actually,?\s+it'?s|well technically|to be precise|more accurately|strictly speaking)\b/i,
+];
+
+const EXPERTISE_LOW_SIGNALS = [
+  /\b(what is|what does|how does|can you explain|what'?s the difference between|I don'?t understand)\b/i,
+  /\b(for dummies|in simple terms|ELI5|like I'm five|basics of|beginner|newbie)\b/i,
+  /\b(is that like|so it'?s basically|wait so|I thought it was)\b/i,
+];
+
+function updateTopicExpertise(text, topics) {
+  if (!topics || topics.length === 0) return;
+  const lower = text.toLowerCase();
+
+  for (const topic of topics) {
+    const key = topic.toLowerCase().trim();
+    if (!key || key.length < 2) continue;
+    if (!topicExpertise[key]) topicExpertise[key] = { score: 0.5, signals: 0 };
+
+    let delta = 0;
+    for (const pat of EXPERTISE_HIGH_SIGNALS) {
+      if (pat.test(lower)) { delta += 0.08; break; }
+    }
+    for (const pat of EXPERTISE_LOW_SIGNALS) {
+      if (pat.test(lower)) { delta -= 0.1; break; }
+    }
+
+    // Long, structured messages on a topic suggest expertise
+    const words = text.trim().split(/\s+/).length;
+    if (words > 40) delta += 0.03;
+    if (words < 6 && /\?$/.test(text.trim())) delta -= 0.04;
+
+    if (delta !== 0) {
+      const entry = topicExpertise[key];
+      entry.score = Math.max(0, Math.min(1, entry.score + delta));
+      entry.signals++;
+    }
+  }
+
+  // Keep map bounded
+  const keys = Object.keys(topicExpertise);
+  if (keys.length > 15) {
+    const sorted = keys.sort((a, b) => topicExpertise[a].signals - topicExpertise[b].signals);
+    delete topicExpertise[sorted[0]];
+  }
+}
+
+function applyExpertiseCalibration(response, text, topics) {
+  const turn = mem.turn;
+  if (turn - lastExpertiseTurn < 3) return response; // 3-turn cooldown
+  if (!topics || topics.length === 0) return response;
+
+  // Find the dominant topic's expertise level
+  let bestTopic = null;
+  let bestSignals = 0;
+  for (const t of topics) {
+    const key = t.toLowerCase().trim();
+    const entry = topicExpertise[key];
+    if (entry && entry.signals > bestSignals) {
+      bestTopic = entry;
+      bestSignals = entry.signals;
+    }
+  }
+
+  if (!bestTopic || bestSignals < 3) return response; // need enough data
+
+  // Low expertise: simplify — trim jargon, shorten, add "basically"
+  if (bestTopic.score < 0.3) {
+    lastExpertiseTurn = turn;
+    // Remove parenthetical asides that add complexity
+    let simplified = response.replace(/\s*\([^)]{15,}\)/g, "");
+    // If still long, trim to first 2 sentences
+    const sentences = simplified.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 3) {
+      simplified = sentences.slice(0, 2).join("").trim();
+      if (Math.random() < 0.4) simplified += " In short: " + sentences[sentences.length - 1].trim();
+    }
+    return simplified;
+  }
+
+  // High expertise: can be more direct, skip basic explanations
+  if (bestTopic.score > 0.75 && Math.random() < 0.3) {
+    lastExpertiseTurn = turn;
+    // Strip hedging phrases that feel patronizing to experts
+    return response
+      .replace(/\b(basically|simply put|in other words|to put it simply),?\s*/gi, "")
+      .replace(/\b(as you (may|might) know),?\s*/gi, "");
+  }
+
+  return response;
+}
+
 /* ── Conversational Reciprocity (Round 103) ──
  * Natural conversations have a rhythm of giving and receiving. If the AI
  * always asks questions, it feels interrogative. If it always makes
@@ -16029,6 +16136,7 @@ export function getAIResponse(input) {
   // ═══ Conversation repair: ambiguity handling ═══
   const intents = classify(text);
   const currentTopics = extractTopics(tokenize(text));
+  updateTopicExpertise(text, currentTopics);
   const ambiguous = handleAmbiguity(text, intents.filter(i=>!i.modifier), currentTopics);
   if (ambiguous && Math.random() > 0.6) {
     response = ambiguous;
@@ -16310,6 +16418,9 @@ export function getAIResponse(input) {
   // ═══ Micro-commitment followup: check in on things user said they'd do ═══
   response = applyCommitmentFollowup(response, text);
 
+  // ═══ Topic expertise calibration: adapt depth per topic based on user signals ═══
+  response = applyExpertiseCalibration(response, text, currentTopics);
+
   // ═══ Subtext trend: if user is withdrawing over multiple turns, acknowledge it ═══
   const trend = getSubtextTrend();
   if (trend === "losing_interest" && Math.random() > 0.6) {
@@ -16360,6 +16471,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
