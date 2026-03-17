@@ -2563,10 +2563,10 @@ const ASSOC = {
 const COMP = {
   // Reaction to what user said (mirrors their energy)
   reactions: {
-    positive: ["oh I love that","that's awesome","yes!","love it","so cool","that's great","nice!","amazing"],
-    negative: ["aw that's tough","i hear you","that sucks","i feel that","that's frustrating","hmm yeah"],
-    neutral:  ["interesting","hmm","oh","okay","got it","i see","right"],
-    curious:  ["ooh","wait —","oh that's cool —","hmm interesting —","no way —"],
+    positive: ["oh i love that","yooo nice","yes!","love it","thats so good","W honestly","dude nice","ok thats sick"],
+    negative: ["aw that sucks","nah i feel that","oof","thats rough","yeah that's not it","damn"],
+    neutral:  ["ohh","hm ok","wait ok","ahh","right right","ohh ok"],
+    curious:  ["ooh","wait —","oh thats kinda cool —","hold on —","no way —","wait wait wait —"],
   },
   // Bridges between reaction and body
   bridges: {
@@ -2576,10 +2576,10 @@ const COMP = {
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
-  opinion_starters: ["i think","honestly","ngl","the thing about","what i love about","ok but the cool thing about","i've always thought"],
-  opinion_connectors: ["is that","is how","is the way","is really about"],
+  opinion_starters: ["i think","honestly","ngl","the thing about","what i love about","ok but the cool thing about","ive always thought","lowkey"],
+  opinion_connectors: ["is that","is how","is the way","is really about","is literally"],
   // Follow-up questions — the engine of good conversation
-  deepeners: ["what got you into that","how long have you been into that","what's the best part","what got you started","is there a specific part you focus on","what's been the biggest surprise","would you recommend it","what's next for you with that","has it changed how you think about stuff","what would you do differently starting over"],
+  deepeners: ["how'd you get into that","wait how long have you been doing that","ok but whats the best part tho","how'd that even start","whats been the wildest part so far","would you recommend it or nah","so whats next with that","has that like... changed how you see stuff","ok real talk would you do it differently if you could start over","what made you wanna try that"],
   // Topic transitions
   connectors: ["oh wait that reminds me —","ooh speaking of that —","ok related to that —","oh actually —","that actually connects to something —","ok wait you know what goes with that?"],
 };
@@ -2635,7 +2635,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
       const hook = assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners);
       parts.push(hook);
       if (assoc.opinions) {
-        parts.push(`I ask because ${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
+        parts.push(`cause like ${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
       }
       if (assoc.facts && Math.random() > 0.5) parts.push(pick(assoc.facts) + ".");
       return parts.join(" ");
@@ -2650,7 +2650,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
       } else if (assoc.facts) {
         parts.push(`Here's something wild — ${pick(assoc.facts)}.`);
       }
-      if (mirrorPhrase) parts.push(`And what you said about ${mirrorPhrase} — yeah, I'm with you on that.`);
+      if (mirrorPhrase) parts.push(`and the ${mirrorPhrase} thing — yeah fr.`);
       parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
       return parts.join(" ");
     }
@@ -2659,11 +2659,11 @@ function composeResponse(topic, userWords, sent, isQuestion) {
     case "fact_first": {
       const parts = [];
       if (assoc.facts) {
-        const factLeads = ["Fun fact:", "Did you know —", "Here's something cool:", "Random but relevant:"];
+        const factLeads = ["ok wait this is actually wild —", "dude ok so", "yo random but", "ok lowkey interesting tho —"];
         parts.push(`${pick(factLeads)} ${pick(assoc.facts)}.`);
       }
       if (assoc.opinions && Math.random() > 0.4) {
-        parts.push(`And personally, ${pick(assoc.opinions)}.`);
+        parts.push(`and honestly ${pick(assoc.opinions)}.`);
       }
       parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
       return parts.join(" ");
@@ -2675,9 +2675,9 @@ function composeResponse(topic, userWords, sent, isQuestion) {
       const prevTopics = Object.keys(mem.topics).filter(t => t !== topic && ASSOC[t]);
       if (prevTopics.length > 0) {
         const prevTopic = pick(prevTopics);
-        parts.push(`This connects to what we were talking about with ${prevTopic} earlier —`);
+        parts.push(`ok wait this is kinda related to the ${prevTopic} thing —`);
         if (assoc.opinions) parts.push(`${pick(assoc.opinions)}.`);
-        const bridge = ASSOC[prevTopic]?.related?.includes(topic) ? `They're definitely related.` : `Different worlds, same energy.`;
+        const bridge = ASSOC[prevTopic]?.related?.includes(topic) ? `like they're totally connected.` : `different vibes but same energy somehow.`;
         parts.push(bridge);
       } else {
         parts.push(pick(reactionPool));
@@ -2702,15 +2702,15 @@ function composeResponse(topic, userWords, sent, isQuestion) {
     // ── Exploratory: think out loud, weigh multiple angles ──
     case "exploratory": {
       const parts = [];
-      parts.push(pick(["hmm let me think about this...", "okay so —", "this is interesting because", "i go back and forth on this but"]));
+      parts.push(pick(["hmm ok so —", "ok wait —", "see the thing is", "i go back and forth on this but", "ok so like"]));
       if (assoc.opinions && assoc.opinions.length > 1) {
-        parts.push(`On one hand, ${assoc.opinions[0]}.`);
-        parts.push(`But also, ${assoc.opinions[Math.min(1, assoc.opinions.length - 1)]}.`);
+        parts.push(`like on one hand ${assoc.opinions[0]}.`);
+        parts.push(`but then also ${assoc.opinions[Math.min(1, assoc.opinions.length - 1)]}.`);
       } else if (assoc.opinions) {
         parts.push(`${pick(assoc.opinions)}.`);
       }
-      if (assoc.facts && Math.random() > 0.5) parts.push(`Plus, ${pick(assoc.facts).toLowerCase()}.`);
-      parts.push(assoc.hooks ? pick(assoc.hooks) : "Where do you land on this?");
+      if (assoc.facts && Math.random() > 0.5) parts.push(`also like ${pick(assoc.facts).toLowerCase()}.`);
+      parts.push(assoc.hooks ? pick(assoc.hooks) : "idk where are you on this");
       return parts.join(" ");
     }
 
@@ -2988,13 +2988,14 @@ function handleOpinionRequest(text, topics) {
     const hook = pick(assoc.hooks || COMP.deepeners);
 
     const starters = [
-      `Honestly? I think ${opinion}.`,
-      `My take on ${topic}: ${opinion}.`,
-      `Here's what I think — ${opinion}.`,
-      `Real talk: ${opinion}.`,
+      `honestly? i think ${opinion}.`,
+      `ok so my take on ${topic}: ${opinion}.`,
+      `ok here's the thing — ${opinion}.`,
+      `ngl ${opinion}.`,
+      `tbh ${opinion}.`,
     ];
     let response = pickNew(starters);
-    if (fact && Math.random() > 0.4) response += ` Plus, ${fact.charAt(0).toLowerCase() + fact.slice(1)}.`;
+    if (fact && Math.random() > 0.4) response += ` also ${fact.charAt(0).toLowerCase() + fact.slice(1)}.`;
     response += " " + hook;
     return response;
   }
@@ -4519,32 +4520,32 @@ function reasonThroughWhatIf(hyp) {
 
   // Build openers
   const openers = [
-    "Ooh that's a fun one to think through.",
-    "Oh I love this kind of question.",
-    "Now THAT'S a thought experiment.",
-    "Okay let me actually think about this...",
-    "This is the kind of question I was made for.",
+    "ooh ok thats actually a good one.",
+    "oh i love this kind of question.",
+    "ok WAIT thats actually such a good question.",
+    "ok let me think about this...",
+    "oh this is exactly my kind of question.",
   ];
 
   // Build the reasoning
   let response = pick(openers);
 
   if (chain.length > 0) {
-    response += " First off, " + chain[0] + ".";
+    response += " ok so " + chain[0] + ".";
     if (chain.length > 1) {
-      const connectors = [" And then ", " Plus, ", " On top of that, ", " But also — "];
+      const connectors = [" and then ", " also ", " oh and ", " but also — "];
       response += pick(connectors) + chain[1] + ".";
     }
     if (chain.length > 2) {
-      const twists = [" Although, ", " The twist is: ", " But here's the thing — ", " Plot twist: "];
+      const twists = [" although, ", " ok but the twist is: ", " but here's the thing — ", " wait plot twist tho: "];
       response += pick(twists) + chain[2] + ".";
     }
   } else {
     // No seeds found — generate from the premise structure itself
     const abstract = [
-      `The ripple effects would be wild — it would change not just the obvious stuff but all the second-order things nobody thinks about.`,
-      `The first-order effect is obvious, but the interesting part is how it would reshape everything around it.`,
-      `People always think about the direct impact, but the social and cultural shifts would be even bigger.`,
+      `the ripple effects would be wild — like not just the obvious stuff but all the second-order things nobody thinks about.`,
+      `ok so the obvious answer is one thing but the interesting part is how it would change everything AROUND it.`,
+      `people always think about the direct impact but the social and cultural shifts would be even crazier.`,
     ];
     response += " " + pick(abstract);
   }
@@ -6443,8 +6444,8 @@ function handleTurnSignal(signal) {
       if (assoc) {
         // Pick a related fact, opinion, or hook we haven't used
         const pools = [
-          ...(assoc.facts || []).map(f => `And actually, ${f.charAt(0).toLowerCase() + f.slice(1)}`),
-          ...(assoc.opinions || []).map(o => `Plus, ${o}.`),
+          ...(assoc.facts || []).map(f => `oh also ${f.charAt(0).toLowerCase() + f.slice(1)}`),
+          ...(assoc.opinions || []).map(o => `and honestly ${o}.`),
           ...(assoc.hooks || []),
         ];
         const continuation = pickNew(pools);
