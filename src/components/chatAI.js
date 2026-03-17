@@ -19870,6 +19870,160 @@ function polishOutput(response) {
   return r.trim();
 }
 
+/* ── Round 156: Typo Simulation & Texting Imperfections ──
+ * Real friends don't type perfectly. These post-processors add subtle human
+ * imperfections: dropped apostrophes, letter elongation, occasional typos
+ * with self-corrections, and trailing off mid-thought.
+ * Applied as the LAST transform before tracking/memory, chained with
+ * probability gates so at most 1-2 imperfections fire per message.
+ */
+
+// Guard: skip imperfections for short msgs, serious/emotional moments, or direct answers
+function _shouldApplyImperfections(response, sent) {
+  const words = response.trim().split(/\s+/);
+  if (words.length < 5) return false;
+  // Don't mess with emotional/serious messages
+  if (sent && sent.score < -0.3) return false;
+  // Don't mess with multi-message responses (already complex enough)
+  if (response.includes("\n---\n")) return false;
+  return true;
+}
+
+// 1. Apostrophe dropper (~60% chance per contraction)
+function applyApostropheDrops(response) {
+  const contractions = [
+    [/\bdon't\b/g, "dont"], [/\bcan't\b/g, "cant"], [/\bwon't\b/g, "wont"],
+    [/\bI'm\b/g, "im"], [/\byou're\b/gi, "youre"], [/\bthat's\b/gi, "thats"],
+    [/\bit's\b/gi, "its"], [/\bI'll\b/g, "ill"], [/\bwe're\b/gi, "were"],
+    [/\bdidn't\b/gi, "didnt"], [/\bdoesn't\b/gi, "doesnt"], [/\bwouldn't\b/gi, "wouldnt"],
+    [/\bcouldn't\b/gi, "couldnt"], [/\bshouldn't\b/gi, "shouldnt"],
+    [/\bthey're\b/gi, "theyre"], [/\bwhat's\b/gi, "whats"],
+    [/\bthere's\b/gi, "theres"], [/\bhere's\b/gi, "heres"],
+    [/\blet's\b/gi, "lets"], [/\bisn't\b/gi, "isnt"],
+  ];
+  let r = response;
+  for (const [rx, replacement] of contractions) {
+    if (Math.random() < 0.6) {
+      r = r.replace(rx, replacement);
+    }
+  }
+  return r;
+}
+
+// 2. Letter elongation (~15% of responses, pick one word and stretch it)
+const ELONGATION_MAP = [
+  [/\bso\b/i, "sooo"], [/\byes\b/i, "yesss"], [/\bno\b/i, "nooo"],
+  [/\bwait\b/i, "waittt"], [/\bwhat\b/i, "whatttt"], [/\breally\b/i, "reallyyy"],
+  [/\bdude\b/i, "duuude"], [/\bnice\b/i, "niiiice"], [/\bsame\b/i, "sameee"],
+  [/\bplease\b/i, "pleaseee"], [/\bstop\b/i, "stoppp"], [/\bugh\b/i, "ughhh"],
+  [/\bomg\b/i, "omggg"], [/\bwow\b/i, "wowww"], [/\bhaha\b/i, "hahaha"],
+  [/\byeah\b/i, "yeahhh"], [/\bnah\b/i, "nahhh"], [/\bdang\b/i, "danggg"],
+];
+
+function applyLetterElongation(response) {
+  if (Math.random() > 0.15) return response;
+  // Shuffle and try to find one match
+  const shuffled = [...ELONGATION_MAP].sort(() => Math.random() - 0.5);
+  let r = response;
+  for (const [rx, stretched] of shuffled) {
+    if (rx.test(r)) {
+      // Only replace the first occurrence
+      r = r.replace(rx, stretched);
+      break;
+    }
+  }
+  return r;
+}
+
+// 3. Typo + self-correction (~5% of responses)
+const TYPO_PAIRS = [
+  ["the", "teh"], ["and", "adn"], ["that", "taht"], ["time", "tiem"],
+  ["just", "jsut"], ["the", "hte"], ["with", "wiht"], ["have", "ahve"],
+  ["this", "tihs"], ["from", "form"], ["what", "waht"], ["they", "tehy"],
+];
+
+function applyTypoCorrection(response) {
+  if (Math.random() > 0.05) return response;
+  const shuffled = [...TYPO_PAIRS].sort(() => Math.random() - 0.5);
+  for (const [correct, typo] of shuffled) {
+    const rx = new RegExp("\\b" + correct + "\\b", "i");
+    if (rx.test(response)) {
+      // Replace first occurrence with the typo
+      const mangled = response.replace(rx, typo);
+      // Append a correction as a separate message
+      return mangled + "\n---\n*" + correct;
+    }
+  }
+  return response;
+}
+
+// 4. Trailing off (~10% of longer responses, end mid-thought)
+const TRAIL_OFFS = [
+  "idk it's just...", "like...", "anyway", "idk", "but yeah",
+  "I mean...", "whatever lol", "but idk",
+];
+
+function applyTrailingOff(response) {
+  if (Math.random() > 0.10) return response;
+  const words = response.trim().split(/\s+/);
+  // Only on longer casual messages (8+ words), not questions
+  if (words.length < 8) return response;
+  if (response.trim().endsWith("?")) return response;
+  // Replace the last sentence with a trail-off
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length >= 2) {
+    const kept = sentences.slice(0, -1).join(" ").trim();
+    const trail = TRAIL_OFFS[Math.floor(Math.random() * TRAIL_OFFS.length)];
+    return kept + " " + trail;
+  }
+  return response;
+}
+
+// Master function: chain all imperfections with a cap of 1-2 per message
+function applyTextingImperfections(response, sent) {
+  if (!_shouldApplyImperfections(response, sent)) return response;
+
+  let r = response;
+  let imperfectionCount = 0;
+  const maxImperfections = Math.random() < 0.3 ? 2 : 1;
+
+  // Step 1: Apostrophe drops (counts as 1 imperfection regardless of how many drop)
+  const afterApostrophe = applyApostropheDrops(r);
+  if (afterApostrophe !== r) {
+    r = afterApostrophe;
+    imperfectionCount++;
+  }
+
+  // Step 2: Letter elongation
+  if (imperfectionCount < maxImperfections) {
+    const afterElongation = applyLetterElongation(r);
+    if (afterElongation !== r) {
+      r = afterElongation;
+      imperfectionCount++;
+    }
+  }
+
+  // Step 3: Typo + correction (skip if we already hit max)
+  if (imperfectionCount < maxImperfections) {
+    const afterTypo = applyTypoCorrection(r);
+    if (afterTypo !== r) {
+      r = afterTypo;
+      imperfectionCount++;
+    }
+  }
+
+  // Step 4: Trailing off (skip if we already hit max)
+  if (imperfectionCount < maxImperfections) {
+    const afterTrail = applyTrailingOff(r);
+    if (afterTrail !== r) {
+      r = afterTrail;
+      imperfectionCount++;
+    }
+  }
+
+  return r;
+}
+
 /* ── Conversational Memory Weaving (Round 61) ──
  * Before the response hits the post-processing pipeline, this system scans
  * conversation memory for relevant context and weaves it into the response.
@@ -21171,6 +21325,9 @@ export async function getAIResponse(input) {
 
   // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
   response = splitIntoMultiMessages(response, text, sent);
+
+  // ═══ Round 156: Texting imperfections — apostrophe drops, elongation, typos, trailing off ═══
+  response = applyTextingImperfections(response, sent);
 
   // Update discourse state for next turn
   lastDiscourseMove = plan.flavor;
