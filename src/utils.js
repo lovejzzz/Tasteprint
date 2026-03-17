@@ -3564,6 +3564,60 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Duotone & color overlay compositions ──
+  // Mood-aware colored overlay effects using mix-blend-mode compositions.
+  // Creates duotone / color wash / light leak aesthetics.
+  if (!isSmall && !isNav && !isCode) {
+    const dtRoll = Math.random();
+    const dtThresh = moodId === "bold" ? 0.20
+      : moodId === "playful" ? 0.18
+      : moodId === "elegant" ? 0.15
+      : moodId === "minimal" ? 0.06
+      : 0.10; // auto
+    if (dtRoll < dtThresh) {
+      if (moodId === "bold") {
+        // Strong saturated overlays — multiply or color-burn
+        const blendMode = pick(["multiply", "color-burn"]);
+        const opacity = Math.floor(Math.random() * 11 + 15); // 15-25 (hex opacity)
+        const opHex = opacity.toString(16).padStart(2, "0");
+        s.gradientOverlay4 = `linear-gradient(${pick(["135deg", "180deg", "225deg", "to right"])}, ${acHex}${opHex}, ${gc1}${opHex})`;
+        s.mixBlendMode4 = blendMode;
+      } else if (moodId === "playful") {
+        // Colorful split-tone overlays — overlay or soft-light
+        const blendMode = pick(["overlay", "soft-light"]);
+        const opacity = Math.floor(Math.random() * 11 + 12); // 12-22
+        const opHex = opacity.toString(16).padStart(2, "0");
+        s.gradientOverlay4 = `linear-gradient(${pick(["to right", "to bottom right", "135deg", "45deg"])}, ${gc1}${opHex}, ${gc2}${opHex})`;
+        s.mixBlendMode4 = blendMode;
+      } else if (moodId === "elegant") {
+        // Subtle warm/cool tinting — soft-light with muted tones
+        const opacity = Math.floor(Math.random() * 8 + 8); // 8-15
+        const opHex = opacity.toString(16).padStart(2, "0");
+        const tintColor = dark ? "#c8a87020" : `${shHex}${opHex}`;
+        s.gradientOverlay4 = `linear-gradient(180deg, ${tintColor}, transparent)`;
+        s.mixBlendMode4 = "soft-light";
+      } else if (moodId === "minimal") {
+        // Almost invisible tint — luminosity at very low opacity
+        const opacity = Math.floor(Math.random() * 6 + 5); // 5-10
+        const opHex = opacity.toString(16).padStart(2, "0");
+        s.gradientOverlay4 = `linear-gradient(180deg, ${acHex}${opHex}, transparent)`;
+        s.mixBlendMode4 = "luminosity";
+      } else {
+        // auto — moderate soft-light wash
+        const opacity = Math.floor(Math.random() * 8 + 10); // 10-17
+        const opHex = opacity.toString(16).padStart(2, "0");
+        s.gradientOverlay4 = `linear-gradient(${pick(["135deg", "180deg", "to right"])}, ${gc1}${opHex}, ${acHex}${opHex})`;
+        s.mixBlendMode4 = pick(["soft-light", "overlay"]);
+      }
+    }
+    // Color dodge highlights — rare light leak / lens flare glow
+    if (Math.random() < 0.05) {
+      const dodgeColor = gcGlow || gc1;
+      s.gradientOverlay4 = `radial-gradient(circle at ${pick(["30% 30%", "70% 30%", "50% 50%", "70% 70%"])}, ${dodgeColor}18, transparent 70%)`;
+      s.mixBlendMode4 = "color-dodge";
+    }
+  }
+
   return s;
 }
 
