@@ -133,7 +133,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     });
   }, []);
 
-  const sendMessage = useCallback(() => {
+  const sendMessage = useCallback(async () => {
     const text = inputVal.trim();
     if (!text || busyRef.current) return;
     busyRef.current = true;
@@ -147,8 +147,8 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     setMessages(prev => [...prev, myMsg]);
     setInputVal("");
 
-    // Compute AI response synchronously (it's local SLM, no network)
-    const ai = getAIResponse(text);
+    // Compute AI response (async for sentence encoder, fast ~5-10ms when warm)
+    const ai = await getAIResponse(text);
     const aiText = typeof ai === "string" ? ai : ai.text;
     const typingMs = typeof ai === "object" ? ai.typingMs : (800 + Math.random() * 1200);
     const pause = typeof ai === "object" ? ai.pause : null;

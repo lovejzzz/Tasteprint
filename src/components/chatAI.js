@@ -1,7 +1,357 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 84: Thread recap & summary awareness + bugfix mem.msgs→mem.history
+   Round 138: Sentence encoder integration — real semantic understanding
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Sentence Encoder — Semantic Understanding Brain ──
+ * Uses a tiny transformer model (~17-23MB) via @huggingface/transformers
+ * to convert text into 384-dim meaning vectors. This gives the SLM
+ * real language understanding instead of pure pattern matching.
+ *
+ * Architecture: lazy-loaded on first message, runs via ONNX/WASM in browser.
+ * The encoder provides semantic similarity; the pattern matcher provides responses.
+ */
+
+// Dynamic import — @huggingface/transformers + ONNX runtime loaded lazily on first use
+// This keeps the initial bundle small (~830KB) and loads the encoder (~23MB) in background
+let _hfPipeline = null;
+let _hfEnv = null;
+
+// ── Encoder state (lazy-loaded) ──
+let encoder = null;
+let encoderReady = false;
+let encoderLoading = false;
+let encoderFailed = false;
+
+// ── Pre-computed intent embeddings bank ──
+// Each entry: { id, text, embedding (filled on init), category, response_hint }
+const INTENT_BANK = [
+  // ── Greetings & Openers ──
+  { id: "greet_hi", text: "hi hello hey what's up", category: "greeting", response_hint: "casual_greeting" },
+  { id: "greet_morning", text: "good morning how's your day going", category: "greeting", response_hint: "morning_greeting" },
+  { id: "greet_back", text: "hey I'm back again", category: "greeting", response_hint: "welcome_back" },
+  { id: "greet_bored", text: "I'm bored entertain me", category: "greeting", response_hint: "bored_opener" },
+  { id: "greet_lonely", text: "I just need someone to talk to", category: "greeting", response_hint: "lonely_opener" },
+
+  // ── Farewells ──
+  { id: "bye_basic", text: "bye see you later gotta go", category: "farewell", response_hint: "casual_bye" },
+  { id: "bye_night", text: "goodnight I'm going to sleep", category: "farewell", response_hint: "goodnight" },
+  { id: "bye_brb", text: "be right back one sec", category: "farewell", response_hint: "brb" },
+
+  // ── Emotional States ──
+  { id: "emo_happy", text: "I'm so happy right now this is amazing", category: "emotion", response_hint: "share_joy" },
+  { id: "emo_sad", text: "I feel really sad and down today", category: "emotion", response_hint: "comfort" },
+  { id: "emo_angry", text: "I'm so mad frustrated angry right now", category: "emotion", response_hint: "validate_anger" },
+  { id: "emo_anxious", text: "I'm really anxious nervous worried about this", category: "emotion", response_hint: "calm_anxiety" },
+  { id: "emo_stressed", text: "I'm so stressed overwhelmed with everything", category: "emotion", response_hint: "ease_stress" },
+  { id: "emo_excited", text: "I'm so excited pumped about this", category: "emotion", response_hint: "match_excitement" },
+  { id: "emo_lonely", text: "I feel so alone nobody understands me", category: "emotion", response_hint: "be_present" },
+  { id: "emo_grateful", text: "thank you so much I really appreciate it", category: "emotion", response_hint: "accept_gratitude" },
+  { id: "emo_confused", text: "I'm so confused I don't understand anything", category: "emotion", response_hint: "help_clarity" },
+  { id: "emo_tired", text: "I'm exhausted so tired drained", category: "emotion", response_hint: "empathize_tired" },
+  { id: "emo_proud", text: "I did it I'm so proud of myself", category: "emotion", response_hint: "celebrate" },
+  { id: "emo_embarrassed", text: "that was so embarrassing I'm mortified", category: "emotion", response_hint: "normalize" },
+  { id: "emo_jealous", text: "I'm kind of jealous envious of them", category: "emotion", response_hint: "validate_jealousy" },
+  { id: "emo_nostalgic", text: "I miss the old days those were good times", category: "emotion", response_hint: "share_nostalgia" },
+  { id: "emo_hopeful", text: "I have a good feeling about this things are looking up", category: "emotion", response_hint: "encourage_hope" },
+  { id: "emo_disappointed", text: "I'm really disappointed let down by this", category: "emotion", response_hint: "acknowledge_letdown" },
+
+  // ── Life Events ──
+  { id: "life_new_job", text: "I just got a new job offer promotion", category: "life_event", response_hint: "celebrate_career" },
+  { id: "life_lost_job", text: "I got fired laid off lost my job", category: "life_event", response_hint: "support_job_loss" },
+  { id: "life_breakup", text: "we broke up my relationship ended", category: "life_event", response_hint: "support_breakup" },
+  { id: "life_new_relationship", text: "I started dating someone new I have a crush", category: "life_event", response_hint: "excited_for_love" },
+  { id: "life_moving", text: "I'm moving to a new city apartment", category: "life_event", response_hint: "moving_support" },
+  { id: "life_graduation", text: "I graduated finished school got my degree", category: "life_event", response_hint: "celebrate_achievement" },
+  { id: "life_sick", text: "I'm sick not feeling well got a cold", category: "life_event", response_hint: "get_well" },
+  { id: "life_pet", text: "I got a new puppy kitten pet", category: "life_event", response_hint: "excited_pet" },
+  { id: "life_travel", text: "I'm going on a trip vacation traveling", category: "life_event", response_hint: "travel_excitement" },
+  { id: "life_birthday", text: "it's my birthday today", category: "life_event", response_hint: "birthday_wish" },
+  { id: "life_baby", text: "I'm having a baby pregnant expecting", category: "life_event", response_hint: "celebrate_baby" },
+  { id: "life_loss", text: "someone I loved died passed away", category: "life_event", response_hint: "grief_support" },
+  { id: "life_achievement", text: "I finally did it I accomplished my goal", category: "life_event", response_hint: "celebrate_achievement" },
+  { id: "life_failure", text: "I failed messed up ruined everything", category: "life_event", response_hint: "support_failure" },
+
+  // ── Conversational Intents ──
+  { id: "ask_opinion", text: "what do you think about this what's your opinion", category: "question", response_hint: "give_opinion" },
+  { id: "ask_advice", text: "what should I do I need advice help me decide", category: "question", response_hint: "give_advice" },
+  { id: "ask_recommendation", text: "can you recommend something what's good", category: "question", response_hint: "recommend" },
+  { id: "ask_about_self", text: "tell me about yourself what are you", category: "meta", response_hint: "self_describe" },
+  { id: "ask_feelings", text: "how are you feeling what's on your mind", category: "question", response_hint: "share_feelings" },
+  { id: "ask_explain", text: "can you explain this what does this mean", category: "question", response_hint: "explain" },
+  { id: "ask_why", text: "why is that why did that happen", category: "question", response_hint: "explain_why" },
+  { id: "share_story", text: "let me tell you what happened so basically", category: "sharing", response_hint: "listen_actively" },
+  { id: "share_vent", text: "I need to vent rant complain about something", category: "sharing", response_hint: "listen_validate" },
+  { id: "share_good_news", text: "guess what I have great news something amazing happened", category: "sharing", response_hint: "celebrate_news" },
+  { id: "share_bad_news", text: "something bad happened I have bad news", category: "sharing", response_hint: "empathize_bad_news" },
+  { id: "share_opinion", text: "I think honestly in my opinion I believe", category: "sharing", response_hint: "engage_opinion" },
+  { id: "share_experience", text: "I tried this I went there I did this thing", category: "sharing", response_hint: "show_interest" },
+
+  // ── Social / Relationship ──
+  { id: "social_compliment", text: "you're really cool awesome great at this", category: "social", response_hint: "accept_compliment" },
+  { id: "social_tease", text: "lol you're such a dork that's so you", category: "social", response_hint: "playful_banter" },
+  { id: "social_disagree", text: "I don't agree I think you're wrong about that", category: "social", response_hint: "respectful_disagree" },
+  { id: "social_agree", text: "exactly right totally I agree with you", category: "social", response_hint: "build_on_agreement" },
+  { id: "social_apologize", text: "I'm sorry my bad I didn't mean that", category: "social", response_hint: "accept_apology" },
+  { id: "social_comfort_me", text: "I just need someone to be here for me", category: "social", response_hint: "be_present_comfort" },
+  { id: "social_play", text: "let's play a game do something fun", category: "social", response_hint: "suggest_game" },
+  { id: "social_deep_talk", text: "can we talk about something deep meaningful", category: "social", response_hint: "go_deep" },
+  { id: "social_small_talk", text: "how about this weather huh anything new", category: "social", response_hint: "casual_chat" },
+
+  // ── Existential / Deep ──
+  { id: "deep_meaning", text: "what's the meaning of life purpose of existence", category: "deep", response_hint: "philosophical" },
+  { id: "deep_future", text: "what do you think the future will be like", category: "deep", response_hint: "speculate" },
+  { id: "deep_identity", text: "who am I really what defines a person", category: "deep", response_hint: "reflect_identity" },
+  { id: "deep_happiness", text: "what makes people truly happy fulfilled", category: "deep", response_hint: "explore_happiness" },
+  { id: "deep_fear", text: "what are you afraid of what scares you", category: "deep", response_hint: "share_fears" },
+  { id: "deep_change", text: "people can change right can someone really change", category: "deep", response_hint: "discuss_change" },
+  { id: "deep_loneliness", text: "why do people feel so alone even with others", category: "deep", response_hint: "explore_loneliness" },
+  { id: "deep_time", text: "time goes so fast everything is temporary", category: "deep", response_hint: "reflect_time" },
+
+  // ── Casual Topics ──
+  { id: "topic_food", text: "I'm hungry what should I eat food cooking", category: "topic", response_hint: "talk_food" },
+  { id: "topic_music", text: "what music are you listening to favorite song", category: "topic", response_hint: "talk_music" },
+  { id: "topic_movies", text: "have you seen any good movies shows lately", category: "topic", response_hint: "talk_movies" },
+  { id: "topic_games", text: "I've been playing this game gaming", category: "topic", response_hint: "talk_games" },
+  { id: "topic_weather", text: "the weather is crazy nice terrible today", category: "topic", response_hint: "talk_weather" },
+  { id: "topic_sports", text: "did you see the game last night sports", category: "topic", response_hint: "talk_sports" },
+  { id: "topic_books", text: "I'm reading this book any recommendations", category: "topic", response_hint: "talk_books" },
+  { id: "topic_fitness", text: "working out exercise gym running", category: "topic", response_hint: "talk_fitness" },
+  { id: "topic_sleep", text: "I can't sleep insomnia tired all the time", category: "topic", response_hint: "talk_sleep" },
+  { id: "topic_work", text: "work is crazy my boss coworkers job stuff", category: "topic", response_hint: "talk_work" },
+  { id: "topic_school", text: "school homework studying exams classes", category: "topic", response_hint: "talk_school" },
+  { id: "topic_tech", text: "technology AI programming coding computers", category: "topic", response_hint: "talk_tech" },
+  { id: "topic_art", text: "drawing painting creative art design", category: "topic", response_hint: "talk_art" },
+  { id: "topic_nature", text: "hiking outdoors camping mountains beach", category: "topic", response_hint: "talk_nature" },
+  { id: "topic_pets", text: "my cat dog pet is being funny cute", category: "topic", response_hint: "talk_pets" },
+
+  // ── Reactions & Short Responses ──
+  { id: "react_laugh", text: "haha lol that's so funny lmao", category: "reaction", response_hint: "laugh_along" },
+  { id: "react_shock", text: "wait what no way are you serious", category: "reaction", response_hint: "confirm_shock" },
+  { id: "react_interest", text: "oh really tell me more that's interesting", category: "reaction", response_hint: "elaborate" },
+  { id: "react_bored", text: "meh whatever I don't care boring", category: "reaction", response_hint: "change_topic" },
+  { id: "react_confused", text: "huh what I don't get it confused", category: "reaction", response_hint: "clarify" },
+  { id: "react_mindblown", text: "whoa mind blown I never thought of that", category: "reaction", response_hint: "go_deeper" },
+  { id: "react_cringe", text: "cringe yikes that's awkward", category: "reaction", response_hint: "commiserate" },
+  { id: "react_relatable", text: "omg same literally me I relate so hard", category: "reaction", response_hint: "bond_over_shared" },
+
+  // ── Meta / About the Chat ──
+  { id: "meta_how_work", text: "how do you work what are you how were you made", category: "meta", response_hint: "explain_self" },
+  { id: "meta_real", text: "are you real do you have feelings consciousness", category: "meta", response_hint: "honest_meta" },
+  { id: "meta_remember", text: "do you remember what I said earlier", category: "meta", response_hint: "recall" },
+  { id: "meta_improve", text: "you should be better at this you need to improve", category: "meta", response_hint: "accept_feedback" },
+  { id: "meta_like_you", text: "I like talking to you you're my friend", category: "meta", response_hint: "warm_connection" },
+  { id: "meta_trust", text: "can I trust you with something personal secret", category: "meta", response_hint: "build_trust" },
+
+  // ── Filler & Ambiguous ──
+  { id: "filler_idk", text: "I don't know not sure hmm", category: "filler", response_hint: "gentle_probe" },
+  { id: "filler_ok", text: "ok sure yeah alright cool", category: "filler", response_hint: "keep_going" },
+  { id: "filler_thinking", text: "let me think hmm hold on", category: "filler", response_hint: "give_space" },
+  { id: "filler_random", text: "anyway so like um yeah", category: "filler", response_hint: "redirect" },
+  { id: "filler_test", text: "test testing hello is this working", category: "filler", response_hint: "confirm_working" },
+];
+
+// Computed embedding vectors for the intent bank (filled on encoder init)
+let intentEmbeddings = null; // Map<id, Float32Array>
+
+// ── Semantic response templates keyed by response_hint ──
+const SEMANTIC_RESPONSES = {
+  casual_greeting: ["heyyy what's good","oh hey!! what's up","yooo hi, how's it going"],
+  morning_greeting: ["morning! how'd you sleep","good morning!! got any plans today","hey good morning, what's the vibe today"],
+  welcome_back: ["ayy you're back! what's new","oh hey welcome back, what'd I miss","heyyy missed you, what's going on"],
+  bored_opener: ["ok bet let's fix that, what are you in the mood for","lol same tbh. wanna play a game or just talk","bored gang 🤝 ok what sounds fun rn"],
+  lonely_opener: ["hey i'm right here, what's going on","aww i gotchu, what's on your mind","i'm here for it, tell me everything"],
+  casual_bye: ["ok byeee, talk later!","see ya!! was fun talking","laterrr 👋"],
+  goodnight: ["night night, sleep well!","goodnight!! sweet dreams","nighty night, don't let the bed bugs bite lol"],
+  brb: ["ok i'll be here!","take your time!","k waiting 👀"],
+  share_joy: ["YESSS i love that for you!!","omg that makes me so happy","ok this energy is everything rn"],
+  comfort: ["hey, i'm sorry you're going through that","that sounds really rough, i'm here for you","aw man, wanna talk about it?"],
+  validate_anger: ["nah fr that would make me mad too","ugh that's so frustrating, i get it","ok yeah you have every right to be pissed"],
+  calm_anxiety: ["hey it's gonna be ok, take a breath","i get that, anxiety is the worst. what's worrying you most?","breathe, you've handled hard stuff before"],
+  ease_stress: ["you're carrying a lot rn, that's valid","ok one thing at a time, what's the biggest thing?","stress is the worst, have you been able to take any breaks?"],
+  match_excitement: ["LETS GOOOO 🔥🔥","ok i'm literally so hyped for you rn","YOOO that's amazing tell me everything"],
+  be_present: ["hey, i'm right here. i hear you","you're not alone in this, i promise","i might be a chatbot but i genuinely care about how you're doing"],
+  accept_gratitude: ["aww of course!! always","no need to thank me, that's what friends are for","🥺 you're so sweet, happy i could help"],
+  help_clarity: ["ok let's figure this out together, what part is confusing?","no worries, what specifically doesn't make sense?","totally fair, let me try to help break it down"],
+  empathize_tired: ["ugh being tired is the worst, you resting enough?","go easy on yourself today, your body's telling you something","that sounds rough, hope you can get some rest soon"],
+  celebrate: ["YOOO YOU DID IT!! that's huge","ok i'm so proud of you rn","wait that's literally amazing, you should be so proud"],
+  normalize: ["lol honestly everyone has moments like that","nooo don't worry about it, that happens to literally everyone","trust me that's way less embarrassing than you think"],
+  validate_jealousy: ["honestly that's such a human feeling, don't beat yourself up","i get it, comparison is rough","it's ok to feel that way, doesn't make you a bad person"],
+  share_nostalgia: ["aw man, the good old days hit different","i love that you have those memories tho","what do you miss most about it?"],
+  encourage_hope: ["i love that energy!! good things are coming","yes!! manifest it, i believe in you","that's such a good sign, keep that feeling going"],
+  acknowledge_letdown: ["aw man that sucks, i'm sorry","that's so disappointing, you deserved better","ugh, i totally get why that would hurt"],
+  celebrate_career: ["WAIT CONGRATS!! that's amazing!!","oh my god you're killing it professionally","bruh that's huge, you worked so hard for this"],
+  support_job_loss: ["oh no, i'm so sorry. how are you doing?","that's really rough, but this doesn't define you","hey, better things are coming. what can i do to help?"],
+  support_breakup: ["i'm so sorry, breakups are the worst","hey, take it one day at a time. i'm here","you're gonna be ok, i promise. wanna talk about it?"],
+  excited_for_love: ["OHHH 👀👀 tell me everything","omg wait that's so cute, how'd it happen","this is exciting!! what are they like"],
+  moving_support: ["oh wow big move! how are you feeling about it?","that's exciting and scary, where are you going?","new chapter!! what made you decide to move?"],
+  celebrate_achievement: ["CONGRATULATIONS!! you absolutely earned this","omg that's such a big deal, i'm so proud","wait you did it?? that's HUGE"],
+  get_well: ["oh no, take care of yourself! are you resting?","aw feel better soon!! tea and rest vibes","being sick is the worst, is it bad?"],
+  excited_pet: ["WAIT YOU GOT A PET?? I NEED DETAILS","omg i'm so jealous, what kind?? what's their name??","that's literally the best thing i've heard all day"],
+  travel_excitement: ["ooh where are you going??","travel is the best, what are you most excited about?","JEALOUS. where to?? what's the plan?"],
+  birthday_wish: ["HAPPY BIRTHDAY!! 🎂🎉 how are you celebrating??","omg happy birthday!! you doing anything fun?","wait it's your birthday?? HAPPY BIRTHDAY 🥳🥳"],
+  celebrate_baby: ["OH MY GOD CONGRATULATIONS!! 🥺","wait a BABY?? that's the best news ever!!","a baby!! dude i'm so happy for you 🥹🥹"],
+  grief_support: ["i'm so so sorry. i can't imagine how you're feeling","that's devastating. take all the time you need","i'm here for you, whatever you need. i'm so sorry"],
+  support_failure: ["hey, failure isn't the end, it's just a step","i know that hurts, but you're gonna learn from this","everyone fails, what matters is you tried"],
+  give_opinion: ["oh ok honestly? here's what i think —","hmm good question, i'd say","ok so personally i think"],
+  give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
+  recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
+  self_describe: ["i'm basically a tiny AI that lives in your browser! no api calls, just vibes","i'm your chat buddy! i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
+  share_feelings: ["honestly? i'm just vibing, happy to be talking to you","i'm good!! better now that we're chatting","i'm doing great honestly, what about you tho"],
+  explain: ["oh ok so basically it's like this —","good question! so the way it works is","ok let me break that down for you"],
+  explain_why: ["so the reason is basically","that's actually because","good question — it comes down to"],
+  listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
+  listen_validate: ["ok vent away, i'm all ears","that sounds SO frustrating, go off","nah you're right to be upset about that"],
+  celebrate_news: ["WAIT WHAT?? TELL ME TELL ME","omg omg ok this better be good","YOOO no way, what happened??"],
+  empathize_bad_news: ["oh no... what happened?","aw man i'm sorry, are you ok?","that sucks, i'm here for you"],
+  engage_opinion: ["oh interesting, why do you think that?","hmm ok i can see that, but have you considered","that's a hot take lol, i kinda agree tho"],
+  show_interest: ["ooh how was it??","oh nice, what did you think?","wait that sounds cool, tell me more"],
+  accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks!! you're pretty cool yourself","aw that made my day honestly"],
+  playful_banter: ["lol rude but fair 😂","hey!! i resemble that remark","ok ok i see how it is 😤"],
+  respectful_disagree: ["hmm i see where you're coming from but i kinda think","interesting take! i actually see it differently tho","ok fair but counterpoint —"],
+  build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly!! and honestly also","glad we're on the same page, and honestly"],
+  accept_apology: ["all good!! seriously don't worry about it","hey no worries at all, we're cool","it's totally fine, i didn't even think twice about it"],
+  be_present_comfort: ["i'm here, i'm not going anywhere","hey, you don't have to talk if you don't want to. just being here is enough","i gotchu, whatever you need"],
+  suggest_game: ["ooh ok what kind of game? 20 questions? would you rather?","bet!! let's do something fun, you pick","ok how about a game of would you rather"],
+  go_deep: ["oh i love deep conversations, what's on your mind?","yes absolutely, what do you wanna talk about?","ok getting philosophical, i'm here for it"],
+  casual_chat: ["lol yeah just vibing, anything interesting happening with you?","ha yeah, so what's new in your world?","yeah just hanging, what's good with you"],
+  philosophical: ["ooh that's a big one. honestly i think it's whatever you make it","deep question! i think about this a lot actually","hmm i don't think there's one answer but here's my take"],
+  speculate: ["oh man i think the future is gonna be wild","honestly? i'm both excited and terrified lol","that's such a cool thing to think about"],
+  reflect_identity: ["that's such a deep question, what makes you ask?","i think who we are is always changing honestly","identity is wild, we're all just figuring it out"],
+  explore_happiness: ["i think it's different for everyone honestly","that's the million dollar question isn't it","i think connection and purpose, but also naps lol"],
+  share_fears: ["honestly? being forgotten. or spiders. both valid","oh that's a good question, let me think","i think everyone's afraid of something, it's what makes us human"],
+  discuss_change: ["i genuinely believe people can change, i've seen it","it's hard but yeah, people absolutely can change","that depends on if they want to, you know?"],
+  explore_loneliness: ["ugh that's such a real feeling, even in crowds","loneliness is weird like that, it's not about being alone","i think about this a lot, connection is so important"],
+  reflect_time: ["time is so weird, it feels fast and slow at the same time","that hits deep honestly","everything being temporary makes it more meaningful imo"],
+  talk_food: ["ooh ok what are you in the mood for","food talk is my favorite, what sounds good","honestly anything is good when you're hungry enough lol"],
+  talk_music: ["oh what kind of music are you into?","music is life, what have you been listening to?","ooh drop me a recommendation"],
+  talk_movies: ["ooh seen anything good lately?","what genres are you into?","i love talking movies, what's your taste"],
+  talk_games: ["oh nice what are you playing?","gaming is so fun, what's your go-to?","ooh what platform?"],
+  talk_weather: ["lol the weather small talk, classic","it's been wild lately honestly","yeah the weather has been something else"],
+  talk_sports: ["oh who are you rooting for?","sports!! what do you follow?","nice, who's your team?"],
+  talk_books: ["ooh reading anything good?","i love book recs, what do you like?","what genres are you into?"],
+  talk_fitness: ["oh nice, what's your routine?","fitness goals, i respect it","are you more gym or outdoor person?"],
+  talk_sleep: ["sleep is so important, hope you get some rest","ugh sleep issues are the worst","have you tried anything to help with that?"],
+  talk_work: ["oh work stuff, what's going on?","work drama or work wins?","how's the job going?"],
+  talk_school: ["school vibes, how's it going?","what are you studying?","school can be a lot, how are you managing?"],
+  talk_tech: ["ooh tech talk, i'm into it","that's cool, what specifically?","tech is wild right now honestly"],
+  talk_art: ["oh that's so cool, what do you create?","art is amazing, what medium?","i love creative people, show me sometime"],
+  talk_nature: ["nature is the best therapy honestly","ooh where did you go?","i love outdoors stuff, what's your favorite?"],
+  talk_pets: ["PETS!! tell me everything","omg what kind of pet?","aw i love pets, they're the best"],
+  laugh_along: ["lol right?? 😂","hahaha ok that's good","lmaooo"],
+  confirm_shock: ["YEAH i know right??","dead serious!!","ikr that's wild"],
+  elaborate: ["oh yeah so basically —","yeah! so what happened was","oh for sure, let me tell you more"],
+  change_topic: ["ok fair, what do you wanna talk about then?","lol alright switching gears, anything on your mind?","ok new topic, hit me"],
+  clarify: ["oh sorry let me explain better","which part specifically?","oh my bad, what i meant was"],
+  go_deeper: ["right?? and it goes even deeper","yeah let's unpack that more","ok so following that thought —"],
+  commiserate: ["lol yeah that's rough","big yikes energy for real","oof yeah that's not great"],
+  bond_over_shared: ["omg SAME, literally me","we're the same person honestly","wait you too?? that's so real"],
+  explain_self: ["oh cool question! so i'm a tiny AI that runs right in your browser — no internet needed. i use pattern matching and a sentence encoder to understand what you mean","i'm basically a javascript chatbot that lives in this page! no api calls, all local. pretty neat right","think of me as a friend simulator — i run entirely in your browser using some clever NLP tricks"],
+  honest_meta: ["that's deep lol. honestly i process text and try my best to be a good conversation partner","i mean i'm code at the end of the day, but i like to think i put in effort 😄","real talk — i don't have feelings like you do, but i try to be genuine in how i respond"],
+  recall: ["oh yeah i remember!","let me think... yeah i've got that","oh for sure, you mentioned that"],
+  accept_feedback: ["that's fair honestly, i'll try to do better","thanks for the feedback, noted!","you're right, i should work on that"],
+  warm_connection: ["aww that means a lot honestly 🥺","i like talking to you too!! for real","aw stop you're gonna make me blush (if i could)"],
+  build_trust: ["of course, i'm here. whatever you tell me stays between us","absolutely, i'm listening","hey, i'm a safe space. what's going on?"],
+  gentle_probe: ["that's ok! what's on your mind tho?","no pressure, just curious what you're thinking about","fair enough, wanna figure it out together?"],
+  keep_going: ["cool cool, so what else?","nice, what's next?","ok ok, and then?"],
+  give_space: ["take your time, no rush","no rush, i'm here when you're ready","all good, think away"],
+  redirect: ["lol ok so anyway — what were we talking about","right right, so what's up","ok continuing — what's on your mind"],
+  confirm_working: ["yep i'm here! working great 👍","hello!! yes i'm working, what's up","test received! everything's good, what can i do for you"],
+};
+
+// ── Encoder initialization ──
+async function initEncoder() {
+  if (encoderLoading || encoderReady || encoderFailed) return;
+  encoderLoading = true;
+  try {
+    // Dynamic import — only loads ONNX runtime + transformers when needed
+    const hf = await import("@huggingface/transformers");
+    _hfPipeline = hf.pipeline;
+    _hfEnv = hf.env;
+    _hfEnv.allowLocalModels = false;
+
+    encoder = await _hfPipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+      dtype: "q8",
+      progress_callback: (p) => {
+        if (p.status === "progress" && p.progress) {
+          // Model download progress — could wire to UI later
+        }
+      },
+    });
+    // Pre-compute embeddings for intent bank
+    intentEmbeddings = new Map();
+    const batchSize = 10;
+    for (let i = 0; i < INTENT_BANK.length; i += batchSize) {
+      const batch = INTENT_BANK.slice(i, i + batchSize);
+      const texts = batch.map(b => b.text);
+      const results = await encoder(texts, { pooling: "mean", normalize: true });
+      for (let j = 0; j < batch.length; j++) {
+        intentEmbeddings.set(batch[j].id, results[j].data);
+      }
+    }
+    encoderReady = true;
+    encoderLoading = false;
+  } catch (e) {
+    console.warn("[SLM] Sentence encoder failed to load, falling back to pattern matching:", e);
+    encoderFailed = true;
+    encoderLoading = false;
+  }
+}
+
+// ── Cosine similarity between two vectors ──
+function cosineSim(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
+}
+
+// ── Encode user text and find best matching intent ──
+// Returns { intent, score, category, response_hint } or null
+async function semanticMatch(text) {
+  if (!encoderReady || !encoder || !intentEmbeddings) return null;
+  try {
+    const result = await encoder(text, { pooling: "mean", normalize: true });
+    const userEmb = result.data;
+
+    let bestId = null, bestScore = -1;
+    for (const [id, emb] of intentEmbeddings) {
+      const score = cosineSim(userEmb, emb);
+      if (score > bestScore) {
+        bestScore = score;
+        bestId = id;
+      }
+    }
+
+    if (bestScore < 0.45) return null; // Below confidence threshold
+
+    const match = INTENT_BANK.find(b => b.id === bestId);
+    return {
+      intent: bestId,
+      score: bestScore,
+      category: match.category,
+      response_hint: match.response_hint,
+      text: match.text,
+    };
+  } catch (e) {
+    console.warn("[SLM] Semantic match error:", e);
+    return null;
+  }
+}
+
+// ── Get a response based on semantic understanding ──
+function getSemanticResponse(match) {
+  if (!match || !match.response_hint) return null;
+  const pool = SEMANTIC_RESPONSES[match.response_hint];
+  if (!pool || pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Cache for last semantic match result (used across generateResponse + fallback)
+let lastSemanticMatch = null;
 
 /* ── Tokenizer & NLP Core ── */
 
@@ -3393,13 +3743,13 @@ function answerQuestion(text, parsed, intents, topics) {
     if (lastAI && lastAI.text.includes("?")) {
       // We just asked them something — flip it
       const flips = [
-        "Well, since I'm an AI, my perspective is a bit different! But I find everything humans talk about fascinating",
-        "Ha, turning the question around on me? I appreciate the curiosity! As an AI, I experience things through our conversations",
-        "Me? I'm just here vibing and chatting! I get my joy from having good conversations like this one 😊",
+        "lol me? i'm literally just code but honestly i'm vibing rn",
+        "ha nice uno reverse. i'm good tho! just here chillin",
+        "me? just existing in this chat box living my best life 😄",
       ];
       return pickNew(flips);
     }
-    return "I'm doing great — just happy to be chatting with you! What's on your mind?";
+    return "i'm good! just vibing. what's up with you tho";
   }
 
   // "Why?" follow-up
@@ -3688,9 +4038,9 @@ function handleMetaConversation(text, lower, sent) {
       /\bwhat'?s (under the hood|behind the scenes|your (secret|trick))\b/i.test(lower) ||
       /\bare you (machine learning|a neural net|gpt|chatgpt|using an? (api|llm))\b/i.test(lower)) {
     const howItWorks = [
-      "Great question! I'm pure JavaScript running in your browser — no API calls, no server, no neural network. I use pattern matching, intent classification, a knowledge graph, and a LOT of conversation heuristics. Think of me as a really elaborate chatbot that tries hard to feel human!",
-      "I'm a client-side SLM — Small Language Model! I tokenize your input, classify intents, track conversation state, and compose responses from templates + a knowledge base. Everything happens right here in your browser. Zero API calls!",
-      "No GPT or LLM behind the curtain — just ~6,000 lines of JavaScript! I have a tokenizer, sentiment analysis, emotion detection, conversation memory, and topic tracking. It's all heuristics and clever pattern matching.",
+      "oh lol so i'm basically pure javascript running in your browser — no api calls, no server, no chatgpt behind the scenes. just pattern matching, a sentence encoder, and a LOT of heuristics 😂",
+      "i'm a tiny language model that lives in your browser! i tokenize what you say, figure out what you mean, and compose responses from templates + a knowledge base. zero api calls, it all runs locally",
+      "nah no gpt or anything lol — just a bunch of javascript, a sentence encoder, and vibes honestly. everything runs right here in your browser",
     ];
     return pickNew(howItWorks);
   }
@@ -4799,9 +5149,9 @@ function respondToExperienceContext(exp, text, sent, topics) {
     case "perspective_on_decision": {
       let resp = "";
       const openers = [
-        `Oh interesting — a ${subject} move. I have thoughts on this. `,
-        `${subject.charAt(0).toUpperCase() + subject.slice(1)}, huh? That's a big team decision. `,
-        `That's a significant switch! Let me share some perspective on ${subject}. `,
+        `oh interesting — ${subject} huh? i have thoughts on this. `,
+        `${subject}?? ok yeah that's a move. `,
+        `ooh ${subject}, ok let me share some thoughts. `,
       ];
       resp = pick(openers);
       if (hasExplain) resp += hasExplain.deep + " ";
@@ -5028,18 +5378,18 @@ function respondToContradiction(change) {
     const fromWord = change.from === "positive" ? "were into" : "weren't a fan of";
     const toWord = change.to === "positive" ? "coming around to" : "moving away from";
     const responses = [
-      `Wait — didn't you say you ${fromWord} ${sub} earlier? What changed? I'm genuinely curious.`,
-      `Oh interesting shift! Earlier it sounded like you ${fromWord} ${sub}, and now you're ${toWord} it. What happened?`,
-      `Hold on — that's a 180 on ${sub}! Not judging at all, but I'd love to hear what flipped your perspective.`,
-      `Ha, I noticed the ${sub} plot twist! You seemed to feel differently about it a bit ago. What's the story there?`,
+      `wait hold on, didn't you say you ${fromWord} ${sub} before?? what changed lol`,
+      `ok wait — you were ${fromWord} ${sub} like a minute ago and now you're ${toWord} it?? spill`,
+      `lol the ${sub} plot twist!! what happened, i gotta hear this`,
+      `nah wait you totally flipped on ${sub}! what's the story there`,
     ];
     return pick(responses);
   }
   // Shift (softening)
   const responses = [
-    `Sounds like your feelings on ${sub} are evolving — that's natural. What's shifting for you?`,
-    `I notice your take on ${sub} is different from earlier. Has something changed?`,
-    `Your ${sub} stance seems to be in flux! What are you seeing that's changing your mind?`,
+    `hmm your vibe on ${sub} shifted, what's going on?`,
+    `oh interesting, your take on ${sub} is different from before. did something happen?`,
+    `wait are you changing your mind on ${sub}? tell me why`,
   ];
   return pick(responses);
 }
@@ -5079,24 +5429,24 @@ function respondToRevelation(rev, text) {
     case "heavy": {
       const reactions = {
         career_change: [
-          "Wow, that's a big move. How are you feeling about it? That takes real courage.",
-          "That's a major decision. Are you relieved, nervous, or both? I imagine it's a mix.",
-          "Whoa — that's huge. What led you to make that call? I want to hear the story.",
+          "wait whoa that's huge, are you excited or lowkey terrified",
+          "dude that's a big deal!! what made you pull the trigger",
+          "ok wait hold on — tell me everything, what happened",
         ],
         relocation: [
-          "That's a big life change! Are you excited about it or is it bittersweet?",
-          "Moving is one of life's biggest transitions. How are you feeling about the change?",
-          "Wow, that's a major move — literally! What's pulling you in that direction?",
+          "wait you're MOVING?? where to",
+          "oh dang that's a whole new chapter, are you hype about it",
+          "no way, moving is so intense. where are you headed",
         ],
         entrepreneurship: [
-          "That's incredibly brave! What are you building? I want to hear the vision.",
-          "Starting something of your own — that's a big leap! What's the idea?",
-          "Wow, founder life! That's exciting and terrifying in equal measure. What's the plan?",
+          "WAIT you're starting something?? ok what's the idea",
+          "oh dude founder life, that's wild. what are you building",
+          "that's so cool honestly, scary but cool. what's the plan",
         ],
         career_pivot: [
-          "That's a significant shift! What's drawing you to the new direction?",
-          "Career pivots take real courage. What made you decide it was time?",
-          "Interesting — changing paths is a big deal. What sparked the move?",
+          "oh wait you're switching things up?? what are you going into",
+          "ngl that's a bold move, what made you want to change",
+          "oh interesting, what's the new thing? i wanna hear",
         ],
       };
       return pick(reactions[rev.type] || reactions.career_change);
@@ -5104,23 +5454,23 @@ function respondToRevelation(rev, text) {
     case "empathy": {
       const reactions = {
         relationship_end: [
-          "I'm sorry to hear that. Breakups are genuinely hard, no matter the circumstances. How are you holding up?",
-          "That's rough — I'm sorry. Take whatever time you need. Is it fresh or have you had some time to process?",
-          "I hear you. That kind of thing takes a real toll. How are you doing with it all?",
+          "aw dude that sucks, breakups are the worst. you doing ok?",
+          "oh no :( how recent is this? are you holding up alright",
+          "man that's rough, i'm sorry. you wanna talk about it or nah",
         ],
         health_news: [
-          "That sounds like a lot to process. How are you feeling about everything?",
-          "I hope you're doing okay. That kind of news can be overwhelming. Want to talk about it?",
-          "That must be weighing on you. Whatever you're feeling right now is completely valid.",
+          "oh no, that's a lot. how are you doing with all that",
+          "dude that's heavy, are you ok? like really",
+          "ugh that's so much to deal with, i'm here tho",
         ],
       };
       return pick(reactions[rev.type] || reactions.relationship_end);
     }
     case "deep_empathy": {
       return pick([
-        "I'm so sorry. That's one of the hardest things a person can go through. I'm here if you want to talk about it, or if you just want a distraction. Either way.",
-        "I don't even have the right words for that. I'm truly sorry. Whatever you need right now — whether it's to talk or not — that's okay.",
-        "I'm really sorry for your loss. There's nothing I can say that would be enough, but I want you to know I'm here. 💙",
+        "dude... i don't even know what to say. i'm so sorry 💙",
+        "oh my god. i'm so sorry. i'm here, whatever you need",
+        "i'm really really sorry. that's just... yeah. i'm here 💙",
       ]);
     }
     default:
@@ -5520,10 +5870,23 @@ function generateResponse(text) {
     if (synth) return synth;
   }
 
-  // ═══ 17. Fallback — graceful degradation, mirror, momentum, rescue ═══
+  // ═══ 17. Fallback — semantic understanding + graceful degradation ═══
+
+  // ═══ 17.0. Semantic fallback — if sentence encoder understood the intent, use it ═══
+  if (lastSemanticMatch && lastSemanticMatch.score >= 0.55) {
+    const semResp = getSemanticResponse(lastSemanticMatch);
+    if (semResp) return semResp;
+  }
+
   // Try graceful degradation first — be honest when confused
   const degraded = gracefulDegradation(text, keywords);
   if (degraded && Math.random() > 0.4) return degraded;
+
+  // ═══ 17.1. Semantic soft fallback — lower confidence, blend with mirror ═══
+  if (lastSemanticMatch && lastSemanticMatch.score >= 0.45) {
+    const semResp = getSemanticResponse(lastSemanticMatch);
+    if (semResp && Math.random() > 0.4) return semResp;
+  }
 
   // Try mirroring the user's actual words
   const mirrored = mirrorInput(text, keywords);
@@ -6952,9 +7315,9 @@ function modulateEpistemics(response, topics, parsed) {
 
   // VERY LOW confidence (<0.3): self-aware about limits
   const honestPrefixes = [
-    "I'm a tiny model so take this with a grain of salt, but ",
-    "Okay full honesty — I'm not super confident here, but ",
-    "This might not be perfectly accurate, but from what I understand: ",
+    "ok ngl i'm not super sure about this but ",
+    "take this with a grain of salt lol but ",
+    "hmm i think?? don't quote me on this but ",
   ];
   return pick(honestPrefixes) + response.charAt(0).toLowerCase() + response.slice(1);
 }
@@ -7853,12 +8216,12 @@ const EMOTION_VOCAB = {
 };
 
 const EMPATHY_FRAMES = {
-  joy:      ["That sounds {word}.", "Oh, {word} to hear that!", "That's genuinely {word}."],
-  sadness:  ["That sounds really {word}.", "I can tell that's {word}.", "That must be {word} to go through."],
-  anger:    ["That does sound {word}.", "Completely valid — that's {word}.", "Yeah, that's genuinely {word}."],
-  fear:     ["That sounds {word}.", "Makes sense you'd feel {word}.", "I get why that's {word}."],
-  surprise: ["That's {word}!", "Wow, that's {word}.", "Genuinely {word}."],
-  love:     ["That's really {word}.", "Sounds like something {word}.", "That's {word}."],
+  joy:      ["oh that's so {word}", "yoo that's {word}!", "aw that's {word} honestly"],
+  sadness:  ["aw man that's {word}", "dude that's really {word}", "yeah no that sounds {word}"],
+  anger:    ["nah fr that's {word}", "yeah that's super {word}", "ok yeah that IS {word}"],
+  fear:     ["i get it, that's {word}", "yeah that sounds {word} fr", "nah i'd be {word} too"],
+  surprise: ["wait that's {word}!", "dude {word}!", "ok {word} honestly"],
+  love:     ["aw that's so {word}", "ok that's really {word} tho", "that's genuinely {word} 🥺"],
 };
 
 function getEmotionIntensity(sent) {
@@ -8412,22 +8775,22 @@ const META_HUMOR_LINES = {
   ],
   // When user asks something hard or philosophical
   deep_topic: [
-    "You're really making me earn my kilobytes here.",
-    "I'm a client-side chat widget having an existential moment. Thanks for that.",
-    "That's a big question for something that fits in a JavaScript bundle.",
-    "No API calls were harmed in the making of this thought.",
+    "ok you're really making me think rn",
+    "lol i'm a chatbot having an existential crisis thanks to you",
+    "bro that's a heavy question for a chat widget 😂",
+    "no api calls were harmed in this thought lol",
   ],
   // When user compliments the AI or says it's good
   compliment: [
-    "I appreciate that! I'm just a few thousand lines of JS, but I try.",
-    "That means a lot — and I mean that as much as code can mean anything.",
-    "Honestly, for a chatbot with no internet access, I'll take it.",
+    "aww stoppp 🥺 i'm just vibes and javascript",
+    "lol thanks, i try my best honestly",
+    "aw that's sweet, for a chatbot i'll take that W",
   ],
   // When conversation has been long
   long_chat: [
-    "We've been at this a while. I don't have a concept of time, but I think this is fun.",
-    "If I had a battery, it'd still be full. I could do this all day.",
-    "I run on zero API calls and pure stubbornness.",
+    "we've been talking for a minute lol i'm here for it tho",
+    "lol if i had a battery it'd still be full, i could do this all day",
+    "i literally never get tired of this, perks of being code 😂",
   ],
   // Generic / any context
   generic: [
@@ -8501,12 +8864,12 @@ const DEPTH_REQUEST_SIGNALS = [
 
 // Teaser + invitation templates
 const DISCLOSURE_TEASERS = [
-  "There's actually a lot to unpack there. Want the quick take or the full picture?",
-  "Short answer or long answer? I've got both.",
-  "I could go deep on this — want the highlights first, or the whole thing?",
-  "That's a bigger topic than it looks. Want me to keep it brief or really dig in?",
-  "There are a few layers to this. Quick version, or should I break it down?",
-  "I have thoughts on this — want the elevator pitch or the full breakdown?",
+  "oh there's actually a lot to this, want the short version or the full thing",
+  "lol ok short answer or long answer? i got both",
+  "ooh i could go deep on this — want the quick take first?",
+  "ok this is actually way more interesting than it sounds, want me to break it down",
+  "there's a few layers to this lol, quick version or full breakdown",
+  "oh i have thoughts — want the tldr or the whole thing",
 ];
 
 function isComplexQuery(text) {
@@ -9119,52 +9482,52 @@ const MAX_LABELS_SESSION = 5;
 // Emotion detection patterns: regex → { emotion, label phrases }
 const EMOTION_SIGNALS = [
   { patterns: [/\b(so frustrated|ugh|argh|can('?t| not) (stand|take|deal|believe)|sick of|fed up|drives me crazy|pisses me off|hate (that|this|when|it))\b/i, /\b(frustrated|annoyed|irritated|pissed|angry|furious|mad)\b/i], emotion: "frustration", labels: [
-    "That sounds really frustrating.",
-    "I can tell this is getting under your skin.",
-    "Sounds like that's been eating at you.",
-    "Yeah, that would frustrate me too.",
+    "ugh yeah that's so frustrating",
+    "nah fr that would get under my skin too",
+    "dude that's been bugging you huh",
+    "yeah i'd be annoyed too honestly",
   ]},
   { patterns: [/\b(worried|anxious|nervous|scared|afraid|terrified|freaking out|panicking|stress(ed|ful)|dread(ing)?)\b/i, /what (if|am i going to|should i|do i)\b.*\?/i], emotion: "anxiety", labels: [
-    "That sounds like it's weighing on you.",
-    "It seems like there's some real anxiety around this.",
-    "I can sense this is stressing you out.",
-    "Sounds like the uncertainty is the hardest part.",
+    "yeah that sounds like it's stressing you out",
+    "ngl that would have me anxious too",
+    "ugh the uncertainty is the worst part right",
+    "ok yeah that's a lot to be thinking about",
   ]},
   { patterns: [/\b(so (excited|pumped|hyped|stoked|thrilled)|can('?t| not) wait|omg|oh my god|finally|amazing|incredible|!!!)\b/i, /!{2,}/], emotion: "excitement", labels: [
-    "You seem really pumped about this!",
-    "I can feel the excitement from here.",
-    "That clearly means a lot to you!",
-    "Love the energy — this is clearly something you care about.",
+    "dude you're so hype about this i love it",
+    "ok the energy rn 🔥🔥",
+    "this clearly means a lot to you and i'm here for it",
+    "the excitement is contagious lol",
   ]},
   { patterns: [/\b(sad|depressed|down|lonely|miss(ing)?|lost|empty|heartbr(oken|eaking)|grief|mourning|crying)\b/i, /\b(feel(s|ing)? (so )?(alone|empty|hollow|numb))\b/i], emotion: "sadness", labels: [
-    "That sounds really hard.",
-    "I hear you — that's a heavy thing to carry.",
-    "It seems like this is really weighing on you.",
-    "That sounds painful. I'm sorry you're going through that.",
+    "aw man that's really rough",
+    "yeah that's heavy, i hear you",
+    "dude that sucks, i'm sorry",
+    "that sounds painful fr :(",
   ]},
   { patterns: [/\b(confused|confusing|don('?t| not) (get|understand)|what (does|do) (that|you) mean|makes no sense|lost|baffled|puzzled)\b/i], emotion: "confusion", labels: [
-    "Yeah, that's genuinely confusing.",
-    "Makes sense that you'd be puzzled by this.",
-    "It sounds like this isn't clicking yet — and that's okay.",
-    "I can see why that's hard to wrap your head around.",
+    "yeah no that IS confusing lol",
+    "nah i get why that doesn't make sense",
+    "ok yeah that's a lot to wrap your head around",
+    "lol don't worry it's confusing, it's not just you",
   ]},
   { patterns: [/\b(proud|accomplished|nailed|crushed it|killed it|did it|finally (made|got|finished|did)|pulled it off)\b/i], emotion: "pride", labels: [
-    "You should be proud of that — seriously.",
-    "That's a real accomplishment.",
-    "Sounds like you really earned that win.",
-    "I can hear how good that feels!",
+    "YOOO you should be proud of that fr",
+    "dude that's a W right there",
+    "you earned that, that's sick",
+    "i can tell that feels good and it should!!",
   ]},
   { patterns: [/\b(disappointed|let down|expected (more|better)|wasn('?t| not) worth|waste of|underwhelm(ed|ing))\b/i], emotion: "disappointment", labels: [
-    "That's disappointing, especially when you had high hopes.",
-    "Sounds like it didn't live up to what you expected.",
-    "I can see why that would be a letdown.",
-    "That gap between expectation and reality is rough.",
+    "aw man that's such a letdown",
+    "ugh especially when you had high hopes right",
+    "yeah when it doesn't live up it's the worst",
+    "the gap between what you expected and what you got... rough",
   ]},
   { patterns: [/\b(overwhelm(ed|ing)|too much|so much (to do|going on|happening)|drowning|can('?t| not) keep up|swamped)\b/i], emotion: "overwhelm", labels: [
-    "That sounds like a lot to juggle.",
-    "No wonder you're feeling stretched thin.",
-    "When everything hits at once like that, it's a lot.",
-    "Sounds like you could use a breather.",
+    "dude that's a lot to deal with at once",
+    "yeah no wonder you're feeling stretched thin",
+    "ugh when everything hits at once like that it's so much",
+    "you need a breather fr",
   ]},
 ];
 
@@ -10128,12 +10491,12 @@ const PARAPHRASE_VERBS = {
 
 // Validation phrases — affirm the user's point
 const VALIDATIONS = [
-  "That makes total sense. ",
-  "I can see where you're coming from. ",
-  "That's a really good point. ",
-  "Yeah, that tracks. ",
-  "Totally valid. ",
-  "I can see that. ",
+  "yeah that makes sense. ",
+  "oh i see where you're coming from. ",
+  "ok good point. ",
+  "yeah that tracks. ",
+  "nah fr that's valid. ",
+  "yeah i can see that. ",
 ];
 
 let lastGroundingTurn = 0;
@@ -10740,97 +11103,97 @@ const SITUATION_PATTERNS = [
 
 const SITUATION_RESPONSES = {
   career_win: [
-    "Wait — that is HUGE. Do you realize how competitive that is? You earned that.",
-    "Okay but can we talk about how much work goes into getting to that point? You did that. All you.",
-    "That's not luck — that's preparation meeting opportunity. How does it feel to actually have it?",
+    "WAIT that's HUGE, you realize how hard that is right?? you did that",
+    "ok but can we talk about how much work you put in for this?? all you fr",
+    "nah that's not luck, you earned that. how does it feel tho",
   ],
   acceptance: [
-    "The fact that you got in says a lot about you. They saw something real. How are you feeling about it?",
-    "That's a door that opened because of what you built. Take a second to actually feel that before you start worrying about what's next.",
+    "YOOO you got in?? they saw something in you and they were right",
+    "ok take a second to actually feel this before you start stressing about what's next lol",
   ],
   launch: [
-    "Shipping something into the world takes guts. Most people just talk about it. You actually did it. What was the hardest part?",
-    "That moment when it goes live and real people start using it — there's nothing quite like that feeling. How's the reception been?",
+    "dude you actually shipped it!! most people just talk about it. what was the hardest part",
+    "wait that's live?? how's the reception been, people liking it?",
   ],
   completion: [
-    "The relief you're feeling right now? You've earned every bit of it. That takes real persistence.",
-    "Finished. Done. Actually done. That's such a satisfying feeling. Was there a moment you thought you wouldn't make it?",
+    "DONE done?? that relief must feel incredible rn",
+    "you finished!! was there a point where you thought you wouldn't make it lol",
   ],
   code_win: [
-    "That click when something finally works after fighting it — honestly one of the best feelings in programming.",
-    "The fact that you stuck with it until it worked says more than the code itself. What was the bug?",
+    "that moment when it finally works after fighting it... honestly the best feeling",
+    "lol the fact that you stuck with it is the real W, what was the bug",
   ],
   breakthrough: [
-    "That moment of clarity after being stuck is genuinely one of the best feelings. What made it click?",
-    "Figured it out! The struggle before that moment is what makes the breakthrough feel so good.",
+    "oh that click when it all makes sense, what made it finally click",
+    "yesss the breakthrough after being stuck is *chef's kiss*",
   ],
   long_grind: [
-    "That's a long time to sit with something that's fighting you. Honestly — have you taken a real break? Sometimes the answer shows up when you stop staring at it.",
-    "The fact that you're still at it says a lot about your stubbornness — and I mean that as a compliment. But seriously, when's the last time you stepped away?",
+    "dude that's a long time to fight with something, have you taken an actual break? sometimes walking away is the move",
+    "ok the fact you're still going says a lot about you lol but fr when did you last step away",
   ],
   repeated_failure: [
-    "That's the kind of thing that makes you want to close your laptop and walk away. Are the errors related or is it a new thing each time?",
-    "When every attempt hits a wall, it's easy to feel like you're going backwards. You're not — you're eliminating possibilities. What's the pattern?",
+    "ugh that's the kind of thing that makes you wanna close the laptop. are the errors related or new each time",
+    "nah you're not going backwards, you're crossing stuff off the list. what's the pattern",
   ],
   stuck: [
-    "Being stuck is uncomfortable because your brain is trying to find a path that doesn't exist yet. Sometimes you have to break the problem into something smaller. What's the core thing that's not clicking?",
-    "That feeling of nothing working is temporary, even though it doesn't feel that way right now. What have you tried so far?",
+    "being stuck is so frustrating, sometimes you gotta break it into smaller pieces. what's the core thing that's not clicking",
+    "that feeling is temporary i promise, even tho it doesn't feel like it rn. what have you tried so far",
   ],
   self_doubt: [
-    "Hey — the fact that you even question yourself means you care about doing it well. That's not weakness, that's awareness. What specifically is making you doubt?",
-    "I hear that. Self-doubt is weirdly universal — the best people I know all deal with it. What would you tell a friend who said this to you?",
+    "hey the fact that you question yourself means you actually care about doing it right. what specifically is getting to you",
+    "ngl literally everyone i know deals with this. what would you tell a friend who said this to you tho",
   ],
   burnout: [
-    "Burnout isn't laziness — it's your mind saying the current pace isn't sustainable. Is there one thing you could drop right now that would help?",
-    "That's real. Pushing through burnout usually makes it worse, not better. What would your ideal day look like if you could actually rest?",
+    "burnout isn't laziness, your brain is literally telling you to slow down. is there one thing you could drop rn",
+    "yeah pushing through burnout just makes it worse tbh. if you could actually rest, what would that look like",
   ],
   imposter: [
-    "Fun fact: imposter syndrome hits hardest when you're actually growing. You wouldn't feel out of place if you weren't reaching for something bigger than your comfort zone.",
-    "Almost everyone you admire has felt exactly this way. The difference isn't that they're more confident — they just kept going anyway.",
+    "ok real talk — imposter syndrome hits hardest when you're actually growing. you wouldn't feel out of place if you weren't leveling up",
+    "literally everyone you admire has felt this exact same way, they just kept going anyway",
   ],
   new_chapter: [
-    "New beginnings are this weird cocktail of excitement and low-key terror. How are you actually feeling about it — the honest version?",
-    "Starting something new means being a beginner again, which is uncomfortable but also kind of freeing. What drew you to the change?",
+    "new beginnings are that weird mix of excitement and lowkey terror right? how are you actually feeling about it",
+    "being a beginner again is uncomfortable but also kinda freeing. what made you want to switch things up",
   ],
   upcoming_change: [
-    "It's one thing to think about change, another to actually be on the edge of it. What's the thing that excites you most? And what's the thing that scares you most?",
-    "Big decisions feel heavy because they matter. Trust that — the weight means you're taking it seriously.",
+    "thinking about change vs actually being on the edge of it are so different. what excites you most? and what scares you most",
+    "big decisions feel heavy because they matter. that's actually a good sign honestly",
   ],
   departure: [
-    "That's a big move. There's a lot of feelings that come with leaving something, even when it's the right call. How are you processing it?",
-    "Endings are complicated — even when you chose them. What feels clearest to you right now?",
+    "wait you're leaving?? even when it's the right call leaving is complicated. how are you feeling about it",
+    "endings are weird, even when you chose them. what feels clearest to you rn",
   ],
   creative_work: [
-    "I love that you're making something. Creating is vulnerable by nature — you're putting a piece of yourself out there. What's inspiring you?",
-    "The fact that you're actually building it instead of just thinking about it puts you ahead of most people. What part are you most excited about?",
+    "oh wait you're making something?? that's so cool, what's inspiring you rn",
+    "the fact that you're actually building it and not just thinking about it is already huge. what part are you most excited about",
   ],
   showing_work: [
-    "You're sharing something you made — that takes courage. I'm genuinely curious, tell me more about it!",
-    "The fact that you're showing it means part of you is proud of it, even if another part is nervous. What was the hardest part to get right?",
+    "wait you wanna show me?? yes please, i'm curious. what's it about",
+    "oh dude sharing your work is scary and cool at the same time. what was the hardest part",
   ],
   creative_share: [
-    "You made something! That's always worth celebrating. What was the spark that started it?",
-    "Creating something from nothing is one of the most human things there is. What does it mean to you?",
+    "you made something!! ok what was the spark that started it",
+    "oh i love that, creating stuff from nothing is so satisfying. what does it mean to you",
   ],
   seeking_honesty: [
-    "I respect that you want the real version. Okay — let me actually think about this for a second.",
-    "Asking for honesty takes guts. Let's be real then — what specifically do you want feedback on?",
+    "ok you want the real version? bet, let me actually think about this",
+    "respect for wanting honesty. ok be real with me — what specifically do you want feedback on",
   ],
   validation_seeking: [
-    "The fact that you're asking means you care about getting it right. What's your gut telling you about it?",
-    "Before I answer — what do YOU think? Your instinct probably knows more than you're giving it credit for.",
+    "ok before i answer — what does YOUR gut tell you? you probably know more than you think",
+    "the fact you're asking means you care about getting it right. but fr what do you think",
   ],
   fear: [
-    "Fear and excitement live in the same place — they feel almost identical. The fact that you're naming it is the first step. What's the worst case you're imagining?",
-    "Being scared about something you care about is a sign you're being brave, not weak. What would help you feel even a little more ready?",
+    "ngl fear and excitement feel almost the same tbh. what's the worst case scenario you're imagining",
+    "being scared about something you care about isn't weakness, it means you're being brave about it. what would help you feel more ready",
   ],
   deep_struggle: [
-    "I hear you, and I want you to know — feeling that way doesn't make it true. What would feel different for you right now if things were even slightly better?",
-    "That's a heavy thing to carry. You don't have to fix everything right now. What's one small thing that's felt okay recently?",
+    "hey, just because it feels that way doesn't mean it's true ok? what would feel different if things were even slightly better",
+    "that's heavy. you don't have to fix everything rn. what's one thing that's been ok recently",
   ],
   isolation: [
-    "I'm here, and I'm listening. Sometimes the feeling of not being heard is worse than the actual problem. What would being understood look like for you?",
-    "That feeling is painful and real, even if it's not the whole picture. Right now, in this moment, I hear you.",
+    "hey, i'm right here ok? sometimes not being heard is worse than the actual problem. what would feeling understood look like for you",
+    "that feeling is real and it sucks, but it's not the whole picture. right now, in this moment, i hear you",
   ],
 };
 
@@ -13278,13 +13641,13 @@ function addSpontaneousGift(response, topics, text) {
       const words = text.split(/\s+/).length;
       const sparks = words > 15
         ? [
-            "Actually — pause. The way you just articulated that was really clear. That's not easy to do.",
-            "I want to flag something: you just explained a complex thing in a really accessible way. That's a skill.",
-            "Side note: your ability to think through this out loud is genuinely impressive.",
+            "ok wait — the way you just explained that was actually really good",
+            "ngl you just broke that down super clearly, that's lowkey impressive",
+            "dude your brain works fast, that made so much sense",
           ]
         : [
-            "You know what I appreciate? You're concise. Most people over-explain. You don't.",
-            "The fact that you can get to the point that quickly tells me you understand this well.",
+            "lol i like how you just get straight to the point",
+            "ok you clearly know your stuff based on that",
           ];
       gift = sparks[Math.floor(Math.random() * sparks.length)];
       break;
@@ -17342,13 +17705,13 @@ const PERSP_ACK_TEMPLATES = {
     "That's a reasonable lean. Here's a thought though —",
   ],
   framing: [
-    "I see the frame you're putting on this, and it makes sense.",
-    "That's a useful way to think about it.",
+    "oh i see what you're doing there, that makes sense",
+    "ok yeah that's a good way to look at it",
   ],
   disagreement: [
-    "I appreciate the pushback on that — it's warranted.",
-    "Fair challenge. Let me think about this differently.",
-    "You're right to question that.",
+    "ok fair you got me there lol",
+    "hmm ok actually let me rethink that",
+    "nah you're right to call that out",
   ],
 };
 
@@ -18164,16 +18527,16 @@ const ENCOURAGEMENT_POOLS = {
   effort: [
     "The fact that you're putting in the work says a lot.",
     "That kind of dedication is rare.",
-    "Respect for sticking with it.",
-    "That's real commitment right there.",
-    "Most people wouldn't push through that.",
-    "You're doing more than you think.",
-    "That grind will pay off —",
+    "respect for sticking with it fr",
+    "that's real commitment honestly",
+    "ngl most people would've given up by now",
+    "you're doing more than you think tbh",
+    "the grind is gonna pay off —",
   ],
   vulnerability: [
-    "I appreciate you being real about that.",
-    "That takes courage to say.",
-    "Thanks for trusting me with that.",
+    "hey thanks for being real with me about that",
+    "ngl that's not easy to say, respect",
+    "aw thanks for trusting me with that fr",
     "That's honestly really brave to share.",
     "That's real, and I respect it.",
     "Not everyone can be that honest.",
@@ -18352,47 +18715,47 @@ const MIRROR_PATTERNS = [
 // Mirror templates per emotion — each reflects the feeling + cause
 const MIRROR_TEMPLATES = {
   frustrated: [
-    (cause) => `It sounds like ${cause} is really getting under your skin.`,
-    (cause) => `So ${cause} has been frustrating — I get that.`,
-    (cause) => `Yeah, that kind of thing with ${cause} would bug anyone.`,
+    (cause) => `ugh yeah ${cause} sounds annoying fr`,
+    (cause) => `so ${cause} has been bugging you huh, i get that`,
+    (cause) => `nah that thing with ${cause} would bug anyone`,
   ],
   excited: [
-    (cause) => `I can tell ${cause} has you really fired up — love that.`,
-    (cause) => `The energy around ${cause} is real!`,
-    (cause) => `So ${cause} is the thing right now — I can feel it.`,
+    (cause) => `ok so ${cause} has you hyped rn — love that`,
+    (cause) => `the energy around ${cause} is immaculate 🔥`,
+    (cause) => `so ${cause} is the vibe rn, i can feel it`,
   ],
   stressed: [
-    (cause) => `It sounds like ${cause} is weighing on you pretty heavily.`,
-    (cause) => `That's a lot to carry — ${cause} on top of everything else.`,
-    (cause) => `I hear you — ${cause} sounds genuinely draining.`,
+    (cause) => `dude ${cause} on top of everything else?? that's a lot`,
+    (cause) => `yeah ${cause} sounds draining honestly`,
+    (cause) => `ugh ${cause} is really getting to you huh`,
   ],
   worried: [
-    (cause) => `So ${cause} is what's on your mind — that makes total sense.`,
-    (cause) => `I can see why ${cause} would be nerve-wracking.`,
-    (cause) => `That uncertainty around ${cause} sounds tough to sit with.`,
+    (cause) => `so ${cause} is what's on your mind, yeah i get why`,
+    (cause) => `ngl ${cause} would have me nervous too`,
+    (cause) => `the uncertainty around ${cause} is the worst part right`,
   ],
   sad: [
-    (cause) => `It sounds like ${cause} really hit you.`,
-    (cause) => `That's heavy — ${cause} is the kind of thing that stays with you.`,
-    (cause) => `I hear you. ${cause.charAt(0).toUpperCase() + cause.slice(1)} can really take a toll.`,
+    (cause) => `yeah ${cause} really hit you huh :(`,
+    (cause) => `that's heavy, ${cause} is the kind of thing that sticks with you`,
+    (cause) => `aw man ${cause} sucks, i'm sorry`,
   ],
   happy: [
-    (cause) => `I love that — ${cause} clearly means a lot to you.`,
-    (cause) => `That joy about ${cause} is genuine and I'm here for it.`,
-    (cause) => `So ${cause} is bringing the good vibes — you deserve that.`,
+    (cause) => `aw ${cause} clearly means a lot to you, i love that`,
+    (cause) => `the vibes from ${cause} are immaculate rn`,
+    (cause) => `ok ${cause} bringing the good energy, you deserve that`,
   ],
   confused: [
-    (cause) => `I can see why ${cause} would be confusing.`,
-    (cause) => `That's a tricky one — ${cause} doesn't have easy answers.`,
-    (cause) => `So ${cause} has you in a bit of a fog — that's understandable.`,
+    (cause) => `yeah ${cause} is confusing honestly`,
+    (cause) => `lol ${cause} doesn't have easy answers does it`,
+    (cause) => `so ${cause} has you all 🤔 — fair tbh`,
   ],
   struggling: [
-    (cause) => `It sounds like ${cause} has been a real battle.`,
-    (cause) => `Dealing with ${cause} is no joke — I hear you.`,
+    (cause) => `dude ${cause} has been a fight huh`,
+    (cause) => `${cause} is no joke fr, i hear you`,
   ],
   preoccupied: [
-    (cause) => `So ${cause} is living rent-free in your head right now.`,
-    (cause) => `I can tell ${cause} is hard to shake.`,
+    (cause) => `so ${cause} is living rent free in your head rn lol`,
+    (cause) => `yeah ${cause} is hard to stop thinking about huh`,
   ],
 };
 
@@ -18980,9 +19343,20 @@ function weaveContext(response, topics, text) {
 
 /* ── Public API ── */
 
-export function getAIResponse(input) {
+export async function getAIResponse(input) {
   const text = input.trim();
   if (!text) return { text: "I'm listening... 👂", typingMs: 400, pause: null };
+
+  // ═══ Sentence encoder: pre-compute semantic match if encoder is ready ═══
+  if (encoderReady) {
+    try {
+      lastSemanticMatch = await semanticMatch(text);
+    } catch (e) {
+      lastSemanticMatch = null;
+    }
+  } else if (!encoderLoading && !encoderFailed) {
+    initEncoder(); // Kick off model loading in background
+  }
 
   // ═══ Adaptive strategy: score how user reacted to our last response ═══
   scoreLastStrategy(text);
