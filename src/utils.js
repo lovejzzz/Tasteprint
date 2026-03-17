@@ -2537,6 +2537,61 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Typography personality: line-height + text-decoration ──
+  // Line-height creates breathing rhythm; text-decoration adds editorial flair
+  if (!isNav && !isCode) {
+    const typoRoll = Math.random();
+    const isHeading = /heading|hero|title|h[1-3]/i.test(compType);
+    const isBody = /body|paragraph|text|content/i.test(compType);
+
+    // Line-height per mood — affects text rhythm and readability feel
+    if (typoRoll < 0.35) {
+      if (moodId === "elegant") {
+        s.lineHeight = isHeading ? pick(["1.15", "1.2", "1.25"]) : pick(["1.7", "1.75", "1.8"]);
+      } else if (moodId === "bold") {
+        s.lineHeight = isHeading ? pick(["1.0", "1.05", "1.1"]) : pick(["1.5", "1.55", "1.6"]);
+      } else if (moodId === "playful") {
+        s.lineHeight = isHeading ? pick(["1.2", "1.3", "1.35"]) : pick(["1.65", "1.7", "1.8"]);
+      } else if (moodId === "minimal") {
+        s.lineHeight = isHeading ? pick(["1.1", "1.15"]) : pick(["1.6", "1.65", "1.7"]);
+      }
+    }
+
+    // Text-decoration — editorial underlines, overlines for headings and accent elements
+    if (isHeading && !isSmall) {
+      const decRoll = Math.random();
+      if (moodId === "elegant" && decRoll < 0.15) {
+        // Elegant: thin sophisticated underlines with offset
+        s.textDecoration = "underline";
+        s.textDecorationColor = `${acHex}40`;
+        s.textDecorationStyle = pick(["solid", "solid", "double"]);
+        s.textDecorationThickness = pick(["1px", "1px", "2px"]);
+        s.textUnderlineOffset = pick(["4px", "6px", "8px"]);
+      } else if (moodId === "bold" && decRoll < 0.12) {
+        // Bold: thick striking underlines or overlines
+        s.textDecoration = pick(["underline", "underline", "overline"]);
+        s.textDecorationColor = `${acHex}70`;
+        s.textDecorationStyle = pick(["solid", "wavy"]);
+        s.textDecorationThickness = pick(["2px", "3px", "4px"]);
+        s.textUnderlineOffset = pick(["3px", "5px"]);
+      } else if (moodId === "playful" && decRoll < 0.18) {
+        // Playful: wavy/dotted decorations in accent colors
+        s.textDecoration = pick(["underline", "underline", "line-through"]);
+        s.textDecorationColor = pick([`${acHex}60`, gc1 + "50", gc2 + "50"]);
+        s.textDecorationStyle = pick(["wavy", "dotted", "dashed"]);
+        s.textDecorationThickness = pick(["2px", "3px"]);
+        s.textUnderlineOffset = pick(["3px", "5px", "6px"]);
+      } else if (moodId === "minimal" && decRoll < 0.08) {
+        // Minimal: barely-there hairline underline
+        s.textDecoration = "underline";
+        s.textDecorationColor = `${acHex}20`;
+        s.textDecorationStyle = "solid";
+        s.textDecorationThickness = "1px";
+        s.textUnderlineOffset = pick(["4px", "6px"]);
+      }
+    }
+  }
+
   return s;
 }
 
