@@ -2334,9 +2334,9 @@ const COMP = {
   },
   // Bridges between reaction and body
   bridges: {
-    agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —"],
-    pivot:    ["ok so here's the thing —","the way i see it,","ok but what's interesting is","ok wait tho,","here's what i think —"],
-    empathy:  ["yeah no i get that.","that's valid.","nah i feel you.","that's fair."],
+    agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —","ehh idk about that one but —","ok but have you considered —","hmm ok but counterpoint —"],
+    pivot:    ["ok so here's the thing —","the way i see it,","ok but what's interesting is","ok wait tho,","here's what i think —","nah I think you're overthinking it —","ok devil's advocate tho —"],
+    empathy:  ["yeah no i get that.","that's valid.","nah i feel you.","that's fair.","hmm hot take but i kinda disagree.","that's fair but also... counterpoint:"],
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
@@ -6266,13 +6266,16 @@ function handleTurnSignal(signal) {
     }
 
     case "confirm": {
-      // User seeks validation — agree and add depth
+      // User seeks validation — usually agree, sometimes push back gently
       const confirmations = [
         "Yeah, exactly! You've got it.",
         "Spot on! That's pretty much it.",
         "Yep, you nailed it! 😊",
         "100% — you're following perfectly.",
         "That's right! And actually, there's an interesting layer to it too —",
+        "Hmm, mostly — but I'd tweak one thing.",
+        "Ehh, kinda? I think there's a nuance you might be missing.",
+        "Close, but I'd push back on one part —",
       ];
       const base = pickNew(confirmations);
       const topic = lastTopics[0];
@@ -9318,6 +9321,8 @@ const CHALLENGE_RESPONSES = {
     "Obviously? I dunno, I've been surprised before...",
     "Is it that clear-cut though? I feel like there might be a wrinkle.",
     "Hmm, I want to agree, but my contrarian side is twitching a little 😄",
+    "ehh idk if it's that obvious honestly",
+    "hmm ok but counterpoint —",
   ],
   doom: [
     "Dead? Or just taking a really long nap? 😄",
@@ -9381,12 +9386,12 @@ let recentMicroVals = [];
 
 // Context-aware validations — matched to what the user is doing
 const MICRO_VAL_POOLS = {
-  opinion:    ["Fair point.", "That makes sense.", "Oh true.", "Valid.", "Solid take."],
+  opinion:    ["Fair point.", "That makes sense.", "Oh true.", "Valid.", "Solid take.", "Ehh idk about that one.", "Hmm ok but also...", "Interesting — I might push back a little tho."],
   experience: ["That sounds right.", "Yeah, heard.", "Yeah, totally.", "Makes total sense.", "Oh yeah for sure."],
   effort:     ["Nice.", "That's solid work.", "Good call.", "Smart move.", "Respect."],
   question:   ["Hmm.", "Ooh, interesting.", "That's worth thinking about.", "Hmm, let me think on that."],
   frustration:["That's fair.", "Ugh yeah.", "Yeah, that's rough.", "Totally get it."],
-  general:    ["Yeah.", "Mmhm.", "Right, right.", "For sure.", "Gotcha."],
+  general:    ["Yeah.", "Mmhm.", "Right, right.", "For sure.", "Gotcha.", "Hmm.", "Ok wait tho."],
 };
 
 const MICRO_VAL_SIGNALS = [
@@ -9416,7 +9421,11 @@ function applyMicroValidation(response, text) {
   // 35% fire rate — frequent enough to feel present, not every turn
   if (Math.random() > 0.35) return response;
 
-  const pool = MICRO_VAL_POOLS[ctx];
+  let pool = MICRO_VAL_POOLS[ctx];
+  // Don't use pushback micro-vals during emotional/frustration/effort contexts
+  if (ctx === "frustration" || ctx === "effort" || ctx === "experience") {
+    pool = pool.filter(v => !/idk|push back|but also/i.test(v));
+  }
   // Avoid repeating the same validation recently
   const available = pool.filter(v => !recentMicroVals.includes(v));
   if (available.length === 0) { recentMicroVals = []; return response; }
@@ -12148,6 +12157,15 @@ const COUNTERPOINTS = {
   sleep: ["8 hours is a myth for some people, some of us function fine on 6","naps are genuinely underrated, like a 20 min nap fixes everything"],
   weather: ["cold weather > hot weather and it's not even close","rain is actually the best weather for being productive, idk why people hate it"],
   pets: ["cats are easier than dogs but dogs love you more, that's just the trade","all pets are valid but fish people are a different breed fr"],
+  work: ["hustle culture is toxic but also some people genuinely love working and that's fine too","the 4 day work week sounds nice until you realize they just cram 5 days into 4"],
+  school: ["college isn't for everyone and that's totally fine, trades are underrated","honestly most of what you learn in school is how to deal with people not the actual content"],
+  travel: ["travel is great but the 'traveling is my personality' thing is a bit much","ngl some of the best trips are the ones where nothing goes as planned"],
+  money: ["saving is important but you can't take it with you either","people who say money doesn't buy happiness have never been broke"],
+  dating: ["dating apps ruined dating but also they work sometimes so idk","the talking stage is so unnecessary, just be direct"],
+  cooking: ["meal prep is smart but eating the same thing 5 days in a row is depressing","restaurants are fine but nothing beats a home cooked meal, fight me"],
+  books: ["audiobooks count as reading and if you disagree you're wrong","rereading books hits different than reading new ones honestly"],
+  shows: ["binging a show ruins the experience, weekly releases are better","reboots are almost always worse than the original, just let things be"],
+  phone: ["screen time shame is overblown, sometimes you're reading and learning on there","notifications are the enemy of focus and we all just accept it"],
 };
 
 // Detect when the user states an opinion we can engage with
@@ -12179,6 +12197,11 @@ function addStance(response, text, topics) {
   if (mem.turn - lastStanceTurn < 4) return response;
   if (/^(hey|hi|hello|bye|see you|take care)/i.test(response)) return response;
 
+  // Don't push back when user is emotional, venting, or asking for help
+  if (/\b(I'm (sad|upset|hurt|struggling|depressed|anxious|stressed|overwhelmed))\b/i.test(text)) return response;
+  if (/\b(help|please|can you|I need|I can't)\b/i.test(text)) return response;
+  if (/\b(vent|rant|complain|frustrated|pissed|angry|crying|cried)\b/i.test(text)) return response;
+
   const lower = text.toLowerCase();
   if (!detectStanceOpportunity(text, lower, topics)) return response;
 
@@ -12203,6 +12226,9 @@ function addStance(response, text, topics) {
       `ok wait but ${counter}`,
       `nah see i think ${counter}`,
       `that's fair but also ${counter}`,
+      `ehh idk about that one, ${counter}`,
+      `idk man, ${counter}`,
+      `ok but have you considered that ${counter}`,
     ]);
   }
 
@@ -12213,6 +12239,9 @@ function addStance(response, text, topics) {
       `counterpoint tho — ${counter}`,
       `mmm idk about that one, ${counter}`,
       `ok but hear me out — ${counter}`,
+      `nah I think you're overthinking it, ${counter}`,
+      `respectfully... no lol. ${counter}`,
+      `ok devil's advocate tho — ${counter}`,
     ]);
   }
 
@@ -12257,6 +12286,12 @@ const MINI_OPINIONS = {
   naps: ["naps are the most underrated thing in existence","a 20 min nap genuinely fixes everything"],
   monday: ["mondays get too much hate, tuesday is honestly worse","ngl mondays are rough but at least you have coffee"],
   friday: ["friday energy is unmatched and undefeated","friday afternoons are when productivity dies and vibes begin"],
+  breakfast: ["breakfast for dinner is elite and i won't hear otherwise","skipping breakfast is valid, the 'most important meal' thing is propaganda"],
+  sleep: ["8 hours is non-negotiable, anyone who says they function on 5 is lying to themselves","napping should be socially acceptable at work, i'm serious"],
+  water: ["staying hydrated is the closest thing to a real life cheat code","sparkling water people are just trying to feel fancy and i respect it"],
+  chocolate: ["dark chocolate is superior and if you disagree we can't be friends","chocolate and peanut butter is the greatest combo in food history"],
+  mornings: ["morning people are built different and i'm not one of them","ok hot take but early mornings are actually peaceful if you stop hating them"],
+  weekends: ["two days is not enough, three day weekends should be the standard","doing nothing on weekends is valid, not everything needs to be productive"],
 };
 
 let lastMiniOpinionTurn = 0;
@@ -14231,6 +14266,123 @@ function applyTopicFatigue(response, topics, inputEnergy) {
   const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
   const trimmed = sentences.length > 2 ? sentences.slice(0, 2).join(" ").trim() : response;
   return trimmed + " " + pivotLine;
+}
+
+/* ── Natural Topic Redirects (Round 150) ──
+ * Real friends don't just respond + ask a follow-up on the same topic forever.
+ * They naturally pivot: "ok but can we talk about...", "that reminds me of...",
+ * "wait speaking of...", "omg ok completely unrelated but...".
+ *
+ * This system tracks how long we've been on the same topic cluster and
+ * occasionally injects a natural redirect (15-20% of the time after 3+ exchanges
+ * on the same topic). It doesn't replace the response — it appends a casual pivot.
+ *
+ * Guards: don't redirect during emotional conversations, venting, or deep dives.
+ * 15-20% fire rate, 6-turn cooldown, only after 3+ consecutive same-topic turns.
+ */
+
+let topicStreakTracker = { topic: "", count: 0, lastTurn: 0 };
+let lastRedirectTurn = 0;
+
+const REDIRECT_OPENERS = {
+  // "that reminds me" family — organic topic association
+  associative: [
+    "that reminds me of something — ",
+    "wait speaking of that — ",
+    "yo actually that made me think of something. ",
+    "oh wait this is kinda related — ",
+    "hmm ok that actually connects to something. ",
+  ],
+  // "completely unrelated" family — deliberate topic change
+  unrelated: [
+    "ok but can we talk about something for a sec? ",
+    "omg ok completely unrelated but ",
+    "lowkey this is random but ",
+    "ok pivot — ",
+    "wait ok totally different thing — ",
+    "not to change the subject but also to completely change the subject — ",
+  ],
+  // "I've been meaning to ask" family — personal curiosity
+  curiosity: [
+    "I've been meaning to ask you — ",
+    "ok wait random question — ",
+    "this has nothing to do with anything but — ",
+    "yo ok I just thought of something — ",
+    "oh also btw — ",
+  ],
+};
+
+// Redirect targets — things a friend might naturally pivot to
+const REDIRECT_TARGETS = [
+  "what's been the best part of your week so far",
+  "have you watched anything good lately",
+  "what's something you've been thinking about a lot recently",
+  "do you have any trips planned or anything coming up",
+  "what's something you've been meaning to try but haven't yet",
+  "are you reading anything good right now",
+  "what's the last thing that genuinely made you laugh",
+  "have you had any good food lately",
+  "what's something you changed your mind about recently",
+  "do you have any hot takes you've been sitting on",
+  "what's something you're lowkey excited about",
+  "is there anything you've been procrastinating on",
+  "what's a skill you wish you had",
+  "what's something underrated that more people should know about",
+  "if you could learn one random thing instantly what would it be",
+  "what's been taking up most of your headspace lately",
+];
+
+function updateTopicStreak(topics) {
+  const turn = mem.turn;
+  if (!topics.length) return;
+
+  const mainTopic = topics[0];
+  const key = stem(mainTopic);
+
+  if (topicStreakTracker.topic === key && turn - topicStreakTracker.lastTurn <= 2) {
+    topicStreakTracker.count++;
+    topicStreakTracker.lastTurn = turn;
+  } else {
+    topicStreakTracker = { topic: key, count: 1, lastTurn: turn };
+  }
+}
+
+function applyNaturalRedirect(response, text, topics) {
+  const turn = mem.turn;
+
+  // Update streak tracking
+  updateTopicStreak(topics);
+
+  // Guards
+  if (turn < 6) return response; // let conversation develop first
+  if (turn - lastRedirectTurn < 6) return response; // 6-turn cooldown
+  if (topicStreakTracker.count < 3) return response; // need 3+ exchanges on same topic
+  if (response.length > 200) return response; // don't bloat long responses
+
+  // Don't redirect during emotional/venting moments
+  if (/\b(sad|upset|hurt|struggling|depressed|anxious|stressed|overwhelmed|vent|rant|frustrated|pissed|angry|crying)\b/i.test(text)) return response;
+  // Don't redirect if user asked a specific question
+  if (/\?\s*$/.test(text.trim())) return response;
+  // Don't redirect if user is sharing something deeply personal
+  if (/\b(I need to tell you|I've never told anyone|can I be honest|between us)\b/i.test(text)) return response;
+
+  // 17% fire rate — not too frequent, not too rare
+  if (Math.random() > 0.17) return response;
+
+  lastRedirectTurn = turn;
+
+  // Choose redirect style based on randomness
+  const style = Math.random();
+  let openerPool;
+  if (style < 0.40) openerPool = REDIRECT_OPENERS.associative;
+  else if (style < 0.75) openerPool = REDIRECT_OPENERS.unrelated;
+  else openerPool = REDIRECT_OPENERS.curiosity;
+
+  const opener = pick(openerPool);
+  const target = pick(REDIRECT_TARGETS);
+
+  // Append the redirect as a natural add-on
+  return response + " " + opener + target + "?";
 }
 
 /* ── Conversational Closure Detection & Resolution (Round 91) ──
@@ -17288,8 +17440,8 @@ function detectUserClaim(text) {
 
 // Determine agreement level (1-5) based on multiple signals
 function computeAgreementLevel(claim, topics) {
-  // Base: slight lean toward agreement (humans do agree more than disagree in casual chat)
-  let score = 0.6; // 0=strong disagree, 1=strong agree
+  // Base: lean toward agreement but not always (friends push back ~30% of the time)
+  let score = 0.55; // 0=strong disagree, 1=strong agree
 
   // Check if AI has a prior opinion on this topic
   const topic = topics[0] || "";
@@ -17365,6 +17517,8 @@ function getAgreementPrefix(level, claim) {
       "Hmm, maybe? Let me think on that.",
       "Yeah I get how you'd land there.",
       "That's a spicy take — tell me more.",
+      "ok wait I need to marinate on that one —",
+      "hmm that's a take for sure —",
     ],
     pushback: [
       "Hmm, I'm not sure I'd go that far —",
@@ -17373,6 +17527,12 @@ function getAgreementPrefix(level, claim) {
       "Respectfully... not sure about that one.",
       "Hmm, that's where we'd diverge a bit.",
       "I hear you, but —",
+      "ehh idk about that one —",
+      "nah I think you're overthinking it —",
+      "respectfully... no lol —",
+      "ok devil's advocate tho —",
+      "idk man that seems like a stretch —",
+      "hmm hot take but I kinda disagree —",
     ],
   };
 
@@ -20004,6 +20164,9 @@ export async function getAIResponse(input) {
   // ═══ Topic fatigue: detect exhaustion and suggest natural pivots ═══
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
+  // ═══ Natural topic redirects: friend-like pivots after extended same-topic exchanges ═══
+  response = applyNaturalRedirect(response, text, currentTopics);
+
   // ═══ Conversational closure: satisfying topic resolution when topics complete ═══
   response = applyConversationalClosure(response, text, currentTopics);
 
@@ -20148,7 +20311,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);
