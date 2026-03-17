@@ -2335,6 +2335,30 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Transform origin per mood ──
+  // Shifts the pivot point for 3D rotations/scales so components feel spatially grounded
+  if (s.perspective && !isNav && !isCode) {
+    const toRoll = Math.random();
+    if (moodId === "elegant" && toRoll < 0.55) {
+      // Elegant: off-center origins for magazine-editorial feel
+      s.transformOrigin = pick(["center bottom", "30% 60%", "70% 40%", "center 75%", "40% center"]);
+    } else if (moodId === "bold" && toRoll < 0.50) {
+      // Bold: corner/edge origins for dramatic pivots
+      s.transformOrigin = pick(["left center", "right center", "top left", "bottom right", "left bottom", "20% 80%"]);
+    } else if (moodId === "playful" && toRoll < 0.60) {
+      // Playful: random asymmetric origins for scattered-pinboard feel
+      const ox = pick([10, 20, 30, 70, 80, 90]);
+      const oy = pick([15, 25, 40, 60, 75, 85]);
+      s.transformOrigin = `${ox}% ${oy}%`;
+    } else if (moodId === "minimal" && toRoll < 0.20) {
+      // Minimal: slight off-center for subtle depth cue
+      s.transformOrigin = pick(["45% 50%", "55% 50%", "50% 45%", "50% 55%"]);
+    } else if (toRoll < 0.30) {
+      // Auto fallback
+      s.transformOrigin = pick(["center bottom", "center top", "left center", "right center"]);
+    }
+  }
+
   // ── Gradient border effects ──
   // Replace solid borders with gradient borders for striking visual impact
   // Uses border-image for linear/conic gradient borders per mood
