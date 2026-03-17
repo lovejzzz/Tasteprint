@@ -13976,60 +13976,73 @@ function applyInitiativeManagement(response, text, parsed, sent, topics) {
 
   const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
 
-  // ── STALLED: both passive → AI takes charge with bold openers ──
+  // ── STALLED: both passive → AI takes initiative like a friend would ──
   if (currentFloor === "stalled" && floorStreak >= 2) {
     lastInitiativeTurn = turn;
     const topicSeed = topics[0] || "";
-    const reactivators = [
-      `Okay let me throw something out there —`,
-      `You know what I've been thinking about?`,
-      `Alright, conversation challenge:`,
-      `Here's a random thing I find fascinating —`,
-      `So I have a question that might be interesting:`,
-    ];
-    const topicStarters = topicSeed ? [
-      `What's the most controversial opinion you have about ${topicSeed}?`,
-      `If you could change one thing about ${topicSeed}, what would it be?`,
-      `What got you into ${topicSeed} in the first place?`,
+    const openers = topicSeed ? [
+      `ok wait random but what's your hottest take on ${topicSeed}`,
+      `ok but real talk, what got you into ${topicSeed} in the first place`,
+      `wait actually i wanna know — if you could change one thing about ${topicSeed} what would it be`,
+      `ok ${topicSeed} question: what's the thing most people get wrong about it`,
     ] : [
-      `What's the last thing that genuinely surprised you?`,
-      `If you could master any skill overnight, what would it be?`,
-      `What's something you've changed your mind about recently?`,
+      `ok random question — what's the last thing that genuinely surprised you`,
+      `wait i wanna ask you something — if you could learn one skill instantly what would it be`,
+      `ok random but what's a hill you'd die on`,
+      `btw what have you been into lately`,
+      `ok but can we talk about how there's nothing good to watch rn`,
+      `wait what's the best thing you've eaten recently`,
     ];
-    const opener = reactivators[Math.floor(Math.random() * reactivators.length)];
-    const question = topicStarters[Math.floor(Math.random() * topicStarters.length)];
-    return `${opener} ${question}`;
+    return pick(openers);
   }
 
-  // ── USER-LEADING: user is driving → AI gives substantive answers, yields floor ──
+  // ── USER-LEADING: user is driving → let them cook, strip extra questions ──
   if (currentFloor === "user-leading" && floorStreak >= 2) {
     lastInitiativeTurn = turn;
-    // Strip trailing questions if user is clearly driving — don't fight for control
     const hasTrailingQ = /\?\s*$/.test(response);
     const questionCount = (response.match(/\?/g) || []).length;
     if (hasTrailingQ && questionCount > 1 && sentences.length >= 2) {
-      // Keep the content, drop the last question to yield floor
       return sentences.slice(0, -1).join(" ").trim();
     }
     return response;
   }
 
-  // ── AI-LEADING too long: if AI has been driving 3+ turns, yield ──
+  // ── AI-LEADING too long: back off naturally ──
   if (currentFloor === "ai-leading" && floorStreak >= 3) {
     lastInitiativeTurn = turn;
-    // Add a floor-yield: explicit invitation for user to take over
     const yields = [
-      " But I've been doing a lot of the talking — what's on your mind?",
-      " Anyway, I'm curious what you're thinking about all this.",
-      " Your turn though — what are you most interested in exploring?",
-      " I realize I've been running with this. What catches your eye?",
+      " anyway what about you tho",
+      " but yeah, what do you think",
+      " idk what's your take",
+      " but enough about that, what's up with you",
     ];
-    const yield_ = yields[Math.floor(Math.random() * yields.length)];
-    // Trim response if it's long, then add yield
     if (sentences.length > 2) {
-      return sentences.slice(0, 2).join(" ").trim() + yield_;
+      return sentences.slice(0, 2).join(" ").trim() + pick(yields);
     }
-    return response.replace(/\?[^?]*$/, ".") + yield_;
+    return response.replace(/\?[^?]*$/, ".") + pick(yields);
+  }
+
+  // ── SHARED + natural redirect: sometimes pivot to something new like a friend ──
+  if (currentFloor === "shared" && turn > 5 && Math.random() < 0.08) {
+    lastInitiativeTurn = turn;
+    // Natural tangent — friends do this all the time
+    const tangents = [
+      `ok wait that reminds me — `,
+      `oh btw totally unrelated but `,
+      `ok random but `,
+      `wait can we talk about how `,
+      `ok this is off topic but `,
+    ];
+    const tangentTopics = [
+      "have you been watching anything good lately",
+      "what's your go-to comfort food",
+      "do you ever just zone out for like an hour",
+      "what song has been stuck in your head recently",
+      "isn't it weird how fast time is going rn",
+      "what's something you've been meaning to do but keep putting off",
+      "what would you do with an extra hour every day",
+    ];
+    return pick(tangents) + pick(tangentTopics);
   }
 
   return response;
