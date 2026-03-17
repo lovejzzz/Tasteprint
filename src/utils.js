@@ -1751,6 +1751,74 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
+    // --- DNA depthLayer activation: canvas-wide depth personality ---
+    // "flat" = strip layering, "soft" = gentle inset shadows, "layered" = stacked depth, "heavy" = dramatic multi-shadow
+    if (dna?.effectPersonality?.depthLayer) {
+      const dl = dna.effectPersonality.depthLayer;
+      if (dl === "flat") {
+        // Flatten: remove gradient overlays, cap shadow, strip opacity tricks
+        if (s.gradientOverlay && Math.random() < 0.5) s.gradientOverlay = undefined;
+        s.gradientOverlay2 = undefined;
+        if (s.boxShadow && s.boxShadow !== "none" && Math.random() < 0.4) {
+          s.boxShadow = pick(["none", `0 1px 2px ${shHex}06`]);
+        }
+      } else if (dl === "soft") {
+        // Gentle inset glow for soft depth
+        if (Math.random() < 0.3 && s.boxShadow && s.boxShadow !== "none") {
+          s.boxShadow += `, inset 0 1px 4px ${acHex}05`;
+        }
+        if (Math.random() < 0.2) s.opacity = pick([0.92, 0.94, 0.96]);
+      } else if (dl === "layered") {
+        // Stacked: add secondary shadow layer for floating depth
+        if (Math.random() < 0.35 && s.boxShadow && s.boxShadow !== "none") {
+          s.boxShadow += `, 0 ${pick([8, 12, 16])}px ${pick([24, 32, 40])}px ${shHex}06`;
+        }
+      } else if (dl === "heavy") {
+        // Dramatic: triple-depth shadow stacking + slight scale lift
+        if (Math.random() < 0.3 && s.boxShadow && s.boxShadow !== "none") {
+          s.boxShadow += `, 0 16px 48px ${shHex}08, 0 4px 12px ${acHex}06`;
+        }
+        if (Math.random() < 0.15 && !s.scale) s.scale = pick([1.01, 1.02, 1.03]);
+      } else if (dl === "vivid") {
+        // Vivid: colored shadow glow for lively depth
+        if (Math.random() < 0.35 && s.boxShadow && s.boxShadow !== "none") {
+          s.boxShadow += `, 0 0 ${pick([16, 24, 32])}px ${pick([gcGlow, gc1, acHex])}10`;
+        }
+      }
+    }
+
+    // --- Mask-image vignettes: gradient masks for soft edge fading ---
+    // Creates depth illusion and dramatic edge treatments without box-shadow
+    if (!isSmall && !isNav) {
+      const maskChance = moodId === "elegant" ? 0.18 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.10 : moodId === "minimal" ? 0.03 : 0.08;
+      if (Math.random() < maskChance) {
+        if (moodId === "elegant") {
+          // Elegant: soft radial vignette or gentle edge fade
+          s.maskImage = pick([
+            `radial-gradient(ellipse 85% 85% at center, black 60%, transparent 100%)`,
+            `linear-gradient(to bottom, black 80%, transparent 100%)`,
+            `radial-gradient(ellipse 90% 80% at 50% 40%, black 50%, transparent 100%)`,
+          ]);
+        } else if (moodId === "bold") {
+          // Bold: sharp directional wipes, diagonal cuts
+          s.maskImage = pick([
+            `linear-gradient(${pick([135, 225, 315])}deg, black 70%, transparent 100%)`,
+            `linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)`,
+            `linear-gradient(to bottom, black 85%, transparent 100%)`,
+          ]);
+        } else if (moodId === "playful") {
+          // Playful: wave-like organic fade
+          s.maskImage = pick([
+            `radial-gradient(ellipse 100% 80% at 50% 30%, black 55%, transparent 100%)`,
+            `linear-gradient(to bottom, black 70%, transparent 100%)`,
+          ]);
+        } else {
+          // Auto/minimal: subtle bottom fade
+          s.maskImage = `linear-gradient(to bottom, black 85%, transparent 100%)`;
+        }
+      }
+    }
+
     // --- Surface texture patterns: repeating gradient patterns for visual surface texture ---
     // These create subtle visual interest — pinstripes, dot grids, crosshatch, etc.
     if (!isSmall) {

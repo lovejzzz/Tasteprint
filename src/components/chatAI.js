@@ -7852,9 +7852,9 @@ function modulateEpistemics(response, topics, parsed) {
   if (conf.score >= 0.8) {
     if (Math.random() > 0.6) return response; // Often just let it be confident naturally
     const confidentPrefixes = [
-      "Oh this I know well — ",
-      "So this is something I can actually speak to: ",
-      "Okay this one I'm pretty solid on — ",
+      "oh this i know, ",
+      "ok so i actually know about this, ",
+      "ooh ok yeah i'm solid on this one, ",
     ];
     // Only prefix if response doesn't already start with a strong opener
     if (!/^(Oh|So|Okay|Actually|Yeah|Right|Well)/i.test(response)) {
@@ -8067,13 +8067,13 @@ function planResponseIntent(text, parsed, sent, emo, subtext) {
 // Discourse markers — natural transitions based on what the LAST AI message was
 const DISCOURSE_MARKERS = {
   // After the AI was empathetic, transition gently
-  empathetic: ["Anyway,","On a lighter note —","But hey,","ok but also,","Moving forward though,"],
+  empathetic: ["anyway,","ok but on a different note,","but hey,","ok but also,","but yeah,"],
   // After the AI was playful, can shift easily
-  playful:    ["Oh also —","But real talk,","Haha but seriously,","Okay but —","On another note,"],
+  playful:    ["oh also,","but real talk,","haha ok but,","ok but,","oh wait also,"],
   // After the AI was informative, vary the next opening
-  informative:["So yeah,","Anyway,","All that to say,","Point being,","TL;DR —"],
+  informative:["so yeah,","anyway,","all that to say,","point being,","basically,"],
   // After the AI was curious (asked questions), acknowledge return
-  curious:    ["Oh cool!","Ahh,","Okay okay,","I see!","Right right,"],
+  curious:    ["oh cool,","ahh,","ok ok,","ooh,","right right,"],
   // Neutral / first message
   neutral:    ["","","","",""], // no marker needed
 };
@@ -8369,29 +8369,29 @@ const IMPLICIT_AGREE_PATTERNS = [
 const IMPLICIT_AGREE_RESPONSES = {
   affirmation: [
     "glad we're on the same page. ",
-    "ok so we're aligned — ",
-    "nice, running with that — ",
+    "ok so we're aligned, ",
+    "nice, running with that, ",
   ],
   validation: [
-    "cool. so building from there — ",
-    "right, and that opens up — ",
+    "cool. so building from there, ",
+    "right, and that opens up, ",
   ],
   expansion: [
     "oh nice you're taking it further. ",
-    "good add — ",
-    "yes and — ",
+    "good add, ",
+    "yes and, ",
   ],
   restatement: [
     "exactly how i'd frame it too. ",
     "yeah that's the clean version. ",
   ],
   comprehension: [
-    "perfect. so next thought — ",
-    "ok great then — ",
+    "perfect. so next thought, ",
+    "ok great then, ",
   ],
   minimal: [
     "cool. ",
-    "gotcha — ",
+    "gotcha, ",
   ],
 };
 
@@ -8426,9 +8426,9 @@ function applyImplicitAgreement(response, text) {
   // After 3+ consecutive implicit agreements, acknowledge momentum once
   if (implicitAgreeStreak >= 3 && Math.random() < 0.3) {
     const momentumAcks = [
-      "ok we're really vibing on this — ",
-      "ok we're locked in — ",
-      "this flow though — ",
+      "ok we're really vibing on this, ",
+      "ok we're locked in, ",
+      "this flow though, ",
     ];
     const ack = momentumAcks[Math.floor(Math.random() * momentumAcks.length)];
     if (!recentImplicitAcks.includes(ack)) {
@@ -8589,9 +8589,9 @@ function applyDensityAdaptation(response, text) {
   if (currentDensityLevel === "high" && Math.random() < 0.3) {
     // User is highly engaged — occasionally add a "bonus" insight
     const bonuses = [
-      " And here's the thing — ",
-      " What's interesting is ",
-      " The nuance here is ",
+      " and here's the thing, ",
+      " what's wild is ",
+      " the nuance here is ",
     ];
     const bonus = bonuses[Math.floor(Math.random() * bonuses.length)];
     // Only add if response doesn't already end with a trailing thought
@@ -8992,8 +8992,8 @@ function getTraitImbalance() {
 const TRAIT_NUDGES = {
   curiosity:  ["wait ok but ", "hmm actually ", "ooh ok so "],
   warmth:     ["aw ok that's cool tho. ", "nah that's actually really nice. ", "ok i love that. "],
-  humor:      ["lol ", "haha ok ", "ok that's kinda funny — "],
-  directness: ["ok honestly ", "nah real talk ", "ok so here's the thing — "],
+  humor:      ["lol ", "haha ok ", "ok that's kinda funny, "],
+  directness: ["ok honestly ", "nah real talk ", "ok so here's the thing, "],
   depth:      ["wait the interesting part is ", "ok so basically ", "the thing is "],
 };
 
@@ -12019,7 +12019,7 @@ function enrichVocabulary(response, topics) {
     const currentFirstWord = r.split(/\s/)[0]?.toLowerCase();
     if (lastFirstWord && currentFirstWord === lastFirstWord && r.length > 40) {
       // Prepend a varied opener
-      const openers = ["So — ","Well — ","Okay, ","See, ","Look — ","Here's the thing — "];
+      const openers = ["ok so, ","well, ","so like, ","see, ","look, ","ok here's the thing, "];
       r = pick(openers) + r.charAt(0).toLowerCase() + r.slice(1);
     }
   }

@@ -175,6 +175,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           opacity: ds.opacity || undefined,
           transition: ds.transition || undefined,
           clipPath: ds.clipPath || undefined,
+          WebkitMaskImage: ds.maskImage || undefined,
+          maskImage: ds.maskImage || undefined,
           position: "relative",
           overflow: (device !== "free" || ds.borderRadius === 999) ? "hidden" : undefined,
           WebkitTapHighlightColor: "transparent", touchAction: "none",
