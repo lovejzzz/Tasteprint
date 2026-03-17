@@ -3171,8 +3171,8 @@ function shapeToRhythm(response, targetMove) {
     case "challenge":
       // Add a gentle counter-perspective
       if (Math.random() > 0.5) {
-        const challenges = ["But here's a thought —","Though, devil's advocate —","That said,","On the flip side though,"];
-        const counterPts = ["there's an argument for the other side too.","some people might see it differently.","it depends on the context, right?","what about the edge cases?"];
+        const challenges = ["ok but wait tho —","nah but counterpoint —","that said,","ok but flip side tho,"];
+        const counterPts = ["there's kinda an argument for the other side too","some people would totally disagree tho","depends on context right?","what about the edge cases tho"];
         return response + " " + pick(challenges) + " " + pick(counterPts);
       }
       break;
@@ -6492,14 +6492,14 @@ function handleTurnSignal(signal) {
       const keyPhrase = lastWords.slice(0, 3).join(" ");
       if (keyPhrase) {
         const elaborations = [
-          `So when I mentioned ${keyPhrase} — the key thing is that it's not as simple as it seems on the surface. There are layers to it.`,
-          `Right, so about ${keyPhrase}: the interesting part is really in the details. What aspect are you most curious about?`,
-          `Yeah the ${keyPhrase} part is actually pretty nuanced. Want me to break it down?`,
+          `ok so when i said ${keyPhrase} — it's not as simple as it sounds. there's layers to it`,
+          `yeah so the ${keyPhrase} thing — the interesting part is in the details. what part are you curious about`,
+          `the ${keyPhrase} part is lowkey more nuanced than i made it sound. want me to go deeper`,
         ];
         return pickNew(elaborations);
       }
 
-      return "Sure! The gist is that there's more depth there than meets the eye. What specifically caught your interest?";
+      return "yeah there's actually more to it than i said. what part caught ur eye";
     }
 
     case "correct": {
@@ -10712,10 +10712,10 @@ const ADMISSION_TYPES = {
     "i think about this more than i probably should",
   ],
   humble_take: [
-    "i have a take but i want to be upfront that it's just my perspective —",
-    "take this with a grain of salt but here's how i see it —",
-    "i could be totally wrong about this but —",
-    "this is just my read on it and i'm open to being convinced otherwise —",
+    "ok so like my take on this, could be wrong but —",
+    "grain of salt but here's how i see it —",
+    "i could be totally off on this but —",
+    "this is just my read and u can 100% disagree —",
   ],
 };
 
@@ -12055,11 +12055,11 @@ function addDisfluency(response) {
   // Add "I think" or "if that makes sense" or "— you know?"
   if (strategy < 1.0) {
     const hedges = [
-      { pos: "end", text: " — if that makes sense?" },
-      { pos: "end", text: " — you know what I mean?" },
-      { pos: "end", text: " ...at least that's how I see it." },
-      { pos: "mid", text: " — I think — " },
-      { pos: "start", text: "I might be oversimplifying but " },
+      { pos: "end", text: " — does that make sense" },
+      { pos: "end", text: " — u know what i mean?" },
+      { pos: "end", text: " ...or at least that's how i see it" },
+      { pos: "mid", text: " — i think — " },
+      { pos: "start", text: "i might be oversimplifying but " },
     ];
     const hedge = pick(hedges);
     if (hedge.pos === "end") {
@@ -19767,17 +19767,17 @@ const WARMTH_CASUAL = [
   { prefix: "i'll be honest, ", weight: 0.9 },
   { prefix: "here's the thing, ", weight: 0.8 },
   { prefix: "genuinely though, ", weight: 0.7 },
-  { prefix: "For real though, ", weight: 0.85 },
+  { prefix: "for real though, ", weight: 0.85 },
 ];
 
 // Tier 2: Intimate warmth (rapportLevel >= 0.6)
 const WARMTH_INTIMATE = [
-  { prefix: "Between you and me, ", weight: 1.0 },
-  { prefix: "Can I be real with you? ", weight: 0.9 },
-  { prefix: "Okay I actually really think about this — ", weight: 0.7 },
-  { prefix: "This is genuinely something I care about — ", weight: 0.65 },
-  { prefix: "I don't say this lightly, but ", weight: 0.8 },
-  { prefix: "Real talk — ", weight: 0.9 },
+  { prefix: "ok between us tho, ", weight: 1.0 },
+  { prefix: "ok can i be real rn — ", weight: 0.9 },
+  { prefix: "ngl i think about this a lot — ", weight: 0.7 },
+  { prefix: "ok this actually matters to me — ", weight: 0.65 },
+  { prefix: "i don't say this a lot but ", weight: 0.8 },
+  { prefix: "real talk — ", weight: 0.9 },
 ];
 
 // Contexts where warmth markers feel natural
