@@ -1,6 +1,7 @@
 import React from "react";
 import { HighlightLine, tokenize, TC } from "./tokenizer";
 import { TpContext } from "../../contexts/TpContext";
+import { getTextureStyle } from "../../utils";
 
 /* ========== Raw source imports (Vite ?raw) ========== */
 import SRC_App from "../../App.jsx?raw";
@@ -536,7 +537,7 @@ function genDevice(tp) {
 }
 
 /* ========== Component ========== */
-export default function CodeIDE({ b, p, fsize = 1 }) {
+export default function CodeIDE({ b, p, fsize = 1, texture }) {
   const tp = React.useContext(TpContext);
 
   /* ---- File system ---- */
@@ -3853,7 +3854,7 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
 
   /* ========== RENDER ========== */
   return (
-    <div data-ide-scroll style={{ ...b, background: '#1e1e2e', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: MONO }}>
+    <div data-ide-scroll style={{ ...b, background: '#1e1e2e', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: MONO, ...getTextureStyle(texture, p) }}>
       {/* Custom scrollbar styling */}
       <style>{`
         [data-ide-scroll] *::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -3875,16 +3876,16 @@ export default function CodeIDE({ b, p, fsize = 1 }) {
       `}</style>
 
       {/* Title bar — drag handle for moving IDE on canvas */}
-      <div data-ide-drag style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', borderBottom: '1px solid #ffffff10', gap: 6, flexShrink: 0, background: '#181825', cursor: 'grab' }}>
+      <div data-ide-drag style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', borderBottom: '1px solid #ffffff10', gap: 6, flexShrink: 0, background: '#181825', cursor: 'grab', borderRadius: '12px 12px 0 0', transition: 'background .2s ease' }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {[
             { c: '#ff5f56', title: 'Close IDE', action: () => { const ids = tp?.find('code-block'); if (ids?.length) tp.remove(ids[0]); } },
             { c: '#ffbd2e', title: 'Toggle terminal', action: () => setTermOpen(t => !t) },
             { c: '#27c93f', title: 'Run code', action: () => runCode() },
           ].map((btn, i) => <div key={i} onClick={btn.action} onMouseDown={stop}
-            style={{ width: 7, height: 7, borderRadius: 99, background: btn.c, opacity: .6, cursor: 'pointer', transition: 'opacity .15s' }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '.6'}
+            style={{ width: 7, height: 7, borderRadius: 99, background: btn.c, opacity: .6, cursor: 'pointer', transition: 'opacity .15s ease, transform .15s ease' }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '.6'; e.currentTarget.style.transform = 'scale(1)'; }}
             title={btn.title} />)}
         </div>
         <span onClick={() => setSidebarMode(m => m === 'files' ? null : 'files')} onMouseDown={stop}
