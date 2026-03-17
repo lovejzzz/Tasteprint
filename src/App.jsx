@@ -47,6 +47,7 @@ export default function App() {
   const [styleSource, setStyleSource] = useState(null); // shape ID for style transfer
   const [candidates, setCandidates] = useState({}); // { [shapeId]: [candidate1, candidate2, candidate3] }
   const [candidateIdx, setCandidateIdx] = useState({}); // { [shapeId]: currentIndex }
+  const [designHistory, setDesignHistory] = useState({}); // { [shapeId]: [{ variant, font, fsize, props, dStyles }, ...] } max 5
   const curatedIdx = useRef({}); // { [shapeId]: nextPresetIndex }
   const cRef = useRef(null);
   const dRef = useRef(null);
@@ -217,6 +218,12 @@ export default function App() {
     if (targets.length === 1) {
       const shape = shapes.find(s => s.id === id);
       if (!shape) return;
+      // Push current design state onto per-component history (cap at 5)
+      setDesignHistory(prev => {
+        const stack = prev[id] || [];
+        const entry = { variant: shape.variant || 0, font: shape.font || 0, fsize: shape.fsize || 1, props: { ...(shape.props || {}) }, dStyles: shape.dStyles ? { ...shape.dStyles } : undefined };
+        return { ...prev, [id]: [...stack.slice(-(5 - 1)), entry] };
+      });
       const defaults = DEFAULT_PROPS[shape.type];
       const allCandidates = [];
       for (let c = 0; c < 3; c++) {
@@ -312,6 +319,28 @@ export default function App() {
     rndUndo.current = null;
     setHasRndUndo(false);
   }, []);
+
+  const undoDesign = useCallback((shapeId) => {
+    setDesignHistory(prev => {
+      const stack = prev[shapeId];
+      if (!stack || stack.length === 0) return prev;
+      const entry = stack[stack.length - 1];
+      // Apply the popped design state
+      setShapes(sh => sh.map(s => {
+        if (s.id !== shapeId) return s;
+        return { ...s, variant: entry.variant, font: entry.font, fsize: entry.fsize, props: entry.props, dStyles: entry.dStyles };
+      }));
+      setPrefV(pv => {
+        const shape = shapes.find(s => s.id === shapeId);
+        if (!shape) return pv;
+        return { ...pv, [shape.type]: entry.variant };
+      });
+      // Clear candidates since we're restoring a previous state
+      setCandidates(c => { const n = { ...c }; delete n[shapeId]; return n; });
+      setCandidateIdx(ci => { const n = { ...ci }; delete n[shapeId]; return n; });
+      return { ...prev, [shapeId]: stack.slice(0, -1) };
+    });
+  }, [shapes]);
 
   const copyStyle = useCallback((sourceId, targetId) => {
     const src = shapes.find(x => x.id === sourceId);
@@ -674,7 +703,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} designHistory={designHistory[s.id]} undoDesign={undoDesign} />
               ))}
             </div>
 

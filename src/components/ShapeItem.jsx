@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore, candidates, candidateIdx, cycleVariation }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore, candidates, candidateIdx, cycleVariation, designHistory, undoDesign }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -110,6 +110,22 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               <circle cx="12" cy="12" r="1.5" fill={p.ac} stroke="none" />
             </svg>
           </button>
+          {designHistory && designHistory.length > 0 && (
+            <button aria-label={`Undo design (${designHistory.length} available)`}
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); undoDesign(s.id); }}
+              onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; }}
+              style={{ ...pb, fontSize: 11, width: "auto", padding: "0 5px", gap: 2, position: "relative" }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+              {designHistory.length > 1 && (
+                <span style={{ position: "absolute", top: -4, right: -4, minWidth: 13, height: 13, borderRadius: 999, background: p.ac, color: "#fff", fontSize: 8, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
+                  {designHistory.length}
+                </span>
+              )}
+            </button>
+          )}
           {candidates && candidates.length > 1 && (
             <button aria-label="Cycle to next design variation"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleVariation(s.id); }}
@@ -306,7 +322,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     prev.dScore === next.dScore &&
     prev.s.dStyles === next.s.dStyles &&
     prev.candidates === next.candidates &&
-    prev.candidateIdx === next.candidateIdx;
+    prev.candidateIdx === next.candidateIdx &&
+    prev.designHistory === next.designHistory;
 });
 
 export default ShapeItem;
