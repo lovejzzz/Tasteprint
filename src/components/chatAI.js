@@ -9841,18 +9841,18 @@ const LEAP_MAP = {
 };
 
 const LEAP_INTROS = [
-  "Oh wait — this is actually kind of like ",
-  "Huh, you know what this reminds me of? ",
-  "Okay this is a weird connection but — ",
-  "This is going to sound random, but ",
-  "Actually — and hear me out — ",
-  "You know what's funny? This is basically ",
+  "oh wait — this is kinda like ",
+  "wait you know what this reminds me of? ",
+  "ok this is a weird connection but — ",
+  "this is gonna sound random but ",
+  "ok hear me out — ",
+  "lol you know what's funny? this is basically ",
 ];
 
 const LEAP_OUTROS = [
-  " ...anyway, tangent over.",
-  " — okay that was a leap, but you see what I mean?",
-  " ...I swear that connection made sense in my head.",
+  " ...anyway tangent over lol",
+  " — ok that was a leap but you see what i mean?",
+  " ...i swear that connection made sense in my head",
   "",
   " — does that track?",
   "",
@@ -10943,24 +10943,24 @@ const COMMITMENT_PATTERNS = [
 
 const COMMIT_FOLLOWUP_TEMPLATES = {
   action: [
-    "By the way — did you end up trying {thing}?",
-    "How'd {thing} go, if you got to it?",
+    "wait did you end up trying {thing}?",
+    "how'd {thing} go btw?",
   ],
   intention: [
-    "Did you get a chance to {thing}?",
-    "Any update on {thing}?",
+    "did you get a chance to {thing}?",
+    "any update on {thing}?",
   ],
   deliberation: [
-    "Had any more thoughts on {thing}?",
-    "Still mulling over {thing}?",
+    "had any more thoughts on {thing}?",
+    "still thinking about {thing}?",
   ],
   plan: [
-    "How's {thing} going?",
-    "Did {thing} happen?",
+    "how's {thing} going?",
+    "did {thing} happen?",
   ],
   tentative: [
-    "Did you ever look into {thing}?",
-    "Still thinking about {thing}?",
+    "did you ever look into {thing}?",
+    "still mulling over {thing}?",
   ],
 };
 
@@ -11023,10 +11023,10 @@ const MICRO_ACKS = {
 
 // Paraphrase templates — show we understood the content
 const PARAPHRASE_TEMPLATES = [
-  "So you're {verb} {topic} — ",
-  "So {topic} — ",
-  "Ah, {topic}! ",
-  "Oh, so it's about {topic} — ",
+  "so you're {verb} {topic} — ",
+  "so {topic} — ",
+  "ah {topic}. ",
+  "oh so it's about {topic} — ",
 ];
 
 const PARAPHRASE_VERBS = {
@@ -12034,11 +12034,11 @@ function addDisfluency(response) {
   // "The thing is — okay so basically, [response]"
   if (strategy < 0.55) {
     const falseStarts = [
-      "Okay so — ",
-      "The thing is — actually, ",
-      "I was gonna say — well, ",
-      "So basically — yeah, ",
-      "Hmm, how do I put this — ",
+      "ok so — ",
+      "the thing is — actually, ",
+      "i was gonna say — well, ",
+      "so basically — yeah, ",
+      "hmm ok how do i say this — ",
     ];
     // Only if response doesn't already start with a personality opener
     if (!/^(Hmm|Ooh|Actually|Oh|So |Okay|Wait|Ha,|Real talk)/i.test(response)) {
@@ -17508,10 +17508,10 @@ function applyParallelStructure(response, text) {
   if (type === "multi_question") {
     // Address first question explicitly, then the rest
     if (items.length === 2) {
-      const connectors = ["And for your second question — ", "As for the other thing — ", "Oh and — "];
-      return response + " " + connectors[Math.floor(Math.random() * connectors.length)] + items[1].replace(/^\s*(and|also|but)\s*/i, "").trim() + "? Hmm, honestly.";
+      const connectors = ["oh and for the other thing — ", "as for the other thing — ", "oh and — "];
+      return response + " " + connectors[Math.floor(Math.random() * connectors.length)] + items[1].replace(/^\s*(and|also|but)\s*/i, "").trim() + "? hmm honestly.";
     }
-    return `You're asking a few things at once — love that. ${response} As for the rest, each one deserves its own moment.`;
+    return `ok you're asking a few things at once lol. ${response} as for the rest, each one deserves its own moment.`;
   }
 
   return response;
@@ -18661,11 +18661,11 @@ function applyDigression(response, text, topics) {
 
   // Build the digression fragment
   const openers = [
-    "Oh — that reminds me, ",
-    "Wait, side thought: ",
-    "This is a tangent but — ",
-    "Random aside — ",
-    "Okay brief tangent: ",
+    "oh — that reminds me, ",
+    "wait side thought: ",
+    "ok tangent but — ",
+    "random aside — ",
+    "ok brief tangent: ",
   ];
   const closers = [
     `${seed.returnPhrase} — `,
