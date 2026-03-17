@@ -17637,88 +17637,96 @@ function applyDigression(response, text, topics) {
  * 8% fire rate, 10-turn cooldown, max 3 callbacks per conversation.
  */
 
-let comedyMoments = []; // { turn, topic, phrase, type }
+let comedyMoments = []; // { turn, topic, phrase, type, refs: number }
 let lastComedyCallbackTurn = 0;
 let comedyCallbackCount = 0;
 
-// Detect and store comedy moments from user + AI interaction
+// Detect and store comedy moments + running bits from user + AI interaction
 function trackComedyMoment(userText, aiResponse, topics, turn) {
   const lower = userText.toLowerCase();
 
   // User laughed at our response — whatever we said was funny
-  const laughed = /\b(haha|lol|lmao|rofl|😂|🤣|dead|dying|i can't|that's hilarious|so funny)\b/i.test(lower);
-  if (laughed && comedyMoments.length < 8) {
-    // Extract what was funny from the PREVIOUS AI response
+  const laughed = /\b(haha|lol|lmao|rofl|😂|🤣|dead|dying|i can't|hilarious|so funny|im weak|sending me)\b/i.test(lower);
+  if (laughed && comedyMoments.length < 12) {
     const lastAI = mem.history?.filter(h => h.role === "ai").slice(-1)[0];
     if (lastAI) {
       const aiText = lastAI.text || "";
-      // Find the punchline — last sentence or a short distinctive phrase
       const sentences = aiText.match(/[^.!?]+[.!?]+/g) || [aiText];
       const punchline = sentences.length > 1 ? sentences[sentences.length - 1].trim() : sentences[0]?.trim() || "";
-      if (punchline.length > 10 && punchline.length < 80) {
-        comedyMoments.push({ turn, topic: topics[0] || "misc", phrase: punchline, type: "landed_joke" });
+      if (punchline.length > 8 && punchline.length < 80) {
+        comedyMoments.push({ turn, topic: topics[0] || "misc", phrase: punchline, type: "landed_joke", refs: 0 });
       }
     }
     return;
   }
 
-  // Funny topic discussion — contentious/amusing topics
+  // Funny topic discussion — expanded beyond tech
   const funnyTopics = [
     { pat: /pineapple.+pizza|pizza.+pineapple/i, tag: "pineapple pizza" },
-    { pat: /deploy.+friday|friday.+deploy/i, tag: "Friday deploys" },
+    { pat: /deploy.+friday|friday.+deploy/i, tag: "friday deploys" },
     { pat: /tabs?.+spaces?|spaces?.+tabs?/i, tag: "tabs vs spaces" },
     { pat: /dark.+mode|light.+mode/i, tag: "dark vs light mode" },
-    { pat: /css.+hard|hard.+css|centering.+div/i, tag: "CSS struggles" },
-    { pat: /coffee.+code|code.+coffee|caffeine/i, tag: "coffee and code" },
-    { pat: /monday|meetings/i, tag: "meetings" },
-    { pat: /bugs?.+feature|feature.+bug/i, tag: "bug-or-feature" },
-    { pat: /stack.?overflow|copy.?paste/i, tag: "Stack Overflow" },
+    { pat: /css.+hard|hard.+css|centering.+div/i, tag: "CSS pain" },
+    { pat: /coffee.+code|code.+coffee|caffeine/i, tag: "coffee addiction" },
+    { pat: /meetings/i, tag: "meetings" },
+    { pat: /bugs?.+feature|feature.+bug/i, tag: "bug or feature" },
+    { pat: /stack.?overflow|copy.?paste/i, tag: "stackoverflow" },
     { pat: /naming.+things|naming.+hard/i, tag: "naming things" },
+    // Everyday funny topics
+    { pat: /alarm|snooze|oversleep/i, tag: "alarm struggles" },
+    { pat: /procrastinat/i, tag: "procrastination" },
+    { pat: /autocorrect/i, tag: "autocorrect fails" },
+    { pat: /awkward|cringe/i, tag: "cringe moments" },
+    { pat: /adulting|bills|laundry|chores/i, tag: "adulting" },
+    { pat: /food coma|ate too much|so full/i, tag: "food coma" },
+    { pat: /toxic|red flag/i, tag: "red flags" },
+    { pat: /main character|protagonist/i, tag: "main character energy" },
+    { pat: /clown|🤡/i, tag: "clown behavior" },
   ];
 
   for (const ft of funnyTopics) {
     if (ft.pat.test(lower) && !comedyMoments.some(m => m.topic === ft.tag)) {
-      comedyMoments.push({ turn, topic: ft.tag, phrase: userText.substring(0, 60), type: "funny_topic" });
+      comedyMoments.push({ turn, topic: ft.tag, phrase: userText.substring(0, 60), type: "funny_topic", refs: 0 });
       return;
     }
   }
 
-  // User made a joke or memorable quip (short + exclamation or quoted phrase)
-  if (lower.length < 60 && lower.length > 15 && (/!$/.test(userText) || /".+?"/.test(userText))) {
-    const hasHumorSignal = /worst|best|honestly|literally|technically|classic|typical/i.test(lower);
-    if (hasHumorSignal && comedyMoments.length < 8) {
-      comedyMoments.push({ turn, topic: topics[0] || "misc", phrase: userText.trim(), type: "user_quip" });
+  // User made a joke, memorable quip, or funny story
+  if (lower.length < 80 && lower.length > 10) {
+    const humorSignal = /worst|best|honestly|literally|technically|classic|typical|always|never|every time|without fail|of course/i.test(lower);
+    const emotionalPunctuation = /!{2,}|😂|💀|🤡|😭|lol|lmao|dead/i.test(userText);
+    if ((humorSignal || emotionalPunctuation) && comedyMoments.length < 12) {
+      comedyMoments.push({ turn, topic: topics[0] || "misc", phrase: userText.trim(), type: "user_quip", refs: 0 });
     }
   }
 }
 
 function applyHumorCallback(response, text, topics) {
   const turn = mem.turn;
-  if (turn < 8) return response; // need history for callbacks to work
-  if (turn - lastComedyCallbackTurn < 10) return response; // 10-turn cooldown
-  if (comedyCallbackCount >= 3) return response; // max 3 per conversation
+  if (turn < 6) return response;
+  if (turn - lastComedyCallbackTurn < 7) return response; // 7-turn cooldown (was 10)
+  if (comedyCallbackCount >= 5) return response; // max 5 per conversation (was 3)
   if (comedyMoments.length === 0) return response;
-  if (response.length > 220) return response; // don't bloat
-  if (Math.random() > 0.08) return response; // 8% fire rate
+  if (response.length > 200) return response;
+  if (Math.random() > 0.15) return response; // 15% fire rate (was 8%)
 
-  // Don't callback during emotional/repair/farewell moments
-  if (/^(sorry|I hear|that sounds|bye|see you|take care)/i.test(response)) return response;
+  // Don't callback during sad/farewell moments
+  if (/sorry|that sucks|that's rough|bye|later|peace/i.test(response)) return response;
 
-  // Find a callback candidate: 5+ turns ago, topic overlap with current context
   const lower = text.toLowerCase();
   let bestMoment = null;
 
   for (const moment of comedyMoments) {
     const turnsAgo = turn - moment.turn;
-    if (turnsAgo < 5) continue; // too recent
-    if (turnsAgo > 20) continue; // too old
+    if (turnsAgo < 4) continue;
+    if (turnsAgo > 25) continue;
 
-    // Check topic relevance
+    // Topic or text overlap
     const topicMatch = topics.some(t => {
       const ts = stem(t);
       return moment.topic.toLowerCase().includes(ts) || ts.includes(stem(moment.topic.split(" ")[0]));
     });
-    const textMatch = moment.topic.split(" ").some(w => lower.includes(w.toLowerCase()));
+    const textMatch = moment.topic.split(" ").some(w => w.length > 3 && lower.includes(w.toLowerCase()));
 
     if (topicMatch || textMatch) {
       bestMoment = moment;
@@ -17726,44 +17734,71 @@ function applyHumorCallback(response, text, topics) {
     }
   }
 
+  // Random callback even without topic match — friends bring up old jokes randomly
+  if (!bestMoment && Math.random() < 0.3 && comedyMoments.length > 0) {
+    const eligible = comedyMoments.filter(m => turn - m.turn >= 6 && m.refs < 2);
+    if (eligible.length > 0) bestMoment = eligible[Math.floor(Math.random() * eligible.length)];
+  }
+
   if (!bestMoment) return response;
 
   lastComedyCallbackTurn = turn;
   comedyCallbackCount++;
+  bestMoment.refs++;
 
-  // Generate the callback based on moment type
+  // Running bit: if we've referenced it before, escalate the joke
+  const isRunningBit = bestMoment.refs >= 2;
+
   let callback;
   if (bestMoment.type === "landed_joke") {
-    const callbacks = [
-      `(okay, this is giving me ${bestMoment.topic} vibes again and I'm here for it)`,
-      `Wait, didn't we already establish this back when we were talking about ${bestMoment.topic}? 😄`,
-      `This is the ${bestMoment.topic} conversation all over again, isn't it?`,
-    ];
-    callback = callbacks[Math.floor(Math.random() * callbacks.length)];
+    if (isRunningBit) {
+      callback = pick([
+        `(ok the ${bestMoment.topic} thing is officially a running joke between us)`,
+        `not the ${bestMoment.topic} arc AGAIN 😂`,
+        `lmao we can't escape ${bestMoment.topic}`,
+      ]);
+    } else {
+      callback = pick([
+        `wait this is giving ${bestMoment.topic} energy again lol`,
+        `not the ${bestMoment.topic} thing again 😂`,
+        `lmao this is literally the ${bestMoment.topic} conversation part 2`,
+      ]);
+    }
   } else if (bestMoment.type === "funny_topic") {
-    const callbacks = [
-      `Not to bring up the ${bestMoment.topic} discourse again, but... 😄`,
-      `This feels like the ${bestMoment.topic} debate part 2.`,
-      `Getting ${bestMoment.topic} flashbacks here.`,
-      `The ${bestMoment.topic} thing is haunting this conversation and I love it.`,
-    ];
-    callback = callbacks[Math.floor(Math.random() * callbacks.length)];
+    if (isRunningBit) {
+      callback = pick([
+        `ok the ${bestMoment.topic} saga continues 😂`,
+        `bro we cannot stop talking about ${bestMoment.topic}`,
+        `at this point ${bestMoment.topic} is our thing lol`,
+      ]);
+    } else {
+      callback = pick([
+        `lol not the ${bestMoment.topic} discourse again`,
+        `getting ${bestMoment.topic} flashbacks rn`,
+        `this is literally the ${bestMoment.topic} conversation 2.0`,
+      ]);
+    }
   } else {
-    // user_quip
-    const callbacks = [
-      `Okay this is giving the same energy as when you said "${bestMoment.phrase.substring(0, 40)}..."`,
-      `Wait — "${bestMoment.phrase.substring(0, 35)}..." is making a comeback 😄`,
-      `Full circle moment from "${bestMoment.phrase.substring(0, 35)}..."`,
-    ];
-    callback = callbacks[Math.floor(Math.random() * callbacks.length)];
+    // user_quip — quote them back
+    const short = bestMoment.phrase.substring(0, 35).replace(/[.!?,]+$/, "");
+    if (isRunningBit) {
+      callback = pick([
+        `"${short}" is literally our catchphrase now 😂`,
+        `ok "${short}" lives rent free in this conversation`,
+        `we keep coming back to "${short}" and i love it`,
+      ]);
+    } else {
+      callback = pick([
+        `lol this is "${short}" energy all over again`,
+        `wait this reminds me of when you said "${short}" 😂`,
+        `ok same vibes as "${short}" from earlier`,
+      ]);
+    }
   }
 
-  // Place callback: prepend or append depending on response length
-  if (response.length < 80) {
-    return response + " " + callback;
-  }
-  const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
-  return sentences[0].trim() + " " + callback + " " + sentences.slice(1).join("").trim();
+  // Append naturally
+  if (response.length < 60) return response + ". " + callback;
+  return response + " " + callback;
 }
 
 /* ── Conversational Thread Recap & Summary Awareness (Round 84) ──
