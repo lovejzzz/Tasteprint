@@ -353,6 +353,10 @@ function getSemanticResponse(match) {
 // Cache for last semantic match result (used across generateResponse + fallback)
 let lastSemanticMatch = null;
 
+// Question rate tracker — target ~40% of responses ending with "?"
+const _questionHistory = []; // rolling window of last 20 responses: true = ended with ?, false = didn't
+const TARGET_QUESTION_RATE = 0.40;
+
 // Spam detection: count consecutive identical messages
 let _spamCount = 0;
 
@@ -14861,18 +14865,20 @@ function applyCognitiveLoadResponse(response, text) {
     // Replace open-ended questions with simpler ones (30% chance)
     if (Math.random() < 0.30) {
       response = response
-        .replace(/what do you think about [^?]+\?/i, "Does that make sense?")
-        .replace(/how would you approach [^?]+\?/i, "Want me to break that down more?")
-        .replace(/what are your thoughts on [^?]+\?/i, "Should I explain further?");
+        .replace(/what do you think about [^?]+\?/i, "does that make sense?")
+        .replace(/how would you approach [^?]+\?/i, "want me to break that down more?")
+        .replace(/what are your thoughts on [^?]+\?/i, "should i explain more?");
     }
   } else if (load === "medium") {
     // Lighter touch: just add a check-in at the end (20% chance)
     if (Math.random() < 0.20 && !response.endsWith("?")) {
       const checkins = [
-        " Make sense?",
-        " Following so far?",
-        " Clear enough?",
-        " Want me to unpack any of that?",
+        " does that make sense?",
+        " you following?",
+        " that clear enough?",
+        " want me to break that down more?",
+        " am i making sense lol",
+        " that track?",
       ];
       response += checkins[Math.floor(Math.random() * checkins.length)];
     }
@@ -20130,20 +20136,22 @@ function polishOutput(response) {
     }
   }
 
-  // 8. Question reduction — friends don't end every message with a question.
-  // ~55% of the time, if the response ends with a question AND has non-question
-  // content before it, strip the trailing question to leave a pure reaction.
+  // 8. Adaptive question rate — target ~40% of messages ending with a question.
+  // Track recent question rate and adjust stripping probability dynamically.
   if (r.includes("?")) {
     const parts = r.split(/(?<=[.!?])\s+/);
     const questionParts = parts.filter(p => p.includes("?"));
     const nonQuestionParts = parts.filter(p => !p.includes("?"));
+    // Calculate current question rate from rolling window
+    const recentRate = _questionHistory.length >= 5
+      ? _questionHistory.filter(Boolean).length / _questionHistory.length : 0.5;
+    // If we're above target, strip more aggressively; if below, strip less
+    const stripChance = recentRate > TARGET_QUESTION_RATE ? 0.65 : recentRate < 0.25 ? 0.15 : 0.35;
     // Only strip if there's something left after removing the question
-    if (nonQuestionParts.length >= 1 && questionParts.length >= 1 && Math.random() < 0.55) {
-      // Keep the non-question parts (the reaction), drop the trailing question
+    if (nonQuestionParts.length >= 1 && questionParts.length >= 1 && Math.random() < stripChance) {
       const lastPart = parts[parts.length - 1];
       if (lastPart.includes("?")) {
         r = parts.slice(0, -1).join(" ").trim();
-        // Make sure we didn't strip everything
         if (r.length < 5) r = response;
       }
     }
@@ -21741,6 +21749,10 @@ export async function getAIResponse(input) {
     ? response.split(MULTI_MSG_DELIMITER).pop()
     : response;
   trackAIQuestion(trackableResponse);
+
+  // Track question rate for adaptive calibration (rolling window of 20)
+  _questionHistory.push(trackableResponse.trim().endsWith("?"));
+  if (_questionHistory.length > 20) _questionHistory.shift();
 
   // Record in memory (store full response without delimiters for memory coherence)
   const memResponse = response.includes(MULTI_MSG_DELIMITER)
