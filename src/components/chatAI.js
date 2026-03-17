@@ -8592,6 +8592,144 @@ function applyEmotionalLabeling(response, text) {
   return label + " " + trimmed;
 }
 
+/* ── Thought Completion (Round 121) ──
+ * When a user trails off ("I was thinking about...", "maybe we could...", "what if...")
+ * or sends a fragment ending in "...", the AI completes their thought contextually
+ * and gently checks if that's what they meant. This makes the AI feel like it
+ * truly understands the user — like finishing a friend's sentence.
+ */
+let lastCompletionTurn = 0;
+let completionCount = 0;
+const COMPLETION_COOLDOWN = 9;
+const MAX_COMPLETIONS_SESSION = 3;
+
+// Patterns that signal an incomplete thought — the user trailed off mid-sentence
+const INCOMPLETE_PATTERNS = [
+  { regex: /\b(?:I was thinking (?:about|of|that)?)\s*\.{2,}$/i, type: "thinking" },
+  { regex: /\b(?:maybe (?:we|I|you) (?:could|should|can)?)\s*\.{2,}$/i, type: "suggestion" },
+  { regex: /\b(?:what if)\s*\.{2,}$/i, type: "hypothetical" },
+  { regex: /\b(?:I (?:kind of|kinda|sorta|sort of) (?:want|feel|think|wish)?)\s*\.{2,}$/i, type: "hedged" },
+  { regex: /\b(?:it (?:would|could|might) be (?:nice|cool|great|interesting) (?:to|if)?)\s*\.{2,}$/i, type: "wish" },
+  { regex: /\b(?:I (?:don't|do not) (?:know|think))\s*\.{2,}$/i, type: "uncertain" },
+  { regex: /\b(?:like|you know|I mean)\s*\.{2,}$/i, type: "filler" },
+  { regex: /\b(?:but (?:then|also|like)?)\s*\.{2,}$/i, type: "pivot" },
+  { regex: /\b(?:so (?:basically|like|I guess)?)\s*\.{2,}$/i, type: "summarizing" },
+  { regex: /\b(?:the thing is)\s*\.{2,}$/i, type: "buildup" },
+];
+
+// Completion templates by type — the AI finishes the thought
+const THOUGHT_COMPLETIONS = {
+  thinking: [
+    "...trying it a different way? Sometimes a fresh angle makes everything click.",
+    "...whether there's a simpler approach? That instinct is usually right.",
+    "...how the pieces fit together? It's worth stepping back to see the big picture.",
+    "...what would happen if you flipped the whole thing around?",
+  ],
+  suggestion: [
+    "...start smaller and build up from there? That tends to work well.",
+    "...break it into steps? Bite-size problems are easier to solve.",
+    "...try the opposite approach and see what happens?",
+    "...take a step back and rethink the core assumption?",
+  ],
+  hypothetical: [
+    "...you approached it from the other direction? Could be interesting.",
+    "...there's no constraint at all — what would the ideal version look like?",
+    "...the whole premise is wrong? Sometimes that's the breakthrough.",
+    "...you just... didn't overthink it and went with your gut?",
+  ],
+  hedged: [
+    "...to explore that idea without committing to it yet? That's valid.",
+    "...to try something new but aren't sure it'll work? Only one way to find out.",
+    "...to change direction but feel weird about it? That's normal.",
+  ],
+  wish: [
+    "...just experiment without worrying about getting it right? Go for it.",
+    "...have something that works without all the complexity? Simplicity is underrated.",
+    "...step away and come back with fresh eyes? Sometimes that's the move.",
+  ],
+  uncertain: [
+    "...and that's completely fine. Not knowing is where the interesting stuff starts.",
+    "...but your gut is pointing somewhere, right? Trust that a bit.",
+    "...which usually means you're on the edge of figuring it out.",
+  ],
+  filler: [
+    "...hard to put into words? I think I get the vibe though.",
+    "...one of those feelings that's easier to sense than explain? Yeah, I know that.",
+    "...complicated? Most interesting things are.",
+  ],
+  pivot: [
+    "...there's another side to it? Let's hear it — nuance is good.",
+    "...it's not that simple? It rarely is. What's the catch?",
+    "...you're second-guessing yourself? Walk me through the doubt.",
+  ],
+  summarizing: [
+    "...it all comes down to one core thing? What's the essential bit?",
+    "...the real question is simpler than it seems? Often is.",
+    "...you're circling back to where you started? That's actually progress.",
+  ],
+  buildup: [
+    "...it's messier than you expected? Most real problems are.",
+    "...there's something you haven't said yet? Go ahead, I'm listening.",
+    "...you know the answer but don't love it? That happens.",
+  ],
+};
+
+// Confirmation checks — gently ask if the completion was right
+const COMPLETION_CHECKS = [
+  " ...is that where you were going with that?",
+  " — am I reading that right?",
+  " ...or were you heading somewhere else entirely?",
+  " — close?",
+  " ...or am I finishing your sentence wrong? 😄",
+  " — tell me if I'm off base.",
+];
+
+function detectIncompleteThought(text) {
+  const trimmed = text.trim();
+  // Must end with 2+ dots or ellipsis character
+  if (!(/\.{2,}$/.test(trimmed) || trimmed.endsWith("…"))) return null;
+  // Must be at least 10 chars (not just "...")
+  if (trimmed.length < 10) return null;
+
+  for (const pat of INCOMPLETE_PATTERNS) {
+    if (pat.regex.test(trimmed)) return pat.type;
+  }
+
+  // Generic trailing off — only if sentence has a verb/subject starter
+  if (/^(?:I|we|you|it|they|he|she|that|this|the|my|but|so|and|or|if|when)\b/i.test(trimmed)) {
+    return "thinking"; // default to "thinking" for generic trail-offs
+  }
+  return null;
+}
+
+function applyThoughtCompletion(response, text) {
+  const turn = mem.turn;
+  if (turn < 3) return response;
+  if (turn - lastCompletionTurn < COMPLETION_COOLDOWN) return response;
+  if (completionCount >= MAX_COMPLETIONS_SESSION) return response;
+  if (response.length > 300) return response;
+
+  const type = detectIncompleteThought(text);
+  if (!type) return response;
+
+  const completions = THOUGHT_COMPLETIONS[type];
+  if (!completions) return response;
+
+  // 65% fire rate when pattern matches
+  if (Math.random() > 0.65) return response;
+
+  const completion = pick(completions);
+  const check = pick(COMPLETION_CHECKS);
+
+  lastCompletionTurn = turn;
+  completionCount++;
+
+  // Replace the response with: completion + check + original response gist
+  // Keep the original response but prepend the thought completion
+  const completionText = completion + check + "\n\n";
+  return completionText + response;
+}
+
 let reciprocityHistory = []; // "ask" or "tell" per turn
 let lastReciprocityNudgeTurn = 0;
 
@@ -17863,6 +18001,9 @@ export function getAIResponse(input) {
   // ═══ Emotional labeling: name the user's emotional state ═══
   response = applyEmotionalLabeling(response, text);
 
+  // ═══ Thought completion: finish the user's trailing-off sentences ═══
+  response = applyThoughtCompletion(response, text);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -17893,6 +18034,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
