@@ -30,6 +30,202 @@ function extractKW(t) {
   return { tokens: tok, stemmed: st, keywords: kw, raw: tok };
 }
 
+/* ── Slang Normalizer ──
+ * Expands abbreviations/slang into readable text so downstream pipeline
+ * (sentiment, intents, topics) can understand casual texting.
+ * normalizeSlang() returns { normalized, slangUsed, fragments }.
+ * - normalized: text with slang expanded for NLP
+ * - slangUsed: array of slang terms found (for tone matching)
+ * - fragments: detected conversational fragment type or null
+ */
+
+const SLANG_MAP = {
+  // common abbreviations
+  "wyd":"what are you doing","hbu":"how about you","wbu":"what about you",
+  "wya":"where are you","nm":"not much","nvm":"nevermind","idk":"i don't know",
+  "imo":"in my opinion","imo":"in my opinion","ngl":"not gonna lie",
+  "fr":"for real","tbh":"to be honest","lowkey":"kind of","highkey":"really",
+  "deadass":"seriously","rn":"right now","irl":"in real life","smh":"shaking my head",
+  "fwiw":"for what it's worth","icymi":"in case you missed it",
+  "istg":"i swear to god","ong":"on god","frl":"for real",
+  "tfw":"that feeling when","mfw":"my face when","mrw":"my reaction when",
+  "afaik":"as far as i know","iirc":"if i recall correctly",
+  "omw":"on my way","brb":"be right back","gtg":"got to go","ttyl":"talk to you later",
+  "ty":"thank you","thx":"thanks","tysm":"thank you so much","np":"no problem",
+  "pls":"please","plz":"please","bc":"because","cuz":"because","coz":"because",
+  "rly":"really","srs":"serious","jk":"just kidding","jp":"just playing",
+  "ik":"i know","ikr":"i know right","ikik":"i know i know",
+  "lmk":"let me know","hmu":"hit me up","dw":"don't worry",
+  "w":"win","gonna":"going to","wanna":"want to","gotta":"got to",
+  "kinda":"kind of","sorta":"sort of","tryna":"trying to","finna":"about to",
+  "abt":"about","tho":"though","nah":"no","yea":"yeah","yep":"yes",
+  "obvi":"obviously","def":"definitely","prob":"probably","p":"pretty",
+  "v":"very","fs":"for sure","ofc":"of course","ig":"i guess",
+  "ion":"i don't","ong":"on god",
+};
+
+// Slang that expresses sentiment/reaction (don't expand, just tag)
+const SLANG_VIBES = {
+  "bussin":"positive","fire":"positive","lit":"positive","valid":"positive",
+  "based":"positive","slay":"positive","goat":"positive","W":"positive",
+  "mid":"negative","L":"negative","ratio":"negative","cope":"negative",
+  "sus":"suspicious","cap":"lying","no cap":"honest","bet":"agreement",
+  "vibe":"neutral","vibes":"neutral","mood":"agreement","facts":"agreement",
+  "rent free":"obsessed","hits different":"special","main character energy":"confident",
+  "understood the assignment":"did well","it's giving":"resembles",
+  "ate":"did amazing","ate that":"did amazing","no thoughts":"empty",
+  "living rent free":"obsessed","caught in 4k":"exposed",
+  "big yikes":"very bad","sending me":"very funny","im dead":"very funny",
+  "im weak":"very funny","crying":"very funny/sad","sobbing":"very funny/sad",
+};
+
+// Fragment patterns — conversational moves that aren't full sentences
+const FRAGMENT_TYPES = [
+  [/^(me when|literally me|not me|the way i)\b/i, "relatable"],
+  [/^(ok but|wait but|nah but|yeah but)\b/i, "pivot"],
+  [/^(wait|hold on|hold up|yo wait)\b/i, "pause"],
+  [/^(bro|bruh|dude|man|fam)\s*$/i, "reaction"],
+  [/^(same tho|same|this|literally this|rt|real)\s*$/i, "agreement"],
+  [/^(it'?s giving|giving)\b/i, "vibing"],
+  [/^(not|nah|absolutely not|hell no)\s*$/i, "rejection"],
+  [/^(anyway|anyways|anywho|so anyway)\b/i, "redirect"],
+  [/^(so like|ok so|so basically)\b/i, "explaining"],
+  [/^(imagine|picture this|hear me out)\b/i, "setup"],
+  [/^(no because|nah because|wait because)\b/i, "justifying"],
+  [/^(the thing is|here'?s the thing)\b/i, "qualifying"],
+  [/^(i just|i literally|i genuinely|i honestly)\b/i, "emphasis"],
+  [/^(like)\s+\w/i, "filler_start"],
+  [/^(that'?s so|so)\s+(true|real|valid|facts|based|mid|sus)/i, "reaction_to"],
+];
+
+function normalizeSlang(text) {
+  const lower = text.toLowerCase().trim();
+  const slangUsed = [];
+  let normalized = lower;
+
+  // Detect fragments
+  let fragment = null;
+  for (const [pat, type] of FRAGMENT_TYPES) {
+    if (pat.test(lower)) { fragment = type; break; }
+  }
+
+  // Detect vibe-slang (tag but don't expand — these are reactions)
+  for (const [term, vibe] of Object.entries(SLANG_VIBES)) {
+    if (lower.includes(term)) slangUsed.push({ term, vibe, type: "vibe" });
+  }
+
+  // Expand abbreviation slang — word boundary matching
+  const words = normalized.split(/\s+/);
+  const expanded = words.map(w => {
+    const clean = w.replace(/[.,!?]+$/, "");
+    if (SLANG_MAP[clean]) {
+      slangUsed.push({ term: clean, expanded: SLANG_MAP[clean], type: "abbrev" });
+      return SLANG_MAP[clean] + w.slice(clean.length); // preserve trailing punctuation
+    }
+    return w;
+  });
+  normalized = expanded.join(" ");
+
+  // Multi-word slang expansions
+  const multiWord = [
+    [/\bno cap\b/gi, "honestly"],
+    [/\bon god\b/gi, "i swear"],
+    [/\bhits different\b/gi, "is special"],
+    [/\brent free\b/gi, "obsessively"],
+    [/\bmain character energy\b/gi, "big confidence"],
+    [/\bunderstood the assignment\b/gi, "did it perfectly"],
+    [/\bit's giving\b/gi, "it resembles"],
+    [/\bcaught in 4k\b/gi, "got caught"],
+  ];
+  for (const [pat, rep] of multiWord) {
+    if (pat.test(normalized)) {
+      normalized = normalized.replace(pat, rep);
+    }
+  }
+
+  return { normalized, slangUsed, fragment, isSlangHeavy: slangUsed.length >= 2 };
+}
+
+/* ── Fragment Response Generator ──
+ * When user sends a fragment (not a full sentence), respond naturally
+ * instead of falling through to confused fallbacks.
+ */
+
+function respondToFragment(fragment, text, slangInfo) {
+  const lower = text.toLowerCase().trim();
+
+  if (fragment === "relatable") {
+    // "me when", "literally me", "not me doing X"
+    if (/^not me/i.test(lower)) return pickNew(["LMAO caught","hahaha exposed","ok but same 😭","literally you tho"]);
+    if (/^literally me/i.test(lower)) return pickNew(["no fr that IS you","lmaooo accurate","ok but yes","literally tho 😂"]);
+    if (/^me when/i.test(lower)) return pickNew(["LMAO","too real","ok mood","hahaha stoppp"]);
+    return pickNew(["lmaooo","no literally","too accurate","😭😭"]);
+  }
+
+  if (fragment === "pivot") {
+    // "ok but", "wait but", "yeah but" — they're pivoting to a new point
+    return null; // let pipeline handle — the "but" clause has real content
+  }
+
+  if (fragment === "pause") {
+    // "wait", "hold on" — they want attention
+    return pickNew(["what what what","ok i'm listening","👀","what happened","lol what"]);
+  }
+
+  if (fragment === "reaction") {
+    // standalone "bro", "bruh", "dude"
+    return pickNew(["lol what","WHAT happened","spill","bro tell me","dude what 😂"]);
+  }
+
+  if (fragment === "agreement") {
+    // "same", "this", "literally this", "real"
+    return pickNew(["FR","no literally","right??","exactly","the way this is so true"]);
+  }
+
+  if (fragment === "vibing") {
+    // "it's giving X"
+    const giving = lower.match(/(?:it'?s )?giving\s+(.+)/i);
+    if (giving) return pickNew([`lol it IS giving ${giving[1]}`,`no you're right, very ${giving[1]}`,`ok yeah i see it, ${giving[1]} vibes fr`]);
+    return pickNew(["lol giving what","what's it giving 👀","ok go on"]);
+  }
+
+  if (fragment === "rejection") {
+    return pickNew(["lmao fair","ok valid","hahaha ok","nah you're right"]);
+  }
+
+  if (fragment === "redirect") {
+    return null; // let pipeline handle — user is switching topics
+  }
+
+  if (fragment === "setup") {
+    // "imagine", "hear me out", "picture this"
+    return pickNew(["ok go on 👀","i'm listening","ok ok what","lol this better be good"]);
+  }
+
+  if (fragment === "justifying") {
+    // "no because", "wait because" — they're about to explain
+    return null; // has real content after "because"
+  }
+
+  if (fragment === "explaining" || fragment === "qualifying") {
+    return null; // has content, let pipeline parse
+  }
+
+  if (fragment === "reaction_to") {
+    // "that's so valid", "so true", "so mid"
+    const vibeMatch = lower.match(/(?:that'?s so|so)\s+(true|real|valid|facts|based|mid|sus)/i);
+    if (vibeMatch) {
+      const w = vibeMatch[1].toLowerCase();
+      if (["true","real","valid","facts","based"].includes(w)) return pickNew(["RIGHT","no fr","exactly","literally"]);
+      if (w === "mid") return pickNew(["lol harsh but fair","ok i mean...","😭","oof"]);
+      if (w === "sus") return pickNew(["lmaooo how","wait what's sus about it","😂 explain","ok fair"]);
+    }
+    return pickNew(["lol","fr","yeah"]);
+  }
+
+  return null; // no special fragment handling needed
+}
+
 /* ── Sentiment ── */
 
 const POS = new Set("good great awesome amazing excellent love like happy nice wonderful fantastic perfect beautiful cool brilliant fun excited glad best enjoy thanks thank appreciate helpful wow yay sweet superb incredible outstanding fabulous adore favorite excited psyched stoked pumped thrilled delighted".split(" "));
@@ -4828,6 +5024,23 @@ function generateResponse(text) {
   let topics = extractTopics(tokens);
   const sent = sentiment(text);
 
+  // ═══ Slang normalization & fragment detection ═══
+  const slangInfo = normalizeSlang(text);
+  // Also extract topics from normalized text (catches slang-hidden topics)
+  if (slangInfo.slangUsed.length > 0) {
+    const normTokens = tokenize(slangInfo.normalized);
+    const normTopics = extractTopics(normTokens);
+    if (normTopics.length > 0) topics = [...new Set([...topics, ...normTopics])];
+  }
+  // Fragment early return — handle conversational fragments before heavy pipeline
+  if (slangInfo.fragment && tokens.length <= 6) {
+    const fragResp = respondToFragment(slangInfo.fragment, text, slangInfo);
+    if (fragResp) {
+      mem.add("user", text, ["fragment"], topics, sent);
+      return fragResp;
+    }
+  }
+
   // ═══ Anaphora resolution: resolve pronouns BEFORE processing ═══
   const anaphora = resolveAnaphora(text);
   // Enrich topics with resolved referents (e.g., "tell me about it" → adds "react")
@@ -5277,6 +5490,16 @@ function respondToShortReply(text) {
   if (/^(sus|cap|no cap)$/i.test(lower)) return pickNew(["lmao","no cap fr","honestly tho","😭"]);
   if (/^(bet|valid|based|W|slay)$/i.test(lower)) return pickNew(["fr fr","huge W honestly","you get it","exactly lol"]);
   if (/^(L|mid|ratio|cope)$/i.test(lower)) return pickNew(["lmaooo","ok fair","💀","oof"]);
+  if (/^(bussin|fire|lit|goes hard)$/i.test(lower)) return pickNew(["FR it does","no cap","yooo right??","absolutely bussin"]);
+  if (/^(ate|ate that|period|purr)$/i.test(lower)) return pickNew(["ATE 💅","no crumbs left","served honestly","fr fr ate that up"]);
+  if (/^(im dead|im weak|sending me|crying|sobbing)$/i.test(lower)) return pickNew(["LMAO 💀","hahaha stoppp","i can't 😂","bro same 😭"]);
+  if (/^(ngl|tbh|fr fr|ong|istg|deadass)$/i.test(lower)) return pickNew(["no fr","literally","real talk","facts"]);
+  if (/^(gtg|ttyl|brb|omw|g2g)$/i.test(lower)) return pickNew(["ok talk later! ✌️","laterrr","aight bye!","ok see ya"]);
+  if (/^(ty|thx|tysm)$/i.test(lower)) return pickNew(["ofc!","np!","anytime","all good 😊"]);
+  if (/^(lmk|hmu)$/i.test(lower)) return pickNew(["will do!","bet","ofc","for sure"]);
+  if (/^(dw|its? ok|all good|no worries)$/i.test(lower)) return pickNew(["ok cool","bet","aight good","ok phew lol"]);
+  if (/^(ion|ion know)$/i.test(lower)) return pickNew(["that's fair","lol same honestly","valid","hmm ok"]);
+  if (/^(pls|plz)$/i.test(lower)) return pickNew(["lol what do you need","ok what","i got you, what's up","yes what 😂"]);
 
   // Topic-based follow-ups for generic short replies
   if (lastTopic) {
