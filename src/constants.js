@@ -196,7 +196,7 @@ export const DEFAULT_PROPS = {
   alert:         { level: 0 },
   toast:         { level: 0 },
   "pricing-card":{ featured: false, period: 0 },
-  "product-card":{ wishlisted: false },
+  "product-card":{ wishlisted: false, rating: 4 },
   "profile-card":{ online: true, verified: true },
   kanban:        { active: 1 },
   skeleton:      { loading: true },

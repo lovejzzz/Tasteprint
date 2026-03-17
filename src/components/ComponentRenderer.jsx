@@ -907,15 +907,18 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- PRODUCT CARD ---- */
   if(type==="product-card"){
-    const wl=P("wishlisted");
+    const wl=P("wishlisted");const pcR=P("rating");
+    const pcRClick=(n,e)=>{e.stopPropagation();cProp?.("rating",pcR===n?n-1:n)};
     const heart=<svg width="14" height="14" viewBox="0 0 24 24" fill={wl?"#EF4444":"none"} stroke={wl?"#EF4444":"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>;
     const star=(fill)=><svg width="11" height="11" viewBox="0 0 24 24" fill={fill?"currentColor":"none"} stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>;
+    const pcRAvg=pcR>0?[0,"1.0","2.0","3.5","4.0","4.8"][pcR]||pcR+".0":"0.0";
     /* v0 Standard — clean vertical card with image + price + CTA */
     if(v===0)return <div style={{...b,background:p.card,borderRadius:14,border:`1px solid ${p.bd}`,overflow:"hidden",display:"flex",flexDirection:"column",animation:"tp-fadein .3s ease-out"}}>
       <Img k="media" s={{height:"50%",background:p.su}}/>
       <div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}>
         <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>Wireless Headphones</T>
         <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Active noise canceling, 30hr battery</T>
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>{[1,2,3,4,5].map(i=><span key={i} style={{cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}>{star(i<=pcR)}</span>)}<span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>{pcRAvg}</span></div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}>
           <T k="price" s={{fontSize:f(16),fontWeight:700,color:p.tx}}>$49.00</T>
           <div style={{height:30,width:72,borderRadius:8,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:600}}>Add</T></div>
@@ -929,6 +932,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       <div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}>
         <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>Wireless Headphones</T>
         <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Limited time offer</T>
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>{[1,2,3,4,5].map(i=><span key={i} style={{cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}>{star(i<=pcR)}</span>)}<span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>{pcRAvg}</span></div>}
         <div style={{display:"flex",alignItems:"center",gap:8,marginTop:"auto"}}>
           <T k="price" s={{fontSize:f(16),fontWeight:700,color:"#E05050"}}>$29.00</T>
           <T k="orig" s={{fontSize:f(12),color:p.mu,textDecoration:"line-through"}}>$49.00</T>
@@ -942,10 +946,10 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       <div style={{padding:14,display:"flex",flexDirection:"column",gap:5,flex:1}}>
         <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>Wireless Headphones</T>
         <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.5}}>Active noise canceling</T>
-        <div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
-          {[1,2,3,4].map(i=><span key={i}>{star(true)}</span>)}<span>{star(false)}</span>
-          <span style={{fontSize:f(9),color:p.mu,marginLeft:3}}>4.0</span>
-        </div>
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
+          {[1,2,3,4,5].map(i=><span key={i} style={{cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}>{star(i<=pcR)}</span>)}
+          <span style={{fontSize:f(9),color:p.mu,marginLeft:3}}>{pcRAvg}</span>
+        </div>}
         <div style={{marginTop:"auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <T k="price" s={{fontSize:f(15),fontWeight:700,color:p.tx}}>$49.00</T>
           <div style={{height:28,width:66,borderRadius:6,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:600}}>Add</T></div>
@@ -966,10 +970,10 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx,lineHeight:1.3}}>Wireless Headphones</T>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
-          {[1,2,3,4].map(i=><span key={i}>{star(true)}</span>)}<span style={{color:p.mu}}>{star(false)}</span>
-          <span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>(128)</span>
-        </div>
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
+          {[1,2,3,4,5].map(i=><span key={i} style={{cursor:"pointer",color:i<=pcR?p.ac:p.mu}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}>{star(i<=pcR)}</span>)}
+          <span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>({[0,12,45,89,128,256][pcR]||128})</span>
+        </div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}>
           <div style={{display:"flex",alignItems:"baseline",gap:4}}>
             <T k="price" s={{fontSize:f(16),fontWeight:700,color:p.tx}}>$49.00</T>
@@ -994,10 +998,10 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       <div style={{padding:"10px 14px 14px",display:"flex",flexDirection:"column",gap:5,flex:1,position:"relative"}}>
         <T k="title" s={{fontSize:f(14),fontWeight:700,color:p.tx,letterSpacing:"-0.01em"}}>Wireless Headphones</T>
         <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Premium noise canceling</T>
-        <div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
-          {[1,2,3,4,5].map(i=><span key={i} style={{opacity:i<=4?1:.3}}>{star(i<=4)}</span>)}
-          <span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>4.8</span>
-        </div>
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>
+          {[1,2,3,4,5].map(i=><span key={i} style={{opacity:i<=pcR?1:.3,cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}>{star(i<=pcR)}</span>)}
+          <span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>{pcRAvg}</span>
+        </div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto",paddingTop:4}}>
           <T k="price" s={{fontSize:f(17),fontWeight:800,color:p.tx}}>$49.00</T>
           <div style={{height:34,paddingInline:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 12px ${p.ac}30`}}>
@@ -1021,10 +1025,10 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       <div style={{padding:"12px 14px 14px",display:"flex",flexDirection:"column",gap:6,flex:1,position:"relative",zIndex:1}}>
         <T k="title" s={{fontSize:f(14),fontWeight:900,color:p.tx,textTransform:"uppercase",letterSpacing:"0.02em"}}>Wireless Headphones</T>
         <T k="desc" s={{fontSize:f(10),color:p.mu,fontWeight:600}}>Active noise canceling · 30hr</T>
-        <div style={{display:"flex",alignItems:"center",gap:3}}>
-          {[1,2,3,4,5].map(i=><div key={i} style={{width:10,height:10,borderRadius:1,border:`1.5px solid ${p.tx}`,background:i<=4?p.ac:"transparent"}}/>)}
-          <span style={{fontSize:f(9),fontWeight:800,color:p.tx,marginLeft:3}}>4.0</span>
-        </div>
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3}}>
+          {[1,2,3,4,5].map(i=><div key={i} style={{width:10,height:10,borderRadius:1,border:`1.5px solid ${p.tx}`,background:i<=pcR?p.ac:"transparent",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}/>)}
+          <span style={{fontSize:f(9),fontWeight:800,color:p.tx,marginLeft:3}}>{pcRAvg}</span>
+        </div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto",paddingTop:4}}>
           <div style={{background:p.tx,borderRadius:2,padding:"2px 10px"}}>
             <T k="price" s={{fontSize:f(18),fontWeight:900,color:p.card,letterSpacing:"-0.02em"}}>$49</T>
@@ -1049,10 +1053,10 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
       <div style={{padding:"10px 14px 16px",display:"flex",flexDirection:"column",gap:6,flex:1}}>
         <T k="title" s={{fontSize:f(14),fontWeight:700,color:p.tx,letterSpacing:"-0.01em"}}>Wireless Headphones</T>
         <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Premium ANC · 30hr battery</T>
-        <div style={{display:"flex",alignItems:"center",gap:3}}>
-          {[1,2,3,4,5].map(i=><svg key={i} width="12" height="12" viewBox="0 0 24 24" fill={i<=4?p.ac:"none"} stroke={i<=4?p.ac:p.mu+"40"} strokeWidth="1.5" style={{filter:i<=4?`drop-shadow(0 0 3px ${p.ac}40)`:"none",animation:i<=4?`tp-pulse 2.5s ease-in-out ${i*0.1}s infinite`:"none"}}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>)}
-          <span style={{fontSize:f(9),color:p.ac,fontWeight:600,marginLeft:2}}>4.8</span>
-        </div>
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3}}>
+          {[1,2,3,4,5].map(i=><svg key={i} width="12" height="12" viewBox="0 0 24 24" fill={i<=pcR?p.ac:"none"} stroke={i<=pcR?p.ac:p.mu+"40"} strokeWidth="1.5" style={{filter:i<=pcR?`drop-shadow(0 0 3px ${p.ac}40)`:"none",animation:i<=pcR?`tp-pulse 2.5s ease-in-out ${i*0.1}s infinite`:"none",cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>)}
+          <span style={{fontSize:f(9),color:p.ac,fontWeight:600,marginLeft:2}}>{pcRAvg}</span>
+        </div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto",paddingTop:4}}>
           <div style={{display:"flex",alignItems:"baseline",gap:4}}>
             <T k="price" s={{fontSize:f(18),fontWeight:800,color:p.tx}}>$49.00</T>

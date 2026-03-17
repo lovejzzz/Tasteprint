@@ -97,6 +97,14 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Rating (product-card) */
+  if ("rating" in defaults) {
+    const rt = G("rating");
+    controls.push(<React.Fragment key="rating"><span style={label}>Rating</span>
+      {[0, 1, 2, 3, 4, 5].map(n => <button key={n} style={{ ...btn(rt === n), fontSize: n === 0 ? 8 : 12, width: 18, height: 18, border: "none", background: "transparent", color: n === 0 ? (rt === 0 ? p.ac : p.mu + "40") : n <= rt ? p.ac : p.mu + "40" }} onMouseDown={stop} onClick={() => onProp("rating", n)}>{n === 0 ? "∅" : "★"}</button>)}
+    </React.Fragment>);
+  }
+
   /* Ring percent (dash-panel) */
   if ("ring" in defaults) {
     const ring = G("ring");
