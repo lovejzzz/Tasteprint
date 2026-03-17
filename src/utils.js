@@ -3646,6 +3646,58 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  /* ── Round 71: conic gradient pattern backgrounds ── */
+  if (!isSmall && !isNav && !isCode && !s.gradientOverlay3) {
+    const conicRoll = Math.random();
+    const conicThresh = moodId === "bold" ? 0.12
+      : moodId === "playful" ? 0.15
+      : moodId === "elegant" ? 0.08
+      : moodId === "minimal" ? 0.03
+      : 0.08; // auto
+    if (conicRoll < conicThresh) {
+      if (moodId === "bold") {
+        const style = pick(["checkerboard", "sunburst", "pinwheel"]);
+        if (style === "checkerboard") {
+          s.gradientOverlay3 = `repeating-conic-gradient(${acHex}08 0% 25%, transparent 0% 50%) 0 0 / 20px 20px`;
+        } else if (style === "sunburst") {
+          s.gradientOverlay3 = `conic-gradient(from 0deg, ${acHex}06 0deg, transparent 30deg, ${acHex}06 60deg, transparent 90deg, ${acHex}06 120deg, transparent 150deg, ${acHex}06 180deg, transparent 210deg, ${acHex}06 240deg, transparent 270deg, ${acHex}06 300deg, transparent 330deg)`;
+        } else {
+          s.gradientOverlay3 = `conic-gradient(from 45deg, ${gc1}10, transparent 25%, ${gc2}10 50%, transparent 75%)`;
+        }
+      } else if (moodId === "playful") {
+        const style = pick(["checkerboard", "spiral", "confetti"]);
+        if (style === "checkerboard") {
+          s.gradientOverlay3 = `repeating-conic-gradient(${gc1}08 0% 25%, ${gc2}06 0% 50%) 0 0 / 18px 18px`;
+        } else if (style === "spiral") {
+          s.gradientOverlay3 = `conic-gradient(from 0deg at 50% 50%, ${gc1}0A, ${gc2}0A, ${gc1}0A)`;
+        } else {
+          s.gradientOverlay3 = `repeating-conic-gradient(${gc1}0A 0% 25%, transparent 0% 50%) 0 0 / 10px 10px`;
+        }
+      } else if (moodId === "elegant") {
+        const style = pick(["sunburst", "pinstripe"]);
+        if (style === "sunburst") {
+          s.gradientOverlay3 = `conic-gradient(from 0deg, ${acHex}04 0deg, transparent 20deg, ${acHex}04 40deg, transparent 60deg, ${acHex}04 80deg, transparent 100deg, ${acHex}04 120deg, transparent 140deg, ${acHex}04 160deg, transparent 180deg, ${acHex}04 200deg, transparent 220deg, ${acHex}04 240deg, transparent 260deg, ${acHex}04 280deg, transparent 300deg, ${acHex}04 320deg, transparent 340deg)`;
+        } else {
+          s.gradientOverlay3 = `conic-gradient(from 0deg, ${shHex}05 0deg, transparent 5deg, ${shHex}05 10deg, transparent 15deg, ${shHex}05 20deg, transparent 25deg, ${shHex}05 30deg, transparent 35deg, ${shHex}05 40deg, transparent 45deg, ${shHex}05 50deg, transparent 55deg, ${shHex}05 60deg, transparent 65deg, ${shHex}05 70deg, transparent 75deg, ${shHex}05 80deg, transparent 85deg, ${shHex}05 90deg, transparent 95deg, ${shHex}05 100deg, transparent 105deg, ${shHex}05 110deg, transparent 115deg, ${shHex}05 120deg, transparent 125deg, ${shHex}05 130deg, transparent 135deg, ${shHex}05 140deg, transparent 145deg, ${shHex}05 150deg, transparent 155deg, ${shHex}05 160deg, transparent 165deg, ${shHex}05 170deg, transparent 175deg, ${shHex}05 180deg, transparent 185deg, ${shHex}05 190deg, transparent 195deg, ${shHex}05 200deg, transparent 205deg, ${shHex}05 210deg, transparent 215deg, ${shHex}05 220deg, transparent 225deg, ${shHex}05 230deg, transparent 235deg, ${shHex}05 240deg, transparent 245deg, ${shHex}05 250deg, transparent 255deg, ${shHex}05 260deg, transparent 265deg, ${shHex}05 270deg, transparent 275deg, ${shHex}05 280deg, transparent 285deg, ${shHex}05 290deg, transparent 295deg, ${shHex}05 300deg, transparent 305deg, ${shHex}05 310deg, transparent 315deg, ${shHex}05 320deg, transparent 325deg, ${shHex}05 330deg, transparent 335deg, ${shHex}05 340deg, transparent 345deg, ${shHex}05 350deg, transparent 355deg)`;
+        }
+      } else if (moodId === "minimal") {
+        s.gradientOverlay3 = `repeating-conic-gradient(${acHex}04 0% 25%, transparent 0% 50%) 0 0 / 24px 24px`;
+      } else {
+        // auto — random pick from all styles
+        const style = pick(["checkerboard", "sunburst", "pinwheel", "spiral"]);
+        if (style === "checkerboard") {
+          s.gradientOverlay3 = `repeating-conic-gradient(${acHex}06 0% 25%, transparent 0% 50%) 0 0 / 20px 20px`;
+        } else if (style === "sunburst") {
+          s.gradientOverlay3 = `conic-gradient(from 0deg, ${gc1}06 0deg, transparent 30deg, ${gc1}06 60deg, transparent 90deg, ${gc1}06 120deg, transparent 150deg, ${gc1}06 180deg, transparent 210deg, ${gc1}06 240deg, transparent 270deg, ${gc1}06 300deg, transparent 330deg)`;
+        } else if (style === "pinwheel") {
+          s.gradientOverlay3 = `conic-gradient(from 45deg, ${gc1}0A, transparent 25%, ${gc2}0A 50%, transparent 75%)`;
+        } else {
+          s.gradientOverlay3 = `conic-gradient(from 0deg at 50% 50%, ${gc1}08, ${gc2}08, ${gc1}08)`;
+        }
+      }
+    }
+  }
+
   return s;
 }
 
