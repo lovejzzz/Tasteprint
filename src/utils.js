@@ -527,7 +527,45 @@ export function generateDesignDNA(palette, mood) {
   const headingFont = pick(FONT_CATS[headingFontCat] || FONT_CATS.body);
   const bodyFont = pick(FONT_CATS[bodyFontCat] || FONT_CATS.body);
 
-  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat };
+  // Color scheme: pre-select a derived color strategy for canvas-wide coherence
+  // Instead of each component computing its own _deriveColors independently,
+  // DNA picks a "color scheme" that defines which derived relationships to favor
+  const allDerived = _deriveColors(acHex);
+  let colorScheme, gradColor1, gradColor2, glowColor;
+  if (m === "minimal") {
+    colorScheme = "muted";
+    gradColor1 = allDerived.muted;
+    gradColor2 = ac2;
+    glowColor = allDerived.muted;
+  } else if (m === "bold") {
+    colorScheme = pick(["complementary", "triadic", "split"]);
+    if (colorScheme === "complementary") { gradColor1 = allDerived.comp; gradColor2 = allDerived.vivid; glowColor = allDerived.comp; }
+    else if (colorScheme === "triadic") { gradColor1 = allDerived.triad1; gradColor2 = allDerived.triad2; glowColor = allDerived.vivid; }
+    else { gradColor1 = allDerived.split1; gradColor2 = allDerived.split2; glowColor = allDerived.vivid; }
+  } else if (m === "elegant") {
+    colorScheme = pick(["analogous", "muted"]);
+    gradColor1 = allDerived.analog1;
+    gradColor2 = colorScheme === "muted" ? allDerived.muted : allDerived.analog2;
+    glowColor = allDerived.muted;
+  } else if (m === "playful") {
+    colorScheme = pick(["triadic", "split", "complementary"]);
+    if (colorScheme === "triadic") { gradColor1 = allDerived.triad1; gradColor2 = allDerived.triad2; glowColor = allDerived.vivid; }
+    else if (colorScheme === "split") { gradColor1 = allDerived.split1; gradColor2 = allDerived.split2; glowColor = allDerived.comp; }
+    else { gradColor1 = allDerived.comp; gradColor2 = allDerived.vivid; glowColor = allDerived.triad1; }
+  } else {
+    // auto: random scheme for variety
+    colorScheme = pick(["analogous", "complementary", "triadic", "split", "muted"]);
+    const schemes = {
+      analogous: [allDerived.analog1, allDerived.analog2, allDerived.muted],
+      complementary: [allDerived.comp, allDerived.vivid, allDerived.comp],
+      triadic: [allDerived.triad1, allDerived.triad2, allDerived.vivid],
+      split: [allDerived.split1, allDerived.split2, allDerived.vivid],
+      muted: [allDerived.muted, allDerived.analog1, allDerived.muted],
+    };
+    [gradColor1, gradColor2, glowColor] = schemes[colorScheme];
+  }
+
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor };
 }
 
 /**
@@ -748,9 +786,14 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   if (isNav) s.borderRadius = pick([0, 4, 8, 12]);
 
   // --- Derived color palette for creative gradients/shadows ---
+  // DNA pre-selected scheme for canvas coherence; fallback to per-component derived
   const acHex = palette.ac || "#888";
   const shHex = dark ? "#000" : palette.tx || "#333";
   const dc = _deriveColors(acHex);
+  // DNA gradient/glow colors override local derived for canvas-wide consistency
+  const gc1 = (dna && dna.gradColor1) || dc.analog1;
+  const gc2 = (dna && dna.gradColor2) || dc.analog2;
+  const gcGlow = (dna && dna.glowColor) || dc.vivid;
 
   // --- Box shadow (DNA > harmony > mood) ---
   // DNA takes priority for cohesive canvas
@@ -833,23 +876,24 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     // Use derived colors for richer gradients (analogous, complementary, split-comp)
     if (dnaGrad && Math.random() < 0.70) {
       const gs = dna.gradientStyle;
+      // Use DNA color scheme (gc1/gc2) for canvas-wide gradient coherence
       if (gs === "diagonal") {
         s.gradientOverlay = pick([
           `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
-          `linear-gradient(160deg, ${ac2}0A 0%, ${acHex}06 100%)`,
-          `linear-gradient(120deg, ${dc.analog1}06 0%, ${dc.analog2}04 50%, transparent 100%)`,
-          `linear-gradient(145deg, ${acHex}08 0%, ${dc.muted}06 60%, transparent 100%)`,
+          `linear-gradient(160deg, ${gc1}0A 0%, ${acHex}06 100%)`,
+          `linear-gradient(120deg, ${gc1}06 0%, ${gc2}04 50%, transparent 100%)`,
+          `linear-gradient(145deg, ${acHex}08 0%, ${gc2}06 60%, transparent 100%)`,
         ]);
       } else if (gs === "radial") {
         s.gradientOverlay = pick([
           `radial-gradient(ellipse at top left, ${acHex}0A 0%, transparent 65%)`,
-          `radial-gradient(circle at 30% 20%, ${dc.analog1}08 0%, transparent 50%)`,
-          `radial-gradient(ellipse at bottom right, ${dc.split1}06 0%, transparent 70%)`,
+          `radial-gradient(circle at 30% 20%, ${gc1}08 0%, transparent 50%)`,
+          `radial-gradient(ellipse at bottom right, ${gc2}06 0%, transparent 70%)`,
         ]);
       } else if (gs === "conic") {
         s.gradientOverlay = pick([
-          `conic-gradient(from 180deg at 50% 50%, ${acHex}06, ${dc.analog2}06, transparent)`,
-          `conic-gradient(from 45deg, ${dc.analog1}05, transparent 30%, ${dc.comp}04, transparent)`,
+          `conic-gradient(from 180deg at 50% 50%, ${acHex}06, ${gc1}06, transparent)`,
+          `conic-gradient(from 45deg, ${gc2}05, transparent 30%, ${gc1}04, transparent)`,
         ]);
       }
     } else if (Math.random() < gradFallback) {
@@ -1003,9 +1047,9 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.3 && !s.border) {
         s.borderBottom = `4px solid ${acHex}50`;
       }
-      // Signature: double shadow (offset + glow) for dramatic depth — use derived color for richer glow
+      // Signature: double shadow (offset + glow) for dramatic depth — use DNA glow color
       if (Math.random() < 0.25 && s.boxShadow && s.boxShadow !== "none") {
-        s.boxShadow += `, 0 0 30px ${pick([acHex, dc.vivid, dc.analog1])}10`;
+        s.boxShadow += `, 0 0 30px ${pick([acHex, gcGlow, gc1])}10`;
       }
       // Bold always gets some visual weight — never "none" shadow
       if (s.boxShadow === "none") {
@@ -1031,12 +1075,12 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.4) {
         s.letterSpacing = pick(["0.02em", "0.03em", "0.04em", "0.05em"]);
       }
-      // Elegant-only: gentle radial gradient shimmer with analogous tones
+      // Elegant-only: gentle radial gradient shimmer with DNA scheme tones
       if (Math.random() < 0.25 && !s.gradientOverlay) {
         s.gradientOverlay = pick([
-          `radial-gradient(ellipse at 30% 20%, ${dc.muted}06 0%, transparent 55%)`,
-          `radial-gradient(ellipse at 70% 80%, ${dc.analog1}05 0%, transparent 50%)`,
-          `linear-gradient(160deg, ${dc.muted}04 0%, ${dc.analog2}03 100%)`,
+          `radial-gradient(ellipse at 30% 20%, ${gc1}06 0%, transparent 55%)`,
+          `radial-gradient(ellipse at 70% 80%, ${gc2}05 0%, transparent 50%)`,
+          `linear-gradient(160deg, ${gc1}04 0%, ${gc2}03 100%)`,
         ]);
       }
       // Elegant-only: scale down slightly — refined, precise
@@ -1055,9 +1099,9 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       const ac2 = palette.ac2 || palette.ac || "#888";
       if (Math.random() < 0.3 && !isSmall) {
         s.boxShadow = pick([
-          `3px 3px 0 ${acHex}25, -2px -2px 0 ${dc.analog1}20`,
-          `4px 4px 0 ${dc.triad1}22, -3px -3px 0 ${dc.triad2}18`,
-          `3px 3px 0 ${dc.vivid}28, -2px -2px 0 ${dc.comp}15`,
+          `3px 3px 0 ${acHex}25, -2px -2px 0 ${gc1}20`,
+          `4px 4px 0 ${gc1}22, -3px -3px 0 ${gc2}18`,
+          `3px 3px 0 ${gcGlow}28, -2px -2px 0 ${gc2}15`,
         ]);
       }
       // Signature: stronger rotation — playful tilts more
@@ -1079,12 +1123,12 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.2) {
         s.scale = pick([1.03, 1.04, 1.05, 1.06]);
       }
-      // Playful-only: mixed gradient overlays with derived colors for real variety
+      // Playful-only: mixed gradient overlays using DNA color scheme
       if (Math.random() < 0.2 && !s.gradientOverlay) {
         s.gradientOverlay = pick([
-          `linear-gradient(135deg, ${dc.triad1}0E 0%, ${dc.triad2}0A 50%, transparent 100%)`,
-          `conic-gradient(from ${pick([45, 90, 135, 180])}deg, ${dc.analog1}08, ${dc.analog2}08, transparent)`,
-          `linear-gradient(90deg, ${dc.vivid}0C 0%, ${dc.comp}08 100%)`,
+          `linear-gradient(135deg, ${gc1}0E 0%, ${gc2}0A 50%, transparent 100%)`,
+          `conic-gradient(from ${pick([45, 90, 135, 180])}deg, ${gc1}08, ${gc2}08, transparent)`,
+          `linear-gradient(90deg, ${gcGlow}0C 0%, ${gc1}08 100%)`,
         ]);
       }
     }
