@@ -164,12 +164,13 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           borderTop: ds.borderTop || undefined,
           borderBottom: ds.borderBottom || undefined,
           letterSpacing: ds.letterSpacing || undefined,
+          textTransform: ds.textTransform || undefined,
           position: "relative",
           overflow: (device !== "free" || ds.borderRadius === 999) ? "hidden" : undefined,
           WebkitTapHighlightColor: "transparent", touchAction: "none",
         }}>
         {/* Gradient overlay layer */}
-        {ds.gradientOverlay && <div style={{ position: "absolute", inset: 0, background: ds.gradientOverlay, borderRadius: ds.borderRadius ?? 14, pointerEvents: "none", zIndex: 1, mixBlendMode: "normal" }} />}
+        {ds.gradientOverlay && <div style={{ position: "absolute", inset: 0, background: ds.gradientOverlay, borderRadius: ds.borderRadius ?? 14, pointerEvents: "none", zIndex: 1, mixBlendMode: ds.mixBlendMode || "normal" }} />}
         <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} fsize={s.fsize || 1} texture={texture} />
 
         {/* ── Resize handle ── */}
