@@ -50,6 +50,11 @@ const ANIM_STYLE = `
 @keyframes tp-d-drift{0%,100%{transform:translateX(0)}50%{transform:translateX(var(--d-drift-x,3px))}}
 @keyframes tp-d-pulse-scale{0%,100%{transform:scale(1)}50%{transform:scale(var(--d-pulse-s,1.02))}}
 @keyframes tp-d-shadow-shift{0%,100%{box-shadow:var(--d-shad-a)}50%{box-shadow:var(--d-shad-b)}}
+@keyframes tp-d-micro-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.005)}}
+@keyframes tp-d-slidein-left{from{transform:translateX(-12px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes tp-d-slidein-bottom{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes tp-d-bouncein{0%{transform:scale(.9);opacity:0}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes tp-d-fadein-slow{from{opacity:0}to{opacity:1}}
 `;
 
 function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1,texture}){

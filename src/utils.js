@@ -2401,11 +2401,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
       // Muted, desaturated feel
       if (Math.random() < 0.3) {
-        s.filter = `saturate(${randRange(0.85, 0.95).toFixed(2)})`;
+        const sat = `saturate(${randRange(0.85, 0.95).toFixed(2)})`;
+        s.filter = s.filter ? s.filter + " " + sat : sat;
       }
       // Minimal-only: subtle brightness lift for airy feel
       if (Math.random() < 0.25) {
-        s.filter = `brightness(${randRange(1.01, 1.04).toFixed(2)})`;
+        const br = `brightness(${randRange(1.01, 1.04).toFixed(2)})`;
+        s.filter = s.filter ? s.filter + " " + br : br;
       }
       // Minimal-only: micro letter spacing (only if DNA didn't already set it)
       if (!s.letterSpacing && Math.random() < 0.3) {
@@ -2437,7 +2439,8 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
       // Bold-only: contrast bump for punch
       if (Math.random() < 0.35) {
-        s.filter = `contrast(${randRange(1.04, 1.12).toFixed(2)})`;
+        const ct = `contrast(${randRange(1.04, 1.12).toFixed(2)})`;
+        s.filter = s.filter ? s.filter + " " + ct : ct;
       }
       // Bold-only: scale up slightly — bold commands space
       if (Math.random() < 0.2) {
@@ -2495,7 +2498,8 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
       // Signature: higher saturation boost
       if (Math.random() < 0.4) {
-        s.filter = `saturate(${randRange(1.15, 1.4).toFixed(2)})`;
+        const sat = `saturate(${randRange(1.15, 1.4).toFixed(2)})`;
+        s.filter = s.filter ? s.filter + " " + sat : sat;
       }
       // Playful gets more hue variation
       if (!s.hueRotate && Math.random() < 0.3) {
@@ -4562,6 +4566,74 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.gradientOverlay3 = compGrad;
       }
     }
+  }
+
+  // ── Round 92: Micro-interaction CSS hints — hover lifts, cursors, focus rings, entrance animations ──
+  // Add CSS properties that suggest interactivity and motion, making components feel alive
+  // even in a static preview. ~12% trigger, respects complexity budget.
+  if (_effectCount < _maxEffects && !isNav && !isCode && Math.random() < 0.12) {
+    const microRoll = Math.random();
+
+    if (microRoll < 0.30) {
+      // 1. Hover-ready lift: "ready to lift" subtle shadow + smooth transition hint
+      const liftColor = pick([shHex, gc1, acHex]);
+      const liftShadow = `0 ${pick([2, 3])}px ${pick([6, 8, 10])}px ${liftColor}${pick(["0C", "10", "14"])}`;
+      if (s.boxShadow && s.boxShadow !== "none") {
+        s.boxShadow += `, ${liftShadow}`;
+      } else {
+        s.boxShadow = liftShadow;
+      }
+      // Ensure a transition is set for the lift hint
+      if (!s.transition) {
+        s.transition = `transform ${pick([".2s", ".25s"])} ease, box-shadow ${pick([".2s", ".25s"])} ease`;
+      }
+    } else if (microRoll < 0.50) {
+      // 2. Cursor styles: pointer on interactive-looking components
+      const interactiveType = /button|card|link|cta|nav|tab|chip|badge|tag|toggle|switch|avatar|icon/i.test(type);
+      if (interactiveType || Math.random() < 0.35) {
+        s.cursor = "pointer";
+        // Also add the hover-lift transition for clickable feel
+        if (!s.transition) {
+          s.transition = `transform .2s ease, box-shadow .2s ease`;
+        }
+      }
+    } else if (microRoll < 0.58 && (moodId === "elegant" || moodId === "minimal")) {
+      // 3. Focus ring hints: occasional outline suggesting focusable element (elegant/minimal only, 8%)
+      if (!s.outline) {
+        const ringColor = pick([acHex, gc1, dc.muted]);
+        const ringOffset = pick([2, 3, 4]);
+        s.outline = `2px solid ${ringColor}66`; // 40% opacity
+        s.outlineOffset = `${ringOffset}px`;
+      }
+    } else if (microRoll < 0.68 && (moodId === "bold" || moodId === "playful")) {
+      // 4. Pulse/breathing animation: barely perceptible scale oscillation (bold/playful, 10%)
+      if (!s.animation) {
+        const breatheDur = (2.5 + Math.random() * 1.5).toFixed(1);
+        s.animation = `tp-d-micro-breathe ${breatheDur}s ease-in-out infinite`;
+      }
+    } else {
+      // 5. Entrance animation hints: mood-driven entrance style
+      if (!s.animation) {
+        if (moodId === "bold") {
+          // Bold: energetic slide in from left or bottom
+          const dir = pick(["left", "bottom"]);
+          const dur = pick([".3s", ".35s", ".4s"]);
+          s.animation = dir === "left"
+            ? `tp-d-slidein-left ${dur} ease-out both`
+            : `tp-d-slidein-bottom ${dur} ease-out both`;
+        } else if (moodId === "playful") {
+          // Playful: bounce in with overshoot
+          const dur = pick([".35s", ".4s", ".45s"]);
+          s.animation = `tp-d-bouncein ${dur} cubic-bezier(0.34,1.56,0.64,1) both`;
+        } else if (moodId === "elegant") {
+          // Elegant: slow graceful fade in
+          const dur = pick([".6s", ".7s", ".8s"]);
+          s.animation = `tp-d-fadein-slow ${dur} ease-out both`;
+        }
+        // Minimal: no entrance animation (instant) — intentionally omitted
+      }
+    }
+    _effectCount++;
   }
 
   s._effectCount = _effectCount;
