@@ -19248,6 +19248,8 @@ let insideJokes = []; // { turn, label, context, type, uses: number } — max 8
 let userNicknames = []; // { nickname, origin, turn, uses: number } — max 5
 let lastInsideJokeTurn = 0;
 let insideJokeCount = 0;
+let notableMoments = []; // { turn, summary, type, userText } — max 5
+let lastCallbackJokeTurn = 0;
 
 function trackRunningBits(userText, topics, turn) {
   const lower = userText.toLowerCase();
@@ -19349,6 +19351,110 @@ function trackRunningBits(userText, topics, turn) {
   if (bitKeys.length > 20) {
     const sorted = bitKeys.sort((a, b) => runningBits[a].lastTurn - runningBits[b].lastTurn);
     for (let i = 0; i < bitKeys.length - 20; i++) delete runningBits[sorted[i]];
+  }
+}
+
+/* ── Notable Moments & Callback Jokes (Round 231) ──
+ * Friends build shared context — if something funny or notable happened
+ * earlier in the conversation, they reference it later. Detects high-reaction
+ * moments (ALL CAPS, laughing, embarrassing admissions) and ~6% of the time
+ * weaves a callback reference into the response.
+ */
+function detectNotableMoment(userText, aiText, turn) {
+  if (notableMoments.length >= 5) return;
+  const lower = userText.toLowerCase();
+  const words = userText.trim().split(/\s+/);
+
+  // Type 1: ALL CAPS (at least 4 words, >70% uppercase letters)
+  const alphaChars = userText.replace(/[^a-zA-Z]/g, "");
+  const upperRatio = alphaChars.length > 3 ? (alphaChars.replace(/[^A-Z]/g, "").length / alphaChars.length) : 0;
+  if (words.length >= 3 && upperRatio > 0.7) {
+    const summary = words.slice(0, 6).join(" ").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+    if (summary.length > 5 && !notableMoments.some(m => m.summary === summary)) {
+      notableMoments.push({ turn, summary, type: "caps_moment", userText: userText.substring(0, 60) });
+      return;
+    }
+  }
+
+  // Type 2: Heavy laughing (3+ laugh indicators in one message)
+  const laughCount = (lower.match(/\b(lol|lmao|lmfao|haha|hahaha|rofl|dying|dead|😂|🤣|💀)\b/g) || []).length
+    + (lower.match(/😂|🤣|💀/g) || []).length;
+  if (laughCount >= 3) {
+    // Try to extract what was funny from the non-laugh content
+    const substance = lower.replace(/\b(lol|lmao|lmfao|haha+|rofl|dying|dead|omg|bruh)\b/g, "").replace(/[😂🤣💀]/g, "").trim();
+    const summary = substance.length > 5 ? substance.substring(0, 40).trim() : "that thing that had you dying";
+    if (!notableMoments.some(m => m.type === "laugh_moment" && turn - m.turn < 4)) {
+      notableMoments.push({ turn, summary, type: "laugh_moment", userText: userText.substring(0, 60) });
+      return;
+    }
+  }
+
+  // Type 3: Embarrassing admissions
+  if (/\b(don't judge me|i know i know|please don't|this is embarrassing|i'm ashamed|judge free zone|no judgment|not my proudest|i can't believe i)\b/i.test(lower) && lower.length > 15) {
+    const substance = lower.replace(/\b(don't judge me|i know i know|please don't|no judgment|ngl|ok but)\b/gi, "").trim();
+    const summary = substance.length > 5 ? substance.substring(0, 45).trim() : userText.substring(0, 45).trim();
+    if (!notableMoments.some(m => m.type === "embarrassing" && turn - m.turn < 4)) {
+      notableMoments.push({ turn, summary, type: "embarrassing", userText: userText.substring(0, 60) });
+      return;
+    }
+  }
+
+  // Type 4: Strong positive reaction to AI's previous message (user responds with enthusiasm)
+  if (aiText && /\b(YES|EXACTLY|THIS|THANK YOU|finally someone|you get it|that's so real|fr fr|facts|spitting)\b/i.test(userText) && words.length <= 12) {
+    const aiSnippet = aiText.substring(0, 45).trim().toLowerCase();
+    if (aiSnippet.length > 8 && !notableMoments.some(m => m.type === "resonance")) {
+      notableMoments.push({ turn, summary: aiSnippet, type: "resonance", userText: userText.substring(0, 60) });
+    }
+  }
+}
+
+function tryCallbackJoke(text, mem) {
+  if (mem.turn <= 8) return null;
+  if (notableMoments.length === 0) return null;
+  if (mem.turn - lastCallbackJokeTurn < 10) return null; // 10-turn cooldown
+  if (Math.random() > 0.06) return null; // ~6% fire rate
+
+  // Don't callback during sad/serious moments
+  const lower = text.toLowerCase();
+  if (/sorry|died|depressed|anxious|bye|later|rip|passed away|struggling/i.test(lower)) return null;
+
+  // Pick a moment from at least 4 turns ago
+  const eligible = notableMoments.filter(m => mem.turn - m.turn >= 4);
+  if (eligible.length === 0) return null;
+
+  const moment = pick(eligible);
+  const s = moment.summary;
+
+  switch (moment.type) {
+    case "caps_moment":
+      return pick([
+        `you're still the person who went full caps lock about ${s}`,
+        `this is giving "${s}" energy and i'm here for it`,
+        `at least you're not yelling about ${s} again lol`,
+        `somewhere in this chat you were screaming about ${s} and i haven't forgotten`,
+      ]);
+    case "laugh_moment":
+      return pick([
+        `ok but nothing's topping when you lost it over ${s}`,
+        `this is funny but not as funny as when ${s} had you on the floor`,
+        `you're still recovering from ${s} i can tell`,
+        `${s} still lives rent free honestly`,
+      ]);
+    case "embarrassing":
+      return pick([
+        `you're still the person who admitted to ${s} and i respect that`,
+        `at least it's not as bad as the ${s} thing lol`,
+        `i will never let you forget ${s} just so you know`,
+        `this is bold coming from someone who ${s}`,
+      ]);
+    case "resonance":
+      return pick([
+        `we really had a moment earlier with that whole ${s} thing`,
+        `ok this is almost as good as when we were on the same page about ${s}`,
+        `remember when i said ${s} and you lost it, that was elite`,
+      ]);
+    default:
+      return null;
   }
 }
 
@@ -22391,6 +22497,15 @@ export async function getAIResponse(input) {
   // ═══ Inside jokes & running bits: shared context callbacks, nicknames, recurring topic teasing ═══
   response = applyInsideJokeCallback(response, text, currentTopics, sent);
 
+  // ═══ Round 231: Notable moment callbacks — "you're still the person who..." ═══
+  {
+    const callback = tryCallbackJoke(text, mem);
+    if (callback && response.length < 200) {
+      lastCallbackJokeTurn = mem.turn;
+      response = response.replace(/[.!?]?\s*$/, ". ") + callback;
+    }
+  }
+
   // ═══ Thread recap: brief aside showing awareness of conversation arc ═══
   response = applyThreadRecap(response, text, currentTopics);
 
@@ -22596,6 +22711,10 @@ export async function getAIResponse(input) {
   // Track running bits, inside jokes, and nicknames (Round 151)
   trackRunningBits(text, currentTopics, mem.turn);
 
+  // Track notable moments for callback jokes (Round 231)
+  const prevAI = mem.lastAI();
+  detectNotableMoment(text, prevAI ? prevAI.text : "", mem.turn);
+
   // Calculate realistic typing speed (adjusted for conversation pace)
   // For multi-messages, base timing on the full content length
   const rawTypingMs = calcTypingMs(memResponse, sent, parsed);
@@ -22605,7 +22724,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; recentOpeners = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; lastTopicRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; _sessionGapMs = 0; _isVeryFirstSession = false; _sessionGapChecked = false; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; recentOpeners = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; lastTopicRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; notableMoments = []; lastCallbackJokeTurn = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; _sessionGapMs = 0; _isVeryFirstSession = false; _sessionGapChecked = false; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);
