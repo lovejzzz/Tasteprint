@@ -8478,6 +8478,120 @@ function applySocialNormalization(response, text) {
  * and nudges toward equilibrium.
  */
 
+/* ── Emotional Labeling (Round 120) ──
+ * Explicitly naming the emotion the user seems to be feeling.
+ * "Sounds like you're frustrated" or "that must be exciting."
+ * This is a counseling/negotiation technique (Chris Voss calls it
+ * "labeling") that creates instant rapport. People feel deeply
+ * understood when someone accurately names their emotional state.
+ */
+
+let lastLabelTurn = 0;
+let labelCount = 0;
+const LABEL_COOLDOWN = 6;
+const MAX_LABELS_SESSION = 5;
+
+// Emotion detection patterns: regex → { emotion, label phrases }
+const EMOTION_SIGNALS = [
+  { patterns: [/\b(so frustrated|ugh|argh|can('?t| not) (stand|take|deal|believe)|sick of|fed up|drives me crazy|pisses me off|hate (that|this|when|it))\b/i, /\b(frustrated|annoyed|irritated|pissed|angry|furious|mad)\b/i], emotion: "frustration", labels: [
+    "That sounds really frustrating.",
+    "I can tell this is getting under your skin.",
+    "Sounds like that's been eating at you.",
+    "Yeah, that would frustrate me too.",
+  ]},
+  { patterns: [/\b(worried|anxious|nervous|scared|afraid|terrified|freaking out|panicking|stress(ed|ful)|dread(ing)?)\b/i, /what (if|am i going to|should i|do i)\b.*\?/i], emotion: "anxiety", labels: [
+    "That sounds like it's weighing on you.",
+    "It seems like there's some real anxiety around this.",
+    "I can sense this is stressing you out.",
+    "Sounds like the uncertainty is the hardest part.",
+  ]},
+  { patterns: [/\b(so (excited|pumped|hyped|stoked|thrilled)|can('?t| not) wait|omg|oh my god|finally|amazing|incredible|!!!)\b/i, /!{2,}/], emotion: "excitement", labels: [
+    "You seem really pumped about this!",
+    "I can feel the excitement from here.",
+    "That clearly means a lot to you!",
+    "Love the energy — this is clearly something you care about.",
+  ]},
+  { patterns: [/\b(sad|depressed|down|lonely|miss(ing)?|lost|empty|heartbr(oken|eaking)|grief|mourning|crying)\b/i, /\b(feel(s|ing)? (so )?(alone|empty|hollow|numb))\b/i], emotion: "sadness", labels: [
+    "That sounds really hard.",
+    "I hear you — that's a heavy thing to carry.",
+    "It seems like this is really weighing on you.",
+    "That sounds painful. I'm sorry you're going through that.",
+  ]},
+  { patterns: [/\b(confused|confusing|don('?t| not) (get|understand)|what (does|do) (that|you) mean|makes no sense|lost|baffled|puzzled)\b/i], emotion: "confusion", labels: [
+    "Yeah, that's genuinely confusing.",
+    "Makes sense that you'd be puzzled by this.",
+    "It sounds like this isn't clicking yet — and that's okay.",
+    "I can see why that's hard to wrap your head around.",
+  ]},
+  { patterns: [/\b(proud|accomplished|nailed|crushed it|killed it|did it|finally (made|got|finished|did)|pulled it off)\b/i], emotion: "pride", labels: [
+    "You should be proud of that — seriously.",
+    "That's a real accomplishment.",
+    "Sounds like you really earned that win.",
+    "I can hear how good that feels!",
+  ]},
+  { patterns: [/\b(disappointed|let down|expected (more|better)|wasn('?t| not) worth|waste of|underwhelm(ed|ing))\b/i], emotion: "disappointment", labels: [
+    "That's disappointing, especially when you had high hopes.",
+    "Sounds like it didn't live up to what you expected.",
+    "I can see why that would be a letdown.",
+    "That gap between expectation and reality is rough.",
+  ]},
+  { patterns: [/\b(overwhelm(ed|ing)|too much|so much (to do|going on|happening)|drowning|can('?t| not) keep up|swamped)\b/i], emotion: "overwhelm", labels: [
+    "That sounds like a lot to juggle.",
+    "No wonder you're feeling stretched thin.",
+    "When everything hits at once like that, it's a lot.",
+    "Sounds like you could use a breather.",
+  ]},
+];
+
+// Suppression: don't label when user is being casual, humorous, or rhetorical
+const LABEL_SUPPRESS = [
+  /^(lol|haha|lmao|heh|rofl)\b/i,
+  /^(hi|hey|hello|sup|what'?s up)/i,
+  /^(thanks|thank you|thx|ty)\b/i,
+  /^(ok|okay|sure|yeah|yep|yup|cool|nice|great)\s*$/i,
+];
+
+function detectEmotionForLabeling(text) {
+  // Don't label short/casual messages
+  if (text.length < 12) return null;
+  for (const sup of LABEL_SUPPRESS) {
+    if (sup.test(text)) return null;
+  }
+
+  for (const signal of EMOTION_SIGNALS) {
+    for (const pattern of signal.patterns) {
+      if (pattern.test(text)) {
+        return { emotion: signal.emotion, labels: signal.labels };
+      }
+    }
+  }
+  return null;
+}
+
+function applyEmotionalLabeling(response, text) {
+  const turn = mem.turn;
+  if (turn < 2) return response;
+  if (turn - lastLabelTurn < LABEL_COOLDOWN) return response;
+  if (labelCount >= MAX_LABELS_SESSION) return response;
+  if (response.length < 25 || response.length > 320) return response;
+  if (Math.random() > 0.50) return response; // 50% when triggered
+
+  const detected = detectEmotionForLabeling(text);
+  if (!detected) return response;
+
+  const label = pick(detected.labels);
+
+  // Prepend the label — labeling works best BEFORE the response
+  const trimmed = response.replace(/^\s+/, "");
+  // Don't double-label if response already acknowledges the emotion
+  if (new RegExp(detected.emotion, "i").test(response)) return response;
+  if (/^(that sounds|I can (tell|sense|see|hear|feel)|sounds like)/i.test(response)) return response;
+
+  lastLabelTurn = turn;
+  labelCount++;
+  return label + " " + trimmed;
+}
+
 let reciprocityHistory = []; // "ask" or "tell" per turn
 let lastReciprocityNudgeTurn = 0;
 
@@ -17746,6 +17860,9 @@ export function getAIResponse(input) {
   // ═══ Social normalization: validate shared experience ═══
   response = applySocialNormalization(response, text);
 
+  // ═══ Emotional labeling: name the user's emotional state ═══
+  response = applyEmotionalLabeling(response, text);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -17776,6 +17893,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
