@@ -547,7 +547,7 @@ function respondToFragment(fragment, text, slangInfo) {
   }
 
   if (fragment === "rejection") {
-    return pickNew(["lmao fair","ok valid","hahaha ok","nah you're right"]);
+    return pickNew(["lmao fair","lol ok","hahaha ok","nah you're right"]);
   }
 
   if (fragment === "redirect") {
@@ -6173,7 +6173,7 @@ function generateResponse(text) {
       "ok fair, what do you think then",
       "lol nah you might be right honestly",
       "ok ok, i hear you. what's your take",
-      "hmm ok that's valid actually",
+      "hmm ok that's fair actually",
       "that's a choice... but ok what's your take",
       "sir this is a wendy's — but no ok, tell me your version",
       "the vibes are off on this one but i'm listening",
@@ -6387,7 +6387,7 @@ function respondToShortReply(text) {
   if (/^(same|mood|fr|real|facts|true)$/i.test(lower)) return pickNew(["literally 😭","no fr","RIGHT","the way this is so accurate","rent free in my brain","spitting facts honestly","it is what it is"]);
   if (/^(wow|whoa|omg|damn)$/i.test(lower)) return pickNew(["RIGHT??","i knowww","lol wait what happened","dude ikr","i would simply pass away","i would not survive that"]);
   if (/^(sure|yep|yeah|yes)$/i.test(lower)) return respondToAgreement();
-  if (/^(no|nah|nope)$/i.test(lower)) return pickNew(["fair enough","lol ok","that's valid","nah you're right"]);
+  if (/^(no|nah|nope)$/i.test(lower)) return pickNew(["fair enough","lol ok","that's fair","nah you're right"]);
   if (/^(nothing|nm|nvm|nevermind)$/i.test(lower)) return pickNew(["lol ok we can just vibe","all good","nm either honestly","fair lol"]);
   if (/^(bored|boring|meh)$/i.test(lower)) return pickNew(["same honestly, today is so mid","want me to ask you something random","ok hear me out — random topic: what's a hill you'd die on"]);
   if (/^(help|sos|please)$/i.test(lower)) return "what's going on? talk to me";
@@ -6769,10 +6769,10 @@ const PERSONALITY_MODES = {
     openers: ["here's the thing though — ","you know what I've realized? ","there's something deeper here — ","think about it this way: ","the way I see it, ","it's funny how "],
     closers: [" ...and that says something honestly"," — worth thinking about"," and that's lowkey beautiful"," which is kinda the whole point"," — and maybe that's enough"],
     transforms: [
-      [/\bcool\b/gi, "meaningful"],
-      [/\bfun\b/gi, "enriching"],
+      [/\bcool\b/gi, "wild"],
+      [/\bfun\b/gi, "dope"],
       [/\bwhatever\b/gi, "it is what it is"],
-      [/\bI guess\b/gi, "i've kinda realized"],
+      [/\bI guess\b/gi, "i think"],
     ],
     emojiBoost: ["🌿","✨","💫","🧠","🤔"],
   },
@@ -7448,7 +7448,7 @@ function adaptToStyle(response, style) {
     // Pad with a thoughtful follow-up for users who write longer messages
     const expansions = [
       " what's your take on it tho",
-      " there's a lot to unpack there honestly",
+      " ok theres a lot going on there",
       " wait what's the thinking behind that",
       " there's usually a good story behind that kind of thing",
     ];
@@ -10657,7 +10657,7 @@ const AMBIGUITY_PATTERNS = [
   { re: /^(it|that|this|those|these|they|them)\b/i, type: "pronoun", q: "Wait — when you say \"{word}\", what are you referring to?" },
   { re: /^(yeah|yes|no|maybe|sure|ok|okay|yep|nah|nope|idk|dunno)\s*$/i, type: "bare_response", q: null }, // handled by follow-up system
   { re: /\b(the thing|the stuff|the one|that thing|this thing)\b/i, type: "vague_ref", q: "wait which thing? i wanna follow but im lost lol" },
-  { re: /\b(or something|or whatever|or anything|sort of|kind of|ish)\s*[.!?]?\s*$/i, type: "hedged", q: "Sounds like you're still forming the thought — what direction are you leaning?" },
+  { re: /\b(or something|or whatever|or anything|sort of|kind of|ish)\s*[.!?]?\s*$/i, type: "hedged", q: "ok i think i follow — which direction are you leaning tho?" },
   { re: /^(what about|how about|and|but|so)\s+\S{1,12}\s*\??$/i, type: "fragment", q: "Oh wait, say more — I wanna follow that thread" },
   { re: /\b(should i|would it|is it|can i|do you think)\b.*\b(good|bad|right|wrong|better|worse|worth)\b/i, type: "judgment_seek", q: "That depends on context — what's the specific situation you're weighing?" },
 ];
@@ -11059,7 +11059,7 @@ const MICRO_ACKS = {
   negative: ["i hear you. ", "gotcha. ", "that's fair. ", "oof yeah. ", "yeah that's tough. ", "i get it. "],
   neutral: ["mm-hmm, ", "right — ", "gotcha — ", "ok — ", "sure — ", "got it — ", "noted — "],
   question: ["ooh — ", "hmm ", "oh wait — ", "so — ", "uh "],
-  long: ["ok a lot to unpack here — ", "alright so — ", "ok so — "],
+  long: ["ok theres a lot here — ", "alright so — ", "ok so — "],
 };
 
 // Paraphrase templates — show we understood the content
@@ -11300,7 +11300,7 @@ function calibrateResponseLength(response, text, energy) {
     // Add a follow-up that shows engagement with their long message
     const extensions = [
       " i'd actually love to dig into that more",
-      " there's a lot to unpack there",
+      " ok thats a whole thing",
       " that's the kind of thing i could talk about for a while",
       " i feel like there's a deeper thread here worth pulling on",
       " what part of that feels most important to you",
