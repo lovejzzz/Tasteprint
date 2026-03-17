@@ -4760,7 +4760,7 @@ function handleMultiSentence(text) {
     }
   } else if (positive && sentences.length > 2) {
     // Acknowledge the overall positive tone of a long message
-    parts.push(pick(["I love the enthusiasm!", "Sounds like things are going well!", "That's great to hear!"]));
+    parts.push(pick(["i love the energy!", "sounds like things are going well!", "ok i'm vibing with this!", "that's awesome honestly!", "yesss i love that!"]));
   }
 
   // Address contrast/concern if present ("but X confuses me", "however I'm stuck on")
@@ -4999,11 +4999,13 @@ function respondToTeaser(teaserType) {
 function respondToImplicitFarewell() {
   const tf = timeFarewell();
   const responses = [
-    "No worries, go do your thing! It was fun chatting 😊",
-    "Totally — catch you later! Thanks for hanging out.",
-    "Alright, take care! Come back anytime you want to chat.",
-    "Go get some rest! Or whatever you're off to. Was great talking!",
-    "Good call — sometimes you just gotta go. See you around! 👋",
+    "no worries, go do your thing! this was fun 😊",
+    "totally — catch you later! ✌️",
+    "aight take care! come back whenever",
+    "go get some rest! or whatever you're off to lol. later! 👋",
+    "fair enough — sometimes you just gotta go. see ya!",
+    "ok byeee, don't be a stranger!",
+    "peace! this was great honestly",
   ];
   let resp = pickNew(responses);
   if (tf && Math.random() > 0.5) resp = tf;
@@ -5113,20 +5115,24 @@ function respondToExperienceContext(exp, text, sent, topics) {
   switch (exp.need) {
     case "encouragement_and_tips": {
       const openers = [
-        `Oh nice, welcome to the ${subject} world! `,
-        `That's exciting — ${subject} is a great choice to learn! `,
-        `Love that you're diving into ${subject}! `,
-        `${subject.charAt(0).toUpperCase() + subject.slice(1)} is a solid pick — you're going to enjoy the journey. `,
+        `oh nice, welcome to the ${subject} world! `,
+        `ooh ${subject}!! you're gonna love it. `,
+        `yesss, ${subject} is so fun to learn! `,
+        `${subject.charAt(0).toUpperCase() + subject.slice(1)} is a great pick honestly. `,
+        `ayy welcome to ${subject}! `,
+        `oh sick, ${subject}! you're in for a ride. `,
       ];
       let resp = pick(openers);
       if (hasExplain) resp += hasExplain.brief + " ";
-      else if (hasAssoc?.opinions?.length) resp += "Honestly, " + pick(hasAssoc.opinions) + ". ";
+      else if (hasAssoc?.opinions?.length) resp += "honestly, " + pick(hasAssoc.opinions) + ". ";
       if (hasAssoc?.facts?.length) resp += pick(hasAssoc.facts) + ". ";
       const tips = [
-        `The biggest tip I'd give: build something small early. Tutorials are great but nothing beats hands-on.`,
-        `My advice: don't try to learn everything at once. Pick one small thing and get good at it.`,
-        `Pro tip: the frustration phase is temporary. Once it clicks, it REALLY clicks.`,
-        `Start with the official docs or a small project — that's where the real learning happens.`,
+        `biggest thing — build something small early. tutorials are great but getting your hands dirty is where it clicks.`,
+        `honestly don't try to learn everything at once. pick one small thing and get good at it, the rest follows.`,
+        `the frustration phase is temporary btw. once it clicks, it REALLY clicks. just push through.`,
+        `i'd say start with a small project — that's where the real learning happens fr.`,
+        `real talk: you're gonna feel lost at first and that's totally normal. everyone does.`,
+        `one thing that helps — find someone else learning too. even just to share pain lol.`,
       ];
       resp += pick(tips);
       if (hasAssoc?.hooks?.length) resp += " " + pick(hasAssoc.hooks);
@@ -5134,11 +5140,13 @@ function respondToExperienceContext(exp, text, sent, topics) {
     }
     case "celebration": {
       const celebrations = [
-        "YES! That feeling when it finally clicks is the BEST. 🎉 What was the breakthrough?",
-        "Let's GO! There's no better feeling than getting something to work after struggling with it. What did you build?",
-        "That's awesome! The sense of accomplishment when it works is unmatched. Tell me about it!",
-        "🎉 NICE! You should be proud of that — seriously. What made it finally click?",
-        "The victory moment! That dopamine hit when the code works is why we do this. What was the tricky part?",
+        "YESSS that feeling when it finally clicks is the BEST 🎉 what was the breakthrough??",
+        "LETS GOOO!! nothing beats that moment when it actually works after you've been stuck. what did you build?",
+        "ayyy that's huge!! you should be so proud rn. tell me about it!",
+        "🎉 NICE!! what made it finally click?",
+        "the victory moment!! that dopamine hit is unmatched fr. what was the tricky part?",
+        "omg wait you did it?? that's amazing, walk me through what happened!",
+        "duuude yes!! that's what i'm talking about 🔥 how'd you crack it?",
       ];
       let resp = pick(celebrations);
       if (topic && hasAssoc?.opinions?.length && Math.random() > 0.6) {
@@ -5149,21 +5157,24 @@ function respondToExperienceContext(exp, text, sent, topics) {
     case "perspective_on_decision": {
       let resp = "";
       const openers = [
-        `oh interesting — ${subject} huh? i have thoughts on this. `,
+        `oh interesting — ${subject} huh? i have thoughts. `,
         `${subject}?? ok yeah that's a move. `,
-        `ooh ${subject}, ok let me share some thoughts. `,
+        `ooh ${subject}, ok so here's the thing. `,
+        `wait ${subject}?? ok i have opinions lol. `,
+        `huh, ${subject}. ok yeah let's talk about this. `,
       ];
       resp = pick(openers);
       if (hasExplain) resp += hasExplain.deep + " ";
       else if (hasAssoc) {
-        if (hasAssoc.opinions?.length) resp += "Generally speaking, " + pick(hasAssoc.opinions) + ". ";
+        if (hasAssoc.opinions?.length) resp += "honestly, " + pick(hasAssoc.opinions) + ". ";
         if (hasAssoc.facts?.length) resp += pick(hasAssoc.facts) + ". ";
       }
       const closers = [
-        "How do you feel about the switch?",
-        "Are you excited about it or more reluctant?",
-        "What's driving the decision?",
-        "Is the team on board or is there pushback?",
+        "how do you feel about the switch?",
+        "are you excited about it or kinda dreading it?",
+        "what's driving the decision?",
+        "is the team on board or is there pushback?",
+        "are you into it or is this a top-down thing?",
       ];
       resp += pick(closers);
       return resp;
@@ -5171,9 +5182,11 @@ function respondToExperienceContext(exp, text, sent, topics) {
     case "trend_explanation": {
       let resp = "";
       const openers = [
-        `Yeah, ${subject} is definitely having a moment! Here's why: `,
-        `The ${subject} hype is real — and honestly, it's mostly deserved. `,
-        `Ha, ${subject} IS everywhere right now. Let me break down why. `,
+        `yeah ${subject} is having a MOMENT rn. so basically — `,
+        `the ${subject} hype is real — and honestly pretty deserved. `,
+        `lol ${subject} IS everywhere right now huh. ok so here's why — `,
+        `oh yeah ${subject} blew up for a reason. `,
+        `fr tho ${subject} is all anyone talks about lately. here's the deal — `,
       ];
       resp = pick(openers);
       if (hasExplain) resp += hasExplain.deep + " ";
@@ -5181,32 +5194,36 @@ function respondToExperienceContext(exp, text, sent, topics) {
         if (hasAssoc.facts?.length) resp += pick(hasAssoc.facts) + ". ";
         if (hasAssoc.opinions?.length) resp += pick(hasAssoc.opinions) + ". ";
       } else {
-        resp += `It's gotten a lot of attention recently and I can see why people are drawn to it. `;
+        resp += `it's gotten a ton of attention recently and i totally get why. `;
       }
       const closers = [
-        "Have you tried it yourself yet?",
-        "Are you thinking about jumping on the bandwagon?",
-        "Curious — are you drawn to it or skeptical?",
-        "What made you notice the trend?",
+        "have you tried it yourself yet?",
+        "are you thinking about jumping on the bandwagon?",
+        "are you into it or more skeptical?",
+        "what made you notice the trend?",
+        "are you vibing with it or just curious?",
       ];
       resp += pick(closers);
       return resp;
     }
     case "expert_recognition": {
       const openers = [
-        `Oh wow, a seasoned ${subject} person! I respect the depth that comes from years of experience. `,
-        `Nice — you've put in the reps with ${subject}. That kind of deep knowledge is invaluable. `,
-        `A ${subject} veteran! That's awesome — you've probably seen the whole evolution. `,
+        `oh wow, a ${subject} OG! you've seen it all huh. `,
+        `dang, you've been in the ${subject} game for a minute! respect. `,
+        `a ${subject} veteran!! that's sick — you've probably seen the whole evolution. `,
+        `wait that's awesome, you really know your ${subject}. `,
+        `ok so you're like a ${subject} expert expert. i love that. `,
       ];
       let resp = pick(openers);
       if (hasAssoc?.hooks?.length) {
         resp += pick(hasAssoc.hooks);
       } else {
         const hooks = [
-          `What's the biggest lesson ${subject} has taught you over the years?`,
-          `What's changed the most about ${subject} since you started?`,
-          `Do you ever mentor others on ${subject}?`,
-          `What would you tell someone just starting with ${subject}?`,
+          `what's the biggest lesson ${subject} has taught you over the years?`,
+          `what's changed the most about ${subject} since you started?`,
+          `do you ever mentor people on ${subject}?`,
+          `what would you tell someone just getting into ${subject}?`,
+          `what keeps you excited about ${subject} after all this time?`,
         ];
         resp += pick(hooks);
       }
@@ -5214,22 +5231,24 @@ function respondToExperienceContext(exp, text, sent, topics) {
     }
     case "troubleshooting_empathy": {
       const openers = [
-        `Ugh, that's the worst feeling. ${subject.charAt(0).toUpperCase() + subject.slice(1)} debugging can be maddening. `,
-        `I feel you — being stuck is so frustrating, especially when you've been at it a while. `,
-        `That sounds rough! ${subject.charAt(0).toUpperCase() + subject.slice(1)} issues can be tricky to pin down. `,
-        `Been there (well, metaphorically). Getting stuck on ${subject} is a rite of passage, honestly. `,
+        `ugh that's the worst. ${subject} bugs can be SO maddening. `,
+        `oof i feel you — being stuck is the most frustrating thing. `,
+        `nooo that sounds rough! ${subject} issues are the worst to debug. `,
+        `been there (well, metaphorically lol). getting stuck on ${subject} is a rite of passage honestly. `,
+        `ughhh ${subject} giving you problems?? that's so annoying. `,
       ];
       let resp = pick(openers);
       if (hasAssoc?.facts?.length && Math.random() > 0.5) {
-        resp += "For context: " + pick(hasAssoc.facts) + ". ";
+        resp += "fwiw — " + pick(hasAssoc.facts) + ". ";
       }
       const tips = [
-        "Sometimes stepping away for 10 minutes and coming back fresh reveals the answer instantly.",
-        "The rubber duck method is no joke — try explaining the problem out loud step by step.",
-        "Have you tried narrowing it down? Comment out half the code and see if it still breaks.",
-        "Fresh eyes help. If you describe what's happening vs what you expect, I can try to think through it with you.",
+        "sometimes stepping away for like 10 min and coming back fresh literally reveals the answer instantly.",
+        "ok this sounds dumb but try explaining the problem out loud step by step. rubber duck debugging is legit.",
+        "have you tried narrowing it down? comment out half the code and see if it still breaks.",
+        "if you walk me through what's happening vs what you expect, maybe we can figure it out together.",
+        "honestly sleep on it if you can. the number of times i've heard 'it just clicked the next morning' is wild.",
       ];
-      resp += pick(tips) + " What exactly is going wrong?";
+      resp += pick(tips) + " what exactly is going wrong?";
       return resp;
     }
     case "decision_help": {
@@ -5240,14 +5259,16 @@ function respondToExperienceContext(exp, text, sent, topics) {
         const a = parts[0].replace(/\s+/g, ""), b = parts[1].replace(/\s+/g, "");
         const comp = lookupComparison(a, b);
         if (comp) {
-          resp = `Great question! ` + comp.take + " " + comp.hook;
+          resp = `ooh ok so — ` + comp.take + " " + comp.hook;
           return resp;
         }
       }
       const openers = [
-        `That's a legit dilemma! Here's how I'd think about it: `,
-        `Totally fair to be torn on this. Let me share a framework: `,
-        `Good problem to have! Here's my take: `,
+        `ooh that's a real dilemma! ok so here's how i'd think about it — `,
+        `totally fair to be torn on this. ok here's my take — `,
+        `good problem to have tbh! so basically — `,
+        `ugh decisions are the worst lol. ok let's break this down — `,
+        `oh man yeah that's a tough one. ok so — `,
       ];
       resp = pick(openers);
       if (parts.length >= 2) {
@@ -5255,9 +5276,9 @@ function respondToExperienceContext(exp, text, sent, topics) {
         const bAssoc = ASSOC[parts[1]] || ASSOC[parts[1].replace(/\s+/g, "")];
         if (aAssoc?.opinions?.length) resp += parts[0] + " — " + pick(aAssoc.opinions) + ". ";
         if (bAssoc?.opinions?.length) resp += parts[1] + " — " + pick(bAssoc.opinions) + ". ";
-        resp += "The right choice depends on what you value most. What matters most to you in this decision?";
+        resp += "it really depends on what matters most to you. what are you optimizing for?";
       } else {
-        resp += `It usually comes down to: what are you trying to achieve? What's your timeline? And what feels right in your gut? What's pulling you in each direction?`;
+        resp += `it usually comes down to: what are you trying to achieve, what's your timeline, and honestly what feels right in your gut? what's pulling you in each direction?`;
       }
       return resp;
     }
