@@ -8070,6 +8070,32 @@ function planResponseIntent(text, parsed, sent, emo, subtext) {
   return plan;
 }
 
+// Round 227: Engage diversifier — upstream fix for over-questioning.
+// planResponseIntent sets engage="question" in ~85% of code paths, which means
+// nearly every response is planned to end with a question. The polishOutput
+// pipeline strips some of these, but the real fix is here: after the plan is made,
+// randomly downgrade "question" → "none" based on recent question history.
+// This creates responses that are pure reactions without forced follow-ups.
+function diversifyEngage(plan) {
+  if (plan.engage === "none" || plan.engage === "validate" || plan.engage === "reciprocal") return plan;
+  // Check recent AI messages — if last 2 ended with questions, force a non-question
+  const recentAI = mem.history.filter(h => h.role === "ai").slice(-2);
+  const recentQCount = recentAI.filter(h => h.text.trim().endsWith("?")).length;
+  if (recentQCount >= 2) {
+    // Two questions in a row — force pure reaction
+    plan.engage = "none";
+    return plan;
+  }
+  // Even without streak, 35% of the time downgrade question → none
+  // This brings the effective question rate closer to the 40% target
+  if (plan.engage === "question" && Math.random() < 0.35) {
+    plan.engage = "none";
+  } else if ((plan.engage === "gentle-q" || plan.engage === "open-ended") && Math.random() < 0.25) {
+    plan.engage = "none";
+  }
+  return plan;
+}
+
 // Discourse markers — natural transitions based on what the LAST AI message was
 const DISCOURSE_MARKERS = {
   // After the AI was empathetic, transition gently
@@ -21866,6 +21892,7 @@ export async function getAIResponse(input) {
 
   // ═══ Plan response intent BEFORE generating (now subtext-aware) ═══
   const plan = planResponseIntent(text, parsed, sent, emo, subtext);
+  diversifyEngage(plan); // Round 227: upstream question rate reduction
 
   // ═══ Subtext override: if strong subtext detected, respond to meaning not words ═══
   // Only fires when subtext is high-confidence (strong pattern match + not congruent)
