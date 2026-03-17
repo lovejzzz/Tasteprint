@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import C from "./ComponentRenderer";
 import PropsPanel from "./PropsPanel";
 import { FONTS, HAS_TEXT, HAS_PROPS } from "../constants";
-import { maxV, varName } from "../utils";
+import { maxV, varName, getTextureStyle } from "../utils";
 
 /* ── Shared toolbar pill button ── */
 const pillBtn = (p) => ({
@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, onProp, cycle, cycleFont, cycleFsize, delShape, setRsz }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, onProp, cycle, cycleFont, cycleFsize, delShape, setRsz, texture }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -42,6 +42,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           border: `1px solid ${p.bd}`, borderRadius: 999,
           padding: "2px 3px", boxShadow: `0 4px 16px ${p.tx}10`,
           whiteSpace: "nowrap", userSelect: "none",
+          ...getTextureStyle(texture, p),
         }}>
           {mx > 1 && <>
             <button aria-label="Previous variant" {...ph}
