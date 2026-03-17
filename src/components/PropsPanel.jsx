@@ -41,6 +41,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Shuffle toggle (media-player) */
+  if ("shuffle" in defaults) {
+    const sh = G("shuffle");
+    controls.push(<React.Fragment key="shuffle"><span style={label}>{sh ? "Shuffle" : "Order"}</span>
+      <button style={{ ...btn(sh), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: sh ? "flex-end" : "flex-start", background: sh ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("shuffle", !sh)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
   /* Checkbox array */
   if ("checked" in defaults) {
     const checked = G("checked");

@@ -186,7 +186,7 @@ export const DEFAULT_PROPS = {
   "cmd-palette": { active: 0 },
   progress:      { pct: 68 },
   slider:        { pct: 65 },
-  "media-player":{ pct: 42, playing: true, liked: false },
+  "media-player":{ pct: 42, playing: true, liked: false, shuffle: false },
   testimonial:   { stars: 4, verified: 1 },
   rating:        { stars: 4 },
   "sub-toggle":  { active: 1 },
