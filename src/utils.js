@@ -2093,57 +2093,105 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
-  // --- Clip-path: shaped component edges beyond border-radius ---
-  // Angular cuts, beveled corners, notched edges — architectural shapes.
-  // Only on medium/large non-nav non-code. Low probability to keep special.
-  if (!isNav && !isCode && !isSmall) {
-    // DNA effectPersonality boost: if canvas DNA says "use clip-path", increase chance
-    const dnaClipBoost = dna?.effectPersonality?.clipStyle && dna.effectPersonality.clipStyle !== "none" ? 0.12 : 0;
-    const clipChance = (moodId === "bold" ? 0.16 : moodId === "playful" ? 0.12 : moodId === "elegant" ? 0.08 : moodId === "minimal" ? 0.05 : 0.10) + dnaClipBoost;
+  // --- Clip-path & shape masking (Round 84): non-rectangular component shapes ---
+  // Creative clip-path shapes that make designs feel truly unique and editorial.
+  // Skip small components (width < 120 or height < 80) and minimal mood entirely.
+  // Mood-aware trigger rates: bold 15%, playful 12%, elegant 6%, minimal 0%, auto 8%.
+  if (!isNav && !isCode && !isSmall && moodId !== "minimal" && !(shapeW > 0 && shapeW < 120) && !(shapeH > 0 && shapeH < 80)) {
+    const dnaClipBoost = dna?.effectPersonality?.clipStyle && dna.effectPersonality.clipStyle !== "none" ? 0.05 : 0;
+    const clipChance = (moodId === "bold" ? 0.15 : moodId === "playful" ? 0.12 : moodId === "elegant" ? 0.06 : 0.08) + dnaClipBoost;
     if (Math.random() < clipChance) {
       // When using clip-path, border-radius becomes irrelevant (clip overrides it)
       // and box-shadow gets clipped too, so we shift shadow to filter: drop-shadow
-      const bevel = pick([4, 6, 8, 10, 12]);
       if (moodId === "bold") {
+        // Bold: angled cuts, arrows, notched corners — strong geometric confidence
+        const bevel = pick([6, 8, 10, 12]);
         s.clipPath = pick([
-          // Angled cut corners — brutalist/geometric
-          `polygon(${bevel}px 0, calc(100% - ${bevel}px) 0, 100% ${bevel}px, 100% calc(100% - ${bevel}px), calc(100% - ${bevel}px) 100%, ${bevel}px 100%, 0 calc(100% - ${bevel}px), 0 ${bevel}px)`,
+          // Angled cut bottom — slanted editorial edge
+          `polygon(0 0, 100% 0, 100% 85%, 0 100%)`,
+          // Angled cut top — inverse slant
+          `polygon(0 15%, 100% 0, 100% 100%, 0 100%)`,
+          // Both sides angled — parallelogram energy
+          `polygon(0 8%, 100% 0, 100% 92%, 0 100%)`,
+          // Notched corners — octagonal chamfer
+          `polygon(0 ${bevel}px, ${bevel}px 0, calc(100% - ${bevel}px) 0, 100% ${bevel}px, 100% calc(100% - ${bevel}px), calc(100% - ${bevel}px) 100%, ${bevel}px 100%, 0 calc(100% - ${bevel}px))`,
+          // Arrow/chevron — CTA-like directional shape
+          `polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%)`,
           // Top-left chamfer only — asymmetric strength
           `polygon(${bevel * 2}px 0, 100% 0, 100% 100%, 0 100%, 0 ${bevel * 2}px)`,
           // Bottom-right notch — dynamic cut
           `polygon(0 0, 100% 0, 100% calc(100% - ${bevel * 2}px), calc(100% - ${bevel * 2}px) 100%, 0 100%)`,
+          // Left-slant — tilted left edge
+          `polygon(8% 0, 100% 0, 100% 100%, 0 100%)`,
         ]);
       } else if (moodId === "playful") {
+        // Playful: blobs, ticket shapes, organic — fun and whimsical
         const notch = pick([8, 12, 16]);
-        s.clipPath = pick([
-          // Ticket/coupon notch — semicircle cuts on sides
-          `polygon(0 0, 100% 0, 100% calc(50% - ${notch}px), calc(100% - ${notch/2}px) 50%, 100% calc(50% + ${notch}px), 100% 100%, 0 100%, 0 calc(50% + ${notch}px), ${notch/2}px 50%, 0 calc(50% - ${notch}px))`,
-          // Diagonal slice bottom
-          `polygon(0 0, 100% 0, 100% calc(100% - ${notch}px), 0 100%)`,
-          // Flag/pennant edge
-          `polygon(0 0, calc(100% - ${notch}px) 0, 100% 50%, calc(100% - ${notch}px) 100%, 0 100%)`,
-        ]);
+        const playfulRoll = Math.random();
+        if (playfulRoll < 0.30) {
+          // Blob/organic — famous blob border-radius trick (override borderRadius)
+          const h = Array.from({ length: 4 }, () => pick([30, 40, 50, 60, 70]) + "%");
+          const v = Array.from({ length: 4 }, () => pick([30, 40, 50, 60, 70]) + "%");
+          s.borderRadius = `${h.join(" ")} / ${v.join(" ")}`;
+          // No clipPath needed — blob uses border-radius
+        } else if (playfulRoll < 0.55) {
+          // Ticket/coupon shape — semi-circle notches on sides
+          s.clipPath = `polygon(0 0, 100% 0, 100% 40%, 95% 50%, 100% 60%, 100% 100%, 0 100%, 0 60%, 5% 50%, 0 40%)`;
+        } else if (playfulRoll < 0.75) {
+          // Diagonal slice bottom — tilted playful edge
+          s.clipPath = `polygon(0 0, 100% 0, 100% calc(100% - ${notch}px), 0 100%)`;
+        } else {
+          // Flag/pennant edge — directional fun
+          s.clipPath = `polygon(0 0, calc(100% - ${notch}px) 0, 100% 50%, calc(100% - ${notch}px) 100%, 0 100%)`;
+        }
       } else if (moodId === "elegant") {
-        const trim = pick([3, 4, 6]);
+        // Elegant: subtle angled cuts only, small chamfers — refined restraint
+        const trim = pick([3, 4, 5, 6]);
         s.clipPath = pick([
-          // Subtle inward curve — refined edge
-          `inset(0 round ${trim * 3}px ${trim}px)`,
+          // Subtle angled bottom — barely perceptible editorial slant
+          `polygon(0 0, 100% 0, 100% 95%, 0 100%)`,
+          // Subtle angled top — delicate inverse slant
+          `polygon(0 5%, 100% 0, 100% 100%, 0 100%)`,
           // Tiny corner chamfer — barely noticeable refinement
           `polygon(${trim}px 0, calc(100% - ${trim}px) 0, 100% ${trim}px, 100% calc(100% - ${trim}px), calc(100% - ${trim}px) 100%, ${trim}px 100%, 0 calc(100% - ${trim}px), 0 ${trim}px)`,
+          // Subtle inward curve — refined edge
+          `inset(0 round ${trim * 3}px ${trim}px)`,
         ]);
-      } else if (moodId === "minimal") {
-        // Clean geometric inset — breathing room
-        s.clipPath = `inset(${pick([1, 2])}px round ${pick([4, 6, 8])}px)`;
       } else {
-        // Auto: mix of everything
-        s.clipPath = pick([
-          `polygon(${bevel}px 0, calc(100% - ${bevel}px) 0, 100% ${bevel}px, 100% calc(100% - ${bevel}px), calc(100% - ${bevel}px) 100%, ${bevel}px 100%, 0 calc(100% - ${bevel}px), 0 ${bevel}px)`,
-          `polygon(${bevel * 2}px 0, 100% 0, 100% 100%, 0 100%, 0 ${bevel * 2}px)`,
-          `inset(0 round ${pick([6, 8, 12])}px ${pick([2, 4])}px)`,
-        ]);
+        // Auto: random from all shape families
+        const bevel = pick([6, 8, 10]);
+        const autoShape = Math.random();
+        if (autoShape < 0.18) {
+          // Angled cuts
+          s.clipPath = pick([
+            `polygon(0 0, 100% 0, 100% 85%, 0 100%)`,
+            `polygon(0 15%, 100% 0, 100% 100%, 0 100%)`,
+            `polygon(0 8%, 100% 0, 100% 92%, 0 100%)`,
+          ]);
+        } else if (autoShape < 0.36) {
+          // Notched corners — octagonal chamfer
+          s.clipPath = `polygon(0 ${bevel}px, ${bevel}px 0, calc(100% - ${bevel}px) 0, 100% ${bevel}px, 100% calc(100% - ${bevel}px), calc(100% - ${bevel}px) 100%, ${bevel}px 100%, 0 calc(100% - ${bevel}px))`;
+        } else if (autoShape < 0.52) {
+          // Ticket/coupon
+          s.clipPath = `polygon(0 0, 100% 0, 100% 40%, 95% 50%, 100% 60%, 100% 100%, 0 100%, 0 60%, 5% 50%, 0 40%)`;
+        } else if (autoShape < 0.68) {
+          // Blob/organic — border-radius trick
+          const h = Array.from({ length: 4 }, () => pick([30, 40, 50, 60, 70]) + "%");
+          const v = Array.from({ length: 4 }, () => pick([30, 40, 50, 60, 70]) + "%");
+          s.borderRadius = `${h.join(" ")} / ${v.join(" ")}`;
+        } else if (autoShape < 0.84) {
+          // Arrow/chevron
+          s.clipPath = `polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%)`;
+        } else {
+          // Mixed chamfer
+          s.clipPath = pick([
+            `polygon(${bevel * 2}px 0, 100% 0, 100% 100%, 0 100%, 0 ${bevel * 2}px)`,
+            `polygon(0 0, 100% 0, 100% calc(100% - ${bevel * 2}px), calc(100% - ${bevel * 2}px) 100%, 0 100%)`,
+          ]);
+        }
       }
       // Convert box-shadow to drop-shadow filter since clip-path clips box-shadow
-      if (s.boxShadow && s.boxShadow !== "none") {
+      if (s.clipPath && s.boxShadow && s.boxShadow !== "none") {
         const dropShadow = `drop-shadow(0 ${pick([2, 4, 6])}px ${pick([6, 10, 14])}px ${shHex}15)`;
         s.filter = s.filter ? s.filter + " " + dropShadow : dropShadow;
         s.boxShadow = "none";
