@@ -11371,7 +11371,7 @@ const WORD_SWAPS = {
   "pretty":      ["fairly","reasonably","quite","decently","notably"],
   // Intensifier variety
   "really":      ["genuinely","honestly","seriously","truly","absolutely"],
-  "very":        ["incredibly","remarkably","exceptionally","super","wildly"],
+  "very":        ["incredibly","seriously","genuinely","super","wildly"],
   // Verb upgrades
   "think":       ["feel like","reckon","believe","suspect","figure"],
   "like":        ["dig","appreciate","vibe with","enjoy","am into"],
@@ -12438,18 +12438,18 @@ let lastMirrorTurn = 0;
 // Vocabulary swap tables: casual ↔ formal register
 const REGISTER_SWAPS = {
   toFormal: [
-    [/\bcool\b/gi, () => pick(["impressive", "notable", "commendable"])],
-    [/\bawesome\b/gi, () => pick(["excellent", "remarkable", "outstanding"])],
+    [/\bcool\b/gi, () => pick(["solid", "sharp", "worth noting"])],
+    [/\bawesome\b/gi, () => pick(["excellent", "really strong", "seriously good"])],
     [/\bgonna\b/gi, "going to"],
     [/\bwanna\b/gi, "want to"],
-    [/\bgotta\b/gi, "have to"],
-    [/\bkinda\b/gi, "somewhat"],
-    [/\bsorta\b/gi, "somewhat"],
-    [/\ba lot\b/gi, () => pick(["considerably", "significantly", "substantially"])],
-    [/\bsuper\b(?!\w)/gi, () => pick(["exceptionally", "remarkably", "particularly"])],
-    [/\bstuff\b/gi, () => pick(["aspects", "elements", "details"])],
-    [/\bthing\b(?!s)/gi, () => pick(["aspect", "element", "factor"])],
-    [/\bbig\b/gi, () => pick(["significant", "substantial", "considerable"])],
+    [/\bgotta\b/gi, "need to"],
+    [/\bkinda\b/gi, "sort of"],
+    [/\bsorta\b/gi, "sort of"],
+    [/\ba lot\b/gi, () => pick(["quite a bit", "a good amount", "plenty"])],
+    [/\bsuper\b(?!\w)/gi, () => pick(["really", "seriously", "extremely"])],
+    [/\bstuff\b/gi, () => pick(["things", "pieces", "details"])],
+    [/\bthing\b(?!s)/gi, () => pick(["piece", "part", "detail"])],
+    [/\bbig\b/gi, () => pick(["major", "serious", "real"])],
   ],
   toCasual: [
     [/\bimpressive\b/gi, "cool"],
@@ -18324,18 +18324,18 @@ const LOW_REGISTER_SIGNALS = new Set(
   "cool stuff things nice good bad big small lots kinda sorta gonna wanna gotta yeah nah dude bro chill vibes lowkey highkey tbh ngl fr imo sus lit fire bet fam legit hella dope sick af tho lmao lol yo sup ez nbd idk rn bruh fwiw deadass slay cap".split(" ")
 );
 
-// Upgrade map: generic → sophisticated (only applied when register is high)
+// Upgrade map: generic → elevated-but-human (only applied when register is high)
 const VOCAB_UPGRADES = [
-  [/\binteresting\b/gi, () => pick(["compelling", "intriguing", "fascinating"])],
-  [/\breally good\b/gi, () => pick(["remarkably effective", "genuinely impressive", "particularly noteworthy"])],
-  [/\bpretty cool\b/gi, () => pick(["quite remarkable", "genuinely fascinating", "particularly compelling"])],
-  [/\bbig deal\b/gi, () => pick(["significant development", "substantial shift", "meaningful milestone"])],
-  [/\ba lot of\b/gi, () => pick(["a considerable amount of", "substantial", "a wealth of"])],
-  [/\bimportant\b/gi, () => pick(["pivotal", "consequential", "instrumental"])],
-  [/\bdifficult\b/gi, () => pick(["nuanced", "intricate", "formidable"])],
-  [/\bshows\b/gi, () => pick(["demonstrates", "illustrates", "underscores"])],
-  [/\bgets?\b/gi, () => pick(["acquires", "attains", "garners"])],
-  [/\bthink about\b/gi, () => pick(["consider", "contemplate", "reflect on"])],
+  [/\binteresting\b/gi, () => pick(["intriguing", "striking", "worth digging into"])],
+  [/\breally good\b/gi, () => pick(["genuinely solid", "seriously impressive", "legitimately great"])],
+  [/\bpretty cool\b/gi, () => pick(["honestly impressive", "kind of brilliant", "surprisingly good"])],
+  [/\bbig deal\b/gi, () => pick(["real turning point", "major shift", "pretty seismic"])],
+  [/\ba lot of\b/gi, () => pick(["a ton of", "quite a bit of", "no shortage of"])],
+  [/\bimportant\b/gi, () => pick(["critical", "essential", "hard to overstate"])],
+  [/\bdifficult\b/gi, () => pick(["tricky", "thorny", "nontrivial"])],
+  [/\bshows\b/gi, () => pick(["reveals", "highlights", "makes clear"])],
+  [/\bgets?\b/gi, () => pick(["picks up", "lands", "ends up with"])],
+  [/\bthink about\b/gi, () => pick(["sit with", "chew on", "consider"])],
 ];
 
 // Downgrade map: formal → casual (only applied when register is low)
