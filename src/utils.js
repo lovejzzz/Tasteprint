@@ -1882,6 +1882,75 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     } else if (moodId === "auto" && Math.random() < 0.12) {
       s.textTransform = pick(["uppercase", "lowercase", "uppercase"]);
     }
+
+    // --- Mood-distinctive typography systems (Round 88) ---
+    // Each mood gets genuinely different typographic feel, not just color/effect differences
+    if (moodId === "bold") {
+      const boldTypoRoll = Math.random();
+      if (boldTypoRoll < 0.30) {
+        // ALL CAPS with wide letter-spacing + heavy weight for commanding presence
+        s.textTransform = "uppercase";
+        s.letterSpacing = `${(0.08 + Math.random() * 0.07).toFixed(3)}em`; // 0.08-0.15em
+        s.fontWeight = pick([800, 900]);
+      } else if (boldTypoRoll < 0.50) {
+        // Extra-large impact: tight negative letter-spacing for compressed power
+        s.letterSpacing = "-0.03em";
+        s.fontWeight = pick([700, 800, 900]);
+      }
+      // Bold preference: uppercase when not already set
+      if (!s.textTransform && Math.random() < 0.25) {
+        s.textTransform = "uppercase";
+      }
+    } else if (moodId === "elegant") {
+      const elegTypoRoll = Math.random();
+      if (elegTypoRoll < 0.30) {
+        // Italic + light weight + airy spacing — editorial sophistication
+        s.fontStyle = "italic";
+        s.fontWeight = pick([300, 400]);
+        s.letterSpacing = `${(0.02 + Math.random() * 0.03).toFixed(3)}em`; // 0.02-0.05em
+      } else if (elegTypoRoll < 0.50) {
+        // Small-caps — classical typographic refinement
+        s.fontVariant = "small-caps";
+        s.fontWeight = pick([400, 500]);
+      }
+      // Airy word-spacing for elegant readability
+      if (Math.random() < 0.35) {
+        s.wordSpacing = `${(0.05 + Math.random() * 0.05).toFixed(3)}em`; // 0.05-0.1em
+      }
+      // Subtle text-indent for editorial feel
+      if (Math.random() < 0.20) {
+        s.textIndent = pick(["0.5em", "0.8em", "1em", "1.2em"]);
+      }
+    } else if (moodId === "playful") {
+      const playTypoRoll = Math.random();
+      if (playTypoRoll < 0.25) {
+        // Slightly rotated text — whimsical tilt
+        const deg = -1 + Math.random() * 3; // -1deg to 2deg
+        s.transform = `rotate(${deg.toFixed(1)}deg)`;
+      }
+      // Bouncy line-height
+      if (Math.random() < 0.35) {
+        s.lineHeight = (1.6 + Math.random() * 0.2).toFixed(2); // 1.6-1.8
+      }
+      // Compact word-spacing for energetic feel
+      if (Math.random() < 0.30) {
+        s.wordSpacing = "-0.02em";
+      }
+    } else if (moodId === "minimal") {
+      const minTypoRoll = Math.random();
+      if (minTypoRoll < 0.40) {
+        // Ultra-light weight — whisper-thin presence
+        s.fontWeight = pick([200, 250, 300]);
+      } else if (minTypoRoll < 0.60) {
+        // Monospace-style even letter-spacing — systematic precision
+        s.letterSpacing = "0.04em";
+      }
+      // Tight line-height for minimal density
+      if (Math.random() < 0.30) {
+        s.lineHeight = (1.2 + Math.random() * 0.1).toFixed(2); // 1.2-1.3
+      }
+    }
+
     // mixBlendMode for gradient overlays
     if (s.gradientOverlay) {
       if (moodId === "bold" && Math.random() < 0.3) {
