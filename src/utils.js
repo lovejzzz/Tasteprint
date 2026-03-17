@@ -883,6 +883,45 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Nav components stay reasonable
   if (isNav) s.borderRadius = pick([0, 4, 8, 12]);
 
+  // --- Organic border-radius: per-corner asymmetry + elliptical blobs ---
+  // Upgrades simple numeric radius to complex CSS border-radius for organic shapes
+  if (!isNav && !isCode && !isSmall && s.borderRadius !== 999 && s.borderRadius > 4) {
+    const orgRoll = Math.random();
+    const br = s.borderRadius;
+    if (moodId === "playful" && orgRoll < 0.25) {
+      // Playful: blob-like asymmetric corners — each corner different
+      const corners = Array.from({ length: 4 }, () => br + pick([-8, -4, 0, 4, 8, 12, 16]));
+      const clamped = corners.map(c => Math.max(4, Math.min(48, c)));
+      s.borderRadius = `${clamped[0]}px ${clamped[1]}px ${clamped[2]}px ${clamped[3]}px`;
+    } else if (moodId === "playful" && orgRoll < 0.35) {
+      // Playful: elliptical blob — organic amoeba-like shapes
+      const h = Array.from({ length: 4 }, () => pick([30, 40, 50, 60, 70, 80]) + "%");
+      const v = Array.from({ length: 4 }, () => pick([30, 40, 50, 60, 70, 80]) + "%");
+      s.borderRadius = `${h.join(" ")} / ${v.join(" ")}`;
+    } else if (moodId === "elegant" && orgRoll < 0.18) {
+      // Elegant: softly asymmetric — one corner more open, creates visual flow
+      const base = br;
+      const accent = Math.min(base + pick([8, 12, 16]), 40);
+      s.borderRadius = pick([
+        `${accent}px ${base}px ${accent}px ${base}px`,
+        `${base}px ${accent}px ${base}px ${accent}px`,
+        `${accent}px ${base}px ${base}px ${accent}px`,
+      ]);
+    } else if (moodId === "bold" && orgRoll < 0.15) {
+      // Bold: sharp-round contrast — dramatic zero + large on alternating corners
+      s.borderRadius = pick([
+        `0 ${br * 2}px 0 ${br * 2}px`,
+        `${br * 2}px 0 ${br * 2}px 0`,
+        `0 0 ${br * 3}px 0`,
+        `${br * 3}px 0 0 0`,
+      ]);
+    } else if (moodId === "minimal" && orgRoll < 0.08) {
+      // Minimal: barely-there asymmetry — subtle difference between corners
+      const slight = br + pick([2, 3, 4]);
+      s.borderRadius = `${br}px ${slight}px ${br}px ${slight}px`;
+    }
+  }
+
   // --- Derived color palette for creative gradients/shadows ---
   // DNA pre-selected scheme for canvas coherence; fallback to per-component derived
   const acHex = palette.ac || "#888";
