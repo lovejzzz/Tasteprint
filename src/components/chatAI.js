@@ -20527,6 +20527,33 @@ function polishOutput(response) {
     r = r.replace(/  +/g, " ");
   }
 
+  // 14a. Sentence comma-splicing (Round 225).
+  // Friends connect short thoughts with commas instead of periods:
+  // "that's wild. I love that." → "that's wild, I love that"
+  // "idk. it's just weird." → "idk, it's just weird"
+  // Only for 2-sentence responses where both sentences are short and casual.
+  {
+    const sentParts = r.split(/\.\s+/);
+    if (sentParts.length === 2 && Math.random() < 0.35) {
+      const s1 = sentParts[0].replace(/\.$/, "");
+      const s2 = sentParts[1].replace(/\.$/, "");
+      // Only splice if both parts are short and conversational
+      if (s1.length >= 5 && s1.length <= 50 && s2.length >= 5 && s2.length <= 50) {
+        // Don't splice if second part starts with caps proper noun or "I" standalone
+        const s2Start = s2.trimStart();
+        if (!/^[A-Z][a-z]{2,}/.test(s2Start) || /^(I |It |Its |Im )/.test(s2Start)) {
+          // Lowercase the second part's first letter (since it's now mid-sentence)
+          const s2Lower = s2Start.charAt(0).toLowerCase() + s2Start.slice(1);
+          const joiner = Math.random() < 0.6 ? ", " :
+                         Math.random() < 0.5 ? " and " : " but ";
+          // "but" only makes sense if there's a contrast vibe
+          const useJoiner = joiner === " but " && !/\b(not|don't|can't|won't|idk|nah|eh)\b/i.test(s2Lower) ? ", " : joiner;
+          r = s1 + useJoiner + s2Lower;
+        }
+      }
+    }
+  }
+
   // 14. Trailing period softening (Round 224).
   // In modern texting, ending with "." signals formality or passive-aggression.
   // Friends end with no punctuation, "!", "?", emoji, or trailing off "...".
