@@ -3425,6 +3425,145 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     delete s.textShadow;
   }
 
+  // --- CSS animation & micro-interaction hints (Round 67) ---
+  // Transition curves — give components a personality when canvas state changes.
+  // Applied to the wrapper, so border/shadow/transform transitions feel alive.
+  const animRoll = Math.random();
+  if (moodId === "bold") {
+    // Snappy, punchy transitions — quick overshoot
+    if (animRoll < 0.40) {
+      s.transition = pick([
+        "all .2s cubic-bezier(.4,0,.2,1.4)",     // overshoot bounce
+        "all .15s cubic-bezier(.6,.04,.98,.34)",   // aggressive snap
+        "transform .2s cubic-bezier(.4,0,.2,1.4), box-shadow .25s ease",
+      ]);
+    }
+  } else if (moodId === "playful") {
+    // Bouncy, elastic — fun spring physics
+    if (animRoll < 0.45) {
+      s.transition = pick([
+        "all .3s cubic-bezier(.34,1.56,.64,1)",    // springy overshoot
+        "all .35s cubic-bezier(.175,.885,.32,1.275)", // elastic settle
+        "transform .3s cubic-bezier(.34,1.56,.64,1), opacity .2s ease",
+      ]);
+    }
+  } else if (moodId === "elegant") {
+    // Slow, graceful easing — refined motion
+    if (animRoll < 0.40) {
+      s.transition = pick([
+        "all .4s cubic-bezier(.25,.1,.25,1)",      // smooth ease-out
+        "all .5s cubic-bezier(.19,1,.22,1)",       // expo ease-out
+        "transform .45s cubic-bezier(.25,.46,.45,.94), box-shadow .5s ease",
+        "all .6s cubic-bezier(.16,1,.3,1)",        // silk glide
+      ]);
+    }
+  } else if (moodId === "minimal") {
+    // Clean, barely-there transitions — functional motion only
+    if (animRoll < 0.30) {
+      s.transition = pick([
+        "all .2s ease",
+        "opacity .2s ease, transform .2s ease",
+        "all .15s linear",
+      ]);
+    }
+  } else {
+    // Auto: occasional transition from any style
+    if (animRoll < 0.20) {
+      s.transition = pick([
+        "all .25s ease",
+        "all .3s cubic-bezier(.4,0,.2,1)",
+        "transform .2s ease, box-shadow .3s ease",
+      ]);
+    }
+  }
+
+  // Subtle transform hints — pre-applied transforms that make components feel dynamic.
+  // These are slight rotations, scales, or translations that break perfect grid alignment.
+  const tfRoll = Math.random();
+  if (moodId === "bold") {
+    // Aggressive angles and scales — components assert themselves
+    if (tfRoll < 0.18) {
+      s.transform = pick([
+        "rotate(-0.5deg) scale(1.01)",
+        "rotate(0.5deg)",
+        "skewX(-0.5deg)",
+        "scale(1.015)",
+        "translateY(-1px)",
+      ]);
+    }
+  } else if (moodId === "playful") {
+    // Whimsical tilts and bounces — nothing sits perfectly straight
+    if (tfRoll < 0.25) {
+      s.transform = pick([
+        "rotate(-1deg)",
+        "rotate(1.5deg)",
+        "rotate(-0.8deg) scale(1.01)",
+        "translateY(-2px) rotate(0.5deg)",
+        "scale(1.02) rotate(-0.3deg)",
+        "skewX(0.5deg)",
+      ]);
+    }
+  } else if (moodId === "elegant") {
+    // Barely perceptible refinements — deliberate micro-positioning
+    if (tfRoll < 0.15) {
+      s.transform = pick([
+        "translateY(-1px)",
+        "scale(1.005)",
+        "translateY(-0.5px) scale(1.003)",
+      ]);
+    }
+  } else if (moodId === "minimal") {
+    // Almost never — minimal means static
+    if (tfRoll < 0.06) {
+      s.transform = "translateY(-1px)";
+    }
+  } else {
+    // Auto: rare subtle transforms
+    if (tfRoll < 0.10) {
+      s.transform = pick([
+        "rotate(-0.5deg)",
+        "translateY(-1px)",
+        "scale(1.008)",
+      ]);
+    }
+  }
+
+  // Opacity micro-variations — subtle transparency differences create depth hierarchy.
+  // Not full transparency — just enough to suggest layers.
+  const opRoll = Math.random();
+  if (moodId === "elegant") {
+    // Elegant uses opacity as a design tool — layered translucency
+    if (opRoll < 0.20) {
+      s.opacity = pick([0.92, 0.94, 0.96, 0.98]);
+    }
+  } else if (moodId === "bold") {
+    // Bold is always full-strength
+    // (no opacity changes)
+  } else if (moodId === "playful") {
+    if (opRoll < 0.10) {
+      s.opacity = pick([0.95, 0.97]);
+    }
+  } else if (moodId === "minimal") {
+    if (opRoll < 0.15) {
+      s.opacity = pick([0.90, 0.93, 0.95]);
+    }
+  }
+
+  // Outline offset glow — a separated outline that creates a "force field" effect.
+  // Unlike border, outlineOffset creates visible space between component and outline.
+  if (Math.random() < 0.06 && !isSmall && !isNav && !isCode) {
+    if (moodId === "bold") {
+      s.outline = `2px solid ${acHex}25`;
+      s.outlineOffset = pick(["3px", "4px", "5px"]);
+    } else if (moodId === "playful") {
+      s.outline = `2px dashed ${gc1}30`;
+      s.outlineOffset = pick(["4px", "6px"]);
+    } else if (moodId === "elegant") {
+      s.outline = `1px solid ${acHex}12`;
+      s.outlineOffset = pick(["3px", "5px"]);
+    }
+  }
+
   return s;
 }
 
