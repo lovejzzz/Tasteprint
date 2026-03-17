@@ -8266,6 +8266,103 @@ function applyEmotionalContagion(response, text) {
   return response;
 }
 
+/* ── Intuitive Leap (Round 118) ──
+ * Occasionally make an unexpected but insightful cross-domain connection.
+ * Humans do this naturally — "oh wait, that actually reminds me of
+ * something completely different" — and it creates memorable conversation
+ * moments that feel genuinely intelligent and creative.
+ */
+
+let lastLeapTurn = 0;
+let leapCount = 0;
+const LEAP_COOLDOWN = 8; // turns between leaps
+const MAX_LEAPS_SESSION = 4; // rare = special
+
+// Cross-domain insight mappings: topic → surprising parallel domain + insight
+const LEAP_MAP = {
+  tech:     [{ to:"biology", insight:"it's basically natural selection — the bad patterns die off and the good ones survive" },
+             { to:"cooking", insight:"it's like seasoning — you keep adding complexity until it's just right, but one extra pinch ruins it" },
+             { to:"music", insight:"there's a rhythm to good code, almost like jazz — structured improvisation" },
+             { to:"architecture", insight:"same principle as load-bearing walls — you can't remove it without everything collapsing" }],
+  design:   [{ to:"psychology", insight:"it's really about how the brain processes visual hierarchy — not aesthetics, but cognition" },
+             { to:"music", insight:"good design has tempo, like a song — fast sections, breathing room, then the crescendo" },
+             { to:"nature", insight:"nature figured this out first — fibonacci spirals, golden ratios, all just patterns that feel right" },
+             { to:"storytelling", insight:"every great interface tells a story — beginning, middle, end, with the CTA as the climax" }],
+  work:     [{ to:"sports", insight:"it's the same as training — you don't get stronger by lifting heavy every day, you need recovery" },
+             { to:"gardening", insight:"some projects are like gardens — you plant seeds, water them, and wait. You can't rush the harvest" },
+             { to:"cooking", insight:"mise en place — chefs prep everything before cooking. Same principle applies here" }],
+  life:     [{ to:"physics", insight:"entropy applies to everything — without deliberate energy input, things naturally fall apart" },
+             { to:"navigation", insight:"you don't need to see the whole path, just the next turn. That's how GPS works and it's how life works" },
+             { to:"ecology", insight:"ecosystems are resilient because of diversity — same goes for having varied experiences" }],
+  creative: [{ to:"science", insight:"creativity and science use the same muscle — hypothesis, experiment, iterate. Artists just skip the paperwork" },
+             { to:"cooking", insight:"constraints breed creativity — a chef with three ingredients often makes something better than one with fifty" },
+             { to:"architecture", insight:"form follows function, but the best work makes you forget there's a distinction" }],
+  learning: [{ to:"fitness", insight:"your brain is a muscle — it needs progressive overload, not just repetition" },
+             { to:"cooking", insight:"you learn to cook by tasting, not by reading recipes. Same principle — hands on" },
+             { to:"music", insight:"learning anything is like learning an instrument — the plateau before the breakthrough is where most people quit" }],
+  general:  [{ to:"nature", insight:"nature optimized for this over millions of years — there's probably a pattern we can borrow" },
+             { to:"games", insight:"it's basically a strategy game — limited resources, multiple paths, and you won't know the optimal play until it's over" },
+             { to:"storytelling", insight:"every good story has this moment — the part where everything shifts and suddenly the earlier bits make sense" }]
+};
+
+const LEAP_INTROS = [
+  "Oh wait — this is actually kind of like ",
+  "Huh, you know what this reminds me of? ",
+  "Okay this is a weird connection but — ",
+  "This is going to sound random, but ",
+  "Actually — and hear me out — ",
+  "You know what's funny? This is basically ",
+];
+
+const LEAP_OUTROS = [
+  " ...anyway, tangent over.",
+  " — okay that was a leap, but you see what I mean?",
+  " ...I swear that connection made sense in my head.",
+  "",
+  " — does that track?",
+  "",
+];
+
+function detectLeapDomain(text, topics) {
+  const lower = (text + " " + topics.join(" ")).toLowerCase();
+  if (/\b(code|program|bug|api|deploy|server|database|react|javascript|css|html|dev|software|app)\b/.test(lower)) return "tech";
+  if (/\b(design|ui|ux|layout|color|font|visual|aesthetic|brand|logo)\b/.test(lower)) return "design";
+  if (/\b(work|job|career|boss|team|meeting|deadline|project|office|client)\b/.test(lower)) return "work";
+  if (/\b(life|meaning|purpose|happiness|decision|choice|change|grow|future)\b/.test(lower)) return "life";
+  if (/\b(creat|art|writ|draw|paint|music|photo|film|story|novel|poem)\b/.test(lower)) return "creative";
+  if (/\b(learn|study|course|book|understand|figure out|practice|skill|teach)\b/.test(lower)) return "learning";
+  return "general";
+}
+
+function applyIntuitiveLeap(response, text, topics) {
+  const turn = mem.turn;
+  if (turn < 4) return response; // let convo warm up
+  if (turn - lastLeapTurn < LEAP_COOLDOWN) return response;
+  if (leapCount >= MAX_LEAPS_SESSION) return response;
+  if (response.length < 50 || response.length > 280) return response;
+  if (Math.random() > 0.15) return response; // ~15% fire rate
+  // Don't leap on greetings, short acks, or questions
+  if (/^(hi|hey|hello|bye|thanks|sorry|ok|yeah|sure|haha|lol)/i.test(text)) return response;
+  if (text.length < 15) return response;
+
+  const domain = detectLeapDomain(text, topics);
+  const pool = LEAP_MAP[domain] || LEAP_MAP.general;
+  const leap = pick(pool);
+  if (!leap) return response;
+
+  const intro = pick(LEAP_INTROS);
+  const outro = pick(LEAP_OUTROS);
+  const leapText = `${intro}${leap.to} — ${leap.insight}${outro}`;
+
+  // Append after the main response
+  const trimmed = response.replace(/\s*$/, "");
+  const separator = /[.!?]$/.test(trimmed) ? " " : ". ";
+
+  lastLeapTurn = turn;
+  leapCount++;
+  return trimmed + separator + leapText;
+}
+
 /* ── Conversational Reciprocity (Round 103) ──
  * Natural conversations have a rhythm of giving and receiving. If the AI
  * always asks questions, it feels interrogative. If it always makes
@@ -17535,6 +17632,9 @@ export function getAIResponse(input) {
   // ═══ Emotional contagion: match user's energy level ═══
   response = applyEmotionalContagion(response, text);
 
+  // ═══ Intuitive leap: unexpected cross-domain insight ═══
+  response = applyIntuitiveLeap(response, text, currentTopics);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -17565,6 +17665,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
