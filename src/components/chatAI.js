@@ -20635,6 +20635,79 @@ function polishOutput(response) {
     r = r.replace(/^([a-z]{2,12})\.\s+([a-z]{2,12})\.?$/i, "$1 $2");
   }
 
+  // 15. Template phrase rotation (Round 229).
+  // Agreement/validation phrases like "makes sense", "totally", "that's fair", "valid",
+  // "for sure" saturate the template pool. When one shows up in 2+ of the last 6 AI
+  // messages it becomes a verbal tic. This step tracks phrase families across recent
+  // history and swaps overused phrases to the least-recently-used alternative from the
+  // same family, keeping Sam's voice varied and natural.
+  {
+    const _phraseFamilies = {
+      agreement: [
+        "makes sense", "that makes sense", "totally", "for sure", "exactly",
+        "right right", "100%", "oh true", "true", "facts",
+      ],
+      validation: [
+        "valid", "that's fair", "fair enough", "that's valid",
+        "I get that", "I hear you", "yeah no I feel you",
+        "can't argue with that", "solid point",
+      ],
+      transition: [
+        "I feel like", "I feel that", "the thing is", "the way I see it",
+        "ok but like", "nah but like", "wait but", "ok so",
+      ],
+      affirmation: [
+        "gotcha", "got it", "bet", "say less", "copy that",
+        "heard", "word", "noted", "ok ok",
+      ],
+    };
+
+    const _allPhrases = Object.entries(_phraseFamilies).flatMap(
+      ([fam, phrases]) => phrases.map(p => ({ phrase: p, family: fam }))
+    );
+
+    // Build usage counts from last 6 AI messages
+    const _recentAI = mem.history.filter(h => h.role === "ai").slice(-6);
+    const _phraseUsage = {};
+    for (const msg of _recentAI) {
+      const txt = (msg.text || "").toLowerCase();
+      for (const { phrase } of _allPhrases) {
+        if (txt.includes(phrase.toLowerCase())) {
+          _phraseUsage[phrase] = (_phraseUsage[phrase] || 0) + 1;
+        }
+      }
+    }
+
+    // For each phrase in the current response, check if overused (2+) and swap
+    const rLower = r.toLowerCase();
+    for (const { phrase, family } of _allPhrases) {
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Use word-boundary-ish match (but handle phrases starting/ending with special chars)
+      const re = new RegExp("(?:^|(?<=\\s|,|\\.))" + escaped + "(?=\\s|,|\\.|!|\\?|$)", "gi");
+      if (!re.test(r)) continue;
+
+      const usageCount = _phraseUsage[phrase] || 0;
+      // Also count if this phrase is already in the current message (same-message tic)
+      const inCurrentCount = (rLower.match(new RegExp(escaped.toLowerCase(), "g")) || []).length;
+
+      if (usageCount >= 2 || inCurrentCount > 1) {
+        // Find the least-used alternative from the same family
+        const siblings = _phraseFamilies[family].filter(p => p !== phrase);
+        if (siblings.length === 0) continue;
+        // Sort by ascending usage count, pick from top 3 least-used
+        const ranked = siblings.sort(
+          (a, b) => (_phraseUsage[a] || 0) - (_phraseUsage[b] || 0)
+        );
+        const pool = ranked.slice(0, Math.min(3, ranked.length));
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        // Replace first occurrence only (preserve natural variety if phrase appears twice)
+        const reOnce = new RegExp("(?:^|(?<=\\s|,|\\.))" + escaped + "(?=\\s|,|\\.|!|\\?|$)", "i");
+        r = r.replace(reOnce, pick);
+      }
+    }
+    r = r.replace(/  +/g, " ");
+  }
+
   return r.trim();
 }
 
