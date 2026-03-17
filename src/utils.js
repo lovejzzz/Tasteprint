@@ -565,7 +565,46 @@ export function generateDesignDNA(palette, mood) {
     [gradColor1, gradColor2, glowColor] = schemes[colorScheme];
   }
 
-  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor };
+  // Typography rhythm: canvas-wide letter/word spacing + weight personality
+  let typoRhythm;
+  if (m === "minimal") {
+    typoRhythm = pick([
+      { spacing: "wide", ls: "0.02em", ws: "0.01em", weight: "light" },
+      { spacing: "airy", ls: "0.03em", ws: "0.02em", weight: "light" },
+      { spacing: "clean", ls: "0.01em", ws: "normal", weight: "normal" },
+    ]);
+  } else if (m === "bold") {
+    typoRhythm = pick([
+      { spacing: "tight", ls: "-0.01em", ws: "normal", weight: "heavy" },
+      { spacing: "condensed", ls: "-0.02em", ws: "-0.01em", weight: "heavy" },
+      { spacing: "punchy", ls: "0.04em", ws: "normal", weight: "heavy" },
+      { spacing: "wide-heavy", ls: "0.06em", ws: "0.02em", weight: "heavy" },
+    ]);
+  } else if (m === "elegant") {
+    typoRhythm = pick([
+      { spacing: "luxe", ls: "0.04em", ws: "0.02em", weight: "light" },
+      { spacing: "editorial", ls: "0.03em", ws: "0.01em", weight: "normal" },
+      { spacing: "refined", ls: "0.05em", ws: "0.03em", weight: "light" },
+    ]);
+  } else if (m === "playful") {
+    typoRhythm = pick([
+      { spacing: "bouncy", ls: "0.01em", ws: "0.03em", weight: "mixed" },
+      { spacing: "loose", ls: "0.02em", ws: "0.04em", weight: "mixed" },
+      { spacing: "tight-fun", ls: "-0.01em", ws: "normal", weight: "heavy" },
+    ]);
+  } else {
+    // auto: random across full spectrum
+    typoRhythm = pick([
+      { spacing: "tight", ls: "-0.01em", ws: "normal", weight: "heavy" },
+      { spacing: "normal", ls: "normal", ws: "normal", weight: "normal" },
+      { spacing: "wide", ls: "0.03em", ws: "0.01em", weight: "light" },
+      { spacing: "editorial", ls: "0.04em", ws: "0.02em", weight: "normal" },
+      { spacing: "condensed", ls: "-0.02em", ws: "-0.01em", weight: "heavy" },
+      { spacing: "luxe", ls: "0.05em", ws: "0.03em", weight: "light" },
+    ]);
+  }
+
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm };
 }
 
 /**
@@ -982,14 +1021,47 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.scale = pick([0.97, 0.98, 1.02, 1.03, 1.04]);
   }
 
-  // --- Typography dimension: textTransform + mixBlendMode for gradient overlays ---
+  // --- Typography dimension: rhythm + textTransform + mixBlendMode ---
   if (!isNav && !isCode) {
+    // DNA typography rhythm: canvas-wide letter-spacing, word-spacing, font-weight
+    const typo = dna && dna.typoRhythm;
+    if (typo && Math.random() < 0.80) {
+      // Letter-spacing from DNA with per-component jitter
+      if (typo.ls !== "normal") {
+        const baseLS = parseFloat(typo.ls);
+        const jitter = (Math.random() - 0.5) * 0.01; // ±0.005em variation
+        s.letterSpacing = `${(baseLS + jitter).toFixed(3)}em`;
+      }
+      // Word-spacing from DNA
+      if (typo.ws !== "normal") {
+        s.wordSpacing = typo.ws;
+      }
+      // Font-weight hints: headings get the weight personality, body stays normal
+      if (typo.weight === "light") {
+        s.fontWeight = sizeCat === "large" ? pick([300, 300, 400]) : pick([300, 400, 400]);
+      } else if (typo.weight === "heavy") {
+        s.fontWeight = sizeCat === "large" ? pick([700, 800, 900]) : pick([500, 600, 700]);
+      } else if (typo.weight === "mixed") {
+        // Playful: alternate between extremes for variety
+        s.fontWeight = sizeCat === "large" ? pick([300, 700, 800]) : pick([400, 500, 700]);
+      }
+      // else "normal" — don't set fontWeight, let component defaults win
+    } else if (!typo) {
+      // Fallback: mood-driven letter-spacing (pre-DNA behavior)
+      if (moodId === "minimal" && Math.random() < 0.3) {
+        s.letterSpacing = pick(["0.01em", "0.015em", "0.02em"]);
+      } else if (moodId === "elegant" && Math.random() < 0.4) {
+        s.letterSpacing = pick(["0.02em", "0.03em", "0.04em", "0.05em"]);
+      } else if (moodId === "bold" && Math.random() < 0.25) {
+        s.letterSpacing = pick(["-0.01em", "-0.02em", "0.04em", "0.06em"]);
+      }
+    }
+
     // textTransform: harmony-adaptive + mood-aware
-    // If canvas already uses textTransform heavily, match it; if not, use mood defaults
     const ttRate = harmony ? harmony.textTransformRate : 0;
-    const ttBoost = ttRate > 0.4 ? 0.45 : ttRate > 0.2 ? 0.25 : 0; // harmony boost
+    const ttBoost = ttRate > 0.4 ? 0.45 : ttRate > 0.2 ? 0.25 : 0;
     if (ttBoost > 0 && Math.random() < ttBoost) {
-      s.textTransform = "uppercase"; // match canvas typographic personality
+      s.textTransform = "uppercase";
     } else if (moodId === "bold" && sizeCat === "large" && Math.random() < 0.35) {
       s.textTransform = "uppercase";
     } else if (moodId === "elegant" && Math.random() < 0.25) {
@@ -999,7 +1071,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     } else if (moodId === "auto" && Math.random() < 0.12) {
       s.textTransform = pick(["uppercase", "lowercase", "uppercase"]);
     }
-    // mixBlendMode for gradient overlays — adds visual richness
+    // mixBlendMode for gradient overlays
     if (s.gradientOverlay) {
       if (moodId === "bold" && Math.random() < 0.3) {
         s.mixBlendMode = pick(["multiply", "overlay", "soft-light"]);
@@ -1027,8 +1099,8 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.25) {
         s.filter = `brightness(${randRange(1.01, 1.04).toFixed(2)})`;
       }
-      // Minimal-only: micro letter spacing for clean typography
-      if (Math.random() < 0.3) {
+      // Minimal-only: micro letter spacing (only if DNA didn't already set it)
+      if (!s.letterSpacing && Math.random() < 0.3) {
         s.letterSpacing = pick(["0.01em", "0.015em", "0.02em"]);
       }
       // No gradients, no rotation, no hue shifts — strip them
@@ -1071,8 +1143,8 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         const inset = `inset 0 0 20px ${acHex}06`;
         s.boxShadow = s.boxShadow && s.boxShadow !== "none" ? `${s.boxShadow}, ${inset}` : inset;
       }
-      // Signature: letterSpacing hint (wide, airy feel)
-      if (Math.random() < 0.4) {
+      // Signature: letterSpacing hint (only if DNA didn't already set it)
+      if (!s.letterSpacing && Math.random() < 0.4) {
         s.letterSpacing = pick(["0.02em", "0.03em", "0.04em", "0.05em"]);
       }
       // Elegant-only: gentle radial gradient shimmer with DNA scheme tones

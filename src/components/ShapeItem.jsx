@@ -164,6 +164,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           borderTop: ds.borderTop || undefined,
           borderBottom: ds.borderBottom || undefined,
           letterSpacing: ds.letterSpacing || undefined,
+          wordSpacing: ds.wordSpacing || undefined,
+          fontWeight: ds.fontWeight || undefined,
           textTransform: ds.textTransform || undefined,
           position: "relative",
           overflow: (device !== "free" || ds.borderRadius === 999) ? "hidden" : undefined,
