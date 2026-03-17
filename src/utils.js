@@ -4091,6 +4091,86 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- HSL color shift & palette mutations (Round 82) ---
+  // ~20% of the time, apply mood-dependent color mutations via CSS filter additions.
+  // Merges with any existing s.filter value — never overwrites.
+  if (!isCode && Math.random() < 0.20) {
+    const filterParts = [];
+
+    // 1. Hue rotation — mood-dependent range
+    const hueRoll = Math.random();
+    if (hueRoll < 0.55) {
+      let hueDeg;
+      const hueSign = pick([-1, 1]);
+      if (moodId === "bold") {
+        hueDeg = hueSign * (15 + Math.floor(Math.random() * 31)); // ±15-45
+      } else if (moodId === "playful") {
+        hueDeg = hueSign * (20 + Math.floor(Math.random() * 41)); // ±20-60
+      } else if (moodId === "elegant") {
+        hueDeg = hueSign * (5 + Math.floor(Math.random() * 11));  // ±5-15
+      } else if (moodId === "minimal") {
+        hueDeg = hueSign * (3 + Math.floor(Math.random() * 6));   // ±3-8
+      } else {
+        // auto: moderate range
+        hueDeg = hueSign * (8 + Math.floor(Math.random() * 25));  // ±8-32
+      }
+      filterParts.push(`hue-rotate(${hueDeg}deg)`);
+    }
+
+    // 2. Saturation/brightness tweaks — mood-specific ranges
+    const satRoll = Math.random();
+    if (satRoll < 0.50) {
+      if (moodId === "bold") {
+        filterParts.push(`saturate(${randRange(1.1, 1.4).toFixed(2)})`);
+      } else if (moodId === "playful") {
+        filterParts.push(`saturate(${randRange(1.2, 1.5).toFixed(2)}) brightness(${randRange(1.05, 1.10).toFixed(2)})`);
+      } else if (moodId === "elegant") {
+        filterParts.push(`saturate(${randRange(0.85, 0.95).toFixed(2)})`);
+      } else if (moodId === "minimal") {
+        filterParts.push(`saturate(${randRange(0.7, 0.9).toFixed(2)}) brightness(${randRange(1.02, 1.05).toFixed(2)})`);
+      } else {
+        // auto: moderate saturation shift
+        filterParts.push(`saturate(${randRange(0.9, 1.2).toFixed(2)})`);
+      }
+    }
+
+    // 3. Color temperature shift — warm (sepia-like) or cool (hue-rotate toward blue)
+    const tempRoll = Math.random();
+    if (tempRoll < 0.30) {
+      const warm = Math.random() < 0.5;
+      if (warm) {
+        // Warm: subtle sepia tint
+        const sepiaAmount = moodId === "elegant" ? randRange(0.03, 0.08) : moodId === "bold" ? randRange(0.04, 0.10) : randRange(0.02, 0.06);
+        filterParts.push(`sepia(${sepiaAmount.toFixed(2)})`);
+      } else {
+        // Cool: slight blue-tint via hue-rotate toward blue + desaturation nudge
+        const coolDeg = moodId === "minimal" ? pick([180, 185, 190]) : pick([185, 190, 195, 200]);
+        filterParts.push(`hue-rotate(${coolDeg}deg) saturate(${randRange(0.92, 0.98).toFixed(2)})`);
+      }
+    }
+
+    // Merge filter parts with any existing filter value
+    if (filterParts.length > 0) {
+      const mutationFilter = filterParts.join(" ");
+      s.filter = s.filter ? s.filter + " " + mutationFilter : mutationFilter;
+    }
+
+    // 4. Complementary accent generation — shift a gradient stop to complementary hue
+    // Only when there's an existing gradient overlay, ~35% chance within the mutation block
+    if (s.gradientOverlay && Math.random() < 0.35) {
+      // Create a low-opacity complementary color stop by adding hue-rotate(180deg) overlay
+      const compOpacity = pick(["06", "08", "0A", "0C"]);
+      const compAngle = pick([45, 90, 135, 180, 225]);
+      const compGrad = `linear-gradient(${compAngle}deg, ${acHex}${compOpacity} 0%, transparent 50%)`;
+      // Stack as gradientOverlay2 if available, else append conceptually via gradientOverlay3
+      if (!s.gradientOverlay2) {
+        s.gradientOverlay2 = compGrad;
+      } else if (!s.gradientOverlay3) {
+        s.gradientOverlay3 = compGrad;
+      }
+    }
+  }
+
   return s;
 }
 
