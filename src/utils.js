@@ -3315,6 +3315,116 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- Kinetic typography & text treatments (mood-aware) ---
+  // Text shadow compositions — mood-specific atmospheric text shadows
+  const txtRoll = Math.random();
+  if (moodId === "bold") {
+    // Hard offset shadows — punchy, graphic, in-your-face
+    if (txtRoll < 0.35) {
+      const off = pick([2, 3, 4]);
+      s.textShadow = `${off}px ${off}px 0px ${shHex}40`;
+    } else if (txtRoll < 0.50) {
+      // Double offset — stacked retro feel
+      s.textShadow = `2px 2px 0px ${acHex}30, 4px 4px 0px ${shHex}18`;
+    }
+  } else if (moodId === "playful") {
+    // Colorful / rainbow text shadows — fun, layered
+    if (txtRoll < 0.30) {
+      s.textShadow = `1px 1px 3px ${gc1}40, -1px -1px 3px ${gc2}40`;
+    } else if (txtRoll < 0.45) {
+      // Triple-color offset — party mode
+      s.textShadow = `2px 0px 0px ${gc1}35, -2px 0px 0px ${gc2}35, 0px 2px 0px ${acHex}25`;
+    }
+  } else if (moodId === "elegant") {
+    // Subtle ambient glow behind text — refined, luminous
+    if (txtRoll < 0.30) {
+      s.textShadow = `0px 0px 8px ${acHex}15`;
+    } else if (txtRoll < 0.45) {
+      // Delicate warm glow
+      s.textShadow = `0px 0px 12px ${gcGlow}10, 0px 0px 4px ${acHex}08`;
+    }
+  } else if (moodId === "minimal") {
+    // Barely-there offset — just enough to add depth
+    if (txtRoll < 0.18) {
+      s.textShadow = `0px 1px 1px ${shHex}08`;
+    }
+  } else {
+    // auto: occasional text shadow from any style
+    if (txtRoll < 0.12) {
+      s.textShadow = pick([
+        `1px 1px 2px ${shHex}20`,
+        `0px 0px 6px ${acHex}12`,
+        `2px 2px 0px ${acHex}18`,
+      ]);
+    }
+  }
+
+  // Letter-spacing variations — mood-driven tracking
+  const lsRoll = Math.random();
+  if (moodId === "bold") {
+    // Tight tracking for dense, modern, impactful headlines
+    if (lsRoll < 0.40) s.letterSpacing = pick(["-0.03em", "-0.02em", "-0.01em"]);
+    else if (lsRoll < 0.55) s.letterSpacing = "0.05em"; // occasional wide for contrast
+  } else if (moodId === "playful") {
+    // Slightly loose or bouncy — approachable
+    if (lsRoll < 0.35) s.letterSpacing = pick(["0.02em", "0.04em", "0.06em"]);
+  } else if (moodId === "elegant") {
+    // Generous tracking — airy, refined, editorial
+    if (lsRoll < 0.45) s.letterSpacing = pick(["0.04em", "0.06em", "0.08em", "0.12em"]);
+  } else if (moodId === "minimal") {
+    // Subtle but deliberate — clean geometry
+    if (lsRoll < 0.30) s.letterSpacing = pick(["0.01em", "0.02em", "-0.01em"]);
+  } else {
+    if (lsRoll < 0.20) s.letterSpacing = pick(["-0.02em", "0.02em", "0.04em", "0.08em"]);
+  }
+
+  // Text transform variety
+  const ttRoll = Math.random();
+  if (moodId === "bold") {
+    if (ttRoll < 0.35) s.textTransform = "uppercase";
+  } else if (moodId === "elegant") {
+    // small-caps isn't a textTransform value — use fontVariant instead
+    if (ttRoll < 0.20) s.fontVariant = "small-caps";
+    else if (ttRoll < 0.30) s.textTransform = "uppercase";
+  } else if (moodId === "playful") {
+    if (ttRoll < 0.15) s.textTransform = "uppercase";
+    // playful mostly stays default — mixed case feels friendlier
+  } else if (moodId === "minimal") {
+    if (ttRoll < 0.20) s.textTransform = "uppercase";
+    else if (ttRoll < 0.28) s.textTransform = "lowercase";
+  } else {
+    if (ttRoll < 0.12) s.textTransform = pick(["uppercase", "lowercase"]);
+  }
+
+  // Line-height tuning — tighter for headlines, generous for body
+  const lhRoll = Math.random();
+  const isLargeType = !isSmall && !isNav && !isCode;
+  if (isLargeType) {
+    if (moodId === "bold") {
+      if (lhRoll < 0.40) s.lineHeight = pick([1.1, 1.15, 1.2]);
+    } else if (moodId === "elegant") {
+      if (lhRoll < 0.35) s.lineHeight = pick([1.3, 1.4, 1.5, 1.6]);
+    } else if (moodId === "playful") {
+      if (lhRoll < 0.30) s.lineHeight = pick([1.2, 1.3, 1.5]);
+    } else if (moodId === "minimal") {
+      if (lhRoll < 0.30) s.lineHeight = pick([1.3, 1.4, 1.5]);
+    } else {
+      if (lhRoll < 0.20) s.lineHeight = pick([1.1, 1.2, 1.4, 1.6]);
+    }
+  }
+
+  // Text gradient hints — gradient text via backgroundClip (sparingly, ~8%)
+  if (Math.random() < 0.08 && isLargeType) {
+    const gradAngle = pick([90, 135, 180, 45]);
+    const gradText = `linear-gradient(${gradAngle}deg, ${gc1}, ${gc2})`;
+    s.background = gradText;
+    s.backgroundClip = "text";
+    s.WebkitBackgroundClip = "text";
+    s.WebkitTextFillColor = "transparent";
+    // Remove text shadow on gradient text — they conflict visually
+    delete s.textShadow;
+  }
+
   return s;
 }
 
