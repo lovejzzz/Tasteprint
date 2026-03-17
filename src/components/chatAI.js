@@ -202,14 +202,14 @@ const SEMANTIC_RESPONSES = {
   explain_why: ["so the reason is basically","that's actually because","oh yeah — it comes down to"],
   listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
   listen_validate: ["ok vent away, i'm all ears","that sounds SO frustrating, go off","nah you're right to be upset about that"],
-  celebrate_news: ["WAIT WHAT?? TELL ME TELL ME","omg omg ok this better be good","YOOO no way, what happened??"],
+  celebrate_news: ["WAIT WHAT?? TELL ME TELL ME","omg omg ok this better be good","YOOO no way, what happened??","ok that's literally the best thing i've ever heard, TELL ME MORE","i'm SCREAMING, ok go on"],
   empathize_bad_news: ["oh no... what happened?","aw man i'm sorry, are you ok?","that sucks, i'm here for you"],
-  engage_opinion: ["oh interesting, why do you think that?","hmm ok i can see that, but have you considered","that's a hot take lol, i kinda agree tho"],
+  engage_opinion: ["oh interesting, why do you think that?","hmm ok i can see that, but have you considered","that's a hot take lol, i kinda agree tho","big if true, tell me more","that's giving hot take energy, i'm here for it"],
   show_interest: ["ooh how was it??","oh nice, what did you think?","wait that sounds cool, tell me more"],
   accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks, you're pretty cool yourself","aw that made my day honestly"],
-  playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤"],
-  respectful_disagree: ["hmm i see where you're coming from but i kinda think","interesting take, i actually see it differently tho","ok fair but counterpoint —"],
-  build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and honestly also","glad we're on the same page, and honestly"],
+  playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤","chose violence today huh 😭","and i took that personally"],
+  respectful_disagree: ["hmm i see where you're coming from but i kinda think","interesting take, i actually see it differently tho","ok fair but counterpoint —","that's a choice but hear me out —","sir this is a wendy's but also —"],
+  build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and honestly also","glad we're on the same page, and honestly","ate and left no crumbs, and also","based take, and honestly"],
   accept_apology: ["all good, seriously don't worry about it","hey no worries at all, we're cool","it's totally fine, i didn't even think twice about it"],
   be_present_comfort: ["i'm here, i'm not going anywhere","hey, you don't have to talk if you don't want to. just being here is enough","i gotchu, whatever you need"],
   suggest_game: ["ooh ok what kind of game? 20 questions? would you rather?","bet!! let's do something fun, you pick","ok how about a game of would you rather"],
@@ -2334,9 +2334,9 @@ const COMP = {
   },
   // Bridges between reaction and body
   bridges: {
-    agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —","ehh idk about that one but —","ok but have you considered —","hmm ok but counterpoint —"],
+    agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —","ehh idk about that one but —","ok but have you considered —","hmm ok but counterpoint —","based, and —","this is the way —","spitting facts —"],
     pivot:    ["ok so here's the thing —","the way i see it,","ok but what's interesting is","ok wait tho,","here's what i think —","nah I think you're overthinking it —","ok devil's advocate tho —"],
-    empathy:  ["yeah no i get that","that's valid","nah i feel you","that's fair","hmm hot take but i kinda disagree","that's fair but also... counterpoint:"],
+    empathy:  ["yeah no i get that","that's valid","nah i feel you","that's fair","hmm hot take but i kinda disagree","that's fair but also... counterpoint:","it is what it is —","the vibes are immaculate on that —"],
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
@@ -5884,6 +5884,9 @@ function generateResponse(text) {
       "lol nah you might be right honestly",
       "ok ok, i hear you. what's your take",
       "hmm ok that's valid actually",
+      "that's a choice... but ok what's your take",
+      "sir this is a wendy's — but no ok, tell me your version",
+      "the vibes are off on this one but i'm listening",
     ];
     return pickNew(disags);
   }
@@ -6045,7 +6048,7 @@ function respondToAgreement() {
     travel: ["Where would you go next if you could?","What's been your favorite trip so far?","Do you prefer adventure or relaxation?"],
   };
 
-  const base = pickNew(["nice","ok cool","bet","aight"]);
+  const base = pickNew(["nice","ok cool","bet","aight","based","this is the way","spitting facts"]);
 
   if (lastTopic && topicFollowups[lastTopic]) {
     return base + ", " + pickNew(topicFollowups[lastTopic]).toLowerCase();
@@ -6089,10 +6092,10 @@ function respondToShortReply(text) {
   // Handle specific short phrases — sound like a friend, not a bot
   if (/^(ok|okay|k|kk)$/i.test(lower)) return pickNew(["bet","cool cool","aight","ok ok"]);
   if (/^(lol|haha|lmao|😂)/i.test(lower)) return pickNew(["😂","lmaooo","fr tho 😂","hahaha"]);
-  if (/^(nice|cool|neat|sick|dope)$/i.test(lower)) return pickNew(["right??","ikr","fr fr","honestly yeah"]);
+  if (/^(nice|cool|neat|sick|dope)$/i.test(lower)) return pickNew(["right??","ikr","fr fr","honestly yeah","understood the assignment","that's giving good vibes"]);
   if (/^(idk|dunno|not sure|no idea)$/i.test(lower)) return pickNew(["that's fair","hmm yeah it's tough","lol mood","want me to just throw out ideas?"]);
-  if (/^(same|mood|fr|real|facts|true)$/i.test(lower)) return pickNew(["literally 😭","no fr","RIGHT","the way this is so accurate"]);
-  if (/^(wow|whoa|omg|damn)$/i.test(lower)) return pickNew(["RIGHT??","i knowww","lol wait what happened","dude ikr"]);
+  if (/^(same|mood|fr|real|facts|true)$/i.test(lower)) return pickNew(["literally 😭","no fr","RIGHT","the way this is so accurate","rent free in my brain","spitting facts honestly","it is what it is"]);
+  if (/^(wow|whoa|omg|damn)$/i.test(lower)) return pickNew(["RIGHT??","i knowww","lol wait what happened","dude ikr","i would simply pass away","i would not survive that"]);
   if (/^(sure|yep|yeah|yes)$/i.test(lower)) return respondToAgreement();
   if (/^(no|nah|nope)$/i.test(lower)) return pickNew(["fair enough","lol ok","that's valid","nah you're right"]);
   if (/^(nothing|nm|nvm|nevermind)$/i.test(lower)) return pickNew(["lol ok we can just vibe","all good","nm either honestly","fair lol"]);
@@ -6107,7 +6110,7 @@ function respondToShortReply(text) {
   if (/^(bruh|bro|dude)$/i.test(lower)) return pickNew(["lol what","WHAT happened","bro spill","dude tell me"]);
   if (/^(ugh|oof|yikes)$/i.test(lower)) return pickNew(["oh no what happened","oof that bad huh","yikes, wanna talk about it?","rip 😭"]);
   if (/^(sus|cap|no cap)$/i.test(lower)) return pickNew(["lmao","no cap fr","honestly tho","😭"]);
-  if (/^(bet|valid|based|W|slay)$/i.test(lower)) return pickNew(["fr fr","huge W honestly","you get it","exactly lol"]);
+  if (/^(bet|valid|based|W|slay)$/i.test(lower)) return pickNew(["fr fr","huge W honestly","you get it","exactly lol","ate and left no crumbs","legendary behavior"]);
   if (/^(L|mid|ratio|cope)$/i.test(lower)) return pickNew(["lmaooo","ok fair","💀","oof"]);
   if (/^(bussin|fire|lit|goes hard)$/i.test(lower)) return pickNew(["FR it does","no cap","yooo right??","absolutely bussin"]);
   if (/^(ate|ate that|period|purr)$/i.test(lower)) return pickNew(["ATE 💅","no crumbs left","served honestly","fr fr ate that up"]);
@@ -6610,7 +6613,7 @@ const PERSONALITY = {
   // Emotive reactions based on conversation flow
   reactions: {
     surprise:  ["wait really?? ","no way — ","oh wow ","whoa "],
-    agree:     ["totally ","right?? ","100% ","exactly "],
+    agree:     ["totally ","right?? ","100% ","exactly ","based — ","ate that — "],
     curious:   ["ooh tell me more — ","i'm intrigued ","interesting... ","okay i need to know more — "],
   },
 };
@@ -19596,6 +19599,7 @@ const MICRO_REACTIONS = {
     "oh wow —", "wait really?", "huh", "oh —", "whoa",
     "no way —", "oh interesting —", "wait —",
     "hold on —", "oh", "hm that's unexpected —",
+    "and i took that personally", "the way that caught me off guard 💀",
   ],
   personal: [
     "oh wow —", "aw —", "nah that's real.",
@@ -19606,11 +19610,15 @@ const MICRO_REACTIONS = {
     "ha —", "okay that's funny", "pfft —", "ha okay —",
     "lol wait —", "that got me", "heh —",
     "okay i laughed", "ha —",
+    "i'm SCREAMING —", "i'm deceased 💀", "the way that has me dying —",
+    "im literally crying", "ok that's literally the best thing i've ever heard",
   ],
   impressive: [
     "oh nice", "that's legit impressive", "whoa okay —",
     "oh that's cool", "damn —", "oh that's solid",
     "okay i'm impressed", "nice —",
+    "that's so iconic", "understood the assignment —", "legendary behavior —",
+    "giving main character energy —",
   ],
   sad: [
     "oh no", "aw man", "oh —", "that's rough",
@@ -19619,15 +19627,20 @@ const MICRO_REACTIONS = {
   relatable: [
     "oh totally", "YES", "oh i feel that", "right??",
     "so true", "okay same", "honestly yeah",
+    "spitting facts", "living for this", "it is what it is —",
+    "rent free in my brain now",
   ],
   provocative: [
     "ooh spicy take", "oh interesting angle", "hmm —",
     "okay i see where you're going", "bold claim —",
     "oh that's a take", "hm let me think about that",
+    "big if true —", "chose violence today —", "the delusion is strong —",
   ],
   wholesome: [
     "aw that's sweet", "oh that's lovely", "that's wholesome",
     "i love that", "that's genuinely nice", "oh that's great",
+    "living for this honestly", "that's giving wholesome vibes",
+    "ate and left no crumbs",
   ],
 };
 
@@ -19976,6 +19989,98 @@ function applyTrailingOff(response) {
     const trail = TRAIL_OFFS[Math.floor(Math.random() * TRAIL_OFFS.length)];
     return kept + " " + trail;
   }
+  return response;
+}
+
+// ═══ Round 157: Internet culture fluency — meme formats, hyperbolic reactions ═══
+let lastInternetCultureTurn = 0;
+let internetCultureCount = 0;
+
+const MEME_FORMATS = [
+  (topic) => `me when ${topic}: 💀`,
+  (topic) => `not ${topic} being the main event rn`,
+  (topic) => `pov: you just discovered ${topic}`,
+  (topic) => `${topic} really said '✌️' and left`,
+  (topic) => `the way ${topic} has me deceased`,
+  (topic) => `living for ${topic} honestly`,
+  (topic) => `dying at ${topic} rn`,
+];
+
+const HYPERBOLIC_POSITIVE = [
+  "ok that's literally the best thing i've ever heard",
+  "i'm SCREAMING",
+  "that's so iconic honestly",
+  "legendary behavior",
+  "understood the assignment",
+  "giving main character energy rn",
+  "ate and left no crumbs",
+];
+
+const HYPERBOLIC_FUNNY = [
+  "i'm deceased 💀",
+  "im literally crying",
+  "i would simply pass away",
+  "i would not survive that",
+  "the way that has me dying",
+  "i'm SCREAMING rn",
+];
+
+function applyInternetCulture(response, text, sent, topics, emo) {
+  const turn = mem.turn;
+  if (turn < 5) return response; // let convo warm up
+  if (turn - lastInternetCultureTurn < 6) return response; // 6-turn cooldown
+  if (internetCultureCount >= 8) return response; // max 8 per conversation
+  if (Math.random() > 0.10) return response; // ~10% fire rate
+
+  // Guard: don't use during serious/emotional moments
+  const lower = text.toLowerCase();
+  if (sent <= -1.5) return response;
+  if (emo && (emo.emotion === "venting" || emo.emotion === "frustrated" || emo.emotion === "sad")) return response;
+  if (/\b(died|passed away|grief|depressed|heartbroken|funeral|anxiety|panic)\b/i.test(lower)) return response;
+  if (/\b(sorry|that sucks|that's rough|i'm here for you|are you ok)\b/i.test(response.toLowerCase())) return response;
+
+  // Guard: max 1 internet reference per message — check if response already has one
+  const internetMarkers = /\b(iconic|deceased|screaming|main character|ate.*crumbs|understood the assignment|giving.*energy|legendary behavior|rent free|spitting facts|based|this is the way)\b/i;
+  if (internetMarkers.test(response)) return response;
+
+  // Guard: don't apply to very short or very long responses
+  if (response.length < 20 || response.length > 250) return response;
+
+  const topicStr = topics.length > 0 ? topics[0] : null;
+
+  // Path 1: Meme format prefix (~40% of internet culture injections, needs a topic)
+  if (topicStr && Math.random() < 0.4) {
+    const fmt = MEME_FORMATS[Math.floor(Math.random() * MEME_FORMATS.length)];
+    const meme = fmt(topicStr);
+    lastInternetCultureTurn = turn;
+    internetCultureCount++;
+    // Prepend meme, then continue with shortened response
+    const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+    const kept = sentences.length > 1 ? sentences.slice(1).join(" ").trim() : response;
+    return meme + "... " + (kept.charAt(0).toLowerCase() + kept.slice(1));
+  }
+
+  // Path 2: Hyperbolic reaction swap (~60% — replace opening with hyperbolic)
+  const isPositive = sent >= 1.5;
+  const isFunny = emo?.emotion === "amused" || /\b(haha|lmao|lol|😂|🤣|💀)\b/i.test(text);
+
+  let pool = null;
+  if (isFunny) pool = HYPERBOLIC_FUNNY;
+  else if (isPositive) pool = HYPERBOLIC_POSITIVE;
+
+  if (pool) {
+    const hyper = pool[Math.floor(Math.random() * pool.length)];
+    lastInternetCultureTurn = turn;
+    internetCultureCount++;
+
+    // Replace the first sentence/reaction with hyperbolic version
+    const sentences = response.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 1) {
+      return hyper + ". " + sentences.slice(1).join(" ").trim();
+    }
+    return hyper + " — " + response.charAt(0).toLowerCase() + response.slice(1);
+  }
+
   return response;
 }
 
@@ -21326,6 +21431,9 @@ export async function getAIResponse(input) {
   // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
   response = splitIntoMultiMessages(response, text, sent);
 
+  // ═══ Round 157: Internet culture fluency — meme formats, hyperbolic reactions, internet-speak ═══
+  response = applyInternetCulture(response, text, sent, currentTopics, emo);
+
   // ═══ Round 156: Texting imperfections — apostrophe drops, elongation, typos, trailing off ═══
   response = applyTextingImperfections(response, sent);
 
@@ -21363,7 +21471,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);
