@@ -2074,26 +2074,26 @@ class ThreadManager {
     // If returning to a deep thread, acknowledge the return
     if (toThread && toThread.depth >= 3 && toThread.suspended) {
       return pickNew([
-        `Oh, back to ${last.to}! I was wondering if we'd circle back to this. Where were we?`,
-        `Ah, ${last.to} again! I like it — we had some good momentum on this topic.`,
-        `Returning to ${last.to} — I've been thinking about what you said earlier!`,
+        `oh wait we're back on ${last.to}! where were we`,
+        `oh ${last.to} again, i was hoping we'd come back to this`,
+        `wait ok ${last.to} — we had a good thing going with this`,
       ]);
     }
 
     // First time on a new topic while leaving a deep one
     if (fromThread && fromThread.depth >= 2) {
       return pickNew([
-        `Switching from ${last.from} to ${last.to} — I'm following! We can always circle back to ${last.from} later.`,
-        `Oh, ${last.to} now! Cool — parking our ${last.from} conversation for a sec. What's on your mind?`,
-        `New direction — ${last.to}! I like it. We've got some good ${last.from} threads to pick up later if you want.`,
+        `oh ${last.to} now? ok switching gears. we can always come back to ${last.from}`,
+        `ooh ${last.to} — ok i'm here for it`,
+        `ok new topic, ${last.to}. we can pick up ${last.from} later`,
       ]);
     }
 
     // Simple switch
     return pickNew([
-      `Oh, ${last.to} — nice! Let's go there.`,
-      `Switching gears to ${last.to} — I'm here for it!`,
-      `${last.to.charAt(0).toUpperCase() + last.to.slice(1)}! New topic energy. What about it?`,
+      `ooh ${last.to} — ok let's go`,
+      `oh ${last.to}! what about it`,
+      `${last.to}! ok what's up`,
     ]);
   }
 
@@ -2104,9 +2104,9 @@ class ThreadManager {
     const thread = suspended[0]; // highest depth suspended thread
 
     return pickNew([
-      `By the way, we never finished our ${thread.name} discussion — want to pick that back up?`,
-      `Oh, that reminds me — we were talking about ${thread.name} earlier. Any updates on that?`,
-      `Random thought: what happened with the ${thread.name} thing you mentioned before?`,
+      `oh wait we never finished talking about ${thread.name}`,
+      `that reminds me — what happened with the ${thread.name} thing`,
+      `wait weren't we talking about ${thread.name} earlier? what happened with that`,
     ]);
   }
 
@@ -5982,14 +5982,14 @@ function tryProactiveCallback(response, currentTopics) {
 
   // ── Strategy 1: Topic bridge — current topic connects to an earlier one ──
   if (currentTopics.length > 0 && mem.turn > 5) {
-    const olderHistory = mem.history.filter(h => h.role === "user").slice(0, -2); // exclude last 2
+    const olderHistory = mem.history.filter(h => h.role === "user").slice(0, -2);
     for (const topic of currentTopics) {
       for (const prev of olderHistory) {
         if (prev.topics?.includes(topic) && Math.random() > 0.6) {
           const bridges = [
-            `This connects to what you were saying about ${topic} earlier —`,
-            `Oh, this reminds me — you brought up ${topic} before too.`,
-            `Funny how we keep coming back to ${topic}!`,
+            `oh wait you were talking about ${topic} earlier too —`,
+            `ok we keep coming back to ${topic} lol.`,
+            `wait this is like what you said about ${topic} before —`,
           ];
           lastCallbackTurn = mem.turn;
           return pick(bridges) + " " + response;
@@ -6014,37 +6014,54 @@ function tryProactiveCallback(response, currentTopics) {
     const val = mem.facts[fact];
 
     if (fact === "project") {
-      const projectBridges = [
-        ` By the way, how's the ${val} project going?`,
-        ` — that might be useful for your ${val} project too!`,
-        ` Speaking of which, does this tie into the ${val} work you mentioned?`,
-      ];
       lastCallbackTurn = mem.turn;
-      return response + pick(projectBridges);
+      return response + pick([
+        ` oh wait how's the ${val} thing going btw`,
+        ` does this tie into your ${val} project at all`,
+        ` wait is this related to ${val}`,
+      ]);
     }
     if (fact.startsWith("likes_")) {
-      const thing = val;
-      const likeBridges = [
-        ` Oh, and since you're into ${thing} — this might be relevant!`,
-        ` That actually ties into ${thing}, which you mentioned liking!`,
-      ];
       lastCallbackTurn = mem.turn;
-      return response + pick(likeBridges);
+      return response + pick([
+        ` oh this is right up your alley since you like ${val}`,
+        ` wait you'd probably know this since you're into ${val}`,
+      ]);
     }
     if (fact === "role" || fact === "job") {
       lastCallbackTurn = mem.turn;
-      return response + ` — especially relevant for someone in ${val}!`;
+      return response + pick([
+        ` you probably deal with this as a ${val} right`,
+        ` wait do you run into this in ${val} stuff`,
+      ]);
     }
   }
 
-  // ── Strategy 3: Name callback — use their name naturally (rare) ──
+  // ── Strategy 3: Check-in callback — ask about something they mentioned doing ──
+  if (mem.turn > 8 && Math.random() > 0.8) {
+    // Look for things user said they were going to do, working on, or trying
+    const userMsgs = mem.history.filter(h => h.role === "user").slice(0, -3);
+    for (const msg of userMsgs) {
+      const planMatch = msg.text.match(/i'?m (?:gonna|going to|about to|trying to|working on)\s+(.{5,40})(?:\.|!|,|$)/i);
+      if (planMatch) {
+        const plan = planMatch[1].replace(/[.!,]+$/, "").trim();
+        lastCallbackTurn = mem.turn;
+        return response + pick([
+          `. oh wait did you ever end up ${plan.startsWith("do") || plan.startsWith("go") ? "" : "doing "}${plan}`,
+          `. btw how'd the ${plan} thing go`,
+          `. wait weren't you gonna ${plan}? how'd that go`,
+        ]);
+      }
+    }
+  }
+
+  // ── Strategy 4: Name callback — use their name naturally (rare) ──
   if (mem.userName && mem.turn > 8 && Math.random() > 0.85) {
-    const nameTouch = [
-      `${mem.userName}, ` + response.charAt(0).toLowerCase() + response.slice(1),
-      response + `, ${mem.userName}!`,
-    ];
     lastCallbackTurn = mem.turn;
-    return pick(nameTouch);
+    return pick([
+      `${mem.userName.toLowerCase()}, ` + response.charAt(0).toLowerCase() + response.slice(1),
+      response + ` ${mem.userName.toLowerCase()}`,
+    ]);
   }
 
   return response;
@@ -6105,10 +6122,10 @@ function findSemanticConnections(currentTopics, currentKeywords) {
             topic,
             strength: 0.7,
             template: [
-              `As a ${facts.role}, you'd probably approach ${topic} differently —`,
-              `This ties into your ${facts.role} work, right?`,
-              `I bet ${topic} looks different from a ${facts.role}'s perspective!`,
-              `Makes sense you'd be into ${topic} given your ${facts.role} background.`,
+              `wait you do ${facts.role} stuff right? this is so your area`,
+              `this ties into your ${facts.role} work doesn't it`,
+              `ok ${topic} probably hits different when you're a ${facts.role}`,
+              `makes sense you'd be into ${topic} given the ${facts.role} thing`,
             ],
           });
         }
@@ -6129,10 +6146,10 @@ function findSemanticConnections(currentTopics, currentKeywords) {
             topic,
             strength: 0.8,
             template: [
-              `Since you know ${lang}, ${topic} should feel pretty natural!`,
-              `Oh — are you using ${lang} for this? You mentioned knowing it.`,
-              `Your ${lang} experience should help a lot with ${topic}.`,
-              `That connects nicely with your ${lang} knowledge.`,
+              `wait you know ${lang} right? ${topic} should be easy for you then`,
+              `oh are you using ${lang} for this`,
+              `your ${lang} experience probably helps with ${topic} tho`,
+              `ok that connects to the ${lang} stuff you know`,
             ],
           });
         }
@@ -6155,10 +6172,10 @@ function findSemanticConnections(currentTopics, currentKeywords) {
             topic,
             strength: 0.9,
             template: [
-              `Is this for the ${facts.project} project? Makes total sense.`,
-              `Oh wait — does this tie into ${facts.project}?`,
-              `This ${topic} stuff could be perfect for ${facts.project}.`,
-              `I bet you're thinking about this in the context of ${facts.project}.`,
+              `is this for the ${facts.project} thing?`,
+              `oh wait does this tie into ${facts.project}`,
+              `this ${topic} stuff would be perfect for ${facts.project}`,
+              `wait are you thinking about this for ${facts.project}`,
             ],
           });
         }
@@ -6180,9 +6197,9 @@ function findSemanticConnections(currentTopics, currentKeywords) {
             topic,
             strength: 0.6,
             template: [
-              `Since you're into ${liked}, ${topic} is a natural fit.`,
-              `Your love of ${liked} probably makes ${topic} extra interesting!`,
-              `Oh, ${topic} — that's right in your wheelhouse given you like ${liked}.`,
+              `wait since you like ${liked}, ${topic} is totally your thing`,
+              `oh ${topic} — you'd be into this since you like ${liked}`,
+              `this is right up your alley given the ${liked} thing`,
             ],
           });
         }
@@ -6205,9 +6222,9 @@ function findSemanticConnections(currentTopics, currentKeywords) {
           topic,
           strength: 0.5,
           template: [
-            `You said ${opinion} — does that change how you think about ${topic}?`,
-            `Interesting take on ${topic} given you thought ${opinion}.`,
-            `That's funny because earlier you said ${opinion} — I see a pattern! 😄`,
+            `wait you said ${opinion} earlier — does that change things for ${topic}`,
+            `ok ${topic} is interesting given you thought ${opinion}`,
+            `lol wait you said ${opinion} before, i see a pattern`,
           ],
         });
       }
@@ -6233,9 +6250,9 @@ function findSemanticConnections(currentTopics, currentKeywords) {
               topic,
               strength: 0.65,
               template: [
-                `This reminds me — when we talked about ${oldTopic}, that's actually connected to this!`,
-                `Oh interesting, earlier you were asking about ${oldTopic} — see how ${topic} ties in?`,
-                `There's a nice thread between this and the ${oldTopic} discussion we had.`,
+                `oh wait this is like what we were talking about with ${oldTopic}`,
+                `wait earlier you asked about ${oldTopic} — this ties in`,
+                `ok there's def a connection between this and the ${oldTopic} thing`,
               ],
             });
             break; // one bridge per old message
