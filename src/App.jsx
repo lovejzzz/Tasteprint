@@ -198,37 +198,58 @@ export default function App() {
   }, []);
 
   const randomize = useCallback((id) => {
-    // Snapshot for undo
-    const target = shapes.find(x => x.id === id);
-    if (!target) return;
-    rndUndo.current = { id, prev: { ...target }, prevPrefV: { ...prefV } };
-    setHasRndUndo(true);
+    // Determine targets: if multi-selected, randomize all selected; otherwise just the one
+    const targets = selAll.size > 1 && selAll.has(id) ? [...selAll] : [id];
 
-    // Try curated preset first, then fall back to smart random
-    const ci = curatedIdx.current[id] || 0;
-    const preset = getCuratedPreset(target.type, ci);
-    curatedIdx.current = { ...curatedIdx.current, [id]: ci + 1 };
+    // Snapshot for undo (store all affected shapes)
+    const snapShapes = shapes.filter(s => targets.includes(s.id));
+    if (snapShapes.length) {
+      rndUndo.current = { ids: targets, prevShapes: snapShapes.map(s => ({ ...s })), prevPrefV: { ...prefV } };
+      setHasRndUndo(true);
+    }
 
-    const otherShapes = shapes.filter(s => s.id !== id);
-    const defaults = DEFAULT_PROPS[target.type];
+    // For single target, try curated preset first
+    let singlePreset = null;
+    if (targets.length === 1) {
+      const ci = curatedIdx.current[id] || 0;
+      singlePreset = getCuratedPreset(shapes.find(s => s.id === id)?.type, ci);
+      curatedIdx.current = { ...curatedIdx.current, [id]: ci + 1 };
+    }
 
-    setShapes(prev => prev.map(s => {
-      if (s.id !== id) return s;
-      if (preset) {
-        // Curated: use preset variant/font/fsize, but still randomize props
-        const rnd = designerRandomize(s.type, p, defaults, designMood, otherShapes);
-        return { ...s, variant: preset.variant, font: preset.font, fsize: preset.fsize, props: { ...(s.props || {}), ...rnd.props } };
+    const targetSet = new Set(targets);
+    const otherShapes = shapes.filter(s => !targetSet.has(s.id));
+
+    // Randomize all targets — each one considers the others + canvas for harmony
+    const newPrefV = { ...prefV };
+    setShapes(prev => {
+      const updated = [...prev];
+      // Build results progressively so later shapes harmonize with earlier randomized ones
+      const alreadyRandomized = [...otherShapes];
+      for (let i = 0; i < updated.length; i++) {
+        const s = updated[i];
+        if (!targetSet.has(s.id)) continue;
+        const defaults = DEFAULT_PROPS[s.type];
+        if (singlePreset && targets.length === 1) {
+          const rnd = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized);
+          updated[i] = { ...s, variant: singlePreset.variant, font: singlePreset.font, fsize: singlePreset.fsize, props: { ...(s.props || {}), ...rnd.props } };
+          newPrefV[s.type] = singlePreset.variant;
+        } else {
+          const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized);
+          updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
+          newPrefV[s.type] = result.variant;
+        }
+        alreadyRandomized.push(updated[i]);
       }
-      const result = designerRandomize(s.type, p, defaults, designMood, otherShapes);
-      return { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
-    }));
-    setPrefV(pv => ({ ...pv, [target.type]: preset ? preset.variant : designerRandomize(target.type, p, defaults, designMood, otherShapes).variant }));
-  }, [shapes, p, designMood, prefV]);
+      return updated;
+    });
+    setPrefV(newPrefV);
+  }, [shapes, p, designMood, prefV, selAll]);
 
   const undoRandomize = useCallback(() => {
     if (!rndUndo.current) return;
-    const { id, prev, prevPrefV } = rndUndo.current;
-    setShapes(sh => sh.map(s => s.id === id ? prev : s));
+    const { ids, prevShapes, prevPrefV } = rndUndo.current;
+    const prevMap = new Map(prevShapes.map(s => [s.id, s]));
+    setShapes(sh => sh.map(s => prevMap.has(s.id) ? prevMap.get(s.id) : s));
     setPrefV(prevPrefV);
     rndUndo.current = null;
     setHasRndUndo(false);
