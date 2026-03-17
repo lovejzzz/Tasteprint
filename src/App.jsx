@@ -231,19 +231,40 @@ export default function App() {
   const copyStyle = useCallback((id) => {
     const s = shapes.find(x => x.id === id);
     if (!s) return;
-    setCopiedStyle({ variant: s.variant || 0, font: s.font || 0, fsize: s.fsize || 1 });
+    setCopiedStyle({
+      type: s.type,
+      variant: s.variant || 0,
+      font: s.font || 0,
+      fsize: s.fsize || 1,
+      props: s.props ? { ...s.props } : {},
+    });
   }, [shapes]);
 
   const pasteStyle = useCallback((id) => {
     if (!copiedStyle) return;
     setShapes(prev => prev.map(s => {
       if (s.id !== id) return s;
-      return { ...s, variant: copiedStyle.variant, font: copiedStyle.font, fsize: copiedStyle.fsize };
+      // Clamp variant to target component's max
+      const targetMax = maxV(s.type);
+      const safeVariant = copiedStyle.variant < targetMax ? copiedStyle.variant : copiedStyle.variant % targetMax;
+      // Transfer props that the target component also supports
+      let mergedProps = { ...(s.props || {}) };
+      if (copiedStyle.props) {
+        const targetDefaults = DEFAULT_PROPS[s.type];
+        if (targetDefaults) {
+          for (const [k, v] of Object.entries(copiedStyle.props)) {
+            if (k in targetDefaults) mergedProps[k] = v;
+          }
+        }
+      }
+      return { ...s, variant: safeVariant, font: copiedStyle.font, fsize: copiedStyle.fsize, props: mergedProps };
     }));
     setPrefV(pv => {
       const s = shapes.find(x => x.id === id);
       if (!s) return pv;
-      return { ...pv, [s.type]: copiedStyle.variant };
+      const targetMax = maxV(s.type);
+      const safeVariant = copiedStyle.variant < targetMax ? copiedStyle.variant : copiedStyle.variant % targetMax;
+      return { ...pv, [s.type]: safeVariant };
     });
   }, [copiedStyle, shapes]);
 
