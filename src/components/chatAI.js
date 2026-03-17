@@ -20996,6 +20996,120 @@ function mirrorTypingStyle(response, text) {
   return r.trim();
 }
 
+/* ── Round 235: Conversation Energy Matching ──
+ * Friends match each other's energy. "YOOOOO GUESS WHAT" gets "WAIT WHAT TELL ME",
+ * not "Oh, what happened?". "meh" gets a chill low-effort reply, not peppy enthusiasm.
+ * Detects energy level from caps ratio, exclamation density, letter stretching,
+ * message length, and low-energy keywords, then transforms the response to match.
+ */
+function matchEnergy(response, text, sent, mem) {
+  let r = response;
+  const t = text.trim();
+  if (!t || !r) return r;
+
+  // ── Energy detection ──
+  const capsCount = (t.match(/[A-Z]/g) || []).length;
+  const letterCount = (t.match(/[a-zA-Z]/g) || []).length;
+  const capsRatio = letterCount > 0 ? capsCount / letterCount : 0;
+  const exclCount = (t.match(/!/g) || []).length;
+  const stretchMatch = t.match(/(.)\1{2,}/g) || []; // "ooo", "aaa", "!!!"
+  const stretchCount = stretchMatch.filter(m => /[a-zA-Z]/.test(m[0])).length;
+  const lowWords = /^(meh|idk|whatever|k|ok|sure|fine|eh|nah|dunno|idc|blah|nm|nvm)$/i;
+  const isLowWord = lowWords.test(t);
+  const tLen = t.length;
+
+  // High energy: lots of caps, exclamations, letter stretching, or ALL CAPS short msg
+  const highSignals =
+    (capsRatio > 0.5 && letterCount > 3 ? 2 : 0) +
+    (exclCount >= 2 ? 1 : 0) +
+    (stretchCount >= 1 ? 1 : 0) +
+    (capsRatio > 0.8 && tLen > 5 ? 1 : 0);
+
+  // Low energy: very short, low-energy words, all lowercase, no punctuation enthusiasm
+  const lowSignals =
+    (isLowWord ? 3 : 0) +
+    (tLen <= 4 && exclCount === 0 ? 2 : 0) +
+    (tLen <= 10 && capsRatio === 0 && exclCount === 0 ? 1 : 0);
+
+  const energy = highSignals >= 2 ? "high" : lowSignals >= 2 ? "low" : "medium";
+
+  if (energy === "medium") return r;
+
+  // ── High energy transforms ──
+  if (energy === "high") {
+    // Capitalize 1-2 key words (nouns/adjectives, not articles/prepositions)
+    const skipWords = /^(a|an|the|is|it|to|of|in|on|at|for|and|but|or|so|if|my|me|i|you|we|do|be|am|are|was|that|this|with)$/i;
+    const words = r.split(/\s+/);
+    let capsApplied = 0;
+    const maxCaps = Math.random() < 0.5 ? 1 : 2;
+    for (let i = 0; i < words.length && capsApplied < maxCaps; i++) {
+      const clean = words[i].replace(/[^a-zA-Z]/g, "");
+      if (clean.length >= 3 && !skipWords.test(clean) && clean !== clean.toUpperCase()) {
+        // Don't capitalize if word is already uppercase or if it starts a sentence
+        if (Math.random() < 0.5) {
+          words[i] = words[i].toUpperCase();
+          capsApplied++;
+        }
+      }
+    }
+    r = words.join(" ");
+
+    // Add "!!" to end if missing exclamation
+    if (!/[!]/.test(r.slice(-3))) {
+      r = r.replace(/[.?]?\s*$/, "!!");
+    } else if (r.endsWith("!")) {
+      r = r + "!";
+    }
+
+    // Occasionally stretch a word (~40% chance)
+    if (Math.random() < 0.40) {
+      const stretchable = /\b(no|wait|oh|yes|dude|what|stop|go|so|too|bro)\b/i;
+      const m = r.match(stretchable);
+      if (m) {
+        const lastChar = m[0].slice(-1);
+        const stretched = m[0] + lastChar.repeat(1 + Math.floor(Math.random() * 2));
+        r = r.replace(stretchable, stretched);
+      }
+    }
+
+    return r;
+  }
+
+  // ── Low energy transforms ──
+  if (energy === "low") {
+    // Lowercase everything (preserve standalone "I")
+    r = r.toLowerCase();
+    r = r.replace(/\bi\b(?='|'|\s|$)/g, "I");
+
+    // Strip trailing questions — low energy doesn't invite more
+    r = r.replace(/\s*\?[^?]*$/, "");
+    // If stripping the question left nothing useful, restore
+    if (r.trim().length < 3) r = response.toLowerCase().replace(/\bi\b(?='|'|\s|$)/g, "I");
+
+    // Shorten to first clause if long
+    if (r.length > 50) {
+      const clauseBreak = r.search(/[,—–]\s/);
+      if (clauseBreak > 8 && clauseBreak < r.length - 5) {
+        const trimmed = r.slice(0, clauseBreak).trim();
+        if (trimmed.length >= 8) r = trimmed;
+      }
+    }
+
+    // Remove exclamation marks
+    r = r.replace(/!/g, "");
+
+    // Strip trailing period for extra chill
+    if (r.endsWith(".")) r = r.slice(0, -1);
+
+    // Clean up
+    r = r.replace(/\s{2,}/g, " ").trim();
+
+    return r;
+  }
+
+  return r;
+}
+
 /* ── Round 156: Typo Simulation & Texting Imperfections ──
  * Real friends don't type perfectly. These post-processors add subtle human
  * imperfections: dropped apostrophes, letter elongation, occasional typos
@@ -22938,6 +23052,9 @@ export async function getAIResponse(input) {
 
   // ═══ Round 234: Typing style mimicry — mirror user's case, punctuation, emoji, length ═══
   response = mirrorTypingStyle(response, text);
+
+  // ═══ Round 235: Conversation energy matching — mirror enthusiasm and chill levels ═══
+  response = matchEnergy(response, text, sent, mem);
 
   // ═══ Round 233: Double-text simulation — casual rapid-fire multi-message feel ═══
   // (runs before excitement-based splitting; if it fires, splitIntoMultiMessages skips)
