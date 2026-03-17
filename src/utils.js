@@ -1299,6 +1299,37 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
+    // --- Second gradient layer: stacked gradient depth for rich surfaces ---
+    // Adds a second overlay on top of the first, creating complex layered backgrounds.
+    // Only fires when there's already a gradient (enhances, doesn't replace).
+    if (s.gradientOverlay && !isSmall) {
+      const g2Chance = moodId === "bold" ? 0.25 : moodId === "playful" ? 0.22 : moodId === "elegant" ? 0.18 : moodId === "minimal" ? 0.06 : 0.15;
+      if (Math.random() < g2Chance) {
+        if (moodId === "bold") {
+          s.gradientOverlay2 = pick([
+            `radial-gradient(ellipse at ${pick([20, 80])}% ${pick([20, 80])}%, ${acHex}10 0%, transparent 60%)`,
+            `linear-gradient(${pick([0, 45, 90])}deg, ${gc1}08 0%, transparent 40%, ${gc2}06 100%)`,
+            `conic-gradient(from ${pick([90, 180, 270])}deg at 50% 50%, ${acHex}06, transparent, ${gc1}04, transparent)`,
+          ]);
+        } else if (moodId === "playful") {
+          s.gradientOverlay2 = pick([
+            `radial-gradient(circle at ${pick([25, 75])}% ${pick([25, 75])}%, ${dc.vivid}0C 0%, transparent 50%)`,
+            `linear-gradient(${pick([60, 120, 240])}deg, ${dc.analog1}08 0%, transparent 35%, ${gcGlow}06 100%)`,
+          ]);
+        } else if (moodId === "elegant") {
+          s.gradientOverlay2 = pick([
+            `radial-gradient(ellipse at 50% 0%, ${gc1}06 0%, transparent 70%)`,
+            `linear-gradient(180deg, ${dc.muted}04 0%, transparent 50%)`,
+          ]);
+        } else {
+          s.gradientOverlay2 = pick([
+            `radial-gradient(ellipse at ${pick([30, 70])}% ${pick([30, 70])}%, ${acHex}08 0%, transparent 55%)`,
+            `linear-gradient(${pick([135, 225])}deg, ${gc1}05 0%, transparent 45%)`,
+          ]);
+        }
+      }
+    }
+
     // --- Text shadow dimension: mood-driven typographic depth ---
     // Apply to medium/large components (most have text content)
     if (sizeCat === "medium" || sizeCat === "large") {
