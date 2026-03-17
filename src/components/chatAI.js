@@ -337,9 +337,9 @@ const SUBTEXT_RESPONSES = {
     "Fair, I'll stop rambling about that. What's on your mind instead?",
   ],
   genuinelyExcited: [
-    "Your excitement is making MY circuits happy! 😄 Tell me more!",
-    "I love when something genuinely clicks! What's got you so fired up?",
-    "THIS is the energy! Let's ride this wave — what else do you want to know?",
+    "yooo ok i love this energy",
+    "wait omg yes tell me everything",
+    "LETS GO ok i'm excited too now",
   ],
   avoidant: [
     "Totally fair, we don't have to go there. What would you rather talk about?",
@@ -412,53 +412,53 @@ function getSubtextTrend() {
 
 const EMOTION_RESPONSES = {
   excited: [
-    "I LOVE your energy right now!! 🔥 Tell me everything!",
-    "Okay your excitement is contagious!! What's got you so hyped?",
-    "YESSS!! I'm here for this energy! 🚀 Keep going!",
-    "The enthusiasm!! I can feel it through the screen! 😊 What's happening?",
-    "This is the energy I live for! Spill the details! ✨",
+    "LETS GOOOO 🔥",
+    "yooo wait that's so sick",
+    "ok i'm hyped for you rn",
+    "no way!! that's amazing",
+    "YOOO 🔥🔥 tell me everything",
   ],
   frustrated: [
-    "Hey, I totally get the frustration. Let's work through this together — what exactly is going wrong?",
-    "I can tell this is annoying. Deep breath — let me try to actually help. What's the core issue?",
-    "Ugh, that sounds maddening. Let's figure this out step by step. What's happening?",
-    "I hear you — that's genuinely frustrating. Walk me through it and let's see what we can do.",
-    "That's a pain. I want to help for real — what would be most useful right now?",
+    "ugh that's so annoying, what happened",
+    "nah fr that would piss me off too",
+    "dude that sucks, what's going on",
+    "ok yeah no that's frustrating",
+    "bruh 😤 what went wrong",
   ],
   amused: [
-    "😂😂 Okay that got me! I'm cracking up over here!",
-    "Hahaha I'm DEAD 💀 You're hilarious!",
-    "LOL okay you win that round 😂 What else you got?",
-    "I literally can't 😂 That's amazing. You're funny!",
-    "Hahaha! Okay I needed that laugh 😄 You've got jokes!",
+    "LMAOOO 💀",
+    "hahahaha stop",
+    "bro i'm dead 😂",
+    "ok that actually got me lol",
+    "lmaooo nah you're funny",
   ],
   curious: [
-    "Ooh, great question! Let me think about that... 🤔",
-    "Now THAT's an interesting thing to wonder about! Here's my take —",
-    "I love that you're curious about this! Let's dig in —",
-    "What a fun rabbit hole to go down! So here's the thing —",
-    "That's the kind of question I live for! Okay so —",
+    "ooh wait that's actually interesting",
+    "hmm ok so here's what i think",
+    "oh that's a good question honestly",
+    "wait i actually wanna think about this",
+    "ooh ok so basically",
   ],
   sarcastic: [
-    "Ha — I sense some sarcasm there 😄 Fair enough though! What would actually be helpful?",
-    "Okay okay, I deserved that one 😅 Let me try again — what do you actually need?",
-    "Reading between the lines here 🙃 What would genuinely help?",
-    "Heh, point taken! I'll try to be more useful. What's really going on?",
-    "I can take a hint 😄 Let me try a different approach — what's up?",
+    "lmaooo ok fair 😂",
+    "ok ok i deserved that one",
+    "hahaha touché",
+    "aight you got me there",
+    "ok point taken lol",
   ],
   venting: [
-    "I hear you. I'm just going to listen for a sec — sounds like you need to get this off your chest. 💙",
-    "That's a lot to deal with. Take your time — I'm not going anywhere. What's weighing on you most?",
-    "Sometimes you just need to let it out. I'm here for it. What's the biggest thing bothering you?",
-    "That sounds genuinely overwhelming. You don't have to have it all figured out right now. What feels most urgent?",
-    "I'm listening, no judgment. It sounds like things have been really hard. What do you need right now?",
+    "dude no that's a lot 😔",
+    "ugh i'm sorry, that sounds rough",
+    "nah fr just let it out",
+    "that's so much to deal with honestly",
+    "yeah no i get it, that's heavy",
   ],
   affectionate: [
-    "Aww, you're making me blush! 🥹 If I had a heart it'd be melting right now!",
-    "Stop, you're too kind! 😊 Right back at you — you're awesome to talk to!",
-    "You're the sweetest! This is why I love our chats 💙",
-    "That means so much! Genuinely — you made my day (do AIs have days? 😄)!",
-    "🥰 Okay now I'm all warm and fuzzy! You're amazing!",
+    "aww stop 🥹",
+    "ok you're actually the sweetest",
+    "noooo that's so nice 😊",
+    "bro you're gonna make me cry lol",
+    "ily for that honestly 💙",
   ],
 };
 
@@ -856,14 +856,14 @@ function respondToAnswer(answer, sent) {
       "Neither? Okay, now I'm curious — what's YOUR answer then? 😄",
     ],
     yes: [
-      "Awesome! I had a feeling. What's your favorite part about it?",
-      "Nice! That's cool. Tell me more!",
-      "Great! So what do you like most about it?",
+      "oh nice, what do you like about it",
+      "yesss i knew it, what's your fav part",
+      "ok valid, why tho",
     ],
     no: [
-      "Fair enough! What do you prefer instead?",
-      "Interesting! I'm curious — what would you choose instead?",
-      "No worries! What's more your thing then?",
+      "fair lol, what do you prefer then",
+      "oh really? what's more your thing",
+      "nah that's fair, what would you pick",
     ],
     noun_answer: () => {
       const ans = answer.answer;
@@ -3330,11 +3330,11 @@ function handleMetaConversation(text, lower, sent) {
       /\bno,? that'?s not (right|correct|true|what|how)\b/i.test(lower) ||
       /\bactually,? (that'?s|it'?s|you'?re) (not|wrong)\b/i.test(lower)) {
     const corrections = [
-      "Oh, my bad! I'm a small model so I definitely get things wrong sometimes. What's the right take?",
-      "Hmm, you're probably right — I should know better! Can you set me straight? I'd rather learn than double down on being wrong.",
-      "Fair enough, I'll take the L on that one! What did I get wrong? I want to understand your perspective.",
-      "Oh no, really? I apologize — my knowledge is limited and sometimes I mix things up. What's the correct version?",
-      "I appreciate the correction! I'd rather be wrong and learn than confidently incorrect. Tell me more?",
+      "oh my bad lol, what's the right answer",
+      "wait really? ok yeah i was wrong, what is it actually",
+      "ok fair i'll take that L 😅 what did i get wrong",
+      "oh shoot, ok yeah i messed that up. what's the real version",
+      "nah you're right, my b. what should it be",
     ];
     return pickNew(corrections);
   }
@@ -3999,18 +3999,18 @@ function getStoryFragment(topics) {
 const JOKES = TOPIC_JOKES.general.concat(TOPIC_JOKES.code);
 
 const EMPATHY = [
-  "I hear you — that sounds tough. Want to talk about it?",
-  "That sounds frustrating 😔 Is there anything I can help with?",
-  "I'm sorry you're dealing with that. What's the biggest challenge right now?",
-  "Hang in there! Sometimes just talking it out helps. What's going on?",
-  "That's rough. I'm here to listen if you want to vent.",
+  "ugh that sucks, i'm sorry",
+  "dude no 😔 that's rough",
+  "honestly that sounds really frustrating",
+  "nah fr that's tough, you ok?",
+  "oof 😔 yeah that's a lot",
 ];
 
 const EXCITED = [
-  "That's awesome! I love the energy! 🚀",
-  "You seem excited about this — and honestly, it sounds amazing!",
-  "I can feel the enthusiasm! 🔥 Tell me more!",
-  "Now THAT's exciting! What's the plan?",
+  "LETS GOOOO",
+  "wait that's so hype",
+  "ok i love this energy",
+  "yoooo let's go 🔥",
 ];
 
 /* ── Multi-Sentence Processing ──
@@ -4286,28 +4286,28 @@ function respondToKnowledgeGap(gap) {
 function respondToTeaser(teaserType) {
   const responses = {
     project_tease: [
-      "Ooh, now I'm curious! What are you building? 👀",
-      "Tell me more! I love hearing about projects people are working on.",
-      "A project? I'm all ears — what's it about?",
-      "Now you've got my attention! What kind of project?",
+      "ooh wait what are you building 👀",
+      "ok tell me, what's the project",
+      "wait a project?? what kind",
+      "oh now i'm curious, what is it",
     ],
     thought_tease: [
-      "Ooh, what's been on your mind?",
-      "I'm curious — what have you been thinking about?",
-      "Tell me! I love exploring new ideas.",
-      "What's got your attention? I'm intrigued!",
+      "ooh what's on your mind",
+      "wait what have you been thinking about",
+      "ooh ok tell me",
+      "what's up, what are you thinking",
     ],
     story_tease: [
-      "Oh? I'm listening! Tell me everything 👀",
-      "Now you've got me curious — what happened?",
-      "Go on! I'm all ears 😊",
-      "Tell me tell me! What happened?",
+      "oh?? tell me everything 👀",
+      "wait what happened",
+      "ok go on, i'm listening",
+      "wait tell me tell me",
     ],
     question_tease: [
-      "Of course! Ask away 😊",
-      "Go for it! I'm an open book.",
-      "Sure thing! What's on your mind?",
-      "Ask me anything! Well, within my tiny-AI abilities 😄",
+      "yeah ofc, ask away",
+      "go for it, what's up",
+      "yeah what's on your mind",
+      "sure what do you wanna know",
     ],
   };
   return pickNew(responses[teaserType] || responses.question_tease);
@@ -4717,29 +4717,29 @@ function respondToRevelation(rev, text) {
     case "celebration": {
       const reactions = {
         career_win: [
-          "Wait — congratulations!! That's HUGE news! Tell me everything — what's the role?",
-          "No way, that's amazing! You must be thrilled. What sealed the deal?",
-          "YES! That deserves a celebration! 🎉 How are you feeling about it?",
+          "NO WAY congrats!! what's the role",
+          "dude that's huge, i'm so happy for you",
+          "LETS GOOO 🎉 you deserve that fr",
         ],
         relationship_milestone: [
-          "Oh my gosh, congratulations!! That's incredible news! 💙 How did it happen?",
-          "That is AMAZING! I'm genuinely happy for you! What's the story?",
-          "Congratulations!! That's such a big deal! How are you feeling about it all?",
+          "wait omg!! congrats 💙",
+          "STOPPPP that's amazing, tell me everything",
+          "no way!! i'm so happy for you guys",
         ],
         family_milestone: [
-          "Congratulations!! That's the most exciting kind of news! How are you both doing?",
-          "That's WONDERFUL news! You must be over the moon! How far along?",
-          "Oh wow — life-changing in the best way! Congratulations! 🎉 How are you feeling?",
+          "omg congrats!! that's the best news 🥹",
+          "wait WHAT that's so exciting!!",
+          "ahhh congrats!! how are you feeling",
         ],
         education_milestone: [
-          "You DID it! That's a massive accomplishment — you should be so proud! 🎓 What's next?",
-          "Congratulations!! All that hard work paid off! How does it feel?",
-          "That's incredible — seriously, well done! What an achievement! What are your plans now?",
+          "YOU DID IT 🎓 i'm so proud of you",
+          "let's gooo!! all that work paid off fr",
+          "dude congrats, that's huge",
         ],
         education_win: [
-          "Oh my gosh, congratulations!! You got in! That's amazing! Are you excited?",
-          "YES! You earned that! What are you most looking forward to?",
-          "That's huge news — congratulations! All your hard work paid off!",
+          "WAIT YOU GOT IN?? congrats!!",
+          "omg yes!! you earned that fr",
+          "lets goooo that's amazing news",
         ],
       };
       return pick(reactions[rev.type] || reactions.career_win);
@@ -5412,9 +5412,9 @@ function handleTurnSignal(signal) {
         const correctedTopics = extractTopics(tokenize(corrected));
         if (correctedTopics.length > 0 && ASSOC[correctedTopics[0]]) {
           const assoc = ASSOC[correctedTopics[0]];
-          return base + pick(assoc.opinions || assoc.hooks || ["Tell me more about that!"]);
+          return base + pick(assoc.opinions || assoc.hooks || ["ok wait so what do you mean tho"]);
         }
-        return base + "So tell me more about what you actually meant!";
+        return base + "wait ok so what did you actually mean";
       }
       return pickNew([
         "Oh, my bad! I misunderstood. What were you actually getting at?",
@@ -6961,32 +6961,32 @@ const DETAIL_EXTRACT_PATTERNS = [
 
 const CURIOSITY_TEMPLATES = {
   project: [
-    "Wait — {detail}? What stage is that at right now?",
-    "Oh interesting, {detail}. What's been the most surprising part of that?",
-    "Tell me more about {detail} — what's driving that?",
+    "wait {detail}?? how far along are you",
+    "oh sick, {detail}. how's that going",
+    "ooh {detail} — what made you start that",
   ],
   learning: [
-    "What drew you to {detail} specifically?",
-    "How far along are you with {detail}? Hit any 'aha' moments yet?",
-    "{detail} — are you learning that by doing or more theory first?",
+    "what made you get into {detail}",
+    "oh nice, how far along are you with {detail}",
+    "{detail} — are you like self-teaching or what",
   ],
   challenge: [
-    "When you say {detail} — what does that actually look like day to day?",
-    "How long has {detail} been an issue? Or is this recent?",
-    "Is {detail} the kind of thing you've seen before, or totally new territory?",
+    "wait so {detail} — what does that actually look like",
+    "how long has {detail} been a thing",
+    "is {detail} something you've dealt with before or nah",
   ],
   experience: [
-    "What made you try {detail}? Was it planned or spontaneous?",
-    "And? How did {detail} go? I want the honest version.",
-    "Okay I need to know — was {detail} worth it?",
+    "what made you try {detail}",
+    "wait how did {detail} go tho",
+    "ok but was {detail} worth it",
   ],
   preference: [
-    "What is it about {detail} that clicks for you?",
-    "Has {detail} always been your go-to, or is that newer?",
+    "what is it about {detail} that you like",
+    "has {detail} always been your thing",
   ],
   team: [
-    "How's the team feeling about {detail}?",
-    "Is {detail} going smoothly, or is there friction?",
+    "how's your team feeling about {detail}",
+    "is {detail} going ok or is it messy",
   ],
 };
 
@@ -7667,11 +7667,11 @@ function getTraitImbalance() {
 }
 
 const TRAIT_NUDGES = {
-  curiosity:  ["I'm curious — ", "Makes me wonder: ", "That gets me thinking — "],
-  warmth:     ["I appreciate you sharing that. ", "That's really cool. ", "Genuinely glad to hear that. "],
-  humor:      ["Ha, ", "Okay that's kind of great — ", "Love that — "],
-  directness: ["Honestly, ", "Real talk: ", "Here's the thing — "],
-  depth:      ["What's interesting is ", "The thing that stands out: ", "At its core, "],
+  curiosity:  ["wait ok but ", "hmm actually ", "ooh ok so "],
+  warmth:     ["aw ok that's cool tho. ", "nah that's actually really nice. ", "ok i love that. "],
+  humor:      ["lol ", "haha ok ", "ok that's kinda funny — "],
+  directness: ["ok honestly ", "nah real talk ", "ok so here's the thing — "],
+  depth:      ["wait the interesting part is ", "ok so basically ", "the thing is "],
 };
 
 const TRAIT_DAMPENERS = {
@@ -18078,9 +18078,9 @@ const MICRO_REACTIONS = {
     "Hold on —", "Oh!", "Hm, that's unexpected —",
   ],
   personal: [
-    "Oh, I appreciate you sharing that.", "Aw —", "Oh, that's real.",
-    "I hear you.", "That's actually really honest.", "Oh —",
-    "Yeah, I get that.", "That hits different.",
+    "oh wow —", "aw —", "nah that's real.",
+    "yeah i feel that.", "that's actually really honest.", "oh —",
+    "yeah no i get that.", "that hits different.",
   ],
   funny: [
     "Ha —", "Okay that's funny.", "Pfft —", "Ha, okay —",
@@ -18314,6 +18314,36 @@ function polishOutput(response) {
       r = r.replace(prefixPatterns, "");
     } else {
       break;
+    }
+  }
+
+  // 8. Question reduction — friends don't end every message with a question.
+  // ~55% of the time, if the response ends with a question AND has non-question
+  // content before it, strip the trailing question to leave a pure reaction.
+  if (r.includes("?")) {
+    const parts = r.split(/(?<=[.!?])\s+/);
+    const questionParts = parts.filter(p => p.includes("?"));
+    const nonQuestionParts = parts.filter(p => !p.includes("?"));
+    // Only strip if there's something left after removing the question
+    if (nonQuestionParts.length >= 1 && questionParts.length >= 1 && Math.random() < 0.55) {
+      // Keep the non-question parts (the reaction), drop the trailing question
+      const lastPart = parts[parts.length - 1];
+      if (lastPart.includes("?")) {
+        r = parts.slice(0, -1).join(" ").trim();
+        // Make sure we didn't strip everything
+        if (r.length < 5) r = response;
+      }
+    }
+  }
+
+  // 9. Length check — friend texts are short. If over 200 chars with 3+ sentences,
+  // trim to first 2 sentences unless it's a knowledge/explanation response.
+  if (r.length > 200) {
+    const sentences = r.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 3) {
+      // Keep first 2-3 sentences max for casual chat
+      const trimmed = sentences.slice(0, 2).join(" ").trim();
+      if (trimmed.length >= 20) r = trimmed;
     }
   }
 
