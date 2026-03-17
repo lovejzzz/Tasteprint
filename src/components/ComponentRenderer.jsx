@@ -52,7 +52,7 @@ const ANIM_STYLE = `
 @keyframes tp-d-shadow-shift{0%,100%{box-shadow:var(--d-shad-a)}50%{box-shadow:var(--d-shad-b)}}
 `;
 
-function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1,texture}){
+function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1,texture}){
   const ff=FONTS[font]?.family||FONTS[0].family;
   const f=(size)=>Math.round(size*fsize);
   const b={width:"100%",height:"100%",fontFamily:ff,overflow:"hidden"};
@@ -2227,6 +2227,31 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1,t
   }
 
   return <div style={{...b,background:p.su,borderRadius:12}}/>;
+}
+
+/* ── Designer style adaptation wrapper ──
+   When dStyles is active, inner component adapts: borderRadius matches outer,
+   inner borders/shadows suppressed to avoid doubling with outer wrapper. */
+function C({dStyles, ...rest}) {
+  const el = CRaw(rest);
+  const ds = dStyles;
+  if (!ds || !el) return el;
+  const overrides = {};
+  // Match outer borderRadius so inner corners align with wrapper
+  if (ds.borderRadius !== undefined) overrides.borderRadius = ds.borderRadius;
+  // Suppress inner border when outer wrapper has designer border
+  if (ds.border) { overrides.border = "none"; overrides.borderLeft = undefined; overrides.borderRight = undefined; overrides.borderTop = undefined; overrides.borderBottom = undefined; }
+  // Suppress inner boxShadow when outer wrapper has designer shadow
+  if (ds.boxShadow && ds.boxShadow !== "none") overrides.boxShadow = "none";
+  // Make inner background semi-transparent when outer has gradient/texture overlays
+  if (ds.gradientOverlay || ds.textureOverlay) {
+    const orig = el.props.style?.background;
+    if (orig && typeof orig === "string" && orig.startsWith("#")) {
+      overrides.background = orig.slice(0, 7) + "88";
+    }
+  }
+  if (Object.keys(overrides).length === 0) return el;
+  return React.cloneElement(el, { style: { ...el.props.style, ...overrides } });
 }
 
 const AnimStyle=React.memo(function AnimStyle(){return <style>{ANIM_STYLE}</style>})
