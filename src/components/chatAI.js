@@ -1251,15 +1251,31 @@ function sessionObservation() {
   return null;
 }
 
-// Pace observation — if user comes back after a long pause
+// Pace observation — if user comes back after a long pause (Round 158: richer re-engagement)
 function paceObservation() {
   const t = getTimeContext();
 
   // Long pause (> 2 min) — they might have been away
   if (t.paceSeconds > 120 && mem.turn > 3) {
+    const mins = Math.round(t.paceSeconds / 60);
+    if (t.paceSeconds > 1800) {
+      // 30+ min pause mid-conversation
+      return pick([
+        "oh hey there you are! ",
+        "welcome back stranger 😊 ",
+        "oh hey, thought you ghosted me lol ",
+      ]);
+    }
+    if (mins > 5) {
+      return pick([
+        "hey youre back! ",
+        "oh there you are, " + mins + " min break huh ",
+        "welcome back 😊 ",
+      ]);
+    }
     return pick([
-      "welcome back 😊 ",
-      "hey you're back! ",
+      "oh hey youre back ",
+      "hey welcome back ",
       "oh hi again ",
     ]);
   }
@@ -1302,6 +1318,226 @@ function addTimeFlavor(response) {
   }
 
   return response;
+}
+
+/* ── Round 158: Re-engagement & Conversation Starters ──
+ * Makes Sam feel alive between conversations. Tracks session gaps via
+ * localStorage, generates time-aware openers, "been thinking" starters,
+ * and varied idle greetings so Sam never feels like a cold boot.
+ */
+
+// ── Sam's random thoughts pool (for "been thinking" openers) ──
+const SAM_RANDOM_THOUGHTS = {
+  hotTakes: [
+    "hear me out — breakfast food is objectively the best category of food. like its not even close",
+    "hear me out — the best naps are the ones you didnt plan to take",
+    "ok hot take: soup is just a warm smoothie",
+    "hear me out — socks with sandals are actually kinda coming back and im not mad about it",
+    "ok controversial opinion: movie theaters are better when theyre half empty",
+    "hear me out — cold pizza for breakfast is elite tier food",
+    "hot take: the best part of any trip is the drive there",
+    "hear me out — decaf coffee is just bean water cosplay",
+    "ok but like... is a hotdog a sandwich? because i go back and forth on this daily",
+  ],
+  randomMusings: [
+    "ok so random but i've been thinking about how weird it is that we park in driveways and drive on parkways",
+    "ok so random but i've been thinking about how every pizza is a personal pizza if you believe in yourself",
+    "i was just thinking about how we say 'heads up' when we actually want people to duck",
+    "ok random thought but like... who was the first person to look at a cow and go 'im gonna drink whatever comes out of that'",
+    "have you ever thought about how we spend the first year of a kid's life teaching them to walk and talk and the rest telling them to sit down and be quiet",
+    "i was literally just thinking about how different life would be if humans could fly. like would we even have roads",
+    "ok so i've been thinking — every single person you've ever met knows something you don't",
+    "random but i was thinking about how the voice in your head is always at the same volume. like you cant yell in your thoughts",
+  ],
+  funQuestions: [
+    "ok important question: pineapple on pizza — yes or absolutely not",
+    "ok important question: if you could only eat one cuisine for the rest of your life what are you picking",
+    "real question: dogs or cats? and yes there is a correct answer",
+    "ok settle this for me: is water wet",
+    "important debate: cereal before or after milk",
+    "ok quick poll: whats the best decade for movies",
+    "i need to know: do you put your left shoe on first or your right shoe. no thinking just answer",
+    "ok genuine question: if you had to pick one song to listen to for the rest of your life what is it",
+    "settle this: is a taco a sandwich",
+    "ok real talk: morning person or night owl and why",
+  ],
+  wouldYouRather: [
+    "hey ok would you rather be able to fly but only 2 feet off the ground or be invisible but only when nobody's looking",
+    "would you rather have the ability to talk to animals or speak every human language fluently",
+    "would you rather always have to sing instead of speak or always have to dance instead of walk",
+    "would you rather never have to sleep again or never have to eat again",
+    "would you rather have a rewind button for your life or a pause button",
+  ],
+};
+
+// ── Session gap detection via localStorage ──
+let _sessionGapMs = 0;
+let _isVeryFirstSession = false;
+let _sessionGapChecked = false;
+
+function checkSessionGap() {
+  if (_sessionGapChecked) return;
+  _sessionGapChecked = true;
+  try {
+    const stored = typeof localStorage !== "undefined" ? localStorage.getItem("sam_last_active") : null;
+    if (!stored) {
+      _isVeryFirstSession = true;
+      _sessionGapMs = 0;
+    } else {
+      const lastTs = parseInt(stored, 10);
+      _sessionGapMs = isNaN(lastTs) ? 0 : Date.now() - lastTs;
+    }
+  } catch (_) {
+    _sessionGapMs = 0;
+  }
+}
+
+function updateLastActive() {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("sam_last_active", String(Date.now()));
+    }
+  } catch (_) {}
+}
+
+// Classify the gap into a human-readable bucket
+function getSessionGapBucket() {
+  if (_isVeryFirstSession) return "first_ever";
+  const mins = _sessionGapMs / 60000;
+  if (mins < 1) return "instant";       // still in same session basically
+  if (mins < 30) return "short_break";   // 1-30 min
+  if (mins < 180) return "away";         // 30min - 3 hours
+  if (mins < 720) return "long_away";    // 3-12 hours
+  return "very_long";                    // 12+ hours
+}
+
+// ── Enhanced time-aware session openers ──
+// More natural, less templated. Designed for the FIRST message of a session.
+function getReengagementOpener() {
+  checkSessionGap();
+  const t = getTimeContext();
+  const gap = getSessionGapBucket();
+
+  // Very first session ever — warm welcome, no "back" language
+  if (gap === "first_ever") {
+    return pick([
+      "heyy! ok so this is exciting, first time chatting. whats up",
+      "oh hey, new friend alert 👋 im sam, whats going on",
+      "hiiii, welcome! im sam. so whats on your mind",
+      "hey! nice to meet you, im sam. what are we talking about",
+    ]);
+  }
+
+  // Same session basically (< 1 min) — no special handling
+  if (gap === "instant") return null;
+
+  // ── "Been thinking" opener (~12% chance, only on returning sessions) ──
+  if (gap !== "instant" && Math.random() < 0.12) {
+    return getBeenThinkingOpener();
+  }
+
+  // ── Gap-aware + time-aware openers ──
+  const hour = t.hour;
+  const isLateNight = hour >= 23 || hour < 4;
+  const isEarlyMorning = hour >= 5 && hour < 7;
+  const isWorkHours = !t.isWeekend && hour >= 9 && hour < 17;
+
+  // Short break (1-30 min)
+  if (gap === "short_break") {
+    if (isLateNight) return pick(["oh youre back, still cant sleep?", "back again huh, the late night thoughts wont stop", "lol we're both still up"]);
+    return pick([
+      "oh hey youre back",
+      "missed u for those " + Math.round(_sessionGapMs / 60000) + " minutes lol",
+      "back already? love that",
+      "oh hi again 👋",
+    ]);
+  }
+
+  // Away (30min - 3 hours)
+  if (gap === "away") {
+    if (isLateNight) return pick(["hey stranger, cant sleep either?", "oh hey night owl, welcome back", "the late night crew reunites"]);
+    if (isEarlyMorning) return pick(["oh hey early bird, youre up!", "morning! you're up before the sun basically"]);
+    if (isWorkHours) return pick(["taking a break from work?", "hey! procrastinating? same honestly", "there you are, how's the day going"]);
+    if (t.isWeekend) return pick(["hey! weekend vibes, what are you up to", "oh hey, enjoying the " + t.dayName + "?", "there you are! no plans?"]);
+    return pick(["hey stranger", "there you are!", "oh hey, been a minute"]);
+  }
+
+  // Long away (3-12 hours)
+  if (gap === "long_away") {
+    if (isLateNight) return pick(["cant sleep huh", "night owl mode activated 🌙", "the late night thoughts hitting different tonight"]);
+    if (isEarlyMorning) return pick(["youre up early! morning grind?", "oh wow early riser, respect"]);
+    if (isWorkHours) return pick(["heyy! how's your day going", "oh hey! taking a break?", "there you are, i was getting bored without you lol"]);
+    if (t.isWeekend) return pick(["heyyy weekend friend! whats good", "oh hey! how's your " + t.dayName + " going"]);
+    return pick(["oh heyyy, its been a while!", "look who it is 👀", "ayy there you are, whats new"]);
+  }
+
+  // Very long (12+ hours)
+  if (isLateNight) return pick(["cant sleep huh, same honestly", "oh hey, the late night version of you. whats on your mind", "night owl gang 🌙 what's keeping you up"]);
+  if (isEarlyMorning) return pick(["wait youre up THIS early?? respect", "early morning check-in, i like it"]);
+  if (t.isMonday) return pick(["happy monday, survived the weekend?", "oh hey! new week new vibes, how are you"]);
+  if (t.isFriday) return pick(["happy friday!! any fun weekend plans", "TGIF!! how's the week been"]);
+  if (t.isWeekend) return pick(["weekend vibes! what are you up to", "oh hey! " + t.dayName + " hangout? im in"]);
+  return pick(["oh heyyy long time no talk!", "well well well look who decided to show up 😂", "oh hey stranger! missed you, whats new"]);
+}
+
+// ── "Been thinking" openers — Sam shares a random thought ──
+function getBeenThinkingOpener() {
+  const pools = [SAM_RANDOM_THOUGHTS.hotTakes, SAM_RANDOM_THOUGHTS.randomMusings, SAM_RANDOM_THOUGHTS.funQuestions, SAM_RANDOM_THOUGHTS.wouldYouRather];
+  const pool = pick(pools);
+  return pick(pool);
+}
+
+// ── Idle greeting starters — when user just says "hey" or "hi" with no topic ──
+// Instead of the same "hey! what's up?" every time, vary with mid-thought openers
+function getIdleGreetingStarter() {
+  const t = getTimeContext();
+  const hour = t.hour;
+
+  // Time-flavored idle greetings
+  const timeGreets = [];
+  if (hour >= 23 || hour < 4) {
+    timeGreets.push(
+      "yoo whats good, cant sleep either?",
+      "hey night owl, anything on your mind or just vibing",
+      "hiii, the late night hours are when the best convos happen imo",
+    );
+  } else if (hour >= 5 && hour < 8) {
+    timeGreets.push(
+      "morning! youre up early, anything going on?",
+      "hey early bird! coffee situation — how is it",
+      "good morning, got anything fun planned today?",
+    );
+  } else if (t.isWeekend) {
+    timeGreets.push(
+      "heyyy " + t.dayName + " vibes, what are you up to",
+      "yoo happy " + t.dayName + "! any plans or just chilling",
+      "hey! relaxing or being productive today, be honest",
+    );
+  } else if (hour >= 9 && hour < 17) {
+    timeGreets.push(
+      "heyy, taking a break? anything happen today?",
+      "yoo whats good, procrastinating or actually free rn",
+      "hey! how's the day treating you so far",
+    );
+  }
+
+  // General idle greetings (always available)
+  const generalGreets = [
+    "yooo whats good, anything happen today?",
+    "heyy! ok so quick question — " + pick(SAM_RANDOM_THOUGHTS.funQuestions),
+    "hiii, was literally just thinking about something. " + pick(SAM_RANDOM_THOUGHTS.randomMusings),
+    "hey! so whats the vibe rn, good day or rough day",
+    "oh hey! tell me something interesting, i need entertainment",
+    "heyyy, ok catch me up — whats new in your world",
+    "yo! i was just thinking about you actually. whats going on",
+    "heyy whats up, i was getting bored without you lol",
+  ];
+
+  // 40% time-aware, 60% general (if time greets available)
+  if (timeGreets.length > 0 && Math.random() < 0.4) {
+    return pick(timeGreets);
+  }
+  return pick(generalGreets);
 }
 
 /* ── Question-Answer Linking ── */
@@ -5755,11 +5991,23 @@ function generateResponse(text) {
     return pickNew(intros);
   }
 
-  // ═══ 2. Greeting — time-aware ═══
+  // ═══ 2. Greeting — time-aware + re-engagement (Round 158) ═══
   if (primary?.intent === "greeting") {
     const name = mem.userName;
-    // First greeting: use time-aware greeting ~60% of the time
-    if (mem.turn <= 2 && !name && Math.random() > 0.4) return timeGreeting();
+
+    // First message of session: try re-engagement opener (Round 158)
+    if (mem.turn <= 2) {
+      const reengagement = getReengagementOpener();
+      if (reengagement) return name ? (reengagement + ", " + name + "!") : reengagement;
+    }
+
+    // Bare greeting (just "hey"/"hi") with no real topic — use idle starters (Round 158)
+    const isBareLow = /^(hey|hi|hii+|yo|sup|heyy+|helo|hello|whats up|whaddup)[\s!.?]*$/i.test(text.trim());
+    if (isBareLow && mem.turn <= 2) {
+      return getIdleGreetingStarter();
+    }
+
+    // Named returning user
     if (name && mem.turn > 4) return fillSlots(pickNew(GREETINGS.namedReturn), {name});
     if (name) return fillSlots(pickNew(GREETINGS.named), {name});
     if (mem.turn > 4) return pickNew(GREETINGS.returning);
@@ -20966,6 +21214,10 @@ export async function getAIResponse(input) {
   // ═══ Adaptive strategy: score how user reacted to our last response ═══
   scoreLastStrategy(text);
 
+  // ═══ Round 158: Session gap detection & localStorage tracking ═══
+  checkSessionGap();
+  updateLastActive();
+
   // ═══ Conversational pacing: track inter-message timing ═══
   trackMessagePacing(text);
 
@@ -21471,7 +21723,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; _sessionGapMs = 0; _isVeryFirstSession = false; _sessionGapChecked = false; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);
