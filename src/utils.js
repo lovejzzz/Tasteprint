@@ -676,7 +676,7 @@ export function generateDesignDNA(palette, mood) {
  * @param {string} mood - Design mood: "auto"|"minimal"|"bold"|"elegant"|"playful"
  * @param {object} dna - Optional Design DNA from generateDesignDNA for cohesive canvas
  */
-export function designerRandomize(type, palette, defaults, mood = "auto", otherShapes = [], dna = null) {
+export function designerRandomize(type, palette, defaults, mood = "auto", otherShapes = [], dna = null, shapeW = 0, shapeH = 0) {
   const varCount = (VARIANTS[type] || []).length || 1;
   const dark = isDarkPalette(palette);
   const tags = getVariantTags(type, varCount);
@@ -813,7 +813,7 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
   }
 
   /* ── 5. Design style overrides — novel CSS treatments (harmony + DNA aware) ── */
-  const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna);
+  const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna, shapeW, shapeH);
 
   /* ── 6. Quality gate — auto-reroll low-scoring results (Round 70) ── */
   // Use designScore to self-evaluate. If score < 3 (below "decent"), reroll
@@ -824,7 +824,7 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
   const score = designScore(testShape, palette, otherShapes);
   if (score < 3 && !candidate._rerollCount) {
     // Reroll with a flag to prevent infinite recursion
-    const reroll = designerRandomize(type, palette, defaults, mood, otherShapes, dna);
+    const reroll = designerRandomize(type, palette, defaults, mood, otherShapes, dna, shapeW, shapeH);
     reroll._rerollCount = (candidate._rerollCount || 0) + 1;
     if (reroll._rerollCount < 2) {
       const rerollShape = { type, ...reroll };
@@ -863,11 +863,17 @@ const SHADOW_PRESETS = [
 
 const RADIUS_PRESETS = [0, 4, 8, 12, 16, 20, 24, 32, 999];
 
-function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna) {
+function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna, shapeW = 0, shapeH = 0) {
   const s = {};
   const isNav = sizeCat === "nav";
   const isCode = sizeCat === "code";
   const isSmall = sizeCat === "small";
+  // --- Aspect ratio awareness (Round 77) ---
+  // Classify shape proportions: wide banner, tall column, or square-ish
+  const aspect = (shapeW > 0 && shapeH > 0) ? shapeW / shapeH : 1;
+  const isWide = aspect > 2.5;    // banner/navbar-like
+  const isTall = aspect < 0.5;    // sidebar/column-like
+  const isSquarish = aspect >= 0.8 && aspect <= 1.2;
   // Auto mode: pick a random sub-personality so each component gets a coherent micro-style
   // instead of bland average-of-everything
   let moodId = mood || "auto";
@@ -914,6 +920,24 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   if (isSmall && s.borderRadius > 16) s.borderRadius = pick([4, 8, 10, 12, 16]);
   // Nav components stay reasonable
   if (isNav) s.borderRadius = pick([0, 4, 8, 12]);
+  // --- Aspect-ratio-aware border-radius adjustments (Round 77) ---
+  // Wide banners: reduce radius relative to size — full pill looks odd on banners
+  if (isWide && typeof s.borderRadius === "number") {
+    if (s.borderRadius === 999) s.borderRadius = pick([8, 12, 16, 20]); // demote pill to rounded
+    else if (s.borderRadius > 24) s.borderRadius = pick([12, 16, 20, 24]);
+  }
+  // Tall columns: moderate radii — avoid pill, favor vertical-friendly corners
+  if (isTall && typeof s.borderRadius === "number") {
+    if (s.borderRadius === 999) s.borderRadius = pick([12, 16, 20, 24]);
+    else if (s.borderRadius > 32) s.borderRadius = pick([16, 20, 24]);
+  }
+  // Square-ish: allow full circle (50%) for truly square shapes, boost pill chance
+  if (isSquarish && typeof s.borderRadius === "number" && s.borderRadius === 999) {
+    // For nearly-square shapes, 50% borderRadius creates a circle — allow it
+    if (Math.abs(aspect - 1.0) < 0.1 && Math.random() < 0.4) {
+      s.borderRadius = "50%";
+    }
+  }
 
   // --- Organic border-radius: per-corner asymmetry + elliptical blobs ---
   // Upgrades simple numeric radius to complex CSS border-radius for organic shapes
@@ -1407,6 +1431,36 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         ]);
       }
     }
+    // --- Aspect-ratio-aware gradient direction biasing (Round 77) ---
+    // Override gradient directions to match shape proportions for natural visual flow
+    if (s.gradientOverlay && (shapeW > 0 && shapeH > 0)) {
+      if (isWide && Math.random() < 0.7) {
+        // Wide banners: prefer horizontal gradients (to-right, 90deg) — panoramic sweep
+        if (s.gradientOverlay.includes("135deg") || s.gradientOverlay.includes("180deg") || s.gradientOverlay.includes("to bottom")) {
+          s.gradientOverlay = s.gradientOverlay
+            .replace(/135deg/g, pick(["90deg", "to right"]))
+            .replace(/180deg/g, pick(["90deg", "to right"]))
+            .replace(/to bottom/g, "to right");
+        }
+      } else if (isTall && Math.random() < 0.7) {
+        // Tall columns: prefer vertical gradients (to-bottom, 180deg) — column flow
+        if (s.gradientOverlay.includes("135deg") || s.gradientOverlay.includes("90deg") || s.gradientOverlay.includes("to right")) {
+          s.gradientOverlay = s.gradientOverlay
+            .replace(/135deg/g, pick(["180deg", "to bottom"]))
+            .replace(/\b90deg/g, pick(["180deg", "to bottom"]))
+            .replace(/to right/g, "to bottom");
+        }
+      } else if (isSquarish && Math.random() < 0.5) {
+        // Square-ish: prefer radial/conic gradients — centered compositions
+        if (s.gradientOverlay.startsWith("linear-gradient")) {
+          s.gradientOverlay = pick([
+            `radial-gradient(circle at 50% 50%, ${acHex}0A 0%, transparent 65%)`,
+            `radial-gradient(ellipse at 50% 50%, ${gc1}08 0%, transparent 55%)`,
+            `conic-gradient(from 90deg at 50% 50%, ${gc1}06, ${acHex}04, ${gc2}06, transparent)`,
+          ]);
+        }
+      }
+    }
   }
 
   // --- Border treatment (DNA-driven or harmony-adaptive chance, skip nav/code) ---
@@ -1461,6 +1515,118 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           s.border = pick([`2px dashed ${acHex}28`, `3px dotted ${acHex}20`, `2px solid ${acHex}35`]);
         } else if (moodId !== "minimal") {
           s.border = pick([`1px solid ${acHex}12`, `1.5px solid ${acHex}18`]);
+        }
+      }
+    }
+  }
+
+  // --- Outline & border art treatments: creative border/outline combos ---
+  // Goes beyond simple borders — double borders, dashed art, asymmetric accents,
+  // double-line style, and outline glow effects.
+  // Only fires when no border/outline already set, to avoid conflicts.
+  if (!isNav && !isCode && !s.border && !s.outline && !s.borderLeft && !s.borderBottom && !s.borderTop && !s.borderRight) {
+    const borderArtChance = moodId === "bold" ? 0.20 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.12 : moodId === "minimal" ? 0.08 : 0.15;
+    if (Math.random() < borderArtChance) {
+      const artStyle = Math.random();
+
+      if (moodId === "bold") {
+        if (artStyle < 0.25) {
+          // Double border: border + outline combo — bold frame
+          const c1 = pick([acHex, gc1, gcGlow]);
+          const c2 = pick([dc.comp, dc.vivid, gc2]);
+          s.border = `${pick([2, 3])}px solid ${c1}50`;
+          s.outline = `${pick([2, 3])}px solid ${c2}40`;
+          s.outlineOffset = `${pick([3, 4, 5])}px`;
+        } else if (artStyle < 0.50) {
+          // Thick dashed art — poster/brutalist
+          s.border = `${pick([3, 4])}px dashed ${pick([acHex, gc1])}${pick(["45", "55"])}`;
+        } else if (artStyle < 0.75) {
+          // Asymmetric accent — magazine editorial
+          pick([
+            () => { s.borderLeft = `${pick([4, 5, 6])}px solid ${pick([acHex, gcGlow])}55`; },
+            () => { s.borderBottom = `${pick([3, 4])}px solid ${pick([gc1, acHex])}50`; s.borderLeft = `${pick([4, 5])}px solid ${pick([gcGlow, dc.vivid])}40`; },
+            () => { s.borderLeft = `${pick([5, 6])}px solid ${acHex}60`; s.borderBottom = `2px solid ${gc1}30`; },
+          ])();
+        } else {
+          // Outline glow — floating bold frame
+          s.outline = `${pick([2, 3])}px solid ${pick([gcGlow, dc.vivid, acHex])}45`;
+          s.outlineOffset = `${pick([5, 6, 8])}px`;
+        }
+      } else if (moodId === "playful") {
+        if (artStyle < 0.25) {
+          // Dotted art border — fun, whimsical
+          s.border = `${pick([2, 3])}px dotted ${pick([gc1, gc2, gcGlow])}${pick(["35", "45"])}`;
+        } else if (artStyle < 0.50) {
+          // Colorful dashed — playful energy
+          s.border = `${pick([2, 3])}px dashed ${pick([dc.vivid, dc.analog1, gc1])}${pick(["40", "50"])}`;
+        } else if (artStyle < 0.75) {
+          // Asymmetric mixed styles — different style per side
+          pick([
+            () => { s.borderLeft = `3px dotted ${gc1}40`; s.borderBottom = `2px dashed ${gc2}35`; },
+            () => { s.borderTop = `2px dotted ${gcGlow}38`; s.borderRight = `3px dashed ${gc1}30`; },
+            () => { s.borderBottom = `${pick([3, 4])}px solid ${pick([gc2, dc.vivid])}45`; },
+          ])();
+        } else {
+          // Double border — colorful frame-in-frame
+          s.border = `2px solid ${gc1}40`;
+          s.outline = `${pick([1.5, 2])}px ${pick(["dotted", "dashed"])} ${pick([gc2, gcGlow])}35`;
+          s.outlineOffset = `${pick([3, 4, 5])}px`;
+        }
+      } else if (moodId === "elegant") {
+        if (artStyle < 0.30) {
+          // Double-line border (border-style: double) — classic elegance
+          s.border = `${pick([3, 4])}px double ${pick([dc.muted, dc.analog1, acHex])}${pick(["20", "25", "30"])}`;
+        } else if (artStyle < 0.55) {
+          // Thin outline offset — delicate floating frame
+          s.outline = `1px solid ${pick([dc.muted, dc.analog1])}${pick(["15", "18", "22"])}`;
+          s.outlineOffset = `${pick([4, 6, 8])}px`;
+        } else if (artStyle < 0.80) {
+          // Asymmetric thin accent — editorial refinement
+          pick([
+            () => { s.borderLeft = `2px solid ${dc.muted}25`; },
+            () => { s.borderBottom = `1px solid ${dc.analog1}20`; s.borderLeft = `2px solid ${dc.muted}18`; },
+            () => { s.borderTop = `1px solid ${dc.muted}15`; },
+          ])();
+        } else {
+          // Outline glow — muted, refined floating frame
+          s.outline = `1px solid ${pick([dc.muted, dc.analog1])}20`;
+          s.outlineOffset = `${pick([5, 6, 8])}px`;
+        }
+      } else if (moodId === "minimal") {
+        if (artStyle < 0.50) {
+          // Thin dashed — airy, minimal rhythm
+          s.border = `1px dashed ${acHex}${pick(["12", "15", "18"])}`;
+        } else {
+          // Single asymmetric accent — magazine minimal
+          pick([
+            () => { s.borderLeft = `2px solid ${acHex}20`; },
+            () => { s.borderBottom = `1px solid ${acHex}15`; },
+          ])();
+        }
+      } else {
+        // Auto: random from all techniques
+        const autoTechnique = Math.random();
+        if (autoTechnique < 0.20) {
+          // Double border
+          s.border = `2px solid ${acHex}35`;
+          s.outline = `${pick([1.5, 2])}px solid ${pick([gc1, gc2])}30`;
+          s.outlineOffset = `${pick([3, 4])}px`;
+        } else if (autoTechnique < 0.40) {
+          // Dashed art
+          s.border = `2px ${pick(["dashed", "dotted"])} ${pick([acHex, gc1])}${pick(["30", "40"])}`;
+        } else if (autoTechnique < 0.60) {
+          // Asymmetric accent
+          pick([
+            () => { s.borderLeft = `${pick([3, 4])}px solid ${pick([acHex, gc1])}40`; },
+            () => { s.borderBottom = `2px solid ${pick([acHex, gc1])}35`; s.borderLeft = `3px solid ${pick([gc2, gcGlow])}30`; },
+          ])();
+        } else if (autoTechnique < 0.80) {
+          // Double-line
+          s.border = `3px double ${pick([acHex, gc1])}${pick(["25", "30"])}`;
+        } else {
+          // Outline glow
+          s.outline = `${pick([1, 1.5, 2])}px solid ${pick([acHex, gcGlow])}30`;
+          s.outlineOffset = `${pick([4, 5, 6])}px`;
         }
       }
     }
@@ -1583,6 +1749,28 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.mixBlendMode = pick(["overlay", "screen", "color-dodge"]);
       } else if (moodId === "elegant" && Math.random() < 0.2) {
         s.mixBlendMode = pick(["soft-light", "luminosity"]);
+      }
+    }
+
+    // --- Aspect-ratio-aware typography tweaks (Round 77) ---
+    // Wide banners benefit from wider letter-spacing for panoramic readability
+    // Tall columns benefit from tighter spacing for compact vertical layouts
+    if (shapeW > 0 && shapeH > 0) {
+      if (isWide && !s.letterSpacing) {
+        // Wide banners: wider letter-spacing for cinematic/panoramic feel
+        s.letterSpacing = pick(["0.04em", "0.05em", "0.06em", "0.08em"]);
+      } else if (isWide && s.letterSpacing) {
+        // Bump existing letter-spacing wider for banners
+        const ls = parseFloat(s.letterSpacing);
+        if (ls < 0.04) s.letterSpacing = `${Math.min(ls + 0.02, 0.08).toFixed(3)}em`;
+      }
+      if (isTall && !s.letterSpacing) {
+        // Tall columns: tighter letter-spacing for compact vertical flow
+        s.letterSpacing = pick(["-0.01em", "0em", "0.005em", "0.01em"]);
+      } else if (isTall && s.letterSpacing) {
+        // Reduce existing letter-spacing for tall shapes
+        const ls = parseFloat(s.letterSpacing);
+        if (ls > 0.02) s.letterSpacing = `${Math.max(ls - 0.02, 0).toFixed(3)}em`;
       }
     }
 

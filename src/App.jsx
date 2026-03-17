@@ -231,11 +231,11 @@ export default function App() {
         if (!targetSet.has(s.id)) continue;
         const defaults = DEFAULT_PROPS[s.type];
         if (singlePreset && targets.length === 1) {
-          const rnd = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna);
+          const rnd = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna, s.w, s.h);
           updated[i] = { ...s, variant: singlePreset.variant, font: singlePreset.font, fsize: singlePreset.fsize, props: { ...(s.props || {}), ...rnd.props }, dStyles: rnd.dStyles };
           newPrefV[s.type] = singlePreset.variant;
         } else {
-          const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna);
+          const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna, s.w, s.h);
           updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
           newPrefV[s.type] = result.variant;
         }
@@ -258,7 +258,7 @@ export default function App() {
       for (let i = 0; i < updated.length; i++) {
         const s = updated[i];
         const defaults = DEFAULT_PROPS[s.type];
-        const result = designerRandomize(s.type, p, defaults, designMood, already, dna);
+        const result = designerRandomize(s.type, p, defaults, designMood, already, dna, s.w, s.h);
         updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
         newPrefV[s.type] = result.variant;
         already.push(updated[i]);
