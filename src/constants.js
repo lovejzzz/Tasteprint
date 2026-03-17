@@ -91,7 +91,7 @@ export const VARIANTS = {
   "profile-card":["Standard","Compact","Terminal","Glass","Gradient","Brutal","Gradient glow"],
   "code-block":["Dark","Light","Terminal","Live IDE","Typewriter","Diff","Notebook","Review","Minimap","ASCII Art","Benchmark"],
   notification:["List","Compact","Dot","Card","Glass","Brutal","Gradient"],
-  "tag-input":["Rounded","Square","Outlined","Colorful","Input"],
+  "tag-input":["Rounded","Square","Outlined","Colorful","Input","Brutal","Gradient glow"],
   kanban:    ["Cards","Compact","Terminal","Gradient","Glass","Brutal","Gradient glow"],
 };
 
