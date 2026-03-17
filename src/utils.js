@@ -613,7 +613,7 @@ export function generateDesignDNA(palette, mood) {
   // These ensure text-stroke, clip-path, transitions, and opacity feel cohesive
   let effectPersonality;
   if (m === "minimal") {
-    effectPersonality = { textStroke: "none", clipStyle: "none", motionSpeed: "calm", depthLayer: "flat", surfaceTexture: "none" };
+    effectPersonality = { textStroke: "none", clipStyle: "none", motionSpeed: "calm", depthLayer: "flat", surfaceTexture: "none", filterRecipe: "clean" };
   } else if (m === "bold") {
     effectPersonality = {
       textStroke: pick(["thick", "thick", "hollow", "none"]),
@@ -621,6 +621,7 @@ export function generateDesignDNA(palette, mood) {
       motionSpeed: pick(["snappy", "snappy", "instant"]),
       depthLayer: pick(["layered", "heavy", "layered"]),
       surfaceTexture: pick(["stripes", "grid", "stripes", "none"]),
+      filterRecipe: pick(["punchy", "gritty", "noir", "cinematic", "none"]),
     };
   } else if (m === "elegant") {
     effectPersonality = {
@@ -629,6 +630,7 @@ export function generateDesignDNA(palette, mood) {
       motionSpeed: pick(["slow", "slow", "calm"]),
       depthLayer: pick(["soft", "soft", "subtle"]),
       surfaceTexture: pick(["pinstripe", "crosshatch", "none", "none"]),
+      filterRecipe: pick(["porcelain", "matte", "vintage", "studio", "none"]),
     };
   } else if (m === "playful") {
     effectPersonality = {
@@ -637,6 +639,7 @@ export function generateDesignDNA(palette, mood) {
       motionSpeed: pick(["bouncy", "bouncy", "snappy"]),
       depthLayer: pick(["layered", "soft", "vivid"]),
       surfaceTexture: pick(["dots", "zigzag", "dots", "none"]),
+      filterRecipe: pick(["candy", "dreamy", "pop-art", "warm-glow", "none"]),
     };
   } else {
     effectPersonality = {
@@ -645,6 +648,7 @@ export function generateDesignDNA(palette, mood) {
       motionSpeed: pick(["calm", "snappy", "slow", "bouncy"]),
       depthLayer: pick(["flat", "soft", "layered", "heavy"]),
       surfaceTexture: pick(["none", "none", "stripes", "dots", "pinstripe", "grid"]),
+      filterRecipe: pick(["none", "none", "punchy", "matte", "candy", "cinematic", "dreamy"]),
     };
   }
 
@@ -1098,8 +1102,31 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   }
 
   // --- Compound filter recipes (mood-signature visual treatments) ---
-  // Combines 2-3 CSS filters for distinctive looks — like Instagram filters per mood
-  if (moodId === "bold" && Math.random() < 0.40) {
+  // DNA filterRecipe creates canvas-wide cohesive atmosphere — all components share the same "look"
+  // Per-component values vary slightly within the recipe's range for organic diversity
+  const dnaRecipe = dna?.effectPersonality?.filterRecipe;
+  if (dnaRecipe && dnaRecipe !== "none" && dnaRecipe !== "clean" && Math.random() < 0.65) {
+    // DNA-coordinated filter — ~65% of components get the shared recipe
+    const FILTER_RECIPES = {
+      // Bold recipes
+      punchy: () => `contrast(${randRange(1.08, 1.15).toFixed(2)}) saturate(${randRange(0.88, 0.95).toFixed(2)})`,
+      gritty: () => `grayscale(${randRange(0.05, 0.15).toFixed(2)}) contrast(${randRange(1.10, 1.20).toFixed(2)})`,
+      noir: () => `grayscale(${randRange(0.15, 0.30).toFixed(2)}) contrast(${randRange(1.08, 1.16).toFixed(2)}) brightness(${randRange(0.94, 1.0).toFixed(2)})`,
+      cinematic: () => `contrast(${randRange(1.06, 1.12).toFixed(2)}) saturate(${randRange(0.90, 1.0).toFixed(2)}) brightness(${randRange(0.97, 1.02).toFixed(2)})`,
+      // Elegant recipes
+      porcelain: () => `brightness(${randRange(1.03, 1.07).toFixed(2)}) saturate(${randRange(0.85, 0.95).toFixed(2)})`,
+      matte: () => `saturate(${randRange(0.82, 0.92).toFixed(2)}) brightness(${randRange(1.04, 1.08).toFixed(2)})`,
+      vintage: () => `sepia(${randRange(0.03, 0.08).toFixed(2)}) brightness(${randRange(1.04, 1.08).toFixed(2)}) saturate(${randRange(0.88, 0.96).toFixed(2)})`,
+      studio: () => `grayscale(${randRange(0.08, 0.20).toFixed(2)}) brightness(${randRange(1.03, 1.07).toFixed(2)}) contrast(${randRange(1.02, 1.06).toFixed(2)})`,
+      // Playful recipes
+      candy: () => `saturate(${randRange(1.20, 1.40).toFixed(2)}) contrast(${randRange(0.95, 1.02).toFixed(2)}) brightness(${randRange(1.03, 1.07).toFixed(2)})`,
+      dreamy: () => `saturate(${randRange(1.15, 1.25).toFixed(2)}) contrast(${randRange(0.92, 0.98).toFixed(2)})`,
+      "pop-art": () => `saturate(${randRange(1.30, 1.50).toFixed(2)}) hue-rotate(${pick([5, 10, -5, -10, 15])}deg)`,
+      "warm-glow": () => `sepia(${randRange(0.05, 0.12).toFixed(2)}) saturate(${randRange(1.15, 1.35).toFixed(2)}) brightness(${randRange(1.02, 1.06).toFixed(2)})`,
+    };
+    const recipeFn = FILTER_RECIPES[dnaRecipe];
+    if (recipeFn) s.filter = recipeFn();
+  } else if (moodId === "bold" && Math.random() < 0.40) {
     s.filter = pick([
       `contrast(${randRange(1.04, 1.12).toFixed(2)})`,
       `contrast(${randRange(1.05, 1.10).toFixed(2)}) saturate(${randRange(1.05, 1.15).toFixed(2)})`,
