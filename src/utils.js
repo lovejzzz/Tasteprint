@@ -986,6 +986,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       `contrast(${randRange(1.06, 1.14).toFixed(2)}) brightness(${randRange(0.97, 1.02).toFixed(2)})`,
       // "Punchy": high contrast + slight desaturation = editorial magazine look
       `contrast(${randRange(1.08, 1.15).toFixed(2)}) saturate(${randRange(0.88, 0.95).toFixed(2)})`,
+      // "Gritty": micro grayscale + heavy contrast = raw industrial feel
+      `grayscale(${randRange(0.05, 0.15).toFixed(2)}) contrast(${randRange(1.10, 1.20).toFixed(2)})`,
+      // "Ink wash": desaturated + dark = printed poster vibe
+      `grayscale(${randRange(0.10, 0.25).toFixed(2)}) contrast(${randRange(1.06, 1.14).toFixed(2)}) brightness(${randRange(0.95, 1.0).toFixed(2)})`,
     ]);
   } else if (moodId === "playful" && Math.random() < 0.35) {
     s.filter = pick([
@@ -995,6 +999,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       `saturate(${randRange(1.20, 1.40).toFixed(2)}) contrast(${randRange(0.95, 1.02).toFixed(2)}) brightness(${randRange(1.03, 1.07).toFixed(2)})`,
       // "Dreamy": slight blur look via low contrast + high saturation
       `saturate(${randRange(1.15, 1.25).toFixed(2)}) contrast(${randRange(0.92, 0.98).toFixed(2)})`,
+      // "Warm glow": sepia tint + high saturation = nostalgic warmth
+      `sepia(${randRange(0.05, 0.12).toFixed(2)}) saturate(${randRange(1.15, 1.35).toFixed(2)}) brightness(${randRange(1.02, 1.06).toFixed(2)})`,
+      // "Pop art": cranked saturation + slight hue rotation for unexpected color
+      `saturate(${randRange(1.30, 1.50).toFixed(2)}) hue-rotate(${pick([5, 10, -5, -10, 15])}deg)`,
     ]);
   } else if (moodId === "elegant" && Math.random() < 0.30) {
     s.filter = pick([
@@ -1005,6 +1013,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       `brightness(${randRange(1.02, 1.05).toFixed(2)}) contrast(${randRange(1.01, 1.04).toFixed(2)})`,
       // "Matte": reduced saturation + slight brightness = editorial elegance
       `saturate(${randRange(0.82, 0.92).toFixed(2)}) brightness(${randRange(1.04, 1.08).toFixed(2)})`,
+      // "Vintage silk": sepia wash + brightness = aged luxury fabric feel
+      `sepia(${randRange(0.03, 0.08).toFixed(2)}) brightness(${randRange(1.04, 1.08).toFixed(2)}) saturate(${randRange(0.88, 0.96).toFixed(2)})`,
+      // "Studio": grayscale hint + warmth = high-fashion photography
+      `grayscale(${randRange(0.08, 0.20).toFixed(2)}) brightness(${randRange(1.03, 1.07).toFixed(2)}) contrast(${randRange(1.02, 1.06).toFixed(2)})`,
     ]);
   } else if (moodId === "minimal" && Math.random() < 0.20) {
     s.filter = pick([
@@ -1012,6 +1024,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       `saturate(${randRange(0.88, 0.96).toFixed(2)})`,
       // "Paper": bright + desaturated = paper-like flatness
       `saturate(${randRange(0.85, 0.93).toFixed(2)}) brightness(${randRange(1.02, 1.05).toFixed(2)})`,
+      // "Newsprint": grayscale wash for ultra-minimal monochrome-adjacent feel
+      `grayscale(${randRange(0.15, 0.35).toFixed(2)}) brightness(${randRange(1.02, 1.06).toFixed(2)})`,
+      // "Fog": heavy desaturation + brightness = faded, ethereal
+      `saturate(${randRange(0.70, 0.82).toFixed(2)}) brightness(${randRange(1.05, 1.10).toFixed(2)}) contrast(${randRange(0.96, 1.0).toFixed(2)})`,
     ]);
   } else if (moodId === "auto" && Math.random() < 0.15) {
     // Auto: occasionally gets a random compound filter for surprise
@@ -1019,6 +1035,9 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       `contrast(${randRange(1.03, 1.10).toFixed(2)}) saturate(${randRange(1.05, 1.20).toFixed(2)})`,
       `brightness(${randRange(1.02, 1.06).toFixed(2)}) saturate(${randRange(0.90, 1.10).toFixed(2)})`,
       `contrast(${randRange(1.02, 1.08).toFixed(2)}) brightness(${randRange(0.98, 1.04).toFixed(2)})`,
+      // Auto wildcards: any mood-specific recipe at lower intensity
+      `sepia(${randRange(0.02, 0.08).toFixed(2)}) saturate(${randRange(1.0, 1.15).toFixed(2)})`,
+      `grayscale(${randRange(0.05, 0.20).toFixed(2)}) contrast(${randRange(1.02, 1.10).toFixed(2)})`,
     ]);
   }
 
