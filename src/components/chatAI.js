@@ -2577,7 +2577,7 @@ const COMP = {
   // Reaction to what user said (mirrors their energy)
   reactions: {
     positive: ["oh i love that","yooo nice","yes!","love it","thats so good","W honestly","dude nice","ok thats sick"],
-    negative: ["aw that sucks","nah i feel that","oof","thats rough","yeah that's not it","damn"],
+    negative: ["aw that sucks","nah that's rough","oof","thats rough","yeah that's not it","damn"],
     neutral:  ["ohh","hm ok","wait ok","ahh","right right","ohh ok"],
     curious:  ["ooh","wait —","oh thats kinda cool —","hold on —","no way —","wait wait wait —"],
   },
@@ -2585,7 +2585,7 @@ const COMP = {
   bridges: {
     agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —","ehh idk about that one but —","ok but have you considered —","hmm ok but counterpoint —","based, and —","this is the way —","spitting facts —"],
     pivot:    ["ok so here's the thing —","the way i see it,","ok but the wild part is","ok wait tho,","here's what i think —","nah I think you're overthinking it —","ok devil's advocate tho —"],
-    empathy:  ["yeah no i get that","that's valid","nah i feel you","that's fair","hmm hot take but i kinda disagree","that's fair but also... counterpoint:","it is what it is —","the vibes are immaculate on that —"],
+    empathy:  ["yeah honestly","ok fair","nah fr","yeah that tracks","hmm hot take but i kinda disagree","ok but also... counterpoint:","it is what it is,","the vibes are immaculate on that,"],
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
@@ -5478,7 +5478,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
         `honestly don't try to learn everything at once. pick one small thing and get good at it, the rest follows.`,
         `the frustration phase is temporary btw. once it clicks, it REALLY clicks. just push through.`,
         `i'd say start with a small project — that's where the real learning happens fr.`,
-        `real talk: you're gonna feel lost at first and that's totally normal. everyone does.`,
+        `real talk: you're gonna feel lost at first. literally everyone does.`,
         `one thing that helps — find someone else learning too. even just to share pain lol.`,
       ];
       resp += pick(tips);
@@ -5579,7 +5579,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
     case "troubleshooting_empathy": {
       const openers = [
         `ugh that's the worst. ${subject} bugs can be SO maddening. `,
-        `oof i feel you — being stuck is the most frustrating thing. `,
+        `oof being stuck is literally the most frustrating thing. `,
         `nooo not ${subject} issues 😩 those are the worst to debug. `,
         `been there (well, metaphorically lol). getting stuck on ${subject} is a rite of passage honestly. `,
         `ughhh ${subject} giving you problems?? that's so annoying. `,
@@ -9088,9 +9088,9 @@ const RHETORICAL_AGREEMENTS = [
 ];
 
 const RHETORICAL_EMPATHY = [
-  "yeah that's frustrating", "ugh totally", "i feel that",
+  "yeah that's frustrating", "ugh seriously", "man yeah",
   "that's a mood", "yeah it's kind of absurd when you think about it",
-  "honestly valid", "yeah no kidding",
+  "honestly yeah", "yeah no kidding",
 ];
 
 function isRhetoricalQuestion(text) {
@@ -9971,7 +9971,7 @@ const NORM_PHRASES = {
     "this is way more common than people admit.",
     "you'd be surprised how many people go through the exact same thing.",
     "a lot of people hit this same wall — you're in good company.",
-    "this trips up more people than you'd expect, so don't be too hard on yourself.",
+    "this trips up more people than you'd expect honestly.",
   ],
   seeking_validation: [
     "definitely not just you.",
@@ -9980,7 +9980,7 @@ const NORM_PHRASES = {
     "way more people feel that way than will say it out loud.",
   ],
   isolation: [
-    "dude you're not alone in this, even if it feels that way",
+    "dude way more people deal with this than you'd think",
     "so many people feel this — they just don't post about it",
     "this is way more universal than you'd think",
     "most people have been there honestly, they just don't show it",
@@ -15729,6 +15729,16 @@ function guardVibeMismatch(response, text, sent, parsed) {
   r = r.replace(/\bgive yourself (some )?credit\b/gi, "nah fr tho");
   r = r.replace(/\bi can only imagine\b/gi, "dude yeah");
 
+  // ═══ Round 218: Kill empathy mirroring + therapy speak saturation ═══
+  r = r.replace(/\bi feel (you|that)\b/gi, "yeah fr");
+  r = r.replace(/\bthat'?s (completely |totally |perfectly )?(valid|normal)\b/gi, "yeah honestly");
+  r = r.replace(/\bdon'?t be too hard on yourself\b/gi, "seriously tho");
+  r = r.replace(/\byou'?re not alone\b(?!\s*(in|on|at|with))/gi, "way more people deal with this");
+  r = r.replace(/\bbe kind to yourself\b/gi, "take a sec tho");
+  r = r.replace(/\bi believe in you\b/gi, "you got this");
+  r = r.replace(/\byour feelings are valid\b/gi, "nah fr");
+  r = r.replace(/\bi want you to know\b/gi, "ok but fr");
+
   // Don't be dismissive/joke-y when they're being serious
   if (vibe === "serious" && vibeStreak >= 2) {
     r = r.replace(/\b(lol|haha|lmao)\b\s*/gi, "");
@@ -20081,8 +20091,8 @@ const MICRO_REACTIONS = {
   ],
   personal: [
     "oh wow,", "aw,", "nah that's real.",
-    "yeah i feel that.", "that's actually really honest.", "oh.",
-    "yeah no i get that.", "that hits different.",
+    "yeah honestly.", "ok that's actually really real.", "oh.",
+    "yeah no fr.", "that hits different.",
   ],
   funny: [
     "ha,", "okay that's funny", "pfft", "ha okay,",
@@ -21402,7 +21412,7 @@ function generatePointReaction(point) {
       return pick([
         "yeah no that's a lot",
         "that's really intense honestly",
-        "i feel that honestly",
+        "man yeah",
         "that part hit different",
       ]);
     case "surprise":
