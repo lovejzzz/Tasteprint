@@ -7376,6 +7376,108 @@ function applyCompletenessCheck(response, text) {
   return response;
 }
 
+/* ── Personality Trait Balancing (Round 108) ──
+ * The AI has multiple personality facets: curiosity, warmth, humor,
+ * directness, and depth. Without balancing, one trait can dominate
+ * (e.g., always asking questions = too curious, or always joking).
+ * This tracks trait expression per turn and nudges underrepresented
+ * traits while suppressing overused ones — keeping personality
+ * consistent and multidimensional.
+ */
+
+let traitHistory = []; // { curiosity, warmth, humor, directness, depth }
+let lastTraitNudgeTurn = 0;
+
+const TRAIT_DETECTORS = {
+  curiosity:   /\b(wonder|curious|interesting|fascinating|what if|how come|tell me more|I'm curious)\b|\?$/i,
+  warmth:      /\b(glad|happy for you|care|appreciate|love that|proud|here for you|that's sweet|means a lot)\b/i,
+  humor:       /\b(haha|lol|funny|joke|kidding|😄|😂|pun|ironic|hilarious)\b|!{2,}/i,
+  directness:  /\b(honestly|straight up|real talk|bottom line|simply put|the truth is|look,|here's the thing)\b/i,
+  depth:       /\b(because|the reason|fundamentally|at its core|the key insight|what matters is|deeper|underlying)\b/i,
+};
+
+function measureTraitExpression(response) {
+  const scores = {};
+  for (const [trait, pattern] of Object.entries(TRAIT_DETECTORS)) {
+    const matches = response.match(new RegExp(pattern.source, "gi"));
+    scores[trait] = matches ? Math.min(matches.length, 3) : 0;
+  }
+  return scores;
+}
+
+function getTraitImbalance() {
+  if (traitHistory.length < 4) return null;
+  const recent = traitHistory.slice(-6);
+  const totals = { curiosity: 0, warmth: 0, humor: 0, directness: 0, depth: 0 };
+  for (const entry of recent) {
+    for (const trait of Object.keys(totals)) {
+      totals[trait] += entry[trait] || 0;
+    }
+  }
+  // Find most and least expressed traits
+  const entries = Object.entries(totals);
+  entries.sort((a, b) => b[1] - a[1]);
+  const strongest = entries[0];
+  const weakest = entries[entries.length - 1];
+  // Only act if there's a significant gap
+  if (strongest[1] - weakest[1] >= 4) {
+    return { boost: weakest[0], dampen: strongest[0] };
+  }
+  return null;
+}
+
+const TRAIT_NUDGES = {
+  curiosity:  ["I'm curious — ", "Makes me wonder: ", "That gets me thinking — "],
+  warmth:     ["I appreciate you sharing that. ", "That's really cool. ", "Genuinely glad to hear that. "],
+  humor:      ["Ha, ", "Okay that's kind of great — ", "Love that — "],
+  directness: ["Honestly, ", "Real talk: ", "Here's the thing — "],
+  depth:      ["What's interesting is ", "The thing that stands out: ", "At its core, "],
+};
+
+const TRAIT_DAMPENERS = {
+  curiosity:  /\s*\b(I'm curious|makes me wonder|I wonder)\b[^.?!]*[.?!]?\s*/gi,
+  warmth:     /\s*\b(I appreciate|genuinely glad|that's really sweet)\b[^.?!]*[.?!]?\s*/gi,
+  humor:      /\s*\b(ha(ha)?|lol|okay that's funny)\b[,.]?\s*/gi,
+  directness: /\s*\b(honestly|real talk|here's the thing)\b[,:—]?\s*/gi,
+  depth:      /\s*\b(fundamentally|at its core|what's interesting is)\b[,:—]?\s*/gi,
+};
+
+function applyTraitBalancing(response, text) {
+  const turn = mem.turn;
+  // Always track, even if we don't nudge
+  const scores = measureTraitExpression(response);
+  traitHistory.push(scores);
+  if (traitHistory.length > 10) traitHistory.shift();
+
+  if (turn - lastTraitNudgeTurn < 4) return response; // 4-turn cooldown
+  if (turn < 5) return response; // need baseline
+
+  const imbalance = getTraitImbalance();
+  if (!imbalance) return response;
+
+  if (Math.random() > 0.3) return response; // 30% fire rate
+
+  lastTraitNudgeTurn = turn;
+
+  // Try to dampen the overused trait
+  const dampPattern = TRAIT_DAMPENERS[imbalance.dampen];
+  if (dampPattern) {
+    response = response.replace(dampPattern, " ").replace(/\s{2,}/g, " ").trim();
+  }
+
+  // Boost the underrepresented trait
+  const nudges = TRAIT_NUDGES[imbalance.boost];
+  if (nudges) {
+    const nudge = nudges[Math.floor(Math.random() * nudges.length)];
+    // Don't double up if the nudge phrase is already there
+    if (!response.toLowerCase().includes(nudge.toLowerCase().trim())) {
+      response = nudge + response.charAt(0).toLowerCase() + response.slice(1);
+    }
+  }
+
+  return response;
+}
+
 /* ── Conversational Reciprocity (Round 103) ──
  * Natural conversations have a rhythm of giving and receiving. If the AI
  * always asks questions, it feels interrogative. If it always makes
@@ -16615,6 +16717,9 @@ export function getAIResponse(input) {
   // ═══ Response completeness: ensure we address what the user said ═══
   response = applyCompletenessCheck(response, text);
 
+  // ═══ Personality trait balancing: keep curiosity/warmth/humor/directness/depth balanced ═══
+  response = applyTraitBalancing(response, text);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -16645,6 +16750,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
