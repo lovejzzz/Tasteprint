@@ -107,8 +107,12 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
           </button>}
-          {dScore > 0 && <span aria-label={`Design score: ${dScore} of 5`} style={{ display: "flex", gap: 1.5, alignItems: "center", padding: "0 4px" }}>
+          {dScore > 0 && <span aria-label={`Design score: ${dScore} of 5`} style={{ display: "flex", gap: 2, alignItems: "center", padding: "0 5px", cursor: "default" }}
+            title={dScore >= 5 ? "Perfect harmony" : dScore >= 4 ? "Great design" : dScore >= 3 ? "Decent — try another roll" : dScore >= 2 ? "Clashing styles" : "Needs work"}>
             {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ width: 4, height: 4, borderRadius: 2, background: i <= dScore ? (dScore >= 4 ? p.ac : dScore >= 3 ? p.mu : "#E0524D") : p.bd, transition: "background .2s ease" }} />)}
+            <span style={{ fontSize: 8, fontWeight: 600, color: dScore >= 4 ? p.ac : dScore >= 3 ? p.mu : "#E0524D", marginLeft: 1, opacity: 0.8 }}>
+              {dScore >= 5 ? "✦" : dScore >= 4 ? "◆" : dScore <= 2 ? "⚠" : ""}
+            </span>
           </span>}
           {sep}
           <button aria-label="Copy style" {...ph}
