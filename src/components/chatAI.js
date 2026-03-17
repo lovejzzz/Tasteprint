@@ -356,6 +356,12 @@ let lastSemanticMatch = null;
 // Question rate tracker — target ~40% of responses ending with "?"
 const _questionHistory = []; // rolling window of last 20 responses: true = ended with ?, false = didn't
 const TARGET_QUESTION_RATE = 0.40;
+// Helper: returns true if we're above question target and should suppress new questions
+function _isQuestionHot() {
+  if (_questionHistory.length < 5) return false;
+  const rate = _questionHistory.filter(Boolean).length / _questionHistory.length;
+  return rate > TARGET_QUESTION_RATE;
+}
 
 // Spam detection: count consecutive identical messages
 let _spamCount = 0;
@@ -12352,6 +12358,8 @@ function precisionEcho(response, text, tokens) {
   // Guards
   if (text.length < 30) return response;
   if (mem.turn - lastEchoTurn < 4) return response;
+  // Gate: if we're above question target, skip 70% of the time
+  if (_isQuestionHot() && Math.random() < 0.70) return response;
   if (Math.random() > 0.20) return response;
 
   const lower = text.toLowerCase();
@@ -12793,6 +12801,8 @@ function progressiveQuestion(topic) {
 // Pipeline step: replace generic deepener endings with progressive questions
 function deepenQuestions(response, topics) {
   if (!topics || topics.length === 0) return response;
+  // Gate: if we're above question target, skip 75% of the time
+  if (_isQuestionHot() && Math.random() < 0.75) return response;
   if (Math.random() > 0.35) return response; // 35% fire rate
   const turn = mem.history.length;
   if (turn - lastDeepenerTurn < 3) return response; // 3-turn cooldown
@@ -12835,8 +12845,8 @@ function deepenQuestions(response, topics) {
   }
 
   // Even without a generic ending, occasionally append a depth-aware question
-  // if the response doesn't already end with a question
-  if (!response.trim().endsWith("?") && Math.random() < 0.2) {
+  // if the response doesn't already end with a question (skip if question-hot)
+  if (!response.trim().endsWith("?") && !_isQuestionHot() && Math.random() < 0.2) {
     const q = progressiveQuestion(topic);
     lastDeepenerTurn = turn;
     return response + " " + q;
@@ -13750,6 +13760,8 @@ function addConversationalHooks(response, topics, inputEnergy) {
   // Don't add hooks during emotional moments or when user is disengaged
   const sent = mem.avgSent();
   if (sent < -1.5) return response;
+  // Gate: if we're above question target, skip hook addition 65% of the time
+  if (_isQuestionHot() && Math.random() < 0.65) return response;
 
   // Try to close an open loop first (delivering on promises takes priority)
   const closed = closeOpenLoop(response, topics);
@@ -20197,7 +20209,7 @@ function polishOutput(response) {
     const recentRate = _questionHistory.length >= 5
       ? _questionHistory.filter(Boolean).length / _questionHistory.length : 0.5;
     // If we're above target, strip more aggressively; if below, strip less
-    const stripChance = recentRate > TARGET_QUESTION_RATE ? 0.65 : recentRate < 0.25 ? 0.15 : 0.35;
+    const stripChance = recentRate > TARGET_QUESTION_RATE ? 0.80 : recentRate < 0.25 ? 0.10 : 0.40;
     // Only strip if there's something left after removing the question
     if (nonQuestionParts.length >= 1 && questionParts.length >= 1 && Math.random() < stripChance) {
       const lastPart = parts[parts.length - 1];
