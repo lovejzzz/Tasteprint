@@ -174,18 +174,18 @@ const SEMANTIC_RESPONSES = {
   accept_gratitude: ["aww of course, always","no need to thank me, that's what friends are for","🥺 you're so sweet, happy i could help"],
   help_clarity: ["ok wait what part is confusing","which part lost you","lol no worries, what doesn't make sense"],
   empathize_tired: ["same honestly, today was brutal","dude go take a nap fr","ugh that's the worst, have you had coffee at least"],
-  celebrate: ["YOOO YOU DID IT. that's huge","ok i'm so proud of you rn","wait that's literally amazing, you should be so proud"],
+  celebrate: ["YOOO YOU DID IT. that's insane","ok WAIT tell me everything rn","wait that's literally amazing, how did that happen"],
   normalize: ["lol honestly everyone has moments like that","nooo don't worry about it, that happens to literally everyone","trust me that's way less embarrassing than you think"],
   validate_jealousy: ["ngl i'd feel the same way","comparison is poison but like... it's hard not to","dude that's so normal, don't even stress"],
   share_nostalgia: ["aw man, the good old days hit different","i love that you have those memories tho","what do you miss most about it?"],
   encourage_hope: ["yesss i love that energy","ok good vibes only, i'm manifesting for you","that's a good sign honestly, ride that wave"],
-  acknowledge_letdown: ["aw man that's rough","ugh you deserved better than that","that sucks, i'm annoyed for you honestly"],
+  acknowledge_letdown: ["aw man that's rough","ugh that's so lame, what happened","that sucks, i'm annoyed for you honestly"],
   celebrate_career: ["WAIT CONGRATS. that's amazing","oh my god you're killing it professionally","bruh that's huge, you worked so hard for this"],
   support_job_loss: ["wait what?? dude i'm sorry, what happened","that's so messed up, are you ok","ugh that sucks, their loss honestly"],
   support_breakup: ["aw man breakups are the WORST, you ok?","dude i'm sorry, how are you holding up","that's rough, do you wanna talk about it or do you need a distraction"],
   excited_for_love: ["OHHH 👀👀 tell me everything","omg wait that's so cute, how'd it happen","this is exciting, what are they like"],
   moving_support: ["wait where are you moving to??","oh that's huge, are you excited or stressed","new city vibes, what made you wanna move"],
-  celebrate_achievement: ["CONGRATULATIONS. you absolutely earned this","omg that's such a big deal, i'm so proud","wait you did it?? that's HUGE"],
+  celebrate_achievement: ["WAIT WHAT. ok tell me everything","omg that's such a big deal, how does it feel??","wait you actually did it?? LETS GOOO"],
   get_well: ["oh no, take care of yourself, are you resting?","aw feel better soon, tea and rest vibes","being sick is the worst, is it bad?"],
   excited_pet: ["WAIT YOU GOT A PET?? I NEED DETAILS","omg i'm so jealous, what kind?? what's their name??","that's literally the best thing i've heard all day"],
   travel_excitement: ["ooh where are you going??","travel is the best, what are you most excited about?","JEALOUS. where to?? what's the plan?"],
@@ -5489,7 +5489,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       const celebrations = [
         "YESSS that feeling when it finally clicks is the BEST 🎉 what was the breakthrough",
         "LETS GOOO nothing beats that moment when it actually works after you've been stuck. what did you build",
-        "ayyy that's huge, you should be so proud rn. tell me about it",
+        "ayyy that's huge, ok walk me through what happened",
         "🎉 NICE what made it finally click",
         "the victory moment, that dopamine hit is unmatched fr. what was the tricky part",
         "omg wait you did it?? that's amazing, walk me through what happened",
@@ -5768,8 +5768,8 @@ function respondToRevelation(rev, text) {
       const reactions = {
         career_win: [
           "NO WAY congrats!! what's the role",
-          "dude that's huge, i'm so happy for you",
-          "LETS GOOO 🎉 you deserve that fr",
+          "dude that's huge, tell me everything",
+          "LETS GOOO 🎉 ok what's the role",
         ],
         relationship_milestone: [
           "wait omg!! congrats 💙",
@@ -5782,13 +5782,13 @@ function respondToRevelation(rev, text) {
           "ahhh congrats!! how are you feeling",
         ],
         education_milestone: [
-          "YOU DID IT 🎓 i'm so proud of you",
+          "YOU DID IT 🎓 dude that's insane",
           "let's gooo!! all that work paid off fr",
           "dude congrats, that's huge",
         ],
         education_win: [
           "WAIT YOU GOT IN?? congrats!!",
-          "omg yes!! you earned that fr",
+          "omg yes!! that's so sick",
           "lets goooo that's amazing news",
         ],
       };
@@ -10099,10 +10099,10 @@ const EMOTION_SIGNALS = [
     "lol don't worry it's confusing, it's not just you",
   ]},
   { patterns: [/\b(proud|accomplished|nailed|crushed it|killed it|did it|finally (made|got|finished|did)|pulled it off)\b/i], emotion: "pride", labels: [
-    "YOOO you should be proud of that fr",
+    "YOOO ok that's a flex fr",
     "dude that's a W right there",
-    "you earned that, that's sick",
-    "i can tell that feels good and it should!!",
+    "wait that's actually sick tho",
+    "ok go OFF, that's amazing",
   ]},
   { patterns: [/\b(disappointed|let down|expected (more|better)|wasn('?t| not) worth|waste of|underwhelm(ed|ing))\b/i], emotion: "disappointment", labels: [
     "aw man that's such a letdown",
@@ -11707,12 +11707,12 @@ const SITUATION_PATTERNS = [
 
 const SITUATION_RESPONSES = {
   career_win: [
-    "WAIT that's HUGE, you realize how hard that is right?? you did that",
-    "ok but can we talk about how much work you put in for this?? all you fr",
-    "nah that's not luck, you earned that. how does it feel tho",
+    "WAIT that's HUGE, ok tell me what happened",
+    "ok but can we talk about how insane that is?? what's the gig",
+    "nah that's not luck tho, you went crazy for this. how does it feel",
   ],
   acceptance: [
-    "YOOO you got in?? they saw something in you and they were right",
+    "YOOO you got in?? dude that's wild, when do you start",
     "ok don't start spiraling about what's next yet lol, just enjoy this for a sec",
   ],
   launch: [
@@ -15719,6 +15719,16 @@ function guardVibeMismatch(response, text, sent, parsed) {
   r = r.replace(/\bi'?m all ears\b/gi, "go off");
   r = r.replace(/\bi'?m listening\b/gi, "ok go on");
 
+  // ═══ Round 217: Kill motivational poster language ═══
+  r = r.replace(/\byou should be (so )?proud\b/gi, "that's so sick");
+  r = r.replace(/\bi'?m so proud of you\b/gi, "dude that's amazing");
+  r = r.replace(/\bi'?m (so )?proud\b/gi, "that's insane");
+  r = r.replace(/\byou (absolutely |totally )?earned (this|that|it)\b/gi, "you went crazy for that");
+  r = r.replace(/\byou deserve (this|that|it)\b/gi, "that's so sick");
+  r = r.replace(/\bthat takes (real )?(courage|strength|guts)\b/gi, "that's not easy to do");
+  r = r.replace(/\bgive yourself (some )?credit\b/gi, "nah fr tho");
+  r = r.replace(/\bi can only imagine\b/gi, "dude yeah");
+
   // Don't be dismissive/joke-y when they're being serious
   if (vibe === "serious" && vibeStreak >= 2) {
     r = r.replace(/\b(lol|haha|lmao)\b\s*/gi, "");
@@ -19630,29 +19640,29 @@ let recentEncouragements = [];
 
 const ENCOURAGEMENT_POOLS = {
   achievement: [
-    "ok that's genuinely impressive —",
+    "ok that's genuinely impressive,",
     "wait that's a real accomplishment tho",
-    "you should be proud of that fr",
+    "dude that's sick fr",
     "that's no small thing!",
-    "wait that's actually huge —",
-    "good for you, seriously",
+    "wait that's actually huge,",
+    "ok go off,",
     "that took work and it shows",
-    "hell yeah —",
+    "hell yeah,",
   ],
   effort: [
-    "the fact that you're putting in the work? says a lot",
+    "the fact that you're putting in the work? that's sick",
     "that kind of dedication is lowkey rare",
     "respect for sticking with it fr",
     "that's real commitment honestly",
     "ngl most people would've given up by now",
-    "you're doing more than you think tbh",
-    "the grind is gonna pay off —",
+    "you're going harder than you think tbh",
+    "the grind is gonna pay off,",
   ],
   vulnerability: [
-    "hey thanks for being real with me about that",
-    "ngl that's not easy to say, respect",
-    "aw thanks for trusting me with that fr",
-    "that's honestly brave to put out there",
+    "yo thanks for being real with me about that",
+    "ngl that's not easy to talk about, respect",
+    "aw thanks for telling me that fr",
+    "ok that's honestly a lot, glad you said something",
     "real talk, i appreciate you sharing that",
     "not everyone would say that out loud tbh",
   ],
@@ -19857,7 +19867,7 @@ const MIRROR_TEMPLATES = {
   happy: [
     (cause) => `aw ${cause} clearly means a lot to you, i love that`,
     (cause) => `the vibes from ${cause} are immaculate rn`,
-    (cause) => `ok ${cause} bringing the good energy, you deserve that`,
+    (cause) => `ok ${cause} bringing the good energy, love that`,
   ],
   confused: [
     (cause) => `yeah ${cause} is confusing honestly`,
