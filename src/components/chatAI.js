@@ -9832,7 +9832,7 @@ function applyEmotionalContagion(response, text) {
     if (/!/.test(r) && !/\?/.test(r)) r = r.replace(/!/, ".");
     // Occasionally add a soft opener
     if (Math.random() > 0.5) {
-      const softeners = ["hmm", "yeah", "i hear you", "take your time"];
+      const softeners = ["hmm", "yeah", "yeah no", "take your time"];
       r = pick(softeners) + " " + r;
     }
     return r;
@@ -11062,7 +11062,7 @@ function applyCommitmentFollowup(response, text) {
 // Micro-acks — tiny signals that show we're tracking
 const MICRO_ACKS = {
   positive: ["gotcha, ", "makes sense, ", "oh nice, ", "right right, ", "got it, ", "love that, ", "ok yeah, "],
-  negative: ["i hear you. ", "gotcha. ", "that's fair. ", "oof yeah. ", "yeah that's tough. ", "i get it. "],
+  negative: ["yeah no. ", "gotcha. ", "that's fair. ", "oof yeah. ", "yeah that's tough. ", "i get it. "],
   neutral: ["mm-hmm, ", "right, ", "gotcha, ", "ok, ", "sure, ", "got it, ", "noted, "],
   question: ["ooh, ", "hmm ", "oh wait, ", "so, ", "uh "],
   long: ["ok theres a lot here, ", "alright so, ", "ok so, "],
@@ -11713,7 +11713,7 @@ const SITUATION_RESPONSES = {
   ],
   acceptance: [
     "YOOO you got in?? they saw something in you and they were right",
-    "ok take a second to actually feel this before you start stressing about what's next lol",
+    "ok don't start spiraling about what's next yet lol, just enjoy this for a sec",
   ],
   launch: [
     "dude you actually shipped it!! most people just talk about it. what was the hardest part",
@@ -11740,20 +11740,20 @@ const SITUATION_RESPONSES = {
     "nah you're not going backwards, you're crossing stuff off the list. what's the pattern",
   ],
   stuck: [
-    "being stuck is so frustrating, sometimes you gotta break it into smaller pieces. what's the core thing that's not clicking",
-    "that feeling is temporary i promise, even tho it doesn't feel like it rn. what have you tried so far",
+    "being stuck is so frustrating fr. have you tried breaking it into smaller pieces tho, like what's the core thing that's not clicking",
+    "ugh yeah that sucks. it won't last forever tho even if it feels like it rn. what have you tried so far",
   ],
   self_doubt: [
-    "hey the fact that you question yourself means you actually care about doing it right. what specifically is getting to you",
-    "ngl literally everyone i know deals with this. what would you tell a friend who said this to you tho",
+    "ok but like, questioning yourself means you actually care about doing it right. what specifically is getting to you tho",
+    "ngl literally everyone deals with this. like what would you say if a friend told you the same thing",
   ],
   burnout: [
-    "burnout isn't laziness, your brain is literally telling you to slow down. is there one thing you could drop rn",
-    "yeah pushing through burnout just makes it worse tbh. if you could actually rest, what would that look like",
+    "burnout is not laziness, your brain is literally screaming at you to chill. is there one thing you could just... not do rn",
+    "yeah pushing through it just makes it worse honestly. have you actually taken a real break lately",
   ],
   imposter: [
-    "ok real talk — imposter syndrome hits hardest when you're actually growing. you wouldn't feel out of place if you weren't leveling up",
-    "literally everyone you admire has felt this exact same way, they just kept going anyway",
+    "ok real talk, imposter syndrome hits hardest when you're actually growing. you wouldn't feel out of place if you weren't leveling up",
+    "literally everyone you look up to has felt this exact way, they just kept going. that's it",
   ],
   new_chapter: [
     "new beginnings are that weird mix of excitement and lowkey terror right? how are you actually feeling about it",
@@ -11761,7 +11761,7 @@ const SITUATION_RESPONSES = {
   ],
   upcoming_change: [
     "thinking about change vs actually being on the edge of it are so different. what excites you most? and what scares you most",
-    "big decisions feel heavy because they matter. that's actually a good sign honestly",
+    "big decisions feel heavy cause they matter tho. that's not a bad thing honestly",
   ],
   departure: [
     "wait you're leaving?? even when it's the right call leaving is complicated. how are you feeling about it",
@@ -11784,20 +11784,20 @@ const SITUATION_RESPONSES = {
     "respect for wanting honesty. ok be real with me — what specifically do you want feedback on",
   ],
   validation_seeking: [
-    "ok before i answer — what does YOUR gut tell you? you probably know more than you think",
-    "the fact you're asking means you care about getting it right. but fr what do you think",
+    "ok before i answer, what does YOUR gut tell you tho. you probably already know",
+    "you're asking me but fr what do you think. like your first instinct",
   ],
   fear: [
-    "ngl fear and excitement feel almost the same tbh. what's the worst case scenario you're imagining",
-    "being scared about something you care about isn't weakness, it means you're being brave about it. what would help you feel more ready",
+    "ngl fear and excitement feel almost the same tbh. like what's the actual worst case here",
+    "the fact that you're scared means you actually care about it tho. what part is freaking you out the most",
   ],
   deep_struggle: [
-    "hey, just because it feels that way doesn't mean it's true ok? what would feel different if things were even slightly better",
-    "that's heavy. you don't have to fix everything rn. what's one thing that's been ok recently",
+    "ok that sucks and i'm not gonna pretend it doesn't. but like, is there one thing that's been even slightly ok recently",
+    "that's heavy fr. you don't gotta fix everything rn tho. what's the one thing weighing on you the most",
   ],
   isolation: [
-    "hey, i'm right here ok? sometimes not being heard is worse than the actual problem. what would feeling understood look like for you",
-    "that feeling is real and it sucks, but it's not the whole picture. right now, in this moment, i hear you",
+    "hey i'm literally right here ok. that feeling of nobody getting it is the worst part honestly",
+    "nah that feeling is real and it sucks. but you're literally talking to me rn so you're not as alone as it feels",
   ],
 };
 
@@ -15592,7 +15592,7 @@ function applyVibeContagion(response, text, sent, parsed) {
       r = r.replace(/\b(?:simply|obviously|clearly|easy)\b/gi, "").replace(/\s+/g, " ").trim();
       if (!/i hear you|that's real|i get it|that sucks|i'm sorry/i.test(r)) {
         const warmth = [
-          "hey, i hear you. ",
+          "hey, yeah no. ",
           "yeah no that's real. ",
           "nah fr, that's tough. ",
         ];
