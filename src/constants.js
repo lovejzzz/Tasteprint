@@ -192,7 +192,7 @@ export const DEFAULT_PROPS = {
   "sub-toggle":  { active: 1 },
   "dash-panel":  { bars: [65,42,78,35,55,88,48], ring: 72 },
   chart:         { bars: [55,80,45,90,65,75], highlight: 3 },
-  notification:  { read: [false, false, true] },
+  notification:  { read: [false, false, true], muted: false },
   alert:         { level: 0 },
   toast:         { level: 0 },
   "pricing-card":{ featured: false, period: 0 },

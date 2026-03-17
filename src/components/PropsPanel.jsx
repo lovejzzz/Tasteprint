@@ -151,6 +151,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Notification muted toggle */
+  if ("muted" in defaults) {
+    const on = G("muted");
+    controls.push(<React.Fragment key="muted"><span style={label}>{on ? "Muted" : "Mute"}</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.mu + "50" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("muted", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
   /* Alert/toast severity level */
   if ("level" in defaults) {
     const level = G("level");
