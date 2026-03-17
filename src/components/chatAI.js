@@ -2645,10 +2645,10 @@ function composeResponse(topic, userWords, sent, isQuestion) {
     case "hot_take": {
       const parts = [];
       if (assoc.opinions) {
-        const openers = ["Hot take:", "Okay here's my take —", "I'll say it:", "Unpopular opinion maybe, but", "Honestly?"];
+        const openers = ["hot take:", "ok here's my take —", "i'll say it:", "unpopular opinion maybe but", "honestly?"];
         parts.push(`${pick(openers)} ${pick(assoc.opinions)}.`);
       } else if (assoc.facts) {
-        parts.push(`Here's something wild — ${pick(assoc.facts)}.`);
+        parts.push(`ok here's something wild — ${pick(assoc.facts)}.`);
       }
       if (mirrorPhrase) parts.push(`and the ${mirrorPhrase} thing — yeah fr.`);
       parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
@@ -2733,9 +2733,9 @@ function mirrorInput(text, keywords) {
 
   // Different mirroring strategies
   const strategies = [
-    () => `"${phrase}" — ${pick(["I like how you put that","that's an interesting way to think about it","I hadn't considered it that way","that really resonates"])}! ${pick(COMP.deepeners)}`,
-    () => `So ${phrase} — ${pick(["tell me more about that","what's the story there","I'm curious about your take","what's your experience been like"])}?`,
-    () => `${pick(["You mentioned","I noticed you brought up","When you say"])} ${phrase} — ${pick(["what do you mean exactly","is that something you're passionate about","how did that come up","what's the context"])}?`,
+    () => `"${phrase}" — ${pick(["yo i like how you put that","that's a cool way to think about it","wait i hadn't thought of it like that","that hits different"])}. ${pick(COMP.deepeners)}`,
+    () => `wait ${phrase} — ${pick(["ok what's the story there","what happened","how'd that come up","what's that about"])}?`,
+    () => `${pick(["you said","wait when you said","you brought up"])} ${phrase} — ${pick(["what'd you mean","are you into that","how'd that come up","what's the context tho"])}?`,
   ];
 
   return pick(strategies)();
@@ -4375,10 +4375,10 @@ function handleMetaConversation(text, lower, sent) {
     const turnCount = mem.turn;
     const timeCtx = getTimeContext();
     const proofs = [
-      () => `Okay here's something a template can't do: we've been talking for ${turnCount} turns${topTopic ? ` and you clearly love ${topTopic}` : ""}, it's ${timeCtx.period}, and ${timeCtx.isWeekend ? "it's the weekend — you're spending it chatting with me, which honestly I find flattering" : "it's a weekday, so you're either procrastinating or taking a well-deserved break"}.`,
-      () => `Templates don't know that ${mem.userName ? `your name is ${mem.userName}, ` : ""}we've covered ${Object.keys(mem.topics).length} topics, your mood has been ${mem.mood}, and this is turn ${turnCount}. I'm paying attention! 😊`,
-      () => {const facts = Object.entries(mem.facts); return facts.length > 0 ? `A template wouldn't know that ${facts.map(([k,v])=>`you ${k.replace(/_/g," ")} ${v}`).slice(0,2).join(" and ")}. That's all from our conversation — not pre-written!` : `I'll admit my knowledge is template-based in some ways, but the way I combine things, reference earlier turns, and track your mood (${mem.mood} right now) — that's dynamic. Try me with a topic!`;},
-      "Here's proof: ask me about something we discussed earlier, or tell me a fact about yourself and then test if I remember it in 5 messages. Templates can't do that!",
+      () => `ok so a template can't do this: we've been talking for ${turnCount} turns${topTopic ? ` and you clearly love ${topTopic}` : ""}, it's ${timeCtx.period}, and ${timeCtx.isWeekend ? "it's the weekend and you're spending it chatting with me which is kinda flattering ngl" : "it's a weekday so you're either procrastinating or on a well-deserved break lol"}.`,
+      () => `templates don't know that ${mem.userName ? `your name is ${mem.userName}, ` : ""}we've covered ${Object.keys(mem.topics).length} topics, your mood has been ${mem.mood}, and this is turn ${turnCount}. i'm paying attention 😊`,
+      () => {const facts = Object.entries(mem.facts); return facts.length > 0 ? `a template wouldn't know that ${facts.map(([k,v])=>`you ${k.replace(/_/g," ")} ${v}`).slice(0,2).join(" and ")}. that's all from our convo, not pre-written` : `ngl my knowledge is partly template-based but the way i combine stuff, reference earlier turns, and track your mood (${mem.mood} rn) — that's all dynamic. try me with a topic`;},
+      "ok here's proof: ask me about something we talked about earlier, or tell me a fact about yourself and test if i remember it in 5 messages. templates can't do that",
     ];
     return pickNew(proofs);
   }
@@ -7559,9 +7559,9 @@ function repairRepetition(response, repeatedType) {
     case "probe":
       // Stop probing and share something instead
       return pickNew([
-        "You know what, instead of asking more questions — here's what I think is cool about what you're saying: it shows you think deeply about things.",
-        "Let me flip the script instead of asking another question. From what we've been talking about, you seem like someone who values substance.",
-        "Instead of another question from me — I think the thread running through what you've been saying is really interesting.",
+        "ok you know what, instead of asking more questions — what's cool about what you're saying is you actually think about stuff deeply",
+        "ok flip side, instead of another question. from what we've been talking about you seem like someone who cares about substance fr",
+        "instead of another question from me — what keeps coming up in what you're saying is actually really interesting",
       ]);
     default:
       return response;
