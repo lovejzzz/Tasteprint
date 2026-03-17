@@ -20325,6 +20325,37 @@ function applyTrailingOff(response) {
   return response;
 }
 
+// 5. Mid-thought self-correction (~8% of multi-sentence casual responses)
+// Real friends change their mind mid-text: "wait no actually", "ok nvm", "scratch that"
+function applySelfCorrection(response) {
+  if (Math.random() > 0.08) return response;
+  const sentences = response.match(/[^.!?]+[.!?]+/g);
+  if (!sentences || sentences.length < 2) return response;
+  // Don't apply to questions or emotional/short messages
+  if (response.trim().endsWith("?")) return response;
+  if (response.length < 40) return response;
+
+  const correctors = [
+    "wait no actually",
+    "ok nvm scratch that",
+    "wait actually",
+    "hmm ok no",
+    "actually wait",
+    "lol ok that came out wrong",
+    "nvm i take that back",
+  ];
+  const corrector = correctors[Math.floor(Math.random() * correctors.length)];
+
+  // Strategy: insert correction between sentence 1 and 2, making it feel like
+  // they said something, reconsidered, then said something better
+  if (sentences.length >= 2) {
+    const first = sentences[0].trim();
+    const rest = sentences.slice(1).join(" ").trim();
+    return first + " — " + corrector + ", " + rest.charAt(0).toLowerCase() + rest.slice(1);
+  }
+  return response;
+}
+
 // ═══ Round 157: Internet culture fluency — meme formats, hyperbolic reactions ═══
 let lastInternetCultureTurn = 0;
 let internetCultureCount = 0;
@@ -20458,6 +20489,15 @@ function applyTextingImperfections(response, sent) {
     const afterTrail = applyTrailingOff(r);
     if (afterTrail !== r) {
       r = afterTrail;
+      imperfectionCount++;
+    }
+  }
+
+  // Step 5: Mid-thought self-correction (skip if we already hit max)
+  if (imperfectionCount < maxImperfections) {
+    const afterCorrection = applySelfCorrection(r);
+    if (afterCorrection !== r) {
+      r = afterCorrection;
       imperfectionCount++;
     }
   }
