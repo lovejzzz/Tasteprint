@@ -12529,19 +12529,19 @@ function detectStanceOpportunity(text, lower, topics) {
 function addStance(response, text, topics) {
   // Guards
   if (response.length < 30) return response;
-  if (mem.turn - lastStanceTurn < 4) return response;
+  if (mem.turn - lastStanceTurn < 3) return response;
   if (/^(hey|hi|hello|bye|see you|take care)/i.test(response)) return response;
 
-  // Don't push back when user is emotional, venting, or asking for help
-  if (/\b(I'm (sad|upset|hurt|struggling|depressed|anxious|stressed|overwhelmed))\b/i.test(text)) return response;
-  if (/\b(help|please|can you|I need|I can't)\b/i.test(text)) return response;
-  if (/\b(vent|rant|complain|frustrated|pissed|angry|crying|cried)\b/i.test(text)) return response;
+  // Don't push back when user is in real distress or asking for help
+  if (/\b(I'm (depressed|anxious|overwhelmed|suicidal|breaking down))\b/i.test(text)) return response;
+  if (/\b(help me|please help|I need help|I can't (cope|do this|anymore))\b/i.test(text)) return response;
+  if (/\b(crying|cried|vent(ing)?|rant(ing)?)\b/i.test(text)) return response;
 
   const lower = text.toLowerCase();
   if (!detectStanceOpportunity(text, lower, topics)) return response;
 
-  // 25% fire rate — friends have opinions a lot
-  if (Math.random() > 0.25) return response;
+  // 38% fire rate — friends have opinions a lot
+  if (Math.random() > 0.38) return response;
 
   // Find a relevant counterpoint
   let counter = null;
@@ -12571,9 +12571,9 @@ function addStance(response, text, topics) {
   if (strategy < 0.55) {
     return pick([
       `ok hot take but ${counter}`,
-      `counterpoint tho — ${counter}`,
+      `counterpoint tho, ${counter}`,
       `mmm idk about that one, ${counter}`,
-      `ok but hear me out — ${counter}`,
+      `ok but hear me out, ${counter}`,
       `nah I think you're overthinking it, ${counter}`,
       `respectfully... no lol. ${counter}`,
       `ok devil's advocate tho — ${counter}`,
@@ -17792,8 +17792,8 @@ function detectUserClaim(text) {
 
 // Determine agreement level (1-5) based on multiple signals
 function computeAgreementLevel(claim, topics) {
-  // Base: lean toward agreement but not always (friends push back ~30% of the time)
-  let score = 0.55; // 0=strong disagree, 1=strong agree
+  // Base: centered — friends agree AND disagree freely
+  let score = 0.47; // 0=strong disagree, 1=strong agree
 
   // Check if AI has a prior opinion on this topic
   const topic = topics[0] || "";
@@ -17813,7 +17813,7 @@ function computeAgreementLevel(claim, topics) {
   if (claim.isQuestion) score = 0.5 + (score - 0.5) * 0.3;
 
   // Add natural variance — humans aren't perfectly calibrated
-  score += (Math.random() - 0.5) * 0.25;
+  score += (Math.random() - 0.5) * 0.35;
   score = Math.max(0, Math.min(1, score));
 
   // Prevent too many same-level agreements in a row
@@ -17856,7 +17856,7 @@ function getAgreementPrefix(level, claim) {
     ],
     partial: [
       "hmm mostly, though i'd add that",
-      "sort of? i think there's a nuance —",
+      "sort of? i think there's a nuance,",
       "i see where you're coming from but",
       "partly yeah, though",
       "interesting, i'd tweak that a bit:",
@@ -17864,27 +17864,27 @@ function getAgreementPrefix(level, claim) {
     ],
     curious: [
       "huh i hadn't thought about it that way",
-      "ooh ok —",
+      "ooh ok,",
       "huh don't hear that take often",
       "hmm maybe? let me think on that",
-      "Yeah I get how you'd land there.",
-      "That's a spicy take — tell me more.",
-      "ok wait I need to marinate on that one —",
-      "hmm that's a take for sure —",
+      "yeah i get how you'd land there",
+      "that's a spicy take, tell me more",
+      "ok wait i need to marinate on that one",
+      "hmm that's a take for sure",
     ],
     pushback: [
-      "hmm i'm not sure i'd go that far —",
-      "interesting, though i might push back a little:",
-      "see i'd actually argue the opposite —",
+      "hmm i'm not sure i'd go that far,",
+      "interesting, though i might push back a little.",
+      "see i'd actually argue the opposite,",
       "respectfully... not sure about that one",
       "hmm that's where we'd diverge a bit",
-      "i hear you but —",
-      "ehh idk about that one —",
-      "nah I think you're overthinking it —",
-      "respectfully... no lol —",
-      "ok devil's advocate tho —",
-      "idk man that seems like a stretch —",
-      "hmm hot take but I kinda disagree —",
+      "i hear you but",
+      "ehh idk about that one,",
+      "nah i think you're overthinking it,",
+      "respectfully... no lol.",
+      "ok devil's advocate tho,",
+      "idk man that seems like a stretch,",
+      "hmm hot take but i kinda disagree,",
     ],
   };
 
@@ -17895,9 +17895,9 @@ function getAgreementPrefix(level, claim) {
 function applyCalibratedAgreement(response, text, topics) {
   const turn = mem.turn;
   if (turn < 3) return response; // let conversation warm up
-  if (turn - lastAgreeTurn < 4) return response; // 4-turn cooldown
+  if (turn - lastAgreeTurn < 3) return response; // 3-turn cooldown
   if (response.length > 220) return response; // don't bloat long responses
-  if (Math.random() > 0.20) return response; // 20% fire rate
+  if (Math.random() > 0.25) return response; // 25% fire rate
 
   const claim = detectUserClaim(text);
   if (!claim) return response;
