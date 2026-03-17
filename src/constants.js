@@ -203,7 +203,7 @@ export const DEFAULT_PROPS = {
   "bento-grid":  { active: 0 },
   "feature-table":{ highlight: 1 },
   "cart-item":   { qty: 1 },
-  receipt:       { tip: 0 },
+  receipt:       { tip: 0, paid: 1 },
   "order-summary":{ discount: false, shipping: 0 },
   "promo-banner":{ dismissed: false },
   table:         { highlight: 0 },

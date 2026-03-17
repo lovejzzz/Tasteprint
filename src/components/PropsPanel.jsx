@@ -183,6 +183,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Paid status toggle (receipt) */
+  if ("paid" in defaults) {
+    const pd = G("paid");
+    controls.push(<React.Fragment key="paid"><span style={label}>{pd ? "Paid" : "Pending"}</span>
+      <button style={{ ...btn(pd), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: pd ? "flex-end" : "flex-start", background: pd ? "#4CAF50" : "#F59E0B", border: "none" }} onMouseDown={stop} onClick={() => onProp("paid", pd ? 0 : 1)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
   /* Wishlisted toggle (product-card) */
   if ("wishlisted" in defaults) {
     const on = G("wishlisted");
