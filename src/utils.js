@@ -1134,28 +1134,47 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       else if (bs === "accent-bottom") { s.borderBottom = `3px solid ${acHex}${pick(["30", "40", "50"])}`; }
       else if (bs === "dashed") s.border = `2px dashed ${acHex}${pick(["20", "25", "30"])}`;
     } else if (Math.random() < borderFallback) {
-      if (moodId === "bold") {
-        s.border = pick([
-          `2px solid ${acHex}30`,
-          `3px solid ${acHex}20`,
-          `2px dashed ${acHex}25`,
-        ]);
-      } else if (moodId === "elegant") {
-        s.border = pick([
-          `1px solid ${acHex}15`,
-          `1px solid ${palette.bd || acHex + "12"}`,
-        ]);
-      } else if (moodId === "playful") {
-        s.border = pick([
-          `2px dashed ${acHex}28`,
-          `3px dotted ${acHex}20`,
-          `2px solid ${acHex}35`,
-        ]);
-      } else if (moodId !== "minimal") {
-        s.border = pick([
-          `1px solid ${acHex}12`,
-          `1.5px solid ${acHex}18`,
-        ]);
+      // ~25% chance of creative asymmetric border combos instead of simple borders
+      const useAsymmetric = !isSmall && Math.random() < 0.25;
+      if (useAsymmetric) {
+        if (moodId === "bold") {
+          // Bold asymmetric: thick left accent + thin bottom rule
+          pick([
+            () => { s.borderLeft = `4px solid ${gc1}40`; s.borderBottom = `1px solid ${acHex}15`; },
+            () => { s.borderBottom = `4px solid ${acHex}45`; s.borderRight = `2px solid ${gc1}20`; },
+            () => { s.borderLeft = `3px solid ${gcGlow}35`; s.borderTop = `1px solid ${acHex}12`; },
+          ])();
+        } else if (moodId === "elegant") {
+          // Elegant asymmetric: thin top + delicate left accent
+          pick([
+            () => { s.borderTop = `1px solid ${dc.muted}18`; s.borderLeft = `2px solid ${gc1}15`; },
+            () => { s.borderBottom = `1px solid ${dc.muted}12`; s.borderLeft = `1px solid ${dc.analog1}18`; },
+          ])();
+        } else if (moodId === "playful") {
+          // Playful asymmetric: mixed styles per side
+          pick([
+            () => { s.borderLeft = `3px dashed ${gc1}30`; s.borderBottom = `2px dotted ${gc2}25`; },
+            () => { s.borderTop = `2px solid ${gcGlow}28`; s.borderRight = `3px dashed ${gc1}22`; },
+            () => { s.borderBottom = `3px solid ${gc2}30`; s.borderLeft = `2px dotted ${gcGlow}25`; },
+          ])();
+        } else {
+          // Auto: subtle multi-side
+          pick([
+            () => { s.borderLeft = `2px solid ${acHex}20`; s.borderBottom = `1px solid ${acHex}10`; },
+            () => { s.borderTop = `1px solid ${acHex}15`; s.borderLeft = `2px solid ${gc1}18`; },
+          ])();
+        }
+      } else {
+        // Standard single-style borders
+        if (moodId === "bold") {
+          s.border = pick([`2px solid ${acHex}30`, `3px solid ${acHex}20`, `2px dashed ${acHex}25`]);
+        } else if (moodId === "elegant") {
+          s.border = pick([`1px solid ${acHex}15`, `1px solid ${palette.bd || acHex + "12"}`]);
+        } else if (moodId === "playful") {
+          s.border = pick([`2px dashed ${acHex}28`, `3px dotted ${acHex}20`, `2px solid ${acHex}35`]);
+        } else if (moodId !== "minimal") {
+          s.border = pick([`1px solid ${acHex}12`, `1.5px solid ${acHex}18`]);
+        }
       }
     }
   }
