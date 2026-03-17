@@ -911,10 +911,25 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.outlineOffset = `${offset}px`;
   }
 
-  // --- Backdrop blur for glass-tagged variants ---
+  // --- Backdrop effects (glass variants + mood-driven for non-glass) ---
   const tags = getVariantTags(type, (VARIANTS[type] || []).length || 1);
   if (variant === tags.glass && Math.random() < 0.6) {
     s.backdropFilter = `blur(${pick([8, 12, 16, 20])}px)`;
+  } else if (!isNav && !isCode && !isSmall) {
+    // Mood-driven backdrop effects: subtle frosted/bright effects beyond glass
+    if (moodId === "elegant" && Math.random() < 0.18) {
+      s.backdropFilter = pick([
+        `blur(${pick([4, 6, 8])}px) brightness(1.05)`,
+        `blur(${pick([3, 5])}px) saturate(0.9)`,
+      ]);
+    } else if (moodId === "playful" && Math.random() < 0.12) {
+      s.backdropFilter = pick([
+        `blur(${pick([4, 6])}px) saturate(1.2)`,
+        `blur(${pick([3, 5])}px) brightness(1.08)`,
+      ]);
+    } else if (moodId === "bold" && Math.random() < 0.10) {
+      s.backdropFilter = `blur(${pick([3, 4, 6])}px) contrast(1.05)`;
+    }
   }
 
   // --- Gradient overlay (DNA-driven or harmony-adaptive chance, skip nav/code/small) ---
@@ -934,17 +949,27 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           `linear-gradient(160deg, ${gc1}0A 0%, ${acHex}06 100%)`,
           `linear-gradient(120deg, ${gc1}06 0%, ${gc2}04 50%, transparent 100%)`,
           `linear-gradient(145deg, ${acHex}08 0%, ${gc2}06 60%, transparent 100%)`,
+          // Multi-stop: 3-4 color transitions for richer depth
+          `linear-gradient(135deg, ${gc1}0A 0%, ${acHex}06 35%, ${gc2}04 70%, transparent 100%)`,
+          `linear-gradient(160deg, ${gcGlow}08 0%, ${gc1}06 25%, transparent 50%, ${gc2}04 100%)`,
+          `linear-gradient(120deg, ${acHex}06 0%, transparent 20%, ${gc1}05 60%, ${gc2}04 100%)`,
         ]);
       } else if (gs === "radial") {
         s.gradientOverlay = pick([
           `radial-gradient(ellipse at top left, ${acHex}0A 0%, transparent 65%)`,
           `radial-gradient(circle at 30% 20%, ${gc1}08 0%, transparent 50%)`,
           `radial-gradient(ellipse at bottom right, ${gc2}06 0%, transparent 70%)`,
+          // Multi-stop radials: layered depth
+          `radial-gradient(circle at 25% 25%, ${gc1}0A 0%, ${acHex}04 30%, transparent 60%)`,
+          `radial-gradient(ellipse at 70% 30%, ${gcGlow}08 0%, ${gc2}05 40%, transparent 75%)`,
         ]);
       } else if (gs === "conic") {
         s.gradientOverlay = pick([
           `conic-gradient(from 180deg at 50% 50%, ${acHex}06, ${gc1}06, transparent)`,
           `conic-gradient(from 45deg, ${gc2}05, transparent 30%, ${gc1}04, transparent)`,
+          // Multi-stop conics: smooth color wheels
+          `conic-gradient(from 90deg, ${gc1}06, ${acHex}04, ${gc2}05, ${gcGlow}03, transparent)`,
+          `conic-gradient(from 0deg at 30% 70%, ${gcGlow}06, transparent 25%, ${gc1}05, transparent 75%, ${gc2}04)`,
         ]);
       }
     } else if (Math.random() < gradFallback) {
@@ -954,12 +979,18 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           `linear-gradient(to bottom, ${dc.vivid}0A 0%, transparent 40%)`,
           `linear-gradient(160deg, ${dc.triad1}0A 0%, ${acHex}06 100%)`,
           `linear-gradient(200deg, ${acHex}0C 0%, ${dc.split2}08 50%, transparent 100%)`,
+          // Multi-stop bold: dramatic color sweeps
+          `linear-gradient(135deg, ${dc.comp}0C 0%, ${acHex}08 30%, ${dc.vivid}06 65%, transparent 100%)`,
+          `linear-gradient(180deg, ${dc.triad1}0A 0%, transparent 25%, ${dc.triad2}08 75%, ${acHex}06 100%)`,
         ]);
       } else if (moodId === "elegant") {
         s.gradientOverlay = pick([
           `linear-gradient(135deg, ${dc.muted}06 0%, transparent 70%)`,
           `linear-gradient(to right, ${acHex}04 0%, ${dc.analog1}04 100%)`,
           `radial-gradient(ellipse at top left, ${dc.analog2}06 0%, transparent 60%)`,
+          // Multi-stop elegant: soft tonal shifts
+          `linear-gradient(160deg, ${dc.analog1}05 0%, transparent 30%, ${dc.muted}04 70%, transparent 100%)`,
+          `radial-gradient(ellipse at 30% 20%, ${dc.analog2}06 0%, ${dc.muted}03 40%, transparent 70%)`,
         ]);
       } else if (moodId === "playful") {
         s.gradientOverlay = pick([
@@ -967,6 +998,9 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           `linear-gradient(45deg, ${dc.analog1}0C 0%, ${dc.analog2}0A 100%)`,
           `conic-gradient(from 180deg, ${dc.triad1}08, ${dc.triad2}06, ${acHex}04, transparent)`,
           `linear-gradient(90deg, ${dc.split1}0A 0%, transparent 30%, ${dc.split2}08 100%)`,
+          // Multi-stop playful: vibrant color party
+          `linear-gradient(135deg, ${dc.vivid}0C 0%, ${dc.triad1}08 25%, ${dc.triad2}06 55%, ${dc.comp}04 100%)`,
+          `conic-gradient(from 120deg, ${dc.vivid}08, ${dc.triad1}06, transparent 40%, ${dc.split1}05, ${dc.triad2}04, transparent)`,
         ]);
       } else if (moodId !== "minimal") {
         s.gradientOverlay = pick([
