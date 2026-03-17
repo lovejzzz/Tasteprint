@@ -21702,6 +21702,91 @@ function splitIntoMultiMessages(response, text, sent) {
   return response;
 }
 
+/* ── Round 233: Double-text simulation — casual rapid-fire multi-message feel ──
+ * Real friends sometimes send 2-3 rapid messages instead of one long one.
+ * "wait" then the actual message. Or react first, add context second.
+ * Or send a thought, then "like [elaboration]" or "also [tangent]" as a second text.
+ * Fires ~12% of the time for turn > 4 and response > 40 chars.
+ * Runs just before splitIntoMultiMessages so excitement-driven splits take priority
+ * (if this fires, it inserts a delimiter and splitIntoMultiMessages bails out).
+ */
+function tryDoubleText(response, text, sent, memObj) {
+  // Guard: skip if already split, too short, too early, or negative sentiment
+  if (response.includes(MULTI_MSG_DELIMITER)) return response;
+  if (response.length < 40) return response;
+  if (memObj.turn <= 4) return response;
+  if (sent < -0.3) return response;
+
+  // Guard: skip pure reactions (very short, no real content to split)
+  if (response.length < 30) return response;
+
+  // Guard: skip serious/emotional topics
+  if (/\b(died|death|funeral|cancer|diagnosis|breakup|fired|laid off|divorce|miscarriage|suicide|depressed)\b/i.test(text)) return response;
+
+  // ~12% fire rate
+  if (Math.random() > 0.12) return response;
+
+  const sentences = response.match(/[^.!?]+[.!?]*/g);
+  const roll = Math.random();
+
+  // ── Pattern A: React-then-explain (~30% of fires) ──
+  // Short emphatic reaction on line 1, actual message on line 2
+  if (roll < 0.30) {
+    const reactPrefixes = [
+      "WAIT", "wait", "bruh", "ok hold on", "yo", "dude",
+      "oh my god", "no bc", "ok so", "hold on hold on",
+    ];
+    // Strip any existing reaction opener to avoid doubling
+    const stripped = response.replace(/^(wait|bruh|ok hold on|yo|dude|oh my god|no bc|ok so|hold on)\b[,!.—\s]*/i, "").trim();
+    if (stripped.length >= 20) {
+      const reactor = pick(reactPrefixes);
+      return reactor + MULTI_MSG_DELIMITER + stripped;
+    }
+  }
+
+  // ── Pattern B: Thought continuation (~25% of fires) ──
+  // Main message, then "like [elaboration]" or "actually wait [correction]"
+  if (roll < 0.55 && sentences && sentences.length >= 2) {
+    const main = sentences.slice(0, -1).join(" ").trim();
+    const lastBit = sentences[sentences.length - 1].trim();
+    if (main.length >= 15 && lastBit.length >= 10) {
+      const continuations = [
+        "like ", "like I mean ", "actually wait ", "wait no ",
+        "I mean ", "ok actually ", "nah wait ",
+      ];
+      const cont = pick(continuations);
+      return main + MULTI_MSG_DELIMITER + cont + lastBit.charAt(0).toLowerCase() + lastBit.slice(1);
+    }
+  }
+
+  // ── Pattern C: Afterthought (~25% of fires) ──
+  // Main message + newline + "also [tangent]" or "oh and [addition]"
+  if (roll < 0.80 && sentences && sentences.length >= 2) {
+    const main = sentences.slice(0, -1).join(" ").trim();
+    const last = sentences[sentences.length - 1].trim();
+    if (main.length >= 15 && last.length >= 8) {
+      const afterthoughts = [
+        "also ", "oh and ", "oh also ", "wait and also ",
+        "ps ", "unrelated but ", "also tho ",
+      ];
+      return main + MULTI_MSG_DELIMITER + pick(afterthoughts) + last.charAt(0).toLowerCase() + last.slice(1);
+    }
+  }
+
+  // ── Pattern D: Emphasis split (~20% of fires) ──
+  // Short emphatic reaction on line 1, explanation on line 2
+  // Find a natural split point: first sentence vs rest
+  if (sentences && sentences.length >= 2) {
+    const first = sentences[0].trim();
+    const rest = sentences.slice(1).join(" ").trim();
+    if (first.length <= 35 && first.length >= 5 && rest.length >= 15) {
+      return first + MULTI_MSG_DELIMITER + rest;
+    }
+  }
+
+  return response;
+}
+
 /* ── Round 153: Selective Attention — Interest Scoring, Go-Back Callbacks, Multi-Point Reactions ── */
 /*
  * Three systems that make the bot focus like a real friend:
@@ -22759,6 +22844,10 @@ export async function getAIResponse(input) {
 
   // ═══ Round 215: Opener diversity — prevent "oh"/"hmm"/"ooh" repetition ═══
   response = diversifyOpener(response);
+
+  // ═══ Round 233: Double-text simulation — casual rapid-fire multi-message feel ═══
+  // (runs before excitement-based splitting; if it fires, splitIntoMultiMessages skips)
+  response = tryDoubleText(response, text, sent, mem);
 
   // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
   // (runs LAST — splits the fully-transformed text into multi-message segments)
