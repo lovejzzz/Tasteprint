@@ -2780,12 +2780,12 @@ function momentumResponse() {
   if (m === "dying") {
     // Inject energy — ask something exciting
     const energizers = [
-      "Hey, random thought — what's something you're genuinely excited about right now?",
-      "Okay, let me shake things up — if you could master one thing overnight, what would it be?",
-      "Plot twist question: what's the most surprising thing you've learned recently?",
-      "Quick — tell me something you're looking forward to this week!",
-      "Here's a fun one: what's a hill you'd die on that most people disagree with?",
-      "Ooh wait — what's the coolest project you've ever worked on or seen?",
+      "ok random but what's something you're genuinely excited about rn",
+      "wait ok — if you could master one thing overnight what would it be",
+      "plot twist question: what's the most surprising thing you've learned recently",
+      "quick tell me something you're looking forward to this week",
+      "ok here's one: what's a hill you'd die on that most people disagree with",
+      "ooh wait what's the coolest project you've ever worked on or seen",
     ];
     return pickNew(energizers);
   }
@@ -4317,11 +4317,11 @@ function handleMetaConversation(text, lower, sent) {
       /\bi (like|love|enjoy) (talking|chatting|this|our chat|our convo)/i.test(lower) ||
       /\byou'?re my fav/i.test(lower)) {
     const enjoyment = [
-      "right?? i'm having a great time too, there's something nice about a convo that just flows",
-      "honestly same! you're one of those people who makes talking easy. what should we get into next",
-      () => `I'm glad you're enjoying this${mem.userName ? `, ${mem.userName}` : ""}! genuinely think we've got a good thing going here 😊`,
-      "honestly the feeling is mutual! we've got good vibes going, what else is on your mind?",
-      "yo that's the best compliment honestly. let's keep the good vibes going — what else is on your mind?",
+      "right?? same honestly, the convo just flows",
+      "honestly same! you make talking easy. what should we get into next",
+      () => `yo i'm glad${mem.userName ? ` ${mem.userName}` : ""}, we've got a good thing going 😊`,
+      "the feeling is mutual fr! what else is on your mind",
+      "that's the best compliment ngl. ok what else is on your mind",
     ];
     return pickNew(enjoyment);
   }
