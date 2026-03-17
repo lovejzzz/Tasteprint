@@ -42,7 +42,7 @@ const ANIM_STYLE = `
 @keyframes tp-typing-exit{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(4px) scale(.9)}}
 `;
 
-function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1}){
+function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1,texture}){
   const ff=FONTS[font]?.family||FONTS[0].family;
   const f=(size)=>Math.round(size*fsize);
   const b={width:"100%",height:"100%",fontFamily:ff,overflow:"hidden"};
@@ -1723,7 +1723,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
 
   /* ---- CHAT ---- */
   if(type==="chat"){
-    return <ChatBubble v={v} p={p} editable={editable} texts={texts} onText={onText} font={font} fsize={fsize} b={b} onAc={onAc} />;
+    return <ChatBubble v={v} p={p} editable={editable} texts={texts} onText={onText} font={font} fsize={fsize} b={b} onAc={onAc} texture={texture} />;
   }
 
   /* ---- MEDIA PLAYER ---- */
@@ -2005,15 +2005,15 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     if(v===2){const TTC={kw:p.ac,bi:p.ac,st:'#4CAF50',nu:'#fab387',cm:'#555',op:'#666',id:'#888',tx:'#888'};
     return <div style={{...b,background:"#0c0c0e",borderRadius:2,border:`1px solid ${p.ac}20`,padding:12,display:"flex",flexDirection:"column",gap:0,fontFamily:mono}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><T k="file" s={{fontSize:cfs(9),color:p.ac,letterSpacing:"0.06em"}}>SERVER.JS</T><span style={{fontSize:cfs(8),color:"#555"}}>UTF-8 · LF</span></div>{lines.map((l,i)=><div key={i} style={{display:"flex",gap:10}}><span style={{fontSize:cfs(9),color:p.ac,opacity:.2,width:14,textAlign:"right"}}>{i+1}</span><span style={{fontSize:cfs(9),lineHeight:1.8,whiteSpace:"pre"}}>{tokenize(l).map((t,j)=><span key={j} style={{color:TTC[t.c]||'#888'}}>{t.v}</span>)}</span></div>)}<div style={{marginTop:6,display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:cfs(8),color:p.ac,opacity:.4}}>$</span><span style={{borderRight:`2px solid ${p.ac}`,animation:"tp-blink 1s step-end infinite"}}>&nbsp;</span></div></div>;}
     /* v3 Live IDE */
-    if(v===3)return <CodeIDE b={b} p={p} fsize={fsize}/>;
+    if(v===3)return <CodeIDE b={b} p={p} fsize={fsize} texture={texture}/>;
     /* v4 Typewriter */
-    if(v===4)return <CodeTypewriter b={b} fsize={fsize}/>;
+    if(v===4)return <CodeTypewriter b={b} p={p} fsize={fsize} texture={texture}/>;
     /* v5 Diff */
-    if(v===6)return <CodeNotebook b={b} fsize={fsize}/>;
-    if(v===7)return <CodeReview b={b} fsize={fsize}/>;
-    if(v===8)return <CodeMinimap b={b} fsize={fsize}/>;
-    if(v===9)return <AsciiArt b={b} fsize={fsize}/>;
-    if(v===10)return <CodeBenchmark b={b} fsize={fsize}/>;
+    if(v===6)return <CodeNotebook b={b} p={p} fsize={fsize} texture={texture}/>;
+    if(v===7)return <CodeReview b={b} p={p} fsize={fsize} texture={texture}/>;
+    if(v===8)return <CodeMinimap b={b} p={p} fsize={fsize} texture={texture}/>;
+    if(v===9)return <AsciiArt b={b} p={p} fsize={fsize} texture={texture}/>;
+    if(v===10)return <CodeBenchmark b={b} p={p} fsize={fsize} texture={texture}/>;
     const diff=[{m:'ctx',n:1,t:'  const config = {'},{m:'del',n:2,t:'-   timeout: 3000,'},{m:'del',n:3,t:'-   debug: false,'},{m:'add',n:0,t:'+   timeout: 5000,'},{m:'add',n:0,t:'+   retries: 3,'},{m:'add',n:0,t:'+   debug: true,'},{m:'ctx',n:4,t:'    verbose: true'},{m:'ctx',n:5,t:'  };'}];
     return <div style={{...b,background:'#1e1e2e',borderRadius:12,overflow:'hidden',display:'flex',flexDirection:'column',fontFamily:mono}}>
       <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:8}}>

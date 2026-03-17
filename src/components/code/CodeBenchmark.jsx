@@ -1,10 +1,13 @@
 import React from "react";
 import { HighlightLine } from "./tokenizer";
+import { getTextureStyle } from "../../utils";
 
-export default function CodeBenchmark({b,fsize=1}){
+export default function CodeBenchmark({b,fsize=1,texture,p}){
   const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const [running,setRunning]=React.useState(false);
   const [results,setResults]=React.useState(null);
+  const [hovRace,setHovRace]=React.useState(false);
+  const [hovBar,setHovBar]=React.useState(-1);
   const snippets=[
     {name:'for loop',code:'let s=0; for(let i=0;i<1e6;i++) s+=i;'},
     {name:'reduce',code:'Array.from({length:1e6},(_,i)=>i).reduce((a,b)=>a+b,0);'},
@@ -19,32 +22,38 @@ export default function CodeBenchmark({b,fsize=1}){
       setRunning(false);
     },100);
   };
-  return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
+  const texStyle = texture && p ? getTextureStyle(texture, p) : {};
+  return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono,transition:'all .3s ease',...texStyle}}>
     <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}}>
       <span style={{fontSize:9,color:'#f9e2af',fontWeight:600}}>⚡</span>
       <span style={{fontSize:10,color:'#cdd6f4',fontWeight:500}}>Benchmark</span>
-      <button onClick={race} disabled={running} onMouseDown={stop} style={{marginLeft:'auto',background:running?'#f9e2af':'#f9e2af22',color:running?'#000':'#f9e2af',border:'none',borderRadius:6,padding:'2px 10px',fontSize:9,fontWeight:600,cursor:running?'default':'pointer',fontFamily:mono,transition:'all .2s'}}>
+      <button
+        onClick={race} disabled={running} onMouseDown={stop}
+        onMouseEnter={()=>setHovRace(true)} onMouseLeave={()=>setHovRace(false)}
+        style={{marginLeft:'auto',background:running?'#f9e2af':hovRace?'#f9e2af44':'#f9e2af22',color:running?'#000':'#f9e2af',border:'none',borderRadius:6,padding:'2px 10px',fontSize:9,fontWeight:600,cursor:running?'default':'pointer',fontFamily:mono,transition:'all .2s ease',transform:hovRace&&!running?'scale(1.05)':'scale(1)'}}>
         {running?'Racing...':'🏁 Race'}
       </button>
     </div>
-    <div style={{flex:1,overflow:'auto',padding:10,display:'flex',flexDirection:'column',gap:10}}>
-      {snippets.map((s,i)=><div key={i} style={{border:'1px solid #ffffff10',borderRadius:8,overflow:'hidden'}}>
-        <div style={{padding:'4px 10px',background:'#16162a',display:'flex',alignItems:'center',gap:6}}>
+    <div style={{flex:1,overflow:'auto',padding:10,display:'flex',flexDirection:'column',gap:10,scrollbarWidth:'thin'}}>
+      {snippets.map((s,i)=><div key={i}
+        onMouseEnter={()=>setHovBar(i)} onMouseLeave={()=>setHovBar(-1)}
+        style={{border:'1px solid #ffffff10',borderRadius:8,overflow:'hidden',transition:'all .25s ease',background:hovBar===i?'#ffffff06':'transparent',transform:hovBar===i?'scale(1.01)':'scale(1)'}}>
+        <div style={{padding:'4px 10px',background:'#16162a',display:'flex',alignItems:'center',gap:6,transition:'background .25s ease'}}>
           <span style={{fontSize:9,color:i===0?'#89b4fa':'#cba6f7',fontWeight:600}}>#{i+1}</span>
           <span style={{fontSize:9,color:'#888'}}>{s.name}</span>
-          {results&&results[i].winner&&<span style={{marginLeft:'auto',fontSize:8,color:'#27c93f',fontWeight:600}}>🏆 WINNER</span>}
-          {results&&!results[i].winner&&<span style={{marginLeft:'auto',fontSize:8,color:'#f38ba8',opacity:.6}}>slower</span>}
+          {results&&results[i].winner&&<span style={{marginLeft:'auto',fontSize:8,color:'#27c93f',fontWeight:600,transition:'opacity .4s ease'}}>🏆 WINNER</span>}
+          {results&&!results[i].winner&&<span style={{marginLeft:'auto',fontSize:8,color:'#f38ba8',opacity:.6,transition:'opacity .4s ease'}}>slower</span>}
         </div>
         <div style={{padding:'6px 10px',fontSize:cfs(9),color:'#a6adc8',whiteSpace:'pre',lineHeight:1.6}}><HighlightLine text={s.code}/></div>
         {results&&<div style={{padding:'4px 10px 8px',display:'flex',alignItems:'center',gap:8}}>
           <div style={{flex:1,height:6,background:'#ffffff08',borderRadius:3,overflow:'hidden'}}>
             <div style={{width:`${results[i].pct}%`,height:'100%',background:results[i].winner?'#27c93f':'#f38ba8',borderRadius:3,transition:'width .8s cubic-bezier(0.22,1,0.36,1)'}}/>
           </div>
-          <span style={{fontSize:9,color:results[i].winner?'#27c93f':'#f38ba8',fontWeight:600,minWidth:40,textAlign:'right'}}>{results[i].ms}ms</span>
+          <span style={{fontSize:9,color:results[i].winner?'#27c93f':'#f38ba8',fontWeight:600,minWidth:40,textAlign:'right',transition:'color .3s ease'}}>{results[i].ms}ms</span>
         </div>}
       </div>)}
     </div>
-    {results&&<div style={{padding:'4px 12px',borderTop:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:6}}>
+    {results&&<div style={{padding:'4px 12px',borderTop:'1px solid #ffffff08',display:'flex',alignItems:'center',gap:6,backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',background:'#1e1e2ecc',transition:'opacity .4s ease'}}>
       <span style={{fontSize:8,color:'#27c93f'}}>●</span>
       <span style={{fontSize:8,color:'#555'}}>Winner: {snippets[results.findIndex(r=>r.winner)]?.name} ({Math.min(...results.map(r=>r.ms))}ms)</span>
       <span style={{fontSize:8,color:'#555',marginLeft:'auto'}}>{(Math.max(...results.map(r=>r.ms))/Math.min(...results.map(r=>r.ms))).toFixed(1)}x diff</span>
