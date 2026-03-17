@@ -1,15 +1,52 @@
 import React from "react";
 import { DEFAULT_PROPS, HAS_PROPS } from "../constants";
 
+/* ── Toggle switch helper ── */
+function Sw({ on, color, stop, onClick }) {
+  return (
+    <button style={{
+      width: 32, height: 18, borderRadius: 999, padding: 2, border: "none",
+      display: "flex", alignItems: "center",
+      justifyContent: on ? "flex-end" : "flex-start",
+      background: on ? color : "rgba(128,128,128,.2)",
+      cursor: "pointer", transition: "background .2s ease",
+    }} onMouseDown={stop} onClick={onClick}>
+      <div style={{
+        width: 14, height: 14, borderRadius: 999, background: "#fff",
+        boxShadow: "0 1px 2px rgba(0,0,0,.12)",
+        transition: "transform .15s cubic-bezier(.4,1,.6,1)",
+      }} />
+    </button>
+  );
+}
+
 /* Compact props panel for customizing component visual state */
 export default function PropsPanel({ type, props, onProp, p }) {
   if (!HAS_PROPS.has(type)) return null;
   const defaults = DEFAULT_PROPS[type] || {};
   const G = (k) => props[k] !== undefined ? props[k] : defaults[k];
   const stop = e => e.stopPropagation();
-  const sty = { position: "absolute", bottom: -6, left: "50%", transform: "translate(-50%, 100%)", zIndex: 200, background: p.card, border: `1px solid ${p.bd}`, borderRadius: 10, padding: "6px 10px", boxShadow: `0 4px 16px ${p.tx}10`, display: "flex", gap: 6, alignItems: "center", userSelect: "none", whiteSpace: "nowrap" };
+
+  const sty = {
+    position: "absolute", bottom: -6, left: "50%",
+    transform: "translate(-50%, 100%)", zIndex: 200,
+    background: p.card + "EE", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+    border: `1px solid ${p.bd}`, borderRadius: 10,
+    padding: "6px 10px", boxShadow: `0 4px 16px ${p.tx}10`,
+    display: "flex", gap: 6, alignItems: "center",
+    userSelect: "none", whiteSpace: "nowrap",
+  };
   const label = { fontSize: 8, color: p.mu, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 };
-  const btn = (active) => ({ width: 22, height: 22, borderRadius: 6, border: active ? `1.5px solid ${p.ac}` : `1px solid ${p.bd}`, background: active ? p.ac + "18" : "transparent", color: active ? p.ac : p.mu, fontSize: 10, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, fontFamily: "inherit", transition: "all .15s" });
+  const btn = (active) => ({
+    width: 22, height: 22, borderRadius: 6,
+    border: active ? `1.5px solid ${p.ac}` : `1px solid ${p.bd}`,
+    background: active ? p.ac + "18" : "transparent",
+    color: active ? p.ac : p.mu,
+    fontSize: 10, fontWeight: 500, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    padding: 0, fontFamily: "inherit",
+    transition: "all .15s ease", outline: "none",
+  });
 
   const controls = [];
 
@@ -17,18 +54,17 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("on" in defaults) {
     const on = G("on");
     controls.push(<React.Fragment key="on"><span style={label}>On</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("on", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("on", !on)} />
     </React.Fragment>);
   }
 
+  /* Verified toggle (testimonial uses 0/1, profile-card uses bool) */
   if ("verified" in defaults) {
-    const ver = G("verified");
-    controls.push(<React.Fragment key="verified"><span style={label}>Verified</span>
-      <button style={{ ...btn(ver), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: ver ? "flex-end" : "flex-start", background: ver ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("verified", ver ? 0 : 1)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+    const vf = G("verified");
+    const isOn = !!vf;
+    const color = type === "profile-card" ? "#3b82f6" : p.ac;
+    controls.push(<React.Fragment key="verified"><span style={label}>{isOn ? "Verified" : "Unverified"}</span>
+      <Sw on={isOn} color={color} stop={stop} onClick={() => onProp("verified", isOn ? (typeof vf === "number" ? 0 : false) : (typeof defaults.verified === "number" ? 1 : true))} />
     </React.Fragment>);
   }
 
@@ -36,9 +72,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("shuffle" in defaults) {
     const sh = G("shuffle");
     controls.push(<React.Fragment key="shuffle"><span style={label}>{sh ? "Shuffle" : "Order"}</span>
-      <button style={{ ...btn(sh), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: sh ? "flex-end" : "flex-start", background: sh ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("shuffle", !sh)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={sh} color={p.ac} stop={stop} onClick={() => onProp("shuffle", !sh)} />
     </React.Fragment>);
   }
 
@@ -119,7 +153,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
     const sc = G("sortCol");
     const scLabels = ["Name", "Status", "Amt", "—"];
     controls.push(<React.Fragment key="sortCol"><span style={label}>Sort</span>
-      {scLabels.map((l, i) => { const ci = i < 3 ? i : -1; return <button key={i} style={{ ...btn(sc === ci), fontSize: 8, minWidth: i < 3 ? 28 : 18, height: 18 }} onMouseDown={stop} onClick={() => onProp("sortCol", ci)}>{l}</button> })}
+      {scLabels.map((l, i) => { const ci = i < 3 ? i : -1; return <button key={i} style={{ ...btn(sc === ci), fontSize: 8, minWidth: i < 3 ? 28 : 18, height: 18 }} onMouseDown={stop} onClick={() => onProp("sortCol", ci)}>{l}</button>; })}
     </React.Fragment>);
   }
 
@@ -163,9 +197,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("muted" in defaults) {
     const on = G("muted");
     controls.push(<React.Fragment key="muted"><span style={label}>{on ? "Muted" : "Mute"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.mu + "50" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("muted", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.mu + "70"} stop={stop} onClick={() => onProp("muted", !on)} />
     </React.Fragment>);
   }
 
@@ -183,23 +215,19 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
-  /* Featured toggle (pricing-card) */
+  /* Featured toggle (pricing-card, card) */
   if ("featured" in defaults) {
     const on = G("featured");
     controls.push(<React.Fragment key="feat"><span style={label}>Featured</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("featured", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("featured", !on)} />
     </React.Fragment>);
   }
 
-  /* Liked toggle (card) */
+  /* Liked toggle (card, media-player) */
   if ("liked" in defaults) {
     const on = G("liked");
     controls.push(<React.Fragment key="liked"><span style={label}>{on ? "Liked" : "Like"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#ef4444" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("liked", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color="#ef4444" stop={stop} onClick={() => onProp("liked", !on)} />
     </React.Fragment>);
   }
 
@@ -225,9 +253,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("paid" in defaults) {
     const pd = G("paid");
     controls.push(<React.Fragment key="paid"><span style={label}>{pd ? "Paid" : "Pending"}</span>
-      <button style={{ ...btn(pd), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: pd ? "flex-end" : "flex-start", background: pd ? "#4CAF50" : "#F59E0B", border: "none" }} onMouseDown={stop} onClick={() => onProp("paid", pd ? 0 : 1)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={!!pd} color="#4CAF50" stop={stop} onClick={() => onProp("paid", pd ? 0 : 1)} />
     </React.Fragment>);
   }
 
@@ -235,7 +261,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("wishlisted" in defaults) {
     const on = G("wishlisted");
     controls.push(<React.Fragment key="wish"><span style={label}>♥</span>
-      <button style={{ ...btn(on), width: 22, height: 22, fontSize: 12, border: "none", background: "transparent", color: on ? "#EF4444" : p.mu + "40" }} onMouseDown={stop} onClick={() => onProp("wishlisted", !on)}>{on ? "♥" : "♡"}</button>
+      <button style={{ ...btn(on), width: 22, height: 22, fontSize: 12, border: "none", background: "transparent", color: on ? "#EF4444" : p.mu + "40", transition: "all .2s ease" }} onMouseDown={stop} onClick={() => onProp("wishlisted", !on)}>{on ? "♥" : "♡"}</button>
     </React.Fragment>);
   }
 
@@ -243,9 +269,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("playing" in defaults) {
     const on = G("playing");
     controls.push(<React.Fragment key="playing"><span style={label}>{on ? "▶" : "⏸"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("playing", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("playing", !on)} />
     </React.Fragment>);
   }
 
@@ -253,29 +277,15 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("online" in defaults) {
     const on = G("online");
     controls.push(<React.Fragment key="online"><span style={label}>{on ? "Online" : "Offline"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#22c55e" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("online", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color="#22c55e" stop={stop} onClick={() => onProp("online", !on)} />
     </React.Fragment>);
   }
 
-  /* Verified badge toggle (profile-card) */
-  if ("verified" in defaults) {
-    const vf = G("verified");
-    controls.push(<React.Fragment key="verified"><span style={label}>{vf ? "Verified" : "Unverified"}</span>
-      <button style={{ ...btn(vf), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: vf ? "flex-end" : "flex-start", background: vf ? "#3b82f6" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("verified", !vf)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
-    </React.Fragment>);
-  }
-
-  /* Loading toggle (skeleton) */
+  /* Loading toggle (skeleton, button) */
   if ("loading" in defaults) {
     const on = G("loading");
     controls.push(<React.Fragment key="loading"><span style={label}>{on ? "Loading" : "Loaded"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("loading", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("loading", !on)} />
     </React.Fragment>);
   }
 
@@ -283,9 +293,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("disabled" in defaults) {
     const on = G("disabled");
     controls.push(<React.Fragment key="disabled"><span style={label}>{on ? "Disabled" : "Enabled"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#EF4444" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("disabled", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color="#EF4444" stop={stop} onClick={() => onProp("disabled", !on)} />
     </React.Fragment>);
   }
 
@@ -293,9 +301,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("pinned" in defaults) {
     const on = G("pinned");
     controls.push(<React.Fragment key="pinned"><span style={label}>{on ? "Pinned" : "Unpinned"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("pinned", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("pinned", !on)} />
     </React.Fragment>);
   }
 
@@ -303,9 +309,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("indeterminate" in defaults) {
     const on = G("indeterminate");
     controls.push(<React.Fragment key="indeterminate"><span style={label}>{on ? "Loading" : "Determinate"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("indeterminate", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("indeterminate", !on)} />
     </React.Fragment>);
   }
 
@@ -313,9 +317,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("focused" in defaults) {
     const on = G("focused");
     controls.push(<React.Fragment key="focused"><span style={label}>{on ? "Focused" : "Blurred"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("focused", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("focused", !on)} />
     </React.Fragment>);
   }
 
@@ -379,9 +381,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("discount" in defaults) {
     const on = G("discount");
     controls.push(<React.Fragment key="discount"><span style={label}>{on ? "Promo" : "No promo"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#4CAF50" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("discount", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color="#4CAF50" stop={stop} onClick={() => onProp("discount", !on)} />
     </React.Fragment>);
   }
 
@@ -399,9 +399,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("sparkline" in defaults) {
     const on = G("sparkline");
     controls.push(<React.Fragment key="sparkline"><span style={label}>{on ? "Sparkline" : "No chart"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.ac : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("sparkline", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("sparkline", !on)} />
     </React.Fragment>);
   }
 
@@ -409,9 +407,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
   if ("dismissed" in defaults) {
     const on = G("dismissed");
     controls.push(<React.Fragment key="dismissed"><span style={label}>{on ? "Hidden" : "Visible"}</span>
-      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? p.mu + "50" : p.ac, border: "none" }} onMouseDown={stop} onClick={() => onProp("dismissed", !on)}>
-        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
-      </button>
+      <Sw on={!on} color={p.ac} stop={stop} onClick={() => onProp("dismissed", !on)} />
     </React.Fragment>);
   }
 
