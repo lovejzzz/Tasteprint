@@ -2576,8 +2576,17 @@ const COMP = {
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
-  opinion_starters: ["i think","honestly","ngl","the thing about","what i love about","ok but the cool thing about","ive always thought","lowkey"],
-  opinion_connectors: ["is that","is how","is the way","is really about","is literally"],
+  // Opinion templates: {t} = topic, {o} = opinion — avoids awkward grammar from starter+connector combos
+  opinion_templates: [
+    "i think {t} {o}",
+    "honestly {t} {o}",
+    "ngl {t} {o}",
+    "the thing about {t} is {o}",
+    "what i love about {t} is {o}",
+    "ok but {t} lowkey {o}",
+    "{t} is one of those things where {o}",
+    "imo {t} {o}",
+  ],
   // Follow-up questions — the engine of good conversation
   deepeners: ["how'd you get into that","wait how long have you been doing that","ok but whats the best part tho","how'd that even start","whats been the wildest part so far","would you recommend it or nah","so whats next with that","has that like... changed how you see stuff","ok real talk would you do it differently if you could start over","what made you wanna try that"],
   // Topic transitions
@@ -2619,7 +2628,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
       const parts = [pick(reactionPool)];
       if (mirrorPhrase && Math.random() > 0.4) parts.push(pick(COMP.bridges.mirror) + ` ${mirrorPhrase} —`);
       if (assoc.opinions && Math.random() > 0.3) {
-        parts.push(`${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
+        parts.push(pick(COMP.opinion_templates).replace("{t}", topic).replace("{o}", pick(assoc.opinions)) + ".");
       } else if (assoc.facts) parts.push(pick(assoc.facts) + ".");
       if (assoc.related && Math.random() > 0.5) {
         const rel = pick(assoc.related), ra = ASSOC[rel];
@@ -2635,7 +2644,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
       const hook = assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners);
       parts.push(hook);
       if (assoc.opinions) {
-        parts.push(`cause like ${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
+        parts.push("cause like " + pick(COMP.opinion_templates).replace("{t}", topic).replace("{o}", pick(assoc.opinions)) + ".");
       }
       if (assoc.facts && Math.random() > 0.5) parts.push(pick(assoc.facts) + ".");
       return parts.join(" ");
@@ -2681,7 +2690,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
         parts.push(bridge);
       } else {
         parts.push(pick(reactionPool));
-        if (assoc.opinions) parts.push(`${pick(COMP.opinion_starters)} ${topic} ${pick(COMP.opinion_connectors)} ${pick(assoc.opinions)}.`);
+        if (assoc.opinions) parts.push(pick(COMP.opinion_templates).replace("{t}", topic).replace("{o}", pick(assoc.opinions)) + ".");
       }
       parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
       return parts.join(" ");
