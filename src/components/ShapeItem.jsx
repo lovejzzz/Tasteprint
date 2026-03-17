@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, delShape, setRsz, texture, designMood, setDesignMood }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, delShape, setRsz, texture, designMood, setDesignMood }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -99,6 +99,13 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               <circle cx="12" cy="12" r="1.5" fill={p.ac} stroke="none" />
             </svg>
           </button>
+          {hasRndUndo && <button aria-label="Undo randomize" {...ph}
+            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); undoRandomize(); }}
+            style={{ ...pb, fontSize: 11, width: "auto", padding: "0 6px" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+          </button>}
         </div>
       )}
 
@@ -168,7 +175,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     (wasPrimary ? prev.selFont : null) === (isPrimary ? next.selFont : null) &&
     prev.p === next.p &&
     prev.selAll.has(id) === next.selAll.has(id) &&
-    prev.designMood === next.designMood;
+    prev.designMood === next.designMood &&
+    prev.hasRndUndo === next.hasRndUndo;
 });
 
 export default ShapeItem;

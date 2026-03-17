@@ -42,6 +42,8 @@ export default function App() {
   const [pDrag, setPDrag] = useState(null);
   const [libOpen, setLibOpen] = useState(false);
   const [designMood, setDesignMood] = useState("auto");
+  const rndUndo = useRef(null); // { id, prev: shapeSnapshot, prevPrefV }
+  const [hasRndUndo, setHasRndUndo] = useState(false);
   const cRef = useRef(null);
   const dRef = useRef(null);
   const dirtyText = useRef(null);
@@ -193,6 +195,12 @@ export default function App() {
   }, []);
 
   const randomize = useCallback((id) => {
+    // Snapshot for undo
+    const target = shapes.find(x => x.id === id);
+    if (target) {
+      rndUndo.current = { id, prev: { ...target }, prevPrefV: { ...prefV } };
+      setHasRndUndo(true);
+    }
     setShapes(prev => prev.map(s => {
       if (s.id !== id) return s;
       const defaults = DEFAULT_PROPS[s.type];
@@ -205,7 +213,16 @@ export default function App() {
       const result = designerRandomize(s.type, p, DEFAULT_PROPS[s.type], designMood);
       return { ...pv, [s.type]: result.variant };
     });
-  }, [shapes, p, designMood]);
+  }, [shapes, p, designMood, prefV]);
+
+  const undoRandomize = useCallback(() => {
+    if (!rndUndo.current) return;
+    const { id, prev, prevPrefV } = rndUndo.current;
+    setShapes(sh => sh.map(s => s.id === id ? prev : s));
+    setPrefV(prevPrefV);
+    rndUndo.current = null;
+    setHasRndUndo(false);
+  }, []);
 
   const delShape = useCallback(() => {
     flushDirtyText();
@@ -537,7 +554,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} />
               ))}
             </div>
 
