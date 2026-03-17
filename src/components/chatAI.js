@@ -20601,8 +20601,8 @@ function tryUltraShortResponse(text, sent) {
   // Don't ultra-short if user asked a question
   if (text.includes("?")) return null;
 
-  // Don't ultra-short on first few turns — build rapport first
-  if (mem.turn < 4) return null;
+  // Friends are snappy from turn 1 — only skip the very first exchange
+  if (mem.turn < 2) return null;
 
   // Don't ultra-short if user seems emotional/upset
   if (sent < -0.3) return null;
@@ -20646,8 +20646,31 @@ function tryUltraShortResponse(text, sent) {
     "hmm": ["right", "yeah", "fr"],
   };
 
-  const match = ultraShortMap[lower.replace(/[.!,]+$/, "")];
-  if (match) return pick(match);
+  const stripped = lower.replace(/[.!,]+$/, "");
+  const match = ultraShortMap[stripped];
+  if (match) {
+    // Lol escalation: when user laughs after a substantive exchange (turn 5+),
+    // sometimes escalate into actual engagement instead of just mirroring
+    const isLaughter = ["lol", "lmao", "haha", "hahaha", "😂", "💀"].includes(stripped);
+    if (isLaughter && mem.turn >= 5 && Math.random() < 0.30) {
+      // Pull recent context for a natural follow-up
+      const lastAI = mem.history.filter(h => h.role === "ai").slice(-1)[0];
+      const lastTopic = mem.recentTopics?.[0] || null;
+      const escalations = [
+        "ok but seriously tho",
+        "lol wait but actually",
+        "😂 ok ok but hear me out",
+        "lmao anyway tho",
+        "fr tho on a real note",
+        ...(lastTopic ? [
+          `lol ok but back to ${lastTopic} tho`,
+          `😂 wait but ${lastTopic} tho`,
+        ] : []),
+      ];
+      return pick(escalations);
+    }
+    return pick(match);
+  }
 
   // Emoji-only inputs → emoji-only response
   const emojiOnly = /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]+$/u.test(lower);
@@ -20671,8 +20694,8 @@ function tryStandaloneReaction(text, sent) {
   if (len < 12 || len > 50) return null;
   // Only ~20% of the time
   if (Math.random() > 0.20) return null;
-  // Don't on first 5 turns
-  if (mem.turn < 5) return null;
+  // Friends react quickly — only skip first 2 turns
+  if (mem.turn < 3) return null;
   // Don't if user asked a question
   if (text.includes("?")) return null;
   // Don't if user is upset or very emotional
