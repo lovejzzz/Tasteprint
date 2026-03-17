@@ -636,6 +636,73 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.backdropFilter = `blur(${pick([8, 12, 16, 20])}px)`;
   }
 
+  // --- Gradient overlay (25% chance, skip nav/code/small) ---
+  if (!isNav && !isCode && !isSmall && Math.random() < 0.25) {
+    const ac2 = palette.ac2 || palette.ac || "#888";
+    if (moodId === "bold") {
+      s.gradientOverlay = pick([
+        `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
+        `linear-gradient(to bottom, ${acHex}0A 0%, transparent 40%)`,
+        `linear-gradient(160deg, ${ac2}0C 0%, ${acHex}06 100%)`,
+      ]);
+    } else if (moodId === "elegant") {
+      s.gradientOverlay = pick([
+        `linear-gradient(135deg, ${acHex}06 0%, transparent 70%)`,
+        `linear-gradient(to right, ${acHex}04 0%, ${ac2}04 100%)`,
+        `radial-gradient(ellipse at top left, ${acHex}08 0%, transparent 60%)`,
+      ]);
+    } else if (moodId === "playful") {
+      s.gradientOverlay = pick([
+        `linear-gradient(135deg, ${acHex}0D 0%, ${ac2}0D 50%, transparent 100%)`,
+        `linear-gradient(45deg, ${ac2}0A 0%, ${acHex}0A 100%)`,
+        `conic-gradient(from 180deg, ${acHex}06, ${ac2}06, transparent)`,
+      ]);
+    } else if (moodId !== "minimal") {
+      s.gradientOverlay = pick([
+        `linear-gradient(135deg, ${acHex}06 0%, transparent 50%)`,
+        `linear-gradient(to bottom right, ${ac2}05 0%, transparent 60%)`,
+      ]);
+    }
+  }
+
+  // --- Border treatment (18% chance, skip nav/code) ---
+  if (!isNav && !isCode && Math.random() < 0.18) {
+    if (moodId === "bold") {
+      s.border = pick([
+        `2px solid ${acHex}30`,
+        `3px solid ${acHex}20`,
+        `2px dashed ${acHex}25`,
+      ]);
+    } else if (moodId === "elegant") {
+      s.border = pick([
+        `1px solid ${acHex}15`,
+        `1px solid ${palette.bd || acHex + "12"}`,
+      ]);
+    } else if (moodId === "playful") {
+      s.border = pick([
+        `2px dashed ${acHex}28`,
+        `3px dotted ${acHex}20`,
+        `2px solid ${acHex}35`,
+      ]);
+    } else if (moodId !== "minimal") {
+      s.border = pick([
+        `1px solid ${acHex}12`,
+        `1.5px solid ${acHex}18`,
+      ]);
+    }
+  }
+
+  // --- Accent hue shift (15% chance — each component gets a unique color twist) ---
+  if (!isCode && Math.random() < 0.15) {
+    const shift = pick([-20, -15, -10, 10, 15, 20, 30, -30]);
+    s.hueRotate = shift;
+  }
+
+  // --- Scale personality (10% chance, subtle) ---
+  if (!isNav && !isCode && Math.random() < 0.10) {
+    s.scale = pick([0.97, 0.98, 1.02, 1.03, 1.04]);
+  }
+
   return s;
 }
 
