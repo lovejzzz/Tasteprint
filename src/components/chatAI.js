@@ -966,6 +966,230 @@ function parseSentence(text) {
   return { tokens, qType, subject, verb, object, preferences, act, lower, raw };
 }
 
+/* ═══ Round 128: Semantic Clause Decomposition ═══
+ * Extract structured meaning from user input — WHO is doing WHAT to WHOM,
+ * WHY, and with what STANCE (wanting, considering, struggling, celebrating, etc.)
+ * This gives the response generator access to actual meaning, not just keywords.
+ *
+ * Example: "I've been thinking about switching from React to Vue because my team finds it easier"
+ * → { agent:"user", stance:"considering", action:"switch", from:"react", to:"vue",
+ *     reason:"team finds it easier", involves:"team" }
+ *
+ * The response can then say: "That's a big migration call, especially with a whole team involved.
+ * Vue's gentler learning curve is a real selling point — what's your team's biggest pain with React?"
+ */
+
+// Semantic roles: who/what is doing the action
+const SEM_AGENT_PATS = [
+  [/^I(?:'ve| have)?\b/i, "user"],
+  [/^my (\w+(?:\s+\w+)?)\b/i, (m) => "user_" + m[1].toLowerCase().replace(/\s+/g, "_")],
+  [/^we(?:'ve| have)?\b/i, "user_team"],
+  [/^(?:our|my) (?:team|company|org|group|class)\b/i, "user_team"],
+  [/^(?:you|your)\b/i, "ai"],
+  [/^(?:it|this|that)\b/i, "referent"],
+  [/^(\w+) (?:is|are|was|were|has|have|does|did)\b/i, (m) => m[1].toLowerCase()],
+];
+
+// Stance: the user's relationship to the action (more nuanced than sentiment)
+const SEM_STANCE_PATS = [
+  // Active states
+  { stance: "considering",  pats: [/\b(?:thinking about|considering|debating|weighing|might|on the fence|torn between|not sure (?:if|whether))\b/i] },
+  { stance: "planning",     pats: [/\b(?:going to|gonna|plan to|planning|want to|hoping to|about to|ready to)\b/i] },
+  { stance: "attempting",   pats: [/\b(?:trying to|attempting|working on|figuring out|experimenting with)\b/i] },
+  { stance: "struggling",   pats: [/\b(?:struggling with|can't (?:figure|get|make|understand)|stuck on|having trouble|keep failing|frustrated with|hard to)\b/i] },
+  { stance: "learning",     pats: [/\b(?:learning|studying|just started|new to|getting into|picking up|exploring)\b/i] },
+  { stance: "accomplished", pats: [/\b(?:finally|just finished|managed to|got it working|figured out|nailed|succeeded|completed|shipped|launched|deployed)\b/i] },
+  { stance: "seeking",      pats: [/\b(?:looking for|searching for|need|any (?:tips|advice|suggestions|recommendations)|how (?:do|should|can|would) I)\b/i] },
+  { stance: "comparing",    pats: [/\b(?:vs\.?|versus|compared to|difference between|better than|or should I|which (?:is|one|should))\b/i] },
+  { stance: "sharing",      pats: [/\b(?:I (?:think|believe|feel like)|in my (?:opinion|experience)|honestly|personally)\b/i] },
+  { stance: "celebrating",  pats: [/\b(?:excited|thrilled|pumped|stoked|can't wait|love that|so happy|great news)\b/i] },
+  { stance: "abandoning",   pats: [/\b(?:giving up|quit|dropping|moving away from|done with|over it|sick of|tired of)\b/i] },
+  { stance: "recommending", pats: [/\b(?:you should|try|check out|look into|have you (?:tried|seen|heard))\b/i] },
+  { stance: "doubting",     pats: [/\b(?:not sure|don't think|doubt|skeptical|doesn't (?:seem|feel)|is it (?:really|worth|even))\b/i] },
+];
+
+// Action patterns: what's being done
+const SEM_ACTION_PATS = [
+  { action: "switch",   pats: [/\b(?:switch|migrate|move|transition|convert)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)/i], extract: (m) => ({ from: m[1], to: m[2] }) },
+  { action: "switch",   pats: [/\b(?:from\s+)?(\w+)\s+to\s+(\w+)/i], extract: (m) => ({ from: m[1], to: m[2] }), needsStance: "considering" },
+  { action: "build",    pats: [/\b(?:build|create|make|develop|design|implement|write|code)\s+(?:a |an |the )?(.+?)(?:\s+(?:with|using|in|for|because|but|and|that|which)\b|[.!?]|$)/i], extract: (m) => ({ target: m[1].trim() }) },
+  { action: "learn",    pats: [/\b(?:learn|study|understand|master|get (?:better|good) at)\s+(.+?)(?:\s+(?:because|but|and|for|so)\b|[.!?]|$)/i], extract: (m) => ({ target: m[1].trim() }) },
+  { action: "fix",      pats: [/\b(?:fix|debug|solve|resolve|troubleshoot)\s+(?:a |an |the |this |my )?(.+?)(?:\s+(?:because|but|and|that)\b|[.!?]|$)/i], extract: (m) => ({ target: m[1].trim() }) },
+  { action: "choose",   pats: [/\b(?:choose|pick|decide|select)\s+(?:between\s+)?(.+?)\s+(?:or|and|vs)\s+(.+?)(?:\s|[.!?]|$)/i], extract: (m) => ({ optionA: m[1].trim(), optionB: m[2].trim() }) },
+  { action: "improve",  pats: [/\b(?:improve|optimize|speed up|refactor|clean up|make (?:better|faster|cleaner))\s+(?:my |the |our )?(.+?)(?:\s+(?:because|but|and)\b|[.!?]|$)/i], extract: (m) => ({ target: m[1].trim() }) },
+  { action: "explain",  pats: [/\b(?:explain|tell me about|what (?:is|are)|how (?:does|do))\s+(.+?)(?:\?|[.!]|$)/i], extract: (m) => ({ target: m[1].trim() }) },
+];
+
+// Reason extraction: why are they doing it
+const SEM_REASON_PATS = [
+  /\bbecause\s+(.+?)(?:[.!?]|$)/i,
+  /\bsince\s+(.+?)(?:[.!?]|$)/i,
+  /\bso (?:that|I can)\s+(.+?)(?:[.!?]|$)/i,
+  /\bthe (?:reason|thing) is\s+(.+?)(?:[.!?]|$)/i,
+  /\b(?:due to|thanks to)\s+(.+?)(?:[.!?]|$)/i,
+];
+
+// Involvement: who else is part of this
+const SEM_INVOLVE_PATS = [
+  [/\bmy (?:team|company|org|boss|manager|client|co-?worker|colleague|friend|partner|wife|husband)\b/i, (m) => m[0].replace(/^my /i, "").trim()],
+  [/\b(?:we|us|our)\b/i, () => "team"],
+  [/\bfor (?:a |my )?(\w+(?:\s+\w+)?(?:team|company|client|class|project|startup))\b/i, (m) => m[1]],
+];
+
+function analyzeSemantics(text) {
+  const lower = text.toLowerCase();
+  const result = { agent: null, stance: null, action: null, details: {}, reason: null, involves: null, confidence: 0 };
+
+  // 1. Extract agent
+  for (const [pat, val] of SEM_AGENT_PATS) {
+    const m = lower.match(pat);
+    if (m) { result.agent = typeof val === "function" ? val(m) : val; break; }
+  }
+
+  // 2. Extract stance (can have multiple, take highest-priority)
+  for (const { stance, pats } of SEM_STANCE_PATS) {
+    if (pats.some(p => p.test(lower))) { result.stance = stance; result.confidence += 0.3; break; }
+  }
+
+  // 3. Extract action + details
+  for (const { action, pats, extract, needsStance } of SEM_ACTION_PATS) {
+    if (needsStance && result.stance !== needsStance) continue;
+    for (const p of pats) {
+      const m = text.match(p);
+      if (m) { result.action = action; result.details = extract(m); result.confidence += 0.3; break; }
+    }
+    if (result.action) break;
+  }
+
+  // 4. Extract reason
+  for (const p of SEM_REASON_PATS) {
+    const m = text.match(p);
+    if (m) { result.reason = m[1].trim(); result.confidence += 0.2; break; }
+  }
+
+  // 5. Extract involvement
+  for (const [pat, ext] of SEM_INVOLVE_PATS) {
+    const m = text.match(pat);
+    if (m) { result.involves = ext(m); result.confidence += 0.1; break; }
+  }
+
+  // Boost confidence for longer, more structured sentences
+  if (text.split(/\s+/).length >= 8) result.confidence += 0.1;
+
+  return result.confidence >= 0.3 ? result : null;
+}
+
+// Generate a response that addresses the actual semantic structure
+function respondToSemantics(sem, text, topics, sent) {
+  const { stance, action, details, reason, involves } = sem;
+  const agent = sem.agent || "user";
+
+  // ── Switch/Migration ──
+  if (action === "switch" && details.from && details.to) {
+    const teamNote = involves ? `, especially with ${involves === "team" ? "a whole team" : "your " + involves} involved` : "";
+    const reasonNote = reason ? ` The fact that ${reason} is a solid reason.` : "";
+    const responses = [
+      `That's a big migration call${teamNote}.${reasonNote} What's the biggest friction point with ${details.from} right now?`,
+      `${details.from} to ${details.to} — interesting${teamNote}.${reasonNote} What's pulling you toward ${details.to} specifically?`,
+      `Switching ${details.from} → ${details.to}${teamNote} is no small thing.${reasonNote} Have you done a small proof-of-concept yet?`,
+    ];
+    return pick(responses);
+  }
+
+  // ── Build/Create ──
+  if (action === "build" && details.target) {
+    const target = details.target.replace(/\b(a|an|the|my|our|some)\b/gi, "").trim();
+    if (stance === "planning") return pick([
+      `Love the ambition — building ${target} sounds like a fun challenge! What's your tech stack looking like?`,
+      `Oh cool, ${target}! What's the first milestone you're aiming for?`,
+    ]);
+    if (stance === "attempting" || stance === "struggling") {
+      const empathy = stance === "struggling" ? "I know that can be rough. " : "";
+      return `${empathy}Building ${target} — what's the trickiest part you've hit so far?`;
+    }
+    if (stance === "accomplished") return `You built ${target}? That's awesome! 🎉 How did it turn out?`;
+    return `Building ${target} — exciting! What stage are you at?`;
+  }
+
+  // ── Learn ──
+  if (action === "learn" && details.target) {
+    const target = details.target.replace(/\b(a|an|the|my|some|how to)\b/gi, "").trim();
+    if (stance === "learning") return pick([
+      `Welcome to the ${target} journey! What made you decide to start?`,
+      `${target} is a great thing to learn! Are you going with tutorials, docs, or just diving in?`,
+    ]);
+    if (stance === "struggling") return `${target} can definitely be tricky at first. What part is giving you the most trouble?`;
+    return `Learning ${target} — nice! What's clicked so far, and what still feels murky?`;
+  }
+
+  // ── Fix/Debug ──
+  if (action === "fix" && details.target) {
+    const target = details.target.replace(/\b(a|an|the|this|my)\b/gi, "").trim();
+    if (stance === "struggling") return `Debugging ${target} — the worst! What have you tried so far? Sometimes talking through it helps.`;
+    if (stance === "accomplished") return `You fixed ${target}? YES! 🎉 What was the root cause?`;
+    return `What's ${target} doing (or not doing)? Let's think through it.`;
+  }
+
+  // ── Choose/Compare ──
+  if (action === "choose" && (details.optionA || details.from)) {
+    const a = details.optionA || details.from;
+    const b = details.optionB || details.to;
+    const reasonNote = reason ? ` You mentioned ${reason} — that's a key factor.` : "";
+    return `${a} vs ${b} — that's a genuine dilemma!${reasonNote} What matters most to you: ${pick(["learning curve","community support","long-term maintainability","performance","developer experience"])}?`;
+  }
+
+  // ── Improve/Optimize ──
+  if (action === "improve" && details.target) {
+    const target = details.target.replace(/\b(a|an|the|my|our)\b/gi, "").trim();
+    return `Improving ${target} — good instinct! What's the current bottleneck: ${pick(["speed","readability","architecture","user experience","reliability"])}?`;
+  }
+
+  // ── Stance-only responses (no specific action detected but stance is clear) ──
+  if (stance === "considering" && !action) {
+    const topicStr = topics[0] || "that";
+    return pick([
+      `Sounds like you're weighing your options on ${topicStr}. What's the main thing holding you back?`,
+      `The fact that you're thinking it through carefully says a lot. What would tip the scales for you?`,
+    ]);
+  }
+  if (stance === "struggling" && !action) {
+    const topicStr = topics[0] || "this";
+    const reasonNote = reason ? ` I hear you — ${reason} makes it extra tough.` : "";
+    return `${topicStr} giving you a hard time, huh?${reasonNote} Want to talk through what you've tried?`;
+  }
+  if (stance === "accomplished" && !action) {
+    return pick([
+      "That's a real win — you should feel proud! What made it finally click?",
+      "YES! That's the kind of progress that makes everything worth it. What's next on the horizon?",
+    ]);
+  }
+  if (stance === "celebrating") {
+    return pick([
+      "I love that energy! 🎉 What's got you fired up?",
+      "That excitement is contagious! Tell me everything!",
+    ]);
+  }
+  if (stance === "abandoning") {
+    const topicStr = topics[0] || "it";
+    return pick([
+      `Walking away from ${topicStr} takes guts too. What pushed you to that decision?`,
+      `Sometimes knowing when to stop is the smartest move. What are you pivoting to instead?`,
+    ]);
+  }
+  if (stance === "doubting") {
+    const topicStr = topics[0] || "it";
+    return pick([
+      `Healthy skepticism about ${topicStr} is totally valid. What's raising the red flag for you?`,
+      `Trust that instinct — what specifically doesn't sit right?`,
+    ]);
+  }
+  if (stance === "sharing") {
+    return null; // let the regular opinion/sharing handlers take it
+  }
+
+  return null; // no semantic match strong enough
+}
+
 /* ── Intent Classification (expanded) ── */
 
 const INTENTS = {
@@ -4905,6 +5129,16 @@ function generateResponse(text) {
     const momentum = momentumResponse();
     if (momentum) return momentum;
     return respondToShortReply(text);
+  }
+
+  // ═══ 15.5. Semantic clause analysis — understand structured meaning ═══
+  // For complex sentences, extract WHO is doing WHAT, WHY, and with what STANCE
+  if (tokens.length >= 5) {
+    const sem = analyzeSemantics(effectiveText);
+    if (sem && sem.confidence >= 0.5) {
+      const semResp = respondToSemantics(sem, text, topics, sent);
+      if (semResp) return semResp;
+    }
   }
 
   // ═══ 16. Topic-based: try COMPOSITIONAL NLG first, fall back to templates ═══
