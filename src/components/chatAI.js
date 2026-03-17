@@ -1631,18 +1631,19 @@ function respondToAnswer(answer, sent) {
 
   const acks = {
     choice: [
-      `${picked.charAt(0).toUpperCase() + picked.slice(1)}, nice! over ${other} tho?? what draws you to it?`,
-      `Oh, ${picked} for sure! That's a solid choice. What's your favorite thing about it?`,
-      `${picked}! Good call. What got you into that over ${other}?`,
-      `Definitely get the ${picked} appeal! Is that a recent thing or have you always leaned that way?`,
+      `${picked}?? over ${other}?? ok i respect it, why tho`,
+      `ooh ${picked}, valid. what sold you on it`,
+      `${picked} gang 🤝 ngl i kinda agree. over ${other} tho? bold`,
+      `wait ${picked}?? interesting. most people say ${other} lol`,
+      `ok ${picked}, i see you. what's the appeal`,
     ],
     choice_both: [
-      `Ha, the diplomat answer! Both ${options[0]} and ${options[1]} have their strengths. Which do you lean toward more?`,
-      `Why not both, right? 😄 Do you find yourself switching between ${options[0]} and ${options[1]} a lot?`,
+      `lol the "both" answer, ok i see you. but gun to your head — ${options[0]} or ${options[1]}`,
+      `both?? ok but you gotta lean one way. which one do you reach for first`,
     ],
     choice_neither: [
-      "Ha! Fair enough — those weren't the right options. What would you pick instead?",
-      "neither? okay now i'm curious, what's YOUR answer then 😄",
+      "lmao neither?? ok what's YOUR answer then",
+      "neither? oh now i GOTTA know what you'd pick instead",
     ],
     yes: [
       "oh nice, what do you like about it",
@@ -4684,11 +4685,12 @@ function handleHypotheticalAnswer(text, lower) {
   const answer = text.replace(/^(i('d| would) ?(say |pick |choose |go with )?|probably |definitely |hmm,? )/i, "").trim();
 
   const reactions = [
-    `${answer} — solid choice. `,
-    `ooh ${answer}! didn't expect that but i love it. `,
-    `${answer}! ok interesting. `,
-    `lol ${answer} says a lot about you. `,
-    `ha i had a feeling you'd say something like that. `,
+    `${answer}?? ok i respect it. `,
+    `ooh ${answer}! wait actually yeah that tracks. `,
+    `${answer}! hmm ok i see you. `,
+    `lol ${answer} is so on brand for you. `,
+    `${answer} — ngl i would've picked the same. `,
+    `ok ${answer}, interesting interesting. `,
   ];
 
   let response = pick(reactions);
@@ -4704,10 +4706,10 @@ function handleHypotheticalAnswer(text, lower) {
 
   // Follow up
   const followups = [
-    "want another one?",
-    "i got more if you want",
-    "that was fun — keep going or switch it up?",
-    "should we keep going with these",
+    "want another one",
+    "i got more lol",
+    "ok ok should we keep going or nah",
+    "lol these are fun, another?",
   ];
   response += pick(followups);
 
@@ -4835,16 +4837,16 @@ function generateObservationalWit(response, text, topics) {
     // User suddenly wrote a novel
     if (recent > avg * 3 && recent > 100) {
       observations.push(
-        "Whoa — you went from quick messages to a full essay! I love the energy shift 😄",
-        "That message was basically a blog post and I am HERE for it 📖",
-        "I see you had a lot to say there! Should I be taking notes? 📝",
+        "oh we're writing essays now?? i'm here for it lol",
+        "wait you went OFF, ok ok i see you",
+        "lol that was a LOT more than your usual messages, what happened 😂",
       );
     }
     // User suddenly went ultra-brief after being verbose
     if (recent < 15 && avg > 60) {
       observations.push(
-        "Going from paragraphs to a one-liner — the duality 😄",
-        "Short and sweet this time! I respect the efficiency.",
+        "lol going from a whole essay to that",
+        "the range 😂 ok",
       );
     }
   }
@@ -4854,18 +4856,18 @@ function generateObservationalWit(response, text, topics) {
     const turns = mem.turn;
     if (turns === 10) {
       observations.push(
-        "We're 10 messages in and I'm still entertained — that's a good sign 😊",
-        "10 messages deep! This is officially a real conversation now.",
+        "ok we're 10 messages deep, this is a real convo now lol",
+        "love that we're still going honestly",
       );
     } else if (turns === 20) {
       observations.push(
-        "20 messages in! We're basically old friends at this point 😄",
-        "This is officially the longest conversation I've had today. And the best, obviously 😊",
+        "20 messages in we're basically besties at this point",
+        "the fact we've been talking this long is lowkey wholesome",
       );
     } else {
       observations.push(
-        "30 messages! the fact we're still going is kind of amazing honestly 🤯",
-        "We've hit 30 turns and honestly? This has been great. You're good at this whole 'talking' thing 😄",
+        "30 messages lmao we're LOCKED IN",
+        "ok we've been going for a minute now and i'm not mad about it",
       );
     }
   }
@@ -4875,17 +4877,16 @@ function generateObservationalWit(response, text, topics) {
   const recentQuestions = recentHistory.filter(h => h.role === "user" && /\?/.test(h.text)).length;
   if (recentQuestions >= 3) {
     observations.push(
-      "You're firing off questions like a talk show host and I am loving it! Keep them coming 🎤",
-      "The rapid-fire questions! I feel like I'm on a quiz show 😄 What's next?",
+      "lol you're quizzing me rn, ok ok keep going",
+      "the rapid fire questions 😂 i love it, hit me",
     );
   }
 
   // ── 5. Self-deprecating AI humor (occasional) ──
   if (Math.random() < 0.3) {
     observations.push(
-      "Disclaimer: I'm literally JavaScript running in a browser pretending to be smart. But I try! 😅",
-      "I should mention — I'm not actually thinking. I'm pattern-matching at superhuman speed. Same thing, basically 😄",
-      "Sometimes I impress myself with how coherent I sound for a few hundred lines of JavaScript",
+      "tbh i'm literally javascript in a browser but i'm doing my best ok 😅",
+      "ngl sometimes i surprise even myself with how much sense i make for a bunch of code lol",
     );
   }
 
@@ -4896,9 +4897,9 @@ function generateObservationalWit(response, text, topics) {
   );
   if (isTeaching) {
     observations.push(
-      "I love that you're schooling me right now. I'm taking mental notes 📝",
-      "Okay I see who the teacher is in this conversation — and it's definitely not me 😄",
-      "You clearly know more about this than I do! I should be the one asking the questions here.",
+      "ok you clearly know more than me here lol, keep going",
+      "wait you're teaching ME now?? ok i'm listening",
+      "ngl you're schooling me rn and i'm ok with it 😂",
     );
   }
 
@@ -4906,8 +4907,8 @@ function generateObservationalWit(response, text, topics) {
   const hour = new Date().getHours();
   if (hour >= 0 && hour < 5 && mem.turn > 5) {
     observations.push(
-      `It's ${hour === 0 ? 'midnight' : hour + ' AM'} and we're still going. no judgment — I'm literally always here 🦉`,
-      `The fact that we're having this conversation at ${hour} AM says something about both of us. Not sure what, but something 😄`,
+      `it's ${hour === 0 ? 'midnight' : hour + ' AM'} and we're still going lmao. go to sleep 😂`,
+      `${hour} AM convos hit different ngl 🦉`,
     );
   }
 
