@@ -2720,7 +2720,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
       const parts = [];
       parts.push(pick(["hmm ok so —", "ok wait —", "see the thing is", "i go back and forth on this but", "ok so like"]));
       if (assoc.opinions && assoc.opinions.length > 1) {
-        parts.push(`like on one hand ${assoc.opinions[0]}.`);
+        parts.push(`like ${assoc.opinions[0]}.`);
         parts.push(`but then also ${assoc.opinions[Math.min(1, assoc.opinions.length - 1)]}.`);
       } else if (assoc.opinions) {
         parts.push(`${pick(assoc.opinions)}.`);
@@ -3789,8 +3789,8 @@ function synthesizeAnswer(text, topics, qType) {
   // Opening: acknowledge the question type
   const openings = {
     what: [`So ${primary.key} — `, `Oh, ${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — `, `Ah, ${primary.key}! `],
-    how: [`When it comes to ${primary.key}, `, `Ooh, ${primary.key}! `, `So for ${primary.key} — `],
-    why: [`The thing about ${primary.key} is, `, `Oh yeah, ${primary.key} — `, `${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} is interesting because `],
+    how: [`ok so ${primary.key} — `, `Ooh, ${primary.key}! `, `So for ${primary.key} — `],
+    why: [`ok so the thing about ${primary.key} is, `, `Oh yeah, ${primary.key} — `, `${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — ok so basically `],
     default: [`${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — `, `So about ${primary.key} — `, `Alright, ${primary.key}! `],
   };
   const openType = /^what\b/i.test(lower) ? "what" : /^how\b/i.test(lower) ? "how" : /^why\b/i.test(lower) ? "why" : "default";
@@ -16433,12 +16433,12 @@ function generateRepairAck(signalType) {
     frustration: [
       "you're right i wasn't tracking, let me actually listen this time",
       "fair, i missed the point there. here's what i think you're getting at:",
-      "sorry about that, let me try again properly",
+      "my bad, ok let me actually answer that",
       "my bad, i hear you now",
     ],
     repetition: [
-      "Right, I didn't really answer that — let me try again.",
-      "Let me actually address what you asked.",
+      "ok wait i didn't actually answer that — lemme redo this.",
+      "ok focusing on what you actually said —",
       "Okay, focusing on what you actually said this time —",
     ],
   };
@@ -18131,10 +18131,10 @@ function findContrastAngle(text, topics) {
 function generateContrastFrame(angle, stance) {
   if (angle.type === "tension") {
     const frames = [
-      `Though I wonder — sometimes ${angle.opposite} gets you further than ${angle.pole} in the long run.`,
-      `Interesting — but what about the ${angle.opposite} side? There's something to be said for it.`,
-      `True, but I've also seen cases where leaning into ${angle.opposite} instead of ${angle.pole} paid off in unexpected ways.`,
-      `Fair — though the tension between ${angle.pole} and ${angle.opposite} is exactly where the interesting stuff lives.`,
+      `hmm but sometimes ${angle.opposite} actually gets you further than ${angle.pole} in the long run tho.`,
+      `ok but what about the ${angle.opposite} angle tho? thats kinda worth thinking about.`,
+      `true, but sometimes leaning into ${angle.opposite} instead of ${angle.pole} works out in weird ways.`,
+      `fair — but the push-pull between ${angle.pole} and ${angle.opposite} is kinda where the good stuff is.`,
     ];
     return frames[Math.floor(Math.random() * frames.length)];
   }
