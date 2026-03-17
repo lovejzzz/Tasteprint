@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import C from "./ComponentRenderer";
 import PropsPanel from "./PropsPanel";
 import { FONTS, HAS_TEXT, HAS_PROPS } from "../constants";
-import { maxV, varName, getTextureStyle } from "../utils";
+import { maxV, varName, getTextureStyle, DESIGN_MOODS } from "../utils";
 
 /* ── Shared toolbar pill button ── */
 const pillBtn = (p) => ({
@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, delShape, setRsz, texture }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, delShape, setRsz, texture, designMood, setDesignMood }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -78,6 +78,13 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               style={{ ...pb, fontSize: 13, fontWeight: 600 }}>A+</button>
           </>}
           {sep}
+          <button aria-label="Cycle design mood"
+            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); const idx = DESIGN_MOODS.findIndex(m => m.id === (designMood || "auto")); setDesignMood(DESIGN_MOODS[(idx + 1) % DESIGN_MOODS.length].id); }}
+            {...ph}
+            style={{ ...pb, width: "auto", padding: "0 7px", gap: 3, fontSize: 9, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac }}>
+            <span style={{ fontSize: 10 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
+            <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
+          </button>
           <button aria-label="Randomize design"
             onPointerDown={e => { e.stopPropagation(); e.preventDefault(); randomize(s.id); }}
             onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.12) rotate(15deg)"; }}
@@ -160,7 +167,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     prev.device === next.device &&
     (wasPrimary ? prev.selFont : null) === (isPrimary ? next.selFont : null) &&
     prev.p === next.p &&
-    prev.selAll.has(id) === next.selAll.has(id);
+    prev.selAll.has(id) === next.selAll.has(id) &&
+    prev.designMood === next.designMood;
 });
 
 export default ShapeItem;

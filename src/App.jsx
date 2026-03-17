@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
 import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT, HAS_PROPS, VARIANTS, DEFAULT_PROPS } from "./constants";
-import { load, uid, maxV, varName, snap, validateImport } from "./utils";
+import { load, uid, maxV, varName, snap, validateImport, designerRandomize, DESIGN_MOODS } from "./utils";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TpContext } from "./contexts/TpContext";
 import Header from "./components/Header";
@@ -41,6 +41,7 @@ export default function App() {
   const [libOrd, setLibOrd] = useState(() => load("libOrd", {}));
   const [pDrag, setPDrag] = useState(null);
   const [libOpen, setLibOpen] = useState(false);
+  const [designMood, setDesignMood] = useState("auto");
   const cRef = useRef(null);
   const dRef = useRef(null);
   const dirtyText = useRef(null);
@@ -194,38 +195,17 @@ export default function App() {
   const randomize = useCallback((id) => {
     setShapes(prev => prev.map(s => {
       if (s.id !== id) return s;
-      const mx = maxV(s.type);
-      const rv = Math.floor(Math.random() * mx);
-      const rf = Math.floor(Math.random() * FONTS.length);
-      const rs = +(0.7 + Math.random() * 0.8).toFixed(2); // 0.7 – 1.5
-      // randomize props if component has them
       const defaults = DEFAULT_PROPS[s.type];
-      let rp = { ...(s.props || {}) };
-      if (defaults) {
-        for (const [k, dv] of Object.entries(defaults)) {
-          if (typeof dv === "boolean") rp[k] = Math.random() > 0.5;
-          else if (typeof dv === "number") {
-            if (k === "pct" || k === "ring") rp[k] = Math.floor(Math.random() * 100);
-            else if (k === "stars") rp[k] = 1 + Math.floor(Math.random() * 5);
-            else if (k === "active" || k === "highlight") rp[k] = Math.floor(Math.random() * 5);
-            else if (k === "level") rp[k] = Math.floor(Math.random() * 4);
-            else if (k === "qty") rp[k] = 1 + Math.floor(Math.random() * 5);
-            else if (k === "total") rp[k] = 3 + Math.floor(Math.random() * 12);
-            else if (k === "tip") rp[k] = Math.floor(Math.random() * 3);
-            else if (k === "verified") rp[k] = Math.random() > 0.5 ? 1 : 0;
-          } else if (Array.isArray(dv)) {
-            rp[k] = dv.map(() => Math.random() > 0.5);
-          }
-        }
-      }
-      return { ...s, variant: rv, font: rf, fsize: rs, props: rp };
+      const result = designerRandomize(s.type, p, defaults, designMood);
+      return { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
     }));
     setPrefV(pv => {
       const s = shapes.find(x => x.id === id);
       if (!s) return pv;
-      return { ...pv, [s.type]: Math.floor(Math.random() * maxV(s.type)) };
+      const result = designerRandomize(s.type, p, DEFAULT_PROPS[s.type], designMood);
+      return { ...pv, [s.type]: result.variant };
     });
-  }, [shapes]);
+  }, [shapes, p, designMood]);
 
   const delShape = useCallback(() => {
     flushDirtyText();
@@ -557,7 +537,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} delShape={delShape} setRsz={setRsz} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} />
               ))}
             </div>
 

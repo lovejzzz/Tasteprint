@@ -152,3 +152,221 @@ export function debounce(fn, ms) {
     debounceTimer = setTimeout(() => fn(...args), ms);
   };
 }
+
+/* ══════════════════════════════════════════════════════════
+   DESIGNER SYSTEM — Smart randomization for components
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Font categories for harmonious pairing ── */
+const FONT_CATS = {
+  display: [0, 4, 5, 6, 9, 12, 13, 15],   // DM Sans, Space Grotesk, Outfit, Sora, Instrument Serif, Playfair, Bricolage, Cabinet
+  body:    [1, 2, 3, 7, 8, 10, 14, 16],    // Inter, Plus Jakarta, Manrope, Work Sans, Figtree, Geist, General Sans, Poppins
+  mono:    [11],                             // JetBrains Mono
+  serif:   [9, 12],                          // Instrument Serif, Playfair Display
+};
+
+/* ── Component size categories for font sizing ── */
+const SIZE_CAT = {
+  large:  new Set(["hero", "heading", "pricing-card", "profile-card", "modal"]),
+  medium: new Set(["card", "card-sm", "stat-card", "dash-panel", "testimonial", "bento-grid", "product-card", "order-summary", "receipt", "feature-table", "kanban"]),
+  small:  new Set(["button", "badge", "toggle", "pagination", "breadcrumb", "tag-input", "avatar-row", "tooltip", "checkbox", "slider"]),
+  nav:    new Set(["navbar", "tabs", "sidebar", "footer"]),
+  input:  new Set(["input", "search", "select", "dropdown", "cmd-palette"]),
+  code:   new Set(["code-block"]),
+};
+
+/* ── Variant style tags — which variant indices map to which aesthetic ── */
+// Most components follow: [Standard, ..., Glass(~idx3-4), Brutal(~idx5), Gradient(~idx6)]
+// We tag the LAST 3 indices as glass/brutal/gradient for most components
+function getVariantTags(type, variantCount) {
+  const tags = {};
+  if (variantCount < 4) return tags; // too few variants to categorize
+  // Most components: Glass is idx variantCount-3, Brutal is idx variantCount-2, Gradient is idx variantCount-1
+  tags.glass = variantCount - 3;
+  tags.brutal = variantCount - 2;
+  tags.gradient = variantCount - 1;
+  // Terminal variants (certain components have them at specific indices)
+  if (["card","toast","sidebar","table","navbar","stat-card","code-block","media-player","profile-card","sub-toggle"].includes(type)) {
+    // Terminal is usually at a fixed position, but varies per component
+    // For simplicity, just mark it — not critical for palette matching
+  }
+  return tags;
+}
+
+/* ── Palette darkness detection ── */
+function isDarkPalette(p) {
+  // Parse bg color to check luminance
+  const hex = p.bg.replace("#", "");
+  if (hex.length < 6) return false;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (r * 0.299 + g * 0.587 + b * 0.114) < 128;
+}
+
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const randRange = (min, max) => +(min + Math.random() * (max - min)).toFixed(2);
+
+/* ── Design mood presets ── */
+export const DESIGN_MOODS = [
+  { id: "auto",    label: "Auto",    icon: "✦" },
+  { id: "minimal", label: "Minimal", icon: "○" },
+  { id: "bold",    label: "Bold",    icon: "■" },
+  { id: "elegant", label: "Elegant", icon: "◇" },
+  { id: "playful", label: "Playful", icon: "★" },
+];
+
+/* Mood-specific overrides for variant/font/size selection */
+const MOOD_CONFIG = {
+  auto: null, // uses default smart logic
+  minimal: {
+    // Clean variants (first 2 standard), body fonts, near-1.0 sizing
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * Math.min(2, varCount)),
+    fontPool: () => pick(FONT_CATS.body),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.0, 1.15) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.92, 1.05),
+    propTweak: (props) => { if (props.featured !== undefined) props.featured = false; },
+  },
+  bold: {
+    // Brutal/gradient variants, display fonts, larger sizing
+    variantBias: (tags, varCount, dark) => {
+      const r = Math.random();
+      if (tags.brutal !== undefined && r < 0.45) return tags.brutal;
+      if (tags.gradient !== undefined && r < 0.75) return tags.gradient;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.display),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.2, 1.5) : cat === "small" ? randRange(0.95, 1.1) : randRange(1.0, 1.25),
+    propTweak: (props) => { if (props.featured !== undefined) props.featured = true; },
+  },
+  elegant: {
+    // Glass/gradient variants, serif fonts, refined sizing
+    variantBias: (tags, varCount, dark) => {
+      const r = Math.random();
+      if (tags.glass !== undefined && r < 0.5) return tags.glass;
+      if (tags.gradient !== undefined && r < 0.75) return tags.gradient;
+      return Math.max(0, varCount - 4) + Math.floor(Math.random() * Math.min(2, varCount));
+    },
+    fontPool: (isLarge, isSmall) => {
+      if (isSmall) return pick(FONT_CATS.body);
+      const rr = Math.random();
+      return rr < 0.5 ? pick(FONT_CATS.serif) : rr < 0.85 ? pick(FONT_CATS.display) : pick(FONT_CATS.body);
+    },
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.35) : cat === "small" ? randRange(0.85, 0.95) : randRange(0.95, 1.1),
+    propTweak: (props) => { if (props.verified !== undefined) props.verified = 1; },
+  },
+  playful: {
+    // Any variant, fun display fonts, varied sizing
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * varCount),
+    fontPool: (isLarge, isSmall) => {
+      const funFonts = [...FONT_CATS.display, ...FONT_CATS.serif];
+      return isSmall ? pick([...FONT_CATS.body, ...FONT_CATS.display]) : pick(funFonts);
+    },
+    fsizeRange: (cat) => cat === "large" ? randRange(1.15, 1.5) : cat === "small" ? randRange(0.8, 1.1) : randRange(0.88, 1.2),
+    propTweak: (props) => {
+      if (props.stars !== undefined) props.stars = 4 + Math.round(Math.random());
+      if (props.pct !== undefined) props.pct = 60 + Math.floor(Math.random() * 35);
+    },
+  },
+};
+
+/**
+ * Smart designer randomization.
+ * Returns { variant, font, fsize, props } for a given component type + palette.
+ * @param {string} mood - Design mood: "auto"|"minimal"|"bold"|"elegant"|"playful"
+ */
+export function designerRandomize(type, palette, defaults, mood = "auto") {
+  const varCount = (VARIANTS[type] || []).length || 1;
+  const dark = isDarkPalette(palette);
+  const tags = getVariantTags(type, varCount);
+  const moodCfg = MOOD_CONFIG[mood];
+
+  const isCode = SIZE_CAT.code.has(type);
+  const isLarge = SIZE_CAT.large.has(type);
+  const isSmall = SIZE_CAT.small.has(type);
+  const isNav = SIZE_CAT.nav.has(type);
+  const sizeCat = isLarge ? "large" : isSmall ? "small" : isNav ? "nav" : isCode ? "code" : "medium";
+
+  /* ── 1. Variant selection (mood-aware) ── */
+  let variant;
+  if (moodCfg && moodCfg.variantBias) {
+    variant = moodCfg.variantBias(tags, varCount, dark);
+  } else {
+    const r = Math.random();
+    if (dark && tags.glass !== undefined && r < 0.35) variant = tags.glass;
+    else if (!dark && tags.brutal !== undefined && r < 0.2) variant = tags.brutal;
+    else if (r < 0.25 && tags.gradient !== undefined) variant = tags.gradient;
+    else { const sc = Math.max(1, varCount - 3); variant = Math.floor(Math.random() * sc); }
+  }
+
+  /* ── 2. Font selection (mood-aware) ── */
+  let font;
+  if (isCode) {
+    font = pick(FONT_CATS.mono);
+  } else if (moodCfg && moodCfg.fontPool) {
+    font = moodCfg.fontPool(isLarge, isSmall);
+  } else if (isLarge) {
+    const rr = Math.random();
+    font = rr < 0.6 ? pick(FONT_CATS.display) : rr < 0.9 ? pick(FONT_CATS.serif) : pick(FONT_CATS.body);
+  } else if (isNav || SIZE_CAT.input.has(type)) {
+    font = pick(FONT_CATS.body);
+  } else if (isSmall) {
+    font = pick(FONT_CATS.body);
+  } else {
+    const rr = Math.random();
+    font = rr < 0.7 ? pick(FONT_CATS.body) : rr < 0.9 ? pick(FONT_CATS.display) : pick(FONT_CATS.serif);
+  }
+
+  /* ── 3. Font sizing (mood-aware) ── */
+  let fsize;
+  if (moodCfg && moodCfg.fsizeRange) {
+    fsize = moodCfg.fsizeRange(sizeCat);
+  } else if (isLarge)       fsize = randRange(1.05, 1.4);
+  else if (isSmall)  fsize = randRange(0.85, 1.05);
+  else if (isNav)    fsize = randRange(0.9, 1.1);
+  else if (isCode)   fsize = randRange(0.85, 1.1);
+  else               fsize = randRange(0.9, 1.15);
+
+  /* ── 4. Smart prop randomization ── */
+  let props = {};
+  if (defaults) {
+    for (const [k, dv] of Object.entries(defaults)) {
+      if (typeof dv === "boolean") {
+        props[k] = Math.random() > 0.5;
+      } else if (typeof dv === "number") {
+        if (k === "pct" || k === "ring")      props[k] = 20 + Math.floor(Math.random() * 70);  // 20-89, realistic
+        else if (k === "stars")               props[k] = Math.random() < 0.7 ? (4 + Math.round(Math.random())) : (2 + Math.floor(Math.random() * 3)); // trend 4-5
+        else if (k === "active")              props[k] = Math.floor(Math.random() * Math.min(5, 3));
+        else if (k === "highlight")           props[k] = Math.floor(Math.random() * 4);
+        else if (k === "level")               props[k] = Math.floor(Math.random() * 4);
+        else if (k === "qty")                 props[k] = Math.random() < 0.6 ? 1 : (2 + Math.floor(Math.random() * 3));
+        else if (k === "total")               props[k] = pick([5, 8, 10, 12]);
+        else if (k === "tip")                 props[k] = Math.floor(Math.random() * 3);
+        else if (k === "period")              props[k] = Math.floor(Math.random() * 2);
+        else if (k === "verified")            props[k] = Math.random() > 0.3 ? 1 : 0; // 70% verified
+        else if (k === "shipping")            props[k] = Math.floor(Math.random() * 2);
+        else if (k === "sortCol")             props[k] = -1;
+        else                                  props[k] = dv; // keep default for unknown numeric
+      } else if (Array.isArray(dv)) {
+        if (k === "bars")                     props[k] = dv.map(() => 15 + Math.floor(Math.random() * 75));
+        else if (k === "checked")             props[k] = dv.map(() => Math.random() > 0.4);
+        else if (k === "open")                props[k] = dv.map((_, i) => i === 0 ? true : Math.random() > 0.7);
+        else if (k === "read")                props[k] = dv.map(() => Math.random() > 0.5);
+        else                                  props[k] = dv.map(() => Math.random() > 0.5);
+      }
+    }
+    // Smart correlations
+    if (type === "pricing-card" && props.featured) {
+      props.period = props.period || 0; // featured usually monthly
+    }
+    if (type === "product-card" && props.rating !== undefined) {
+      props.rating = 3 + Math.floor(Math.random() * 3); // 3-5 for products
+    }
+    if (type === "progress" && props.pct !== undefined && props.indeterminate) {
+      props.indeterminate = false; // don't show indeterminate with a real percentage
+    }
+    // Apply mood-specific prop tweaks
+    if (moodCfg && moodCfg.propTweak) moodCfg.propTweak(props);
+  }
+
+  return { variant, font, fsize, props };
+}
