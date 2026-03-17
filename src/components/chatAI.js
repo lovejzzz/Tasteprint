@@ -6070,9 +6070,9 @@ function generateResponse(text) {
     // Frustration escalation: if frustrated 3x, acknowledge the pattern
     if (emo.emotion === "frustrated" && emotionTrend === "frustrated") {
       return pickNew([
-        "Okay yeah I can tell this keeps being frustrating. My bad. Let's reset — what would actually help right now?",
-        "Okay real talk, I keep fumbling this. What's the #1 thing you actually need?",
-        "You've been patient with me. Let's cut to the chase — what do you need?",
+        "ok yeah i can tell this keeps being frustrating. my bad. what would actually help rn?",
+        "ok real talk i keep fumbling this. what's the #1 thing you need?",
+        "ok i'm clearly not getting it — what do you actually need?",
       ]);
     }
 
@@ -6561,14 +6561,14 @@ function handleTurnSignal(signal) {
       const restatement = signal.payload;
       if (restatement && restatement.length > 5) {
         const responses = [
-          `Yeah, that's a good way to put it! "${restatement}" — exactly.`,
-          `Pretty much! Though I'd add a small nuance: it's not just about ${restatement.split(/\s+/)[0]}, but the bigger picture around it.`,
-          `Close! ${restatement} is part of it, but there's a bit more to it. ${pick(COMP.deepeners)}`,
-          `Exactly right! You got the essence of it. ${pick(COMP.deepeners)}`,
+          `yeah basically — "${restatement}" is pretty much it`,
+          `pretty much! tho it's not just about ${restatement.split(/\s+/)[0]} — there's more to it. ${pick(COMP.deepeners)}`,
+          `close! ${restatement} is part of it but there's a bit more. ${pick(COMP.deepeners)}`,
+          `exactly yeah you got it. ${pick(COMP.deepeners)}`,
         ];
         return pickNew(responses);
       }
-      return "Yeah, that's the gist of it! Did I explain it clearly enough?";
+      return "yeah that's basically it — did that make sense?";
     }
 
     default: return null;
@@ -7597,31 +7597,31 @@ function repairConfusion(confusionType) {
       // Try to rephrase what we said
       const topic = lastAI.topics?.[0] || "that";
       return pickNew([
-        `Sorry, let me try again! I was talking about ${topic}. What I meant was — what's your take on it?`,
-        `My bad — I jumped ahead! Let me back up. What were you trying to say about ${topic}?`,
-        `Ha, I think I got a bit off track there 😅 Let's reset — what did you want to talk about?`,
+        `wait my bad — i was going off about ${topic}. what were you actually saying tho?`,
+        `ok i jumped ahead lol. what were you getting at about ${topic}?`,
+        `ha ok i got off track 😅 what did you wanna talk about?`,
       ]);
     }
-    return "Sorry about that! I got confused. Let's start fresh — what's on your mind?";
+    return "wait sorry i got confused lol. what's on your mind?";
   }
 
   if (confusionType === "soft") {
     return pickNew([
-      "Oh wait, sorry — I might have misread what you were saying. Can you rephrase? I want to get it right this time.",
-      "Hold on, you're right — let me actually listen this time. What were you getting at?",
-      "Fair point, I may have jumped to conclusions. Run that by me again?",
+      "oh wait — i think i misread what you meant. say that again?",
+      "hold on you're right — what were you getting at?",
+      "ok fair i probably jumped to conclusions. run that by me again?",
     ]);
   }
 
   if (confusionType === "correction") {
     if (lastUser) {
       return pickNew([
-        `Ah, my mistake! I misunderstood. So what you actually meant was...?`,
-        `Oh gotcha — sorry about that! I read that wrong. Tell me what you actually meant.`,
-        `Oops, I totally misread that 😅 My bad! What were you actually saying?`,
+        `oh wait my bad — what did you actually mean tho?`,
+        `oh gotcha — i read that wrong lol. what did you mean?`,
+        `oops i totally misread that 😅 what were you saying?`,
       ]);
     }
-    return "Ah, my mistake! Tell me what you actually meant — I'll pay better attention this time.";
+    return "oh my bad — what did you actually mean?";
   }
 
   return null;
@@ -8437,9 +8437,9 @@ const SILENCE_RESPONSES = {
     "anything else on your mind",
   ],
   confused: [
-    "Want me to break that down differently?",
-    "I might've overcomplicated that — want the simpler version?",
-    "Let me try that again more clearly.",
+    "want me to break that down differently?",
+    "i might've overcomplicated that — want the simpler version?",
+    "ok wait let me try that again",
   ],
 };
 
