@@ -1896,6 +1896,7 @@ const INTENTS = {
   fitness:     { kw: {workout:3,exercise:3,gym:3,run:2,lift:2,yoga:3,fitness:3,health:2.5,muscle:2.5,cardio:3,protein:2,diet:2.5,training:2.5}, th:2.5 },
   learning:    { kw: {learn:3,study:3,course:3,tutorial:3,book:2.5,read:2,school:2.5,university:3,degree:2.5,research:2.5,practice:2}, th:2.5 },
   pets:        { kw: {dog:3,cat:3,pet:3,puppy:3,kitten:3,animal:2.5,bird:2,fish:2,hamster:3,rabbit:3}, th:2.5 },
+  tasteprint:  { kw: {tasteprint:5,component:2.5,canvas:2.5,sidebar:2,texture:3,palette:3,variant:3,export:2,device:2,props:2.5,propspanel:3,drag:2,drop:2,navbar:2,card:2,hero:2,button:2,tabs:2,bento:2,widget:2}, pats:[/how (do|can) (i|you) add/i,/what (components?|textures?|palettes?|variants?|fonts?) (are|do|is)/i,/how (does|do) (tasteprint|the (canvas|editor|ide))/i], th:2.5 },
 };
 
 function classify(text) {
@@ -1966,6 +1967,51 @@ const KB = {
     dog: ["dogs are pure joy in fur form honestly, they make everything better","a dog's love is unconditional, we literally don't deserve them"],
     cat: ["cats have the ultimate personality — independent but secretly cuddly","cat tax is real — you mention a cat you gotta share a photo 📸"],
     general: ["pets are family fr. they teach you about love and living in the moment"],
+  },
+  tasteprint: {
+    components: [
+      "just drag it from the sidebar on the left! pick a category and yoink whatever you want onto the canvas",
+      "we got a TON of components — cards, buttons, navbars, heroes, tabs, bento grids, charts, kanban boards, pricing cards, modals... like 40+ types. they're all in the sidebar organized by category",
+      "the sidebar has everything organized — Structure, Navigation, Content, Input, Feedback, Commerce, Data, Utility, Overlay, Social. just drag and drop onto the canvas!",
+    ],
+    textures: [
+      "oh we got a bunch — glass, noise, dots, grid, paper, marble, holographic... they're all css-only which is pretty sick",
+      "textures are like visual modifiers you can layer on components. glass gives you that frosted look, noise adds grain, dots and grid add patterns. all pure CSS, no images needed",
+      "the texture system is lowkey one of the coolest parts — you can make stuff look glass, noisy, dotty, gridded, papery, marble, or holographic. mix with any palette for wild combos",
+    ],
+    palettes: [
+      "palettes are the color themes! we have warm, cool, earth, noir, candy, cloud, mono, neon, mint, mocha, lavender, ocean, forest. just switch and everything recolors instantly",
+      "the palette system is sick — 13 themes that change the whole vibe. noir for dark mode, neon for that hacker aesthetic, candy for playful stuff. they all swap with one click",
+      "palettes control all the colors — background, cards, accents, text, borders. try switching between them to find the vibe you want. my faves are noir and neon ngl",
+    ],
+    variants: [
+      "every component has like 7 different visual styles! use the arrow keys or click the variant arrows to cycle through them. like buttons have Filled, Outline, Ghost, Pill, Brutal, Glass, Terminal",
+      "variants are different visual flavors for each component. cards have Elevated, Outlined, Glass, Brutal, Terminal and more. just cycle through with the arrows to find what you like",
+      "the variant system is great — each component type has multiple looks. some are clean and minimal, some are brutalist, some are glassy. cycle through them with the little arrows on the component",
+    ],
+    editing: [
+      "click any component to select it, then edit text right inline! for more controls, the PropsPanel on the right has toggles for textures, sizing, and other stuff",
+      "editing is super intuitive — click to select, double-click text to edit it inline. the PropsPanel on the right side gives you all the fine-tuning controls",
+      "select a component by clicking it, then you can edit text directly. the PropsPanel (right side) has all the extra controls — textures, variant switching, sizing etc",
+    ],
+    export: [
+      "you can export as PNG (screenshot of your canvas) or as JSON (save your whole project and import it later). both options are in the toolbar",
+      "PNG export grabs a screenshot of your canvas, JSON export saves everything so you can import it back later. pretty handy for sharing designs or backing up your work",
+    ],
+    device: [
+      "there are three device modes — free canvas (no constraints), desktop (fixed width), and phone (mobile width). great for testing how your layout looks on different screens",
+      "device modes let you preview at different sizes! free mode is unlimited canvas, desktop and phone simulate those screen widths. helps you think about responsive layouts",
+    ],
+    fonts: [
+      "we have like 17 fonts loaded — DM Sans, Inter, Space Grotesk, JetBrains Mono, Playfair Display, and a bunch more. cycle through them to find the right vibe for your design",
+      "font cycling is in the toolbar! we've got sans-serifs like Inter and Outfit, serifs like Instrument Serif and Playfair Display, and monospace like JetBrains Mono. you can also adjust font sizes",
+      "the font system has a great selection — modern sans-serifs, elegant serifs, monospace for that dev look. cycle through them and adjust sizes until it feels right",
+    ],
+    general: [
+      "tasteprint is a visual component builder IDE! drag components from the sidebar, style them with textures and palettes, cycle variants, and export your designs. it all runs in the browser",
+      "you're inside tasteprint rn! it's basically a playground for building UI compositions. drag stuff from the sidebar, mix palettes and textures, try different variants. what are you trying to build?",
+      "tasteprint lets you visually compose UI designs with real components, palettes, textures, and fonts. everything is drag-and-drop and runs right in your browser. what do you wanna know about?",
+    ],
   },
   personal: {
     about: [
@@ -2086,6 +2132,20 @@ const EXPLAIN = {
   darkmode:    { brief:"dark mode swaps to dark backgrounds and light text — easier on eyes at night",
                  deep:"you usually use CSS custom properties that swap based on a theme class or prefers-color-scheme. the tricky parts: you can't just invert colors, images/shadows need adjustment, and you should respect the user's OS preference while still letting them toggle manually",
                  hook:"dark or light mode person?" },
+
+  // ─── Tasteprint ───
+  tasteprint:  { brief:"tasteprint is a visual component builder IDE that runs entirely in your browser — drag, style, and export UI compositions",
+                 deep:"tasteprint gives you 40+ UI components across 10 categories (structure, navigation, content, input, feedback, commerce, data, utility, overlay, social). you drag them onto a canvas, style with 13 color palettes and 7+ textures (glass, noise, dots, grid, paper, marble, holographic — all pure CSS). each component has ~7 visual variants you can cycle through. export as PNG or JSON, preview in desktop/phone modes, and pick from 17 fonts. everything runs client-side, zero backend needed",
+                 hook:"what are you trying to build with it?" },
+  texture:     { brief:"textures are CSS-only visual overlays you can apply to any component — glass, noise, dots, grid, paper, marble, holographic",
+                 deep:"textures in tasteprint are pure CSS effects layered on components. glass gives a frosted transparency, noise adds grain, dots and grid create patterns, paper feels organic, marble is luxurious, and holographic is that rainbow shimmer. they work with any palette and you can swap them freely without affecting the component structure",
+                 hook:"which texture vibe are you going for?" },
+  palette:     { brief:"palettes are color themes that restyle your entire canvas — 13 options from warm to neon to noir",
+                 deep:"each palette defines background, card, accent, text, muted, border, and surface colors. warm is cozy earth tones, cool is blue-tinted, noir is dark mode, neon is green-on-black hacker vibes, candy is pink-purple playful. switching palettes instantly recolors every component on the canvas — great for exploring different moods",
+                 hook:"what mood are you going for with your design?" },
+  variant:     { brief:"variants are different visual styles for each component — like button has Filled, Outline, Ghost, Pill, Brutal, Glass, Terminal",
+                 deep:"every component type in tasteprint has around 7 variants. cards can be Elevated, Outlined, Glass, Brutal, Terminal. navbars can be Classic, Underline, Pill, Glass. you cycle through them with arrow buttons on the component. variants change the visual treatment while keeping the same content and dimensions",
+                 hook:"have you tried the Brutal variants? they're fun" },
 };
 
 /* ── Deep Knowledge: Comparisons ──
