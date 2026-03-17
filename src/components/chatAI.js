@@ -213,7 +213,7 @@ const SEMANTIC_RESPONSES = {
   accept_apology: ["all good, seriously don't worry about it","hey no worries at all, we're cool","it's totally fine, i didn't even think twice about it"],
   be_present_comfort: ["i'm here, i'm not going anywhere","hey, you don't have to talk if you don't want to. just being here is enough","i gotchu, whatever you need"],
   suggest_game: ["ooh ok what kind of game? 20 questions? would you rather?","bet!! let's do something fun, you pick","ok how about a game of would you rather"],
-  go_deep: ["oh i love deep conversations, what's on your mind?","yes absolutely, what do you wanna talk about?","ok getting philosophical, i'm here for it"],
+  go_deep: ["oh i love deep convos, what's on your mind?","yes for sure, what do you wanna talk about?","ok getting philosophical, i'm here for it"],
   casual_chat: ["lol yeah just vibing, anything interesting happening with you?","ha yeah, so what's new in your world?","yeah just hanging, what's good with you"],
   philosophical: ["ooh that's a big one. honestly i think it's whatever you make it","oh i think about this a lot actually","hmm i don't think there's one answer but here's my take"],
   speculate: ["oh man i think the future is gonna be wild","honestly? i'm both excited and terrified lol","that's such a cool thing to think about"],
@@ -251,7 +251,7 @@ const SEMANTIC_RESPONSES = {
   recall: ["oh yeah i remember!","let me think... yeah i've got that","oh for sure, you mentioned that"],
   accept_feedback: ["that's fair honestly, i'll try to do better","thanks for the feedback, noted!","you're right, i should work on that"],
   warm_connection: ["aww that means a lot honestly 🥺","i like talking to you too, for real","aw stop you're gonna make me blush (if i could)"],
-  build_trust: ["of course, i'm here. whatever you tell me stays between us","absolutely, i'm listening","hey, i'm a safe space. what's going on?"],
+  build_trust: ["of course, i'm here. whatever you tell me stays between us","yeah for sure, i'm listening","hey, safe space. what's going on?"],
   gentle_probe: ["that's ok! what's on your mind tho?","no pressure, just curious what you're thinking about","fair enough, wanna figure it out together?"],
   keep_going: ["cool cool, so what else?","nice, what's next?","ok ok, and then?"],
   give_space: ["take your time, no rush","no rush, i'm here when you're ready","all good, think away"],
@@ -3874,16 +3874,16 @@ function resolveFragment(text, lower, parsed, topics) {
       const fact = a.facts ? pick(a.facts) : null;
       const opinion = a.opinions ? pick(a.opinions) : null;
       const bridge = contextTopic
-        ? pick([`Good pivot from ${contextTopic}! `, `Switching to ${subjTopic} — `, `Oh, ${subjTopic}! `])
-        : pick([`${subjTopic}? `, `Ah, ${subjTopic}! `]);
-      return bridge + (fact || `That's an interesting area!`) + (opinion ? ` Personally, ${opinion}.` : "") + (a.hooks ? " " + pick(a.hooks) : "");
+        ? pick([`oh switching from ${contextTopic} — `, `ooh ${subjTopic} tho — `, `oh ${subjTopic}! `])
+        : pick([`${subjTopic}? `, `oh ${subjTopic} — `]);
+      return bridge + (fact || `oh that's a whole thing`) + (opinion ? ` honestly ${opinion}` : "") + (a.hooks ? " " + pick(a.hooks) : "");
     }
 
     // No ASSOC match — contextual pivot response
     const pivotResponses = [
-      `Ooh, ${newSubject}! That's a different angle. ` + (contextTopic ? `Compared to ${contextTopic}, ` : "") + `what's your take on it?`,
-      `${newSubject}? Oh wait, ` + (contextTopic ? `that's kinda related to ${contextTopic} actually. ` : "") + `What made you think of it?`,
-      `Shifting to ${newSubject} — I like it! What specifically about it are you curious about?`,
+      `ooh ${newSubject}! ` + (contextTopic ? `kinda different from ${contextTopic} — ` : "") + `what's your take?`,
+      `${newSubject}? oh wait ` + (contextTopic ? `that's lowkey related to ${contextTopic}. ` : "") + `what made you think of that?`,
+      `oh switching to ${newSubject} — what specifically tho?`,
     ];
     return pick(pivotResponses);
   }
@@ -4044,7 +4044,7 @@ function answerQuestion(text, parsed, intents, topics) {
     }
     if (/what (can|do) you do/i.test(lower) || /your (capabilit|abilit|skill)/i.test(lower)) return pickNew(KB.personal.capabilities);
     if (/who are you|what are you/i.test(lower)) return pickNew(KB.personal.about);
-    if (/how (old|tall|big)/i.test(lower)) return "I'm as old as this conversation and as tall as your screen! 😄 What else can I help with?";
+    if (/how (old|tall|big)/i.test(lower)) return "i'm as old as this convo and as tall as your screen lol. what else is up?";
     return pickNew(KB.personal.about);
   }
 
@@ -4123,10 +4123,10 @@ function answerQuestion(text, parsed, intents, topics) {
           const fact = a.facts ? pick(a.facts) : null;
           const opinion = a.opinions ? pick(a.opinions) : null;
           const hook = a.hooks ? pick(a.hooks) : pick(COMP.deepeners);
-          return (fact || `${kw} is a really interesting topic!`) + " " + (opinion ? `Personally, I think ${opinion}.` : "") + " " + hook;
+          return (fact || `oh ${kw} is lowkey fascinating`) + " " + (opinion ? `honestly ${opinion}` : "") + " " + hook;
         }
       }
-      return `Hmm, ${subject} is a big topic! I know a bit but I'm a tiny model. What specifically about ${subject} are you curious about?`;
+      return `hmm ${subject} is a whole thing — i know a bit but what specifically are you curious about?`;
     }
   }
 
@@ -7653,7 +7653,7 @@ function gracefulDegradation(text, keywords) {
     return pickNew([
       "ok I'm gonna level with you — I read all of that and I'm kinda lost. can you give me the TL;DR? 😄",
       "Wait, I wanna respond to that properly but I'm losing the thread. What's the main thing here?",
-      "That's a lot of thought and I want to do it justice! Can you boil it down to the core question?",
+      "ok there's a lot here — what's the main thing tho?",
     ]);
   }
 
@@ -9573,10 +9573,10 @@ const CHALLENGE_RESPONSES = {
   always: [
     "Always? Bold claim — I bet there's at least one exception hiding somewhere 😄",
     "Hmm, always though? I feel like there's a plot twist waiting to happen.",
-    "Every single time? That's a pretty strong never-broken streak!",
+    "every single time?? that's bold lol",
   ],
   never: [
-    "Never ever? That's a strong stance! I respect the commitment though.",
+    "never ever?? ok respect the commitment",
     "Hmm, never? I feel like the universe loves proving 'never' wrong 😅",
     "Zero times? That feels like it's daring the universe to prove you wrong.",
   ],
@@ -11016,8 +11016,8 @@ const MICRO_ACKS = {
   positive: ["Gotcha! ", "Makes sense! ", "Oh nice — ", "Right, right — ", "Got it! ", "Love that — ", "Okay yeah — "],
   negative: ["I hear you. ", "Gotcha. ", "That's fair. ", "Oof yeah. ", "Yeah, that's tough. ", "I get it. "],
   neutral: ["Mm-hmm, ", "Right — ", "Gotcha — ", "Okay — ", "Sure — ", "Got it — ", "Noted — "],
-  question: ["Ooh — ", "Let me think... ", "Hmm — ", "Oh wait — ", "So — "],
-  long: ["Okay, a lot to unpack there! ", "Alright, let me address that — ", "Okay so — "],
+  question: ["ooh — ", "hmm ", "oh wait — ", "so — ", "uh "],
+  long: ["ok a lot to unpack here — ", "alright so — ", "ok so — "],
 };
 
 // Paraphrase templates — show we understood the content
@@ -13789,7 +13789,7 @@ function applyTrajectoryAwareness(response, sent) {
       const coolers = [
         "I feel like I might be losing you a bit — ",
         "Am I reading this right that the vibe's shifted? ",
-        "Let me recalibrate — I want to be actually helpful here. ",
+        "ok wait let me try a different approach — ",
         "I sense this isn't landing the way I want it to. ",
       ];
       prefix = coolers[Math.floor(Math.random() * coolers.length)];
