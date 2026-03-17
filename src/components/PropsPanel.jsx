@@ -221,6 +221,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Verified badge toggle (profile-card) */
+  if ("verified" in defaults) {
+    const vf = G("verified");
+    controls.push(<React.Fragment key="verified"><span style={label}>{vf ? "Verified" : "Unverified"}</span>
+      <button style={{ ...btn(vf), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: vf ? "flex-end" : "flex-start", background: vf ? "#3b82f6" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("verified", !vf)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
   /* Loading toggle (skeleton) */
   if ("loading" in defaults) {
     const on = G("loading");

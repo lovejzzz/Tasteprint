@@ -197,7 +197,7 @@ export const DEFAULT_PROPS = {
   toast:         { level: 0 },
   "pricing-card":{ featured: false, period: 0 },
   "product-card":{ wishlisted: false },
-  "profile-card":{ online: true },
+  "profile-card":{ online: true, verified: true },
   kanban:        { active: 1 },
   skeleton:      { loading: true },
   "bento-grid":  { active: 0 },
