@@ -4906,8 +4906,8 @@ function shouldAttemptHumor(text, sent) {
     if (sig.test(text)) return false;
   }
 
-  // Don't joke when user sentiment is negative (< -0.3)
-  if (sent && sent.score < -0.3) return false;
+  // Don't joke when user sentiment is negative (< -0.3) — sent is a number
+  if (typeof sent === "number" && sent < -0.3) return false;
 
   // Don't joke during a downward sentiment trajectory
   if (humorTimingHistory.length >= 3) {
@@ -4916,8 +4916,8 @@ function shouldAttemptHumor(text, sent) {
     if (declining && recent[recent.length - 1].score < 0) return false;
   }
 
-  // Don't joke if user's message is very short (frustrated/curt)
-  if (text.trim().split(/\s+/).length <= 3 && sent && sent.score < 0) return false;
+  // Don't joke if user's message is very short (frustrated/curt) — sent is a number
+  if (text.trim().split(/\s+/).length <= 3 && typeof sent === "number" && sent < 0) return false;
 
   // Green light — humor is contextually appropriate
   lastHumorGateTurn = turn;
@@ -6777,6 +6777,8 @@ function detectPersonalitySwitch(text) {
 
 function applyPersonalityMode(response) {
   if (currentPersonality === "chill" || response.length < 10) return response;
+  // Guard: don't manipulate multi-message delimiters
+  if (response.includes(MULTI_MSG_DELIMITER)) return response;
 
   const mode = PERSONALITY_MODES[currentPersonality];
   if (!mode || !mode.transforms) return response;
@@ -8177,8 +8179,8 @@ function applyGentleReframing(response, text, sent) {
   if (turn - lastReframeTurn < 6) return response; // 6-turn cooldown
   if (Math.random() > 0.22) return response; // 22% fire rate
 
-  // Only trigger on negative sentiment
-  if (sent && sent.score > -0.2) return response;
+  // Only trigger on negative sentiment — sent is a number
+  if (typeof sent === "number" && sent > -0.2) return response;
 
   let bestMatch = null;
   for (const nf of NEGATIVE_FRAME_PATTERNS) {
@@ -14598,7 +14600,7 @@ function updateTopicStreak(topics) {
   }
 }
 
-function applyNaturalRedirect(response, text, topics) {
+function applyNaturalRedirect(response, text, topics, sent) {
   const turn = mem.turn;
 
   // Update streak tracking
@@ -14610,7 +14612,8 @@ function applyNaturalRedirect(response, text, topics) {
   if (topicStreakTracker.count < 3) return response; // need 3+ exchanges on same topic
   if (response.length > 200) return response; // don't bloat long responses
 
-  // Don't redirect during emotional/venting moments
+  // Don't redirect during emotional/venting moments (sent is a number)
+  if (typeof sent === "number" && sent < -0.3) return response;
   if (/\b(sad|upset|hurt|struggling|depressed|anxious|stressed|overwhelmed|vent|rant|frustrated|pissed|angry|crying)\b/i.test(text)) return response;
   // Don't redirect if user asked a specific question
   if (/\?\s*$/.test(text.trim())) return response;
@@ -18970,8 +18973,8 @@ function applyInsideJokeCallback(response, text, topics, sent) {
   if (response.length > 220) return response;
   if (Math.random() > 0.11) return response; // ~11% fire rate
 
-  // Guard: don't inject during emotional/serious/farewell moments
-  if (sent && sent.score < -0.2) return response;
+  // Guard: don't inject during emotional/serious/farewell moments (sent is a number)
+  if (typeof sent === "number" && sent < -0.2) return response;
   if (/sorry|condolence|that sucks|that's rough|bye|later|peace|rip|passed away|died|depressed|anxious/i.test(text)) return response;
   if (/sorry|that sucks|that's rough|bye|later|peace|i'm here for you/i.test(response)) return response;
 
@@ -20143,8 +20146,8 @@ function polishOutput(response) {
 function _shouldApplyImperfections(response, sent) {
   const words = response.trim().split(/\s+/);
   if (words.length < 5) return false;
-  // Don't mess with emotional/serious messages
-  if (sent && sent.score < -0.3) return false;
+  // Don't mess with emotional/serious messages (sent is a number, not an object)
+  if (typeof sent === "number" && sent < -0.3) return false;
   // Don't mess with multi-message responses (already complex enough)
   if (response.includes("\n---\n")) return false;
   return true;
@@ -20279,6 +20282,9 @@ function applyInternetCulture(response, text, sent, topics, emo) {
   if (turn - lastInternetCultureTurn < 6) return response; // 6-turn cooldown
   if (internetCultureCount >= 8) return response; // max 8 per conversation
   if (Math.random() > 0.10) return response; // ~10% fire rate
+
+  // Guard: don't corrupt multi-message responses
+  if (response.includes(MULTI_MSG_DELIMITER)) return response;
 
   // Guard: don't use during serious/emotional moments
   const lower = text.toLowerCase();
@@ -21090,6 +21096,11 @@ function applyEngagementMirroring(response, text) {
   // Don't touch short responses or greetings
   if (response.length < 15) return response;
 
+  // Don't truncate during serious/emotional moments — empathy needs space
+  const lowerText = text.toLowerCase();
+  if (/\b(died|death|funeral|cancer|diagnosis|breakup|fired|laid off|divorce|miscarriage|suicide|depressed|crying|panic|anxious|struggling|heartbroken)\b/i.test(lowerText)) return response;
+  if (/\b(sorry|condolence|that sucks|that's rough|i'm here for you|are you ok)\b/i.test(response.toLowerCase())) return response;
+
   // If multiplier says we should be shorter
   if (multiplier < 0.9 && response.length > 40) {
     const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
@@ -21554,7 +21565,7 @@ export async function getAIResponse(input) {
   response = applyTopicFatigue(response, currentTopics, inputEnergy);
 
   // ═══ Natural topic redirects: friend-like pivots after extended same-topic exchanges ═══
-  response = applyNaturalRedirect(response, text, currentTopics);
+  response = applyNaturalRedirect(response, text, currentTopics, sent);
 
   // ═══ Conversational closure: satisfying topic resolution when topics complete ═══
   response = applyConversationalClosure(response, text, currentTopics);
@@ -21680,14 +21691,17 @@ export async function getAIResponse(input) {
   // ═══ Round 152: Engagement length mirroring — match user's message length energy ═══
   response = applyEngagementMirroring(response, text);
 
-  // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
-  response = splitIntoMultiMessages(response, text, sent);
-
   // ═══ Round 157: Internet culture fluency — meme formats, hyperbolic reactions, internet-speak ═══
+  // (must run BEFORE double-texting so it doesn't corrupt \n---\n delimiters)
   response = applyInternetCulture(response, text, sent, currentTopics, emo);
 
   // ═══ Round 156: Texting imperfections — apostrophe drops, elongation, typos, trailing off ═══
+  // (must run BEFORE double-texting so imperfections apply to the whole text, not across delimiters)
   response = applyTextingImperfections(response, sent);
+
+  // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
+  // (runs LAST — splits the fully-transformed text into multi-message segments)
+  response = splitIntoMultiMessages(response, text, sent);
 
   // Update discourse state for next turn
   lastDiscourseMove = plan.flavor;
