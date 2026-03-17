@@ -251,6 +251,16 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Disabled toggle (button) */
+  if ("disabled" in defaults) {
+    const on = G("disabled");
+    controls.push(<React.Fragment key="disabled"><span style={label}>{on ? "Disabled" : "Enabled"}</span>
+      <button style={{ ...btn(on), width: 32, height: 18, borderRadius: 999, padding: 2, justifyContent: on ? "flex-end" : "flex-start", background: on ? "#EF4444" : p.mu + "30", border: "none" }} onMouseDown={stop} onClick={() => onProp("disabled", !on)}>
+        <div style={{ width: 14, height: 14, borderRadius: 999, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }} />
+      </button>
+    </React.Fragment>);
+  }
+
   /* Focused toggle (input) */
   if ("focused" in defaults) {
     const on = G("focused");

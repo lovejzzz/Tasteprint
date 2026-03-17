@@ -218,7 +218,7 @@ export const DEFAULT_PROPS = {
   footer:        { active: 0 },
   hero:          { active: 0 },
   toggle:        { on: true },
-  button:        { loading: false },
+  button:        { loading: false, disabled: false },
   navbar:        { active: 0 },
   breadcrumb:    { active: 2 },
   input:         { focused: false },
