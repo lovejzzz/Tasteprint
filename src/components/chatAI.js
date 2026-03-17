@@ -3895,12 +3895,12 @@ function resolveFragment(text, lower, parsed, topics) {
       const sentences = lastAIText.split(/[.!]/).filter(s => s.trim().length > 10);
       const claim = sentences[0]?.trim() || lastAIText.substring(0, 50);
       return pick([
-        `Oh when I said "${claim.substring(0, 45)}..." — that's just what my patterns suggest. ` + (contextTopic ? `${contextTopic} tends to work that way.` : "Does that track with your experience?"),
-        `Yeah fair, so I think it comes down to how most people experience this. ` + (contextTopic ? `With ${contextTopic}, ` : "") + `there's usually a pattern. What's your theory?`,
-        `Hmm, you're right to push back! Honestly, it's based on common patterns I've seen. What would you say instead?`,
+        `oh when i said "${claim.substring(0, 45)}..." — that's just what my gut says. ` + (contextTopic ? `${contextTopic} usually works like that.` : "does that track for you?"),
+        `yeah fair tbh it comes down to how most people experience this. ` + (contextTopic ? `with ${contextTopic}, ` : "") + `there's usually a pattern. what's your theory?`,
+        `ok fair you're right to push back on that. it's based on patterns i've seen but what would you say instead?`,
       ]);
     }
-    return "Hmm honestly I should probably back that up better. What's your intuition?";
+    return "hmm honestly i should probably back that up better. what's your take?";
   }
 
   // ── "Like what?" / "Such as?" / "For example?" — demand specifics ──
@@ -3910,30 +3910,30 @@ function resolveFragment(text, lower, parsed, topics) {
       const related = a.related || [];
       if (related.length >= 2) {
         return pick([
-          `Sure! Think ${related[0]} and ${related[1]} — both relate to ${contextTopic} in interesting ways.`,
-          `Off the top of my head: ${related[0]}, ${related[1]}${related[2] ? `, ${related[2]}` : ""}. Want to dig into any of those?`,
-          `Well, ${related[0]} is a good one. And ${related[1]} too. Which sounds more interesting?`,
+          `ok so like ${related[0]} and ${related[1]} — both kinda connect to ${contextTopic} in cool ways`,
+          `off the top of my head: ${related[0]}, ${related[1]}${related[2] ? `, ${related[2]}` : ""}. any of those hit?`,
+          `${related[0]} is a good one. and ${related[1]} too. which one's more your thing?`,
         ]);
       }
       if (a.facts && a.facts.length > 0) {
-        return `Here's one: ${pick(a.facts)}. Want more specifics?`;
+        return `ok here's one: ${pick(a.facts)}. want more?`;
       }
     }
     return pick([
-      "Hmm, let me think of a good example... What kind of thing would be most useful to you?",
-      "Hmm it depends on context — what area are you most interested in?",
-      "I should give a concrete example! What's your use case? That'll help me pick the right one.",
+      "hmm let me think... what kind of thing would be most useful?",
+      "honestly it depends — what area are you most interested in?",
+      "ok fair i should give an actual example. what's the context?",
     ]);
   }
 
   // ── "Not really" / "I guess" / "Sort of" / "Kinda" — hedged disagreement ──
   if (/^(not really|i guess|sort of|kinda|kind of|i suppose|i mean|eh|meh|if you say so|i guess so)\.?$/i.test(lower)) {
     const hedges = [
-      `I'm sensing some hesitation! What's the part that doesn't quite land?`,
-      `Fair enough — I might be off base. What's your actual take?`,
-      `You don't sound fully convinced! Where does it break down for you?`,
-      `I hear some doubt there. ` + (contextTopic ? `What part of ${contextTopic} isn't clicking?` : "What's nagging at you?"),
-      `Hmm, not quite right? Help me understand what I'm missing!`,
+      `ok i can tell that didn't fully land. what's the part that's off?`,
+      `fair — i might be wrong on this. what's your actual take?`,
+      `you're not sold lol. where does it fall apart for you?`,
+      `hmm yeah i sense doubt. ` + (contextTopic ? `what part of ${contextTopic} isn't clicking?` : "what's bugging you?"),
+      `ok not quite right? tell me what i'm missing`,
     ];
     return pick(hedges);
   }
@@ -6745,12 +6745,12 @@ const PERSONALITY_MODES = {
     label: "wise",
     description: "thoughtful philosophical casual wisdom",
     openers: ["here's the thing though — ","you know what I've realized? ","there's something deeper here — ","think about it this way: ","the way I see it, ","it's funny how "],
-    closers: [" ...and that says something, doesn't it"," — that's worth sitting with"," and honestly, that's kind of beautiful"," which is the whole point really"," — and maybe that's enough"],
+    closers: [" ...and that says something honestly"," — worth thinking about"," and that's lowkey beautiful"," which is kinda the whole point"," — and maybe that's enough"],
     transforms: [
       [/\bcool\b/gi, "meaningful"],
       [/\bfun\b/gi, "enriching"],
       [/\bwhatever\b/gi, "it is what it is"],
-      [/\bI guess\b/gi, "I've come to understand"],
+      [/\bI guess\b/gi, "i've kinda realized"],
     ],
     emojiBoost: ["🌿","✨","💫","🧠","🤔"],
   },
@@ -7499,9 +7499,9 @@ function phaseAwareAdjust(response, phase) {
       // Long conversation: warm familiarity, occasional reflection
       if (Math.random() < 0.12 && mem.turn % 8 === 0) {
         const reflections = [
-          `You know, I've really enjoyed this conversation.`,
-          `This has been a great chat — you're fun to talk to.`,
-          `I feel like we've covered a lot of ground together.`,
+          `ngl this has been a really good conversation`,
+          `you're genuinely fun to talk to lol`,
+          `we've covered a lot of ground honestly`,
         ];
         r = pick(reflections) + " " + r;
       }
@@ -8859,11 +8859,12 @@ const COMPLETENESS_BRIDGES = {
     "short answer: ",
   ],
   statement: [
-    "i hear you ",
-    "that's a solid point ",
+    "yeah no totally ",
+    "ok good call ",
     "makes sense ",
     "yeah i get that ",
     "noted ",
+    "fr tho ",
   ],
 };
 
@@ -9571,14 +9572,14 @@ const NO_CHALLENGE_SIGNALS = [
 
 const CHALLENGE_RESPONSES = {
   always: [
-    "Always? Bold claim — I bet there's at least one exception hiding somewhere 😄",
-    "Hmm, always though? I feel like there's a plot twist waiting to happen.",
+    "always?? bold claim lol there's gotta be at least one exception",
+    "wait always though? nah the universe is gonna test that",
     "every single time?? that's bold lol",
   ],
   never: [
     "never ever?? ok respect the commitment",
-    "Hmm, never? I feel like the universe loves proving 'never' wrong 😅",
-    "Zero times? That feels like it's daring the universe to prove you wrong.",
+    "never?? lol the universe loves proving that wrong",
+    "zero times? ok that's brave honestly",
   ],
   superlative: [
     "the best?? what's your runner-up tho",
@@ -10648,11 +10649,11 @@ function detectAmbiguity(text) {
 
 // Clarification openers — varied ways to ask
 const CLARIFY_OPENERS = [
-  "Hmm, I want to make sure I'm on the same page —",
-  "Just so I don't go off in the wrong direction —",
-  "I could read that a couple ways —",
-  "Ooh, ambiguous territory —",
-  "Before I go off on a tangent —",
+  "wait do you mean —",
+  "ok hold on before i go off on the wrong thing —",
+  "hmm that could go a couple ways —",
+  "ok wait i wanna make sure i'm getting this —",
+  "before i ramble about the wrong thing —",
 ];
 
 function applyAmbiguityDetection(response, text) {
@@ -11397,10 +11398,10 @@ const GENERIC_REPLACEMENTS = [
     ]},
   { pattern: /\btell me more\b/i, domain: null,
     replacements: [
-      "I want the full picture on this",
-      "okay unpack that for me",
-      "wait — go deeper on that",
-      "I feel like there's a story here",
+      "ok i need the full picture on this",
+      "wait unpack that for me",
+      "go deeper on that tho",
+      "ok there's definitely a story here",
     ]},
 ];
 
@@ -13459,7 +13460,7 @@ function detectConversationArc() {
       for (const lk of likeKeys) factSamples.push(`you like ${mem.facts[lk]}`);
 
       if (factSamples.length >= 2) {
-        return `ngl I've really enjoyed this conversation. I know that ${factSamples.slice(0, 3).join(", ")}... I feel like I'm actually getting to know you 😊`;
+        return `ngl i've really liked this conversation. i know that ${factSamples.slice(0, 3).join(", ")}... feels like i'm actually getting to know you 😊`;
       }
     }
 
@@ -13795,10 +13796,10 @@ function applyTrajectoryAwareness(response, sent) {
     }
     case "cooling": {
       const coolers = [
-        "I feel like I might be losing you a bit — ",
+        "ok i feel like i'm losing you — ",
         "Am I reading this right that the vibe's shifted? ",
         "ok wait let me try a different approach — ",
-        "I sense this isn't landing the way I want it to. ",
+        "hmm this isn't landing the way i want it to. ",
       ];
       prefix = coolers[Math.floor(Math.random() * coolers.length)];
       break;
@@ -14534,7 +14535,7 @@ function applyTopicFatigue(response, topics, inputEnergy) {
   // Different approaches based on fatigue severity
   const pivotStyles = fatigue.score >= 3 ? [
     `We've been deep in ${fatigue.topic} territory — want to shift gears? I'm curious about your take on ${pivot}.`,
-    `I feel like we've covered a lot of ground on ${fatigue.topic}. Random thought — how do you feel about ${pivot}?`,
+    `ok we've gone pretty deep on ${fatigue.topic}. random thought — how do you feel about ${pivot}?`,
     `Okay real talk — we've gone pretty deep here. Want to keep going or pivot? ${pivot} has been on my mind.`,
   ] : [
     `Speaking of ${fatigue.topic} — this might be a tangent, but have you thought about how it connects to ${pivot}?`,
@@ -16614,11 +16615,11 @@ function addProcessCommentary(response) {
   if (topicHistory.length > 4) {
     const uniqueTopics = new Set(topicHistory.flat().map(t => stem(t)));
     if (uniqueTopics.size > 6) {
-      commentaries.push("You know, we keep circling around some interesting themes. ");
+      commentaries.push("we keep circling back to the same themes and honestly it's kinda cool. ");
     }
   }
   if (sharedGround.length > 3) {
-    commentaries.push("I feel like we're building on a real understanding here. ");
+    commentaries.push("ngl it feels like we actually get each other at this point. ");
   }
 
   if (commentaries.length === 0) return null;
