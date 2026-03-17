@@ -14950,10 +14950,10 @@ function applyCognitiveLoadResponse(response, text) {
     // Prepend a grounding phrase (25% chance)
     if (Math.random() < 0.25) {
       const grounders = [
-        "Let me simplify — ",
-        "Okay, keeping it simple: ",
-        "Here's the short version — ",
-        "Boiling it down: ",
+        "ok simplifying, ",
+        "keeping it simple: ",
+        "short version, ",
+        "boiling it down: ",
       ];
       const g = grounders[Math.floor(Math.random() * grounders.length)];
       const first = response[0];
@@ -16189,39 +16189,39 @@ function applyAnticipatoryFraming(response, text, topics, intents) {
 
     const framings = {
       flip: [
-        "I had a feeling you'd ask about the other side. ",
-        "Ah yes — I was just thinking about that too. ",
-        "Good instinct to look at both sides. ",
+        "oh i had a feeling you'd ask about the other side. ",
+        "yeah i was just thinking about that too. ",
+        "good instinct honestly. ",
       ],
       deepen: [
-        "I was hoping you'd want to dig deeper. ",
-        "Let's get into the mechanics. ",
-        "Yeah the surface version undersells it. ",
+        "ooh yeah let's get into it. ",
+        "ok getting into the mechanics. ",
+        "yeah the surface version doesn't do it justice. ",
       ],
       example: [
-        "Thought you might want something concrete. ",
-        "Yeah, abstractions only go so far — ",
-        "Let me make that real. ",
+        "yeah you probably want something concrete. ",
+        "abstractions only go so far, ",
+        "ok lemme make that real. ",
       ],
       apply: [
-        "The practical side — love it. ",
-        "Now we're talking real-world. ",
-        "Okay, putting theory into practice — ",
+        "the practical side, love it. ",
+        "now we're talking real-world. ",
+        "ok putting theory into practice, ",
       ],
       compare: [
-        "I figured a comparison was coming. ",
-        "Good call — context helps. ",
-        "Let's put them side by side. ",
+        "i figured a comparison was coming lol. ",
+        "good call, context helps. ",
+        "ok let's put them side by side. ",
       ],
       pivot: [
-        "Fresh topic — I like it. ",
-        "Nice shift. ",
-        "New terrain — let's explore. ",
+        "ooh new topic, i'm into it. ",
+        "nice shift. ",
+        "new terrain, let's go. ",
       ],
     };
 
     const frames = framings[match.matchType] || [];
-    if (frames.length > 0 && !response.match(/^(I had|I was|I figured|Good instinct|Let's get)/i)) {
+    if (frames.length > 0 && !response.match(/^(oh i had|yeah i was|i figured|good instinct|ok getting)/i)) {
       const frame = frames[Math.floor(Math.random() * frames.length)];
       return frame + response.charAt(0).toLowerCase() + response.slice(1);
     }
