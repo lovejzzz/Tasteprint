@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import C from "./ComponentRenderer";
 import PropsPanel from "./PropsPanel";
 import { FONTS, HAS_TEXT, HAS_PROPS } from "../constants";
@@ -17,7 +17,13 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
+/* ── Keyboard shortcut hint badge ── */
+const KBHint = ({ label, p: pal, style: extraStyle }) => (
+  <span style={{ fontSize: 8, padding: "1px 3px", borderRadius: 3, background: pal.su, color: pal.mu, fontFamily: "system-ui", lineHeight: 1, pointerEvents: "none", fontWeight: 500, letterSpacing: ".02em", whiteSpace: "nowrap", ...extraStyle }}>{label}</span>
+);
+
 const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore, candidates, candidateIdx, cycleVariation, designHistory, undoDesign, isLocked, toggleLock }) {
+  const [hovered, setHovered] = useState(false);
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -38,6 +44,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
       data-shape="1"
       onMouseDownCapture={() => onSelect(s)}
       onTouchStartCapture={() => onSelect(s)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{ position: "absolute", left: sx, top: sy, width: sw, zIndex: isDrg ? 100 : isSel ? 50 : 1 }}>
 
       {/* ── Top toolbar (variants, fonts, font size) ── */}
@@ -88,72 +96,84 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             <span style={{ fontSize: 10 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
             <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
           </button>
-          <button aria-label={isLocked ? "Unlock from randomize-all" : "Lock to protect from randomize-all"}
-            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); toggleLock(s.id); }}
-            onMouseEnter={e => { e.currentTarget.style.background = isLocked ? p.ac + "28" : p.ac + "18"; e.currentTarget.style.transform = "scale(1.08)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = isLocked ? p.ac + "18" : p.su; e.currentTarget.style.transform = "scale(1)"; }}
-            style={{ ...pb, fontSize: 12, background: isLocked ? p.ac + "18" : p.su, color: isLocked ? p.ac : p.mu }}>
-            {isLocked ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-              </svg>
-            )}
-          </button>
-          <button aria-label="Randomize design"
-            onPointerDown={e => {
-              e.stopPropagation(); e.preventDefault();
-              // Dice roll animation: spin + bounce
-              const btn = e.currentTarget;
-              btn.style.transition = "transform .4s cubic-bezier(.2,.8,.2,1.4)";
-              btn.style.transform = "scale(1.2) rotate(360deg)";
-              setTimeout(() => { btn.style.transition = "transform .2s cubic-bezier(.4,1,.6,1)"; btn.style.transform = "scale(1)"; }, 400);
-              randomize(s.id);
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.12) rotate(15deg)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; }}
-            style={{ ...pb, fontSize: 13, transition: "background .15s ease, transform .2s cubic-bezier(.4,1,.6,1)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="3" />
-              <circle cx="8" cy="8" r="1.5" fill={p.ac} stroke="none" />
-              <circle cx="16" cy="8" r="1.5" fill={p.ac} stroke="none" />
-              <circle cx="8" cy="16" r="1.5" fill={p.ac} stroke="none" />
-              <circle cx="16" cy="16" r="1.5" fill={p.ac} stroke="none" />
-              <circle cx="12" cy="12" r="1.5" fill={p.ac} stroke="none" />
-            </svg>
-          </button>
-          {designHistory && designHistory.length > 0 && (
-            <button aria-label={`Undo design (${designHistory.length} available)`}
-              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); undoDesign(s.id); }}
-              onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; }}
-              style={{ ...pb, fontSize: 11, width: "auto", padding: "0 5px", gap: 2, position: "relative" }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-              </svg>
-              {designHistory.length > 1 && (
-                <span style={{ position: "absolute", top: -4, right: -4, minWidth: 13, height: 13, borderRadius: 999, background: p.ac, color: "#fff", fontSize: 8, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
-                  {designHistory.length}
-                </span>
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <button aria-label={isLocked ? "Unlock from randomize-all" : "Lock to protect from randomize-all"}
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); toggleLock(s.id); }}
+              onMouseEnter={e => { e.currentTarget.style.background = isLocked ? p.ac + "28" : p.ac + "18"; e.currentTarget.style.transform = "scale(1.08)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = isLocked ? p.ac + "18" : p.su; e.currentTarget.style.transform = "scale(1)"; }}
+              style={{ ...pb, fontSize: 12, background: isLocked ? p.ac + "18" : p.su, color: isLocked ? p.ac : p.mu }}>
+              {isLocked ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                </svg>
               )}
             </button>
+            {hovered && isPrimary && <KBHint label="L" p={p} style={{ position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)" }} />}
+          </div>
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <button aria-label="Randomize design"
+              onPointerDown={e => {
+                e.stopPropagation(); e.preventDefault();
+                // Dice roll animation: spin + bounce
+                const btn = e.currentTarget;
+                btn.style.transition = "transform .4s cubic-bezier(.2,.8,.2,1.4)";
+                btn.style.transform = "scale(1.2) rotate(360deg)";
+                setTimeout(() => { btn.style.transition = "transform .2s cubic-bezier(.4,1,.6,1)"; btn.style.transform = "scale(1)"; }, 400);
+                randomize(s.id);
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.12) rotate(15deg)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; }}
+              style={{ ...pb, fontSize: 13, transition: "background .15s ease, transform .2s cubic-bezier(.4,1,.6,1)" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="3" />
+                <circle cx="8" cy="8" r="1.5" fill={p.ac} stroke="none" />
+                <circle cx="16" cy="8" r="1.5" fill={p.ac} stroke="none" />
+                <circle cx="8" cy="16" r="1.5" fill={p.ac} stroke="none" />
+                <circle cx="16" cy="16" r="1.5" fill={p.ac} stroke="none" />
+                <circle cx="12" cy="12" r="1.5" fill={p.ac} stroke="none" />
+              </svg>
+            </button>
+            {hovered && isPrimary && <KBHint label="R" p={p} style={{ position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)" }} />}
+          </div>
+          {designHistory && designHistory.length > 0 && (
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <button aria-label={`Undo design (${designHistory.length} available)`}
+                onPointerDown={e => { e.stopPropagation(); e.preventDefault(); undoDesign(s.id); }}
+                onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; }}
+                style={{ ...pb, fontSize: 11, width: "auto", padding: "0 5px", gap: 2, position: "relative" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+                {designHistory.length > 1 && (
+                  <span style={{ position: "absolute", top: -4, right: -4, minWidth: 13, height: 13, borderRadius: 999, background: p.ac, color: "#fff", fontSize: 8, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
+                    {designHistory.length}
+                  </span>
+                )}
+              </button>
+              {hovered && isPrimary && <KBHint label="Z" p={p} style={{ position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)" }} />}
+            </div>
           )}
           {candidates && candidates.length > 1 && (
-            <button aria-label="Cycle to next design variation"
-              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleVariation(s.id); }}
-              onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = p.ac + "14"; e.currentTarget.style.transform = "scale(1)"; }}
-              style={{ ...pb, width: "auto", padding: "0 7px", gap: 3, fontSize: 9, fontWeight: 600, background: p.ac + "14", color: p.ac, letterSpacing: ".02em" }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-              <span>{(candidateIdx >= 0 ? candidateIdx : 0) + 1}/{candidates.length}</span>
-            </button>
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <button aria-label="Cycle to next design variation"
+                onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleVariation(s.id); }}
+                onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = p.ac + "14"; e.currentTarget.style.transform = "scale(1)"; }}
+                style={{ ...pb, width: "auto", padding: "0 7px", gap: 3, fontSize: 9, fontWeight: 600, background: p.ac + "14", color: p.ac, letterSpacing: ".02em" }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+                <span>{(candidateIdx >= 0 ? candidateIdx : 0) + 1}/{candidates.length}</span>
+              </button>
+              {hovered && isPrimary && <KBHint label="\u2190/\u2192" p={p} style={{ position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)" }} />}
+            </div>
           )}
           {hasRndUndo && <button aria-label="Undo randomize" {...ph}
             onPointerDown={e => { e.stopPropagation(); e.preventDefault(); undoRandomize(); }}
@@ -183,17 +203,20 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               <span>Apply</span>
             </button>
           ) : (
-            <button aria-label={isStyleSource ? "Cancel style source" : "Set as style source"}
-              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); isStyleSource ? setStyleSource(null) : setStyleSource(s.id); }}
-              onMouseEnter={e => { e.currentTarget.style.background = isStyleSource ? "#E0524D22" : p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = isStyleSource ? p.ac + "18" : p.su; e.currentTarget.style.transform = "scale(1)"; }}
-              style={{ ...pb, fontSize: 9, fontWeight: 500, width: "auto", padding: "0 6px", gap: 3, color: isStyleSource ? p.ac : p.mu, background: isStyleSource ? p.ac + "18" : p.su }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-3.54 3.54 3.75 3.75 3.54-3.54a1 1 0 0 0 0-1.41z" />
-                <path d="M13.42 6.83L3 17.25V21h3.75L17.17 10.58" />
-              </svg>
-              {isStyleSource && <span>Source</span>}
-            </button>
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <button aria-label={isStyleSource ? "Cancel style source" : "Set as style source"}
+                onPointerDown={e => { e.stopPropagation(); e.preventDefault(); isStyleSource ? setStyleSource(null) : setStyleSource(s.id); }}
+                onMouseEnter={e => { e.currentTarget.style.background = isStyleSource ? "#E0524D22" : p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isStyleSource ? p.ac + "18" : p.su; e.currentTarget.style.transform = "scale(1)"; }}
+                style={{ ...pb, fontSize: 9, fontWeight: 500, width: "auto", padding: "0 6px", gap: 3, color: isStyleSource ? p.ac : p.mu, background: isStyleSource ? p.ac + "18" : p.su }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-3.54 3.54 3.75 3.75 3.54-3.54a1 1 0 0 0 0-1.41z" />
+                  <path d="M13.42 6.83L3 17.25V21h3.75L17.17 10.58" />
+                </svg>
+                {isStyleSource && <span>Source</span>}
+              </button>
+              {hovered && isPrimary && <KBHint label="C" p={p} style={{ position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)" }} />}
+            </div>
           )}
         </div>
       )}

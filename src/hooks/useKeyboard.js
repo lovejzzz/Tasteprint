@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { uid } from "../utils";
 
-export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood }) {
+export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource }) {
   useEffect(() => {
     const h = e => {
       const ae = document.activeElement;
@@ -31,6 +31,10 @@ export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, se
         if (e.key === "R" && e.shiftKey && randomizeAll) { e.preventDefault(); randomizeAll(); return; }
         if (e.key === "u" && undoRandomize) { e.preventDefault(); undoRandomize(); return; }
         if (e.key === "m" && cycleMood) { e.preventDefault(); cycleMood(); return; }
+        if (e.key === "l" && sel && toggleLock) { e.preventDefault(); toggleLock(sel); return; }
+        if (e.key === "z" && sel && undoDesign) { e.preventDefault(); undoDesign(sel); return; }
+        if (e.key === "c" && sel && setStyleSource) { e.preventDefault(); setStyleSource(sel); return; }
+        if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && sel && cycleVariation && candidates && candidates[sel] && candidates[sel].length > 1) { e.preventDefault(); cycleVariation(sel); return; }
       }
       if (selAll.size > 0 && !isEditing && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault();
@@ -42,5 +46,5 @@ export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, se
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood]);
+  }, [onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource]);
 }

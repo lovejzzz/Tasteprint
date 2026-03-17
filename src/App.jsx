@@ -45,6 +45,7 @@ export default function App() {
   const rndUndo = useRef(null); // { id, prev: shapeSnapshot, prevPrefV }
   const [hasRndUndo, setHasRndUndo] = useState(false);
   const [styleSource, setStyleSource] = useState(null); // shape ID for style transfer
+  const [lockedShapes, setLockedShapes] = useState(new Set()); // locked shape IDs (skip randomize-all)
   const [candidates, setCandidates] = useState({}); // { [shapeId]: [candidate1, candidate2, candidate3] }
   const [candidateIdx, setCandidateIdx] = useState({}); // { [shapeId]: currentIndex }
   const [designHistory, setDesignHistory] = useState({}); // { [shapeId]: [{ variant, font, fsize, props, dStyles }, ...] } max 5
@@ -299,6 +300,8 @@ export default function App() {
       const already = [];
       for (let i = 0; i < updated.length; i++) {
         const s = updated[i];
+        // Skip locked shapes — preserve their current design
+        if (lockedShapes.has(s.id)) { already.push(s); continue; }
         const defaults = DEFAULT_PROPS[s.type];
         const result = designerRandomize(s.type, p, defaults, designMood, already, dna, s.w, s.h);
         updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
@@ -308,7 +311,7 @@ export default function App() {
       return updated;
     });
     setPrefV(newPrefV);
-  }, [shapes, p, designMood, prefV]);
+  }, [shapes, p, designMood, prefV, lockedShapes]);
 
   const undoRandomize = useCallback(() => {
     if (!rndUndo.current) return;
@@ -341,6 +344,14 @@ export default function App() {
       return { ...prev, [shapeId]: stack.slice(0, -1) };
     });
   }, [shapes]);
+
+  const toggleLock = useCallback((shapeId) => {
+    setLockedShapes(prev => {
+      const next = new Set(prev);
+      if (next.has(shapeId)) next.delete(shapeId); else next.add(shapeId);
+      return next;
+    });
+  }, []);
 
   const copyStyle = useCallback((sourceId, targetId) => {
     const src = shapes.find(x => x.id === sourceId);
@@ -492,7 +503,7 @@ export default function App() {
   }, [designMood]);
 
   /* ---- KEYBOARD ---- */
-  useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood });
+  useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource });
 
   /* ---- WHEEL: pan & zoom ---- */
   useEffect(() => {
@@ -703,7 +714,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} designHistory={designHistory[s.id]} undoDesign={undoDesign} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} designHistory={designHistory[s.id]} undoDesign={undoDesign} isLocked={lockedShapes.has(s.id)} toggleLock={toggleLock} />
               ))}
             </div>
 
