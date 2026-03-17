@@ -3984,6 +3984,113 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- Noise & texture overlays (Round 80): SVG-based tactile surface treatments ---
+  // Adds subtle film-grain, linen, paper, or concrete textures via tiny SVG data URIs.
+  // These make surfaces feel more tactile and less flat-digital.
+  // Only fires when no textureOverlay already set, to avoid conflicts with surface patterns.
+  if (!isNav && !isCode && !isSmall && !s.textureOverlay) {
+    const noiseChance = moodId === "elegant" ? 0.15 : moodId === "bold" ? 0.10 : moodId === "playful" ? 0.08 : moodId === "minimal" ? 0.05 : 0.10;
+    if (Math.random() < noiseChance) {
+      // Pick texture type based on mood
+      let noiseType;
+      if (moodId === "elegant") {
+        noiseType = pick(["paper", "paper", "linen", "grain"]);
+      } else if (moodId === "bold") {
+        noiseType = pick(["concrete", "concrete", "grain", "grain"]);
+      } else if (moodId === "playful") {
+        noiseType = pick(["colorGrain", "colorGrain", "grain", "paper"]);
+      } else if (moodId === "minimal") {
+        noiseType = "paper"; // minimal only gets subtle paper
+      } else {
+        noiseType = pick(["grain", "paper", "linen", "concrete", "colorGrain"]);
+      }
+
+      if (noiseType === "grain") {
+        // Film-grain noise: 8x8 SVG with scattered semi-transparent dots
+        const grainOpacity = moodId === "bold" ? pick([0.06, 0.08, 0.10]) : pick([0.03, 0.04, 0.05]);
+        const dotColor = dark ? "255,255,255" : "0,0,0";
+        // Generate scattered dot positions for natural grain feel
+        const dots = [
+          `<circle cx="1" cy="3" r="0.8" fill="rgba(${dotColor},${grainOpacity})"/>`,
+          `<circle cx="5" cy="1" r="0.6" fill="rgba(${dotColor},${grainOpacity * 0.8})"/>`,
+          `<circle cx="3" cy="6" r="0.7" fill="rgba(${dotColor},${grainOpacity})"/>`,
+          `<circle cx="7" cy="4" r="0.5" fill="rgba(${dotColor},${grainOpacity * 0.7})"/>`,
+          `<circle cx="2" cy="7" r="0.6" fill="rgba(${dotColor},${grainOpacity * 0.9})"/>`,
+          `<circle cx="6" cy="2" r="0.7" fill="rgba(${dotColor},${grainOpacity})"/>`,
+          `<circle cx="4" cy="5" r="0.5" fill="rgba(${dotColor},${grainOpacity * 0.6})"/>`,
+        ].join("");
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>${dots}</svg>`;
+        s.textureOverlay = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+        s.textureSize = "8px 8px";
+      } else if (noiseType === "linen") {
+        // Linen/fabric: fine crosshatch using two perpendicular 1px repeating gradients
+        const linenColor = dark ? "255,255,255" : "0,0,0";
+        const linenOpacity = pick([0.03, 0.04, 0.05]);
+        const spacing = pick([3, 4, 5]);
+        s.textureOverlay = [
+          `repeating-linear-gradient(0deg, rgba(${linenColor},${linenOpacity}) 0px, rgba(${linenColor},${linenOpacity}) 1px, transparent 1px, transparent ${spacing}px)`,
+          `repeating-linear-gradient(90deg, rgba(${linenColor},${linenOpacity * 0.7}) 0px, rgba(${linenColor},${linenOpacity * 0.7}) 1px, transparent 1px, transparent ${spacing}px)`,
+        ].join(", ");
+      } else if (noiseType === "paper") {
+        // Paper: very subtle noise + slight warm tint overlay
+        const warmTint = dark ? "rgba(255,245,230,0.02)" : "rgba(245,235,220,0.04)";
+        const paperDotColor = dark ? "255,255,255" : "0,0,0";
+        const paperOpacity = pick([0.02, 0.03, 0.04]);
+        const dots = [
+          `<circle cx="1" cy="2" r="0.5" fill="rgba(${paperDotColor},${paperOpacity})"/>`,
+          `<circle cx="3" cy="1" r="0.4" fill="rgba(${paperDotColor},${paperOpacity * 0.7})"/>`,
+          `<circle cx="2" cy="3" r="0.6" fill="rgba(${paperDotColor},${paperOpacity * 0.8})"/>`,
+          `<circle cx="0" cy="0" r="0.3" fill="rgba(${paperDotColor},${paperOpacity * 0.5})"/>`,
+        ].join("");
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'>${dots}</svg>`;
+        s.textureOverlay = [
+          `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
+          `linear-gradient(180deg, ${warmTint} 0%, transparent 100%)`,
+        ].join(", ");
+        s.textureSize = "4px 4px, 100% 100%";
+      } else if (noiseType === "concrete") {
+        // Concrete/stone: heavier grain with mixed opacity and larger dots
+        const concreteColor = dark ? "255,255,255" : "0,0,0";
+        const baseOp = pick([0.06, 0.08, 0.10, 0.12]);
+        const dots = [
+          `<circle cx="1" cy="1" r="1.0" fill="rgba(${concreteColor},${baseOp})"/>`,
+          `<circle cx="5" cy="3" r="0.8" fill="rgba(${concreteColor},${baseOp * 0.6})"/>`,
+          `<circle cx="3" cy="6" r="1.2" fill="rgba(${concreteColor},${baseOp * 0.8})"/>`,
+          `<circle cx="7" cy="1" r="0.6" fill="rgba(${concreteColor},${baseOp * 0.5})"/>`,
+          `<circle cx="2" cy="4" r="0.9" fill="rgba(${concreteColor},${baseOp * 0.9})"/>`,
+          `<circle cx="6" cy="7" r="1.1" fill="rgba(${concreteColor},${baseOp * 0.7})"/>`,
+          `<circle cx="4" cy="2" r="0.7" fill="rgba(${concreteColor},${baseOp * 0.4})"/>`,
+          `<circle cx="0" cy="5" r="0.8" fill="rgba(${concreteColor},${baseOp})"/>`,
+          `<circle cx="7" cy="6" r="0.5" fill="rgba(${concreteColor},${baseOp * 0.3})"/>`,
+          `<rect x="1" y="7" width="1.5" height="0.4" fill="rgba(${concreteColor},${baseOp * 0.4})" rx="0.2"/>`,
+        ].join("");
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>${dots}</svg>`;
+        s.textureOverlay = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+        s.textureSize = "8px 8px";
+        s.textureMixBlend = pick(["multiply", "overlay"]);
+      } else if (noiseType === "colorGrain") {
+        // Colorful noise grain: uses accent colors for playful speckled effect
+        const grainOp = pick([0.06, 0.08, 0.10]);
+        // Use palette colors for colorful dots
+        const c1 = acHex;
+        const c2 = gc1;
+        const c3 = gc2 || gcGlow;
+        const dots = [
+          `<circle cx="1" cy="3" r="0.7" fill="${c1}" opacity="${grainOp}"/>`,
+          `<circle cx="5" cy="1" r="0.5" fill="${c2}" opacity="${grainOp * 0.8}"/>`,
+          `<circle cx="3" cy="6" r="0.8" fill="${c3}" opacity="${grainOp * 0.7}"/>`,
+          `<circle cx="7" cy="4" r="0.6" fill="${c1}" opacity="${grainOp * 0.6}"/>`,
+          `<circle cx="2" cy="7" r="0.5" fill="${c2}" opacity="${grainOp}"/>`,
+          `<circle cx="6" cy="2" r="0.7" fill="${c3}" opacity="${grainOp * 0.9}"/>`,
+          `<circle cx="4" cy="5" r="0.4" fill="${c1}" opacity="${grainOp * 0.5}"/>`,
+        ].join("");
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>${dots}</svg>`;
+        s.textureOverlay = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+        s.textureSize = "8px 8px";
+      }
+    }
+  }
+
   return s;
 }
 
