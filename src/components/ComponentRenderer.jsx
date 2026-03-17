@@ -46,6 +46,10 @@ const ANIM_STYLE = `
 @keyframes tp-d-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @keyframes tp-d-tilt{0%,100%{transform:rotate(0deg)}25%{transform:rotate(.5deg)}75%{transform:rotate(-.5deg)}}
 @keyframes tp-d-border-dance{0%{border-color:var(--d-bc1)}33%{border-color:var(--d-bc2)}66%{border-color:var(--d-bc3)}100%{border-color:var(--d-bc1)}}
+@keyframes tp-d-morph{0%,100%{border-radius:var(--d-morph-a)}33%{border-radius:var(--d-morph-b)}66%{border-radius:var(--d-morph-c)}}
+@keyframes tp-d-drift{0%,100%{transform:translateX(0)}50%{transform:translateX(var(--d-drift-x,3px))}}
+@keyframes tp-d-pulse-scale{0%,100%{transform:scale(1)}50%{transform:scale(var(--d-pulse-s,1.02))}}
+@keyframes tp-d-shadow-shift{0%,100%{box-shadow:var(--d-shad-a)}50%{box-shadow:var(--d-shad-b)}}
 `;
 
 function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1,texture}){

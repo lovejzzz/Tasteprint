@@ -2523,13 +2523,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     const durMul = animSpeed === "slow" ? 1.5 : animSpeed === "fast" ? 0.7 : 1.0;
 
     if (moodId === "elegant" && animRoll < 0.25) {
-      // Elegant: gentle breathing or shimmer
+      // Elegant: gentle breathing, shimmer, morph, or shadow-shift
       const sub = Math.random();
-      if (sub < 0.45) {
+      if (sub < 0.30) {
         // Slow breathe — ultra-subtle opacity pulse
         const dur = (6 + Math.random() * 4) * durMul;
         s.animation = `tp-d-breathe ${dur.toFixed(1)}s ease-in-out infinite`;
-      } else if (sub < 0.80) {
+      } else if (sub < 0.55) {
         // Gradient shimmer on overlay
         const dur = (8 + Math.random() * 6) * durMul;
         s.animation = `tp-d-shimmer ${dur.toFixed(1)}s linear infinite`;
@@ -2537,46 +2537,91 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           s.gradientOverlay = `linear-gradient(90deg, transparent 0%, ${gcGlow}08 25%, transparent 50%, ${gcGlow}06 75%, transparent 100%)`;
           s.backgroundSize = "400% 100%";
         }
+      } else if (sub < 0.75) {
+        // Shadow-shift — moving light source, elegant ambiance
+        const dur = (7 + Math.random() * 4) * durMul;
+        s.cssVars = {
+          ...(s.cssVars || {}),
+          "--d-shad-a": `2px 2px 12px ${shHex}0C, 0 0 8px ${gcGlow}06`,
+          "--d-shad-b": `-2px 4px 16px ${shHex}10, 0 0 12px ${gcGlow}0A`,
+        };
+        s.animation = `tp-d-shadow-shift ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (sub < 0.90) {
+        // Morph — subtle organic border-radius shifting
+        const dur = (10 + Math.random() * 6) * durMul;
+        const br = s.borderRadius || 14;
+        const v = Math.max(4, Math.round(br * 0.3));
+        s.cssVars = {
+          ...(s.cssVars || {}),
+          "--d-morph-a": `${br}px ${br + v}px ${br}px ${br - v}px`,
+          "--d-morph-b": `${br + v}px ${br}px ${br - v}px ${br}px`,
+          "--d-morph-c": `${br - v}px ${br}px ${br + v}px ${br}px`,
+        };
+        s.animation = `tp-d-morph ${dur.toFixed(1)}s ease-in-out infinite`;
       } else {
         // Glow pulse — box-shadow oscillation
         const dur = (5 + Math.random() * 3) * durMul;
         s.cssVars = {
+          ...(s.cssVars || {}),
           "--d-glow-base": `0 0 8px ${gcGlow}08, 0 2px 12px ${shHex}06`,
           "--d-glow-peak": `0 0 20px ${gcGlow}18, 0 4px 24px ${shHex}0C`,
         };
         s.animation = `tp-d-glow-pulse ${dur.toFixed(1)}s ease-in-out infinite`;
       }
     } else if (moodId === "playful" && animRoll < 0.30) {
-      // Playful: float or tilt — fun, bouncy energy
+      // Playful: float, tilt, morph, drift, pulse-scale — fun, bouncy energy
       const sub = Math.random();
-      if (sub < 0.50) {
+      if (sub < 0.30) {
         // Gentle float — components hover slightly
         const dur = (3 + Math.random() * 2) * durMul;
         s.animation = `tp-d-float ${dur.toFixed(1)}s ease-in-out infinite`;
-      } else if (sub < 0.80) {
+      } else if (sub < 0.50) {
         // Micro-tilt — gentle rocking
         const dur = (4 + Math.random() * 3) * durMul;
         s.animation = `tp-d-tilt ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (sub < 0.65) {
+        // Morph — blobby border-radius shifting, more dramatic for playful
+        const dur = (5 + Math.random() * 3) * durMul;
+        const br = s.borderRadius || 14;
+        const v = Math.max(6, Math.round(br * 0.5));
+        s.cssVars = {
+          ...(s.cssVars || {}),
+          "--d-morph-a": `${br + v}px ${br - v}px ${br + v}px ${br}px`,
+          "--d-morph-b": `${br}px ${br + v}px ${br - v}px ${br + v}px`,
+          "--d-morph-c": `${br - v}px ${br + v}px ${br}px ${br - v}px`,
+        };
+        s.animation = `tp-d-morph ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (sub < 0.78) {
+        // Pulse-scale — gentle heartbeat bounce
+        const dur = (2.5 + Math.random() * 1.5) * durMul;
+        s.cssVars = { ...(s.cssVars || {}), "--d-pulse-s": pick(["1.03", "1.04", "1.05"]) };
+        s.animation = `tp-d-pulse-scale ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (sub < 0.90) {
+        // Drift — slow horizontal sway
+        const dur = (4 + Math.random() * 3) * durMul;
+        s.cssVars = { ...(s.cssVars || {}), "--d-drift-x": pick(["3px", "4px", "5px", "-3px", "-4px"]) };
+        s.animation = `tp-d-drift ${dur.toFixed(1)}s ease-in-out infinite`;
       } else {
         // Border color dance — cycling border hues
         const dur = (6 + Math.random() * 4) * durMul;
         const bc1 = gc1, bc2 = gc2, bc3 = gcGlow;
-        s.cssVars = { "--d-bc1": `${bc1}50`, "--d-bc2": `${bc2}50`, "--d-bc3": `${bc3}50` };
+        s.cssVars = { ...(s.cssVars || {}), "--d-bc1": `${bc1}50`, "--d-bc2": `${bc2}50`, "--d-bc3": `${bc3}50` };
         s.border = `2px solid ${bc1}50`;
         s.animation = `tp-d-border-dance ${dur.toFixed(1)}s linear infinite`;
       }
     } else if (moodId === "bold" && animRoll < 0.20) {
-      // Bold: intense glow pulse or shimmer — dramatic presence
+      // Bold: intense glow pulse, shimmer, shadow-shift, pulse-scale — dramatic presence
       const sub = Math.random();
-      if (sub < 0.55) {
+      if (sub < 0.35) {
         // Strong glow pulse
         const dur = (3 + Math.random() * 2) * durMul;
         s.cssVars = {
+          ...(s.cssVars || {}),
           "--d-glow-base": `0 0 12px ${gcGlow}12, 0 4px 16px ${shHex}0A`,
           "--d-glow-peak": `0 0 30px ${gcGlow}28, 0 6px 32px ${shHex}14`,
         };
         s.animation = `tp-d-glow-pulse ${dur.toFixed(1)}s ease-in-out infinite`;
-      } else {
+      } else if (sub < 0.60) {
         // Fast shimmer — energetic sweep
         const dur = (4 + Math.random() * 2) * durMul;
         s.animation = `tp-d-shimmer ${dur.toFixed(1)}s linear infinite`;
@@ -2584,27 +2629,68 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           s.gradientOverlay = `linear-gradient(90deg, transparent 0%, ${gcGlow}10 30%, transparent 50%, ${gc1}0C 70%, transparent 100%)`;
           s.backgroundSize = "400% 100%";
         }
+      } else if (sub < 0.80) {
+        // Shadow-shift — dramatic moving light source with bold spread
+        const dur = (4 + Math.random() * 2) * durMul;
+        s.cssVars = {
+          ...(s.cssVars || {}),
+          "--d-shad-a": `4px 4px 20px ${shHex}18, 0 0 12px ${gcGlow}10`,
+          "--d-shad-b": `-4px 6px 28px ${shHex}20, 0 0 20px ${gcGlow}18`,
+        };
+        s.animation = `tp-d-shadow-shift ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else {
+        // Pulse-scale — confident breathing scale
+        const dur = (3 + Math.random() * 2) * durMul;
+        s.cssVars = { ...(s.cssVars || {}), "--d-pulse-s": pick(["1.02", "1.03"]) };
+        s.animation = `tp-d-pulse-scale ${dur.toFixed(1)}s ease-in-out infinite`;
       }
     } else if (moodId === "minimal" && animRoll < 0.08) {
       // Minimal: very rare, very subtle breathe only
       const dur = (8 + Math.random() * 4) * durMul;
       s.animation = `tp-d-breathe ${dur.toFixed(1)}s ease-in-out infinite`;
     } else if (moodId === "auto" && animRoll < 0.12) {
-      // Auto: random pick from the subtle end
+      // Auto: random pick from all animation types
       const autoPick = Math.random();
-      if (autoPick < 0.4) {
+      if (autoPick < 0.25) {
         const dur = (5 + Math.random() * 3) * durMul;
         s.animation = `tp-d-float ${dur.toFixed(1)}s ease-in-out infinite`;
-      } else if (autoPick < 0.7) {
+      } else if (autoPick < 0.40) {
         const dur = (7 + Math.random() * 3) * durMul;
         s.animation = `tp-d-breathe ${dur.toFixed(1)}s ease-in-out infinite`;
-      } else {
+      } else if (autoPick < 0.55) {
         const dur = (6 + Math.random() * 4) * durMul;
         s.cssVars = {
+          ...(s.cssVars || {}),
           "--d-glow-base": `0 0 6px ${gcGlow}06`,
           "--d-glow-peak": `0 0 14px ${gcGlow}12`,
         };
         s.animation = `tp-d-glow-pulse ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (autoPick < 0.70) {
+        // Drift
+        const dur = (5 + Math.random() * 3) * durMul;
+        s.cssVars = { ...(s.cssVars || {}), "--d-drift-x": pick(["2px", "3px", "-2px", "-3px"]) };
+        s.animation = `tp-d-drift ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (autoPick < 0.85) {
+        // Morph
+        const dur = (8 + Math.random() * 4) * durMul;
+        const br = s.borderRadius || 14;
+        const v = Math.max(4, Math.round(br * 0.35));
+        s.cssVars = {
+          ...(s.cssVars || {}),
+          "--d-morph-a": `${br}px ${br + v}px ${br}px ${br - v}px`,
+          "--d-morph-b": `${br + v}px ${br}px ${br - v}px ${br}px`,
+          "--d-morph-c": `${br - v}px ${br}px ${br + v}px ${br}px`,
+        };
+        s.animation = `tp-d-morph ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else {
+        // Shadow-shift
+        const dur = (6 + Math.random() * 3) * durMul;
+        s.cssVars = {
+          ...(s.cssVars || {}),
+          "--d-shad-a": `2px 2px 10px ${shHex}0A`,
+          "--d-shad-b": `-2px 3px 14px ${shHex}0E`,
+        };
+        s.animation = `tp-d-shadow-shift ${dur.toFixed(1)}s ease-in-out infinite`;
       }
     }
   }
