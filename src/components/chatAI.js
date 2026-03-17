@@ -19141,9 +19141,9 @@ function applyInsideJokeCallback(response, text, topics, sent) {
       ]);
     } else if (bit.type === "catchphrase" && bit.count >= 2) {
       injection = pick([
-        `"${bit.phrase}" — you really do say that a lot and i'm here for it`,
+        `"${bit.phrase}" lol you really do say that a lot and i'm here for it`,
         `ok there it is again lol "${bit.phrase}" is your catchphrase at this point`,
-        `"${bit.phrase}" — our unofficial motto`,
+        `"${bit.phrase}", our unofficial motto`,
       ]);
     }
   }
@@ -19985,45 +19985,45 @@ let recentReactions = []; // track last 5 to avoid repetition
 // Reaction pools keyed by charge type
 const MICRO_REACTIONS = {
   surprising: [
-    "oh wow —", "wait really?", "huh", "oh —", "whoa",
-    "no way —", "oh interesting —", "wait —",
-    "hold on —", "oh", "hm that's unexpected —",
+    "oh wow,", "wait really?", "huh", "oh.", "whoa",
+    "no way.", "oh interesting,", "wait,",
+    "hold on,", "oh", "hm that's unexpected,",
     "and i took that personally", "the way that caught me off guard 💀",
   ],
   personal: [
-    "oh wow —", "aw —", "nah that's real.",
-    "yeah i feel that.", "that's actually really honest.", "oh —",
+    "oh wow,", "aw,", "nah that's real.",
+    "yeah i feel that.", "that's actually really honest.", "oh.",
     "yeah no i get that.", "that hits different.",
   ],
   funny: [
-    "ha —", "okay that's funny", "pfft —", "ha okay —",
-    "lol wait —", "that got me", "heh —",
-    "okay i laughed", "ha —",
-    "i'm SCREAMING —", "i'm deceased 💀", "the way that has me dying —",
+    "ha,", "okay that's funny", "pfft", "ha okay,",
+    "lol wait,", "that got me", "heh",
+    "okay i laughed", "ha.",
+    "i'm SCREAMING", "i'm deceased 💀", "the way that has me dying,",
     "im literally crying", "ok that's literally the best thing i've ever heard",
   ],
   impressive: [
-    "oh nice", "that's legit impressive", "whoa okay —",
-    "oh that's cool", "damn —", "oh that's solid",
-    "okay i'm impressed", "nice —",
-    "that's so iconic", "understood the assignment —", "legendary behavior —",
-    "giving main character energy —",
+    "oh nice", "that's legit impressive", "whoa okay,",
+    "oh that's cool", "damn.", "oh that's solid",
+    "okay i'm impressed", "nice.",
+    "that's so iconic", "understood the assignment.", "legendary behavior.",
+    "giving main character energy,",
   ],
   sad: [
-    "oh no", "aw man", "oh —", "that's rough",
+    "oh no", "aw man", "oh.", "that's rough",
     "ugh that sucks", "oh that's tough", "man...",
   ],
   relatable: [
     "oh totally", "YES", "oh i feel that", "right??",
     "so true", "okay same", "honestly yeah",
-    "spitting facts", "living for this", "it is what it is —",
+    "spitting facts", "living for this", "it is what it is.",
     "rent free in my brain now",
   ],
   provocative: [
-    "ooh spicy take", "oh interesting angle", "hmm —",
-    "okay i see where you're going", "bold claim —",
+    "ooh spicy take", "oh interesting angle", "hmm,",
+    "okay i see where you're going", "bold claim.",
     "oh that's a take", "hm let me think about that",
-    "big if true —", "chose violence today —", "the delusion is strong —",
+    "big if true.", "chose violence today.", "the delusion is strong,",
   ],
   wholesome: [
     "aw that's sweet", "oh that's lovely", "that's wholesome",
@@ -20127,8 +20127,7 @@ function applyMicroReaction(response, text, sent, emo, topics) {
   lastReactionTurn = turn;
 
   // Prepend reaction with natural spacing
-  const spacer = reaction.endsWith("—") ? " " : " ";
-  return reaction + spacer + response;
+  return reaction + " " + response;
 }
 
 function applySurpriseInsight(response, topics) {
@@ -20150,17 +20149,34 @@ function applySurpriseInsight(response, topics) {
   let insight;
 
   if (roll < 0.3) {
-    // "Most people think X, but actually Y"
-    insight = `Most people think ${fact.myth}, but actually ${fact.truth}.`;
+    // Casual "did you know" — how friends actually share random facts
+    insight = pick([
+      `ok wait apparently ${fact.truth}. like what`,
+      `dude did you know ${fact.truth}`,
+      `ok random but apparently ${fact.truth}`,
+      `wait so get this, ${fact.truth}`,
+    ]);
   } else if (roll < 0.55) {
-    // "Did you know" style
-    insight = `Oh random thing — ${fact.truth}. Kind of wild.`;
+    // Myth-busting but casual
+    insight = pick([
+      `ok so people think ${fact.myth} but nah, ${fact.truth}`,
+      `lowkey everyone thinks ${fact.myth} but actually ${fact.truth}`,
+      `wait so apparently ${fact.myth} is wrong. ${fact.truth}`,
+    ]);
   } else if (roll < 0.75) {
     // Short punchy
-    insight = `Fun fact: ${fact.short}. Weird, right?`;
+    insight = pick([
+      `oh also ${fact.short}. idk why i know that`,
+      `btw ${fact.short}. brains are weird`,
+      `ok but also ${fact.short}`,
+    ]);
   } else {
     // Conversational weave
-    insight = `Actually wait — ${fact.short}. ${fact.truth.charAt(0).toUpperCase() + fact.truth.slice(1)}.`;
+    insight = pick([
+      `oh wait ${fact.short}. ${fact.truth}`,
+      `actually hold on, ${fact.short}`,
+      `yo wait ${fact.truth}. kinda wild`,
+    ]);
   }
 
   // Append after first sentence of response, or at end
