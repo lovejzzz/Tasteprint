@@ -231,11 +231,11 @@ export default function App() {
         const defaults = DEFAULT_PROPS[s.type];
         if (singlePreset && targets.length === 1) {
           const rnd = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized);
-          updated[i] = { ...s, variant: singlePreset.variant, font: singlePreset.font, fsize: singlePreset.fsize, props: { ...(s.props || {}), ...rnd.props } };
+          updated[i] = { ...s, variant: singlePreset.variant, font: singlePreset.font, fsize: singlePreset.fsize, props: { ...(s.props || {}), ...rnd.props }, dStyles: rnd.dStyles };
           newPrefV[s.type] = singlePreset.variant;
         } else {
           const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized);
-          updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
+          updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
           newPrefV[s.type] = result.variant;
         }
         alreadyRandomized.push(updated[i]);
@@ -257,7 +257,7 @@ export default function App() {
         const s = updated[i];
         const defaults = DEFAULT_PROPS[s.type];
         const result = designerRandomize(s.type, p, defaults, designMood, already);
-        updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
+        updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
         newPrefV[s.type] = result.variant;
         already.push(updated[i]);
       }
@@ -285,6 +285,7 @@ export default function App() {
       font: s.font || 0,
       fsize: s.fsize || 1,
       props: s.props ? { ...s.props } : {},
+      dStyles: s.dStyles ? { ...s.dStyles } : {},
     });
   }, [shapes]);
 
@@ -305,7 +306,7 @@ export default function App() {
           }
         }
       }
-      return { ...s, variant: safeVariant, font: copiedStyle.font, fsize: copiedStyle.fsize, props: mergedProps };
+      return { ...s, variant: safeVariant, font: copiedStyle.font, fsize: copiedStyle.fsize, props: mergedProps, dStyles: copiedStyle.dStyles ? { ...copiedStyle.dStyles } : undefined };
     }));
     setPrefV(pv => {
       const s = shapes.find(x => x.id === id);

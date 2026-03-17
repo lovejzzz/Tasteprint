@@ -509,7 +509,107 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
     if (moodCfg && moodCfg.propTweak) moodCfg.propTweak(props);
   }
 
-  return { variant, font, fsize, props };
+  /* ── 5. Design style overrides — novel CSS treatments ── */
+  const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark);
+
+  return { variant, font, fsize, props, dStyles };
+}
+
+/* ── Design Style Generator — produces CSS overrides beyond predefined variants ── */
+const SHADOW_PRESETS = [
+  "none",
+  "0 1px 3px {s}15",                         // subtle
+  "0 4px 14px {s}12",                         // soft
+  "0 8px 30px {s}18",                         // elevated
+  "0 2px 0 {s}20",                            // hard bottom
+  "inset 0 2px 6px {s}10",                    // inset glow
+  "0 0 0 1px {s}08, 0 4px 16px {s}10",       // ring + float
+  "0 20px 40px -12px {s}20",                  // dramatic lift
+  "4px 4px 0 {a}30",                          // brutalist offset
+  "0 0 20px {a}18",                           // neon glow
+  "0 1px 2px {s}08, 0 8px 24px {s}10",       // layered
+];
+
+const RADIUS_PRESETS = [0, 4, 8, 12, 16, 20, 24, 32, 999];
+
+function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark) {
+  const s = {};
+  const isNav = sizeCat === "nav";
+  const isCode = sizeCat === "code";
+  const isSmall = sizeCat === "small";
+  const moodId = mood || "auto";
+
+  // --- Border radius ---
+  // Each mood has a different radius personality
+  if (moodId === "minimal") {
+    s.borderRadius = pick([4, 6, 8, 10, 12]);
+  } else if (moodId === "bold") {
+    s.borderRadius = pick([0, 2, 4, 16, 20, 999]);
+  } else if (moodId === "elegant") {
+    s.borderRadius = pick([12, 14, 16, 20, 24]);
+  } else if (moodId === "playful") {
+    s.borderRadius = pick([16, 20, 24, 32, 999]);
+  } else {
+    // auto: full spectrum
+    s.borderRadius = pick(RADIUS_PRESETS);
+  }
+  // Small components get smaller radii
+  if (isSmall && s.borderRadius > 16) s.borderRadius = pick([4, 8, 10, 12, 16]);
+  // Nav components stay reasonable
+  if (isNav) s.borderRadius = pick([0, 4, 8, 12]);
+
+  // --- Box shadow ---
+  const acHex = palette.ac || "#888";
+  const shHex = dark ? "#000" : palette.tx || "#333";
+  if (moodId === "minimal") {
+    s.boxShadow = pick(["none", "none", SHADOW_PRESETS[1], SHADOW_PRESETS[2]]);
+  } else if (moodId === "bold") {
+    s.boxShadow = pick([SHADOW_PRESETS[4], SHADOW_PRESETS[7], SHADOW_PRESETS[8], SHADOW_PRESETS[3]]);
+  } else if (moodId === "elegant") {
+    s.boxShadow = pick([SHADOW_PRESETS[2], SHADOW_PRESETS[6], SHADOW_PRESETS[10], SHADOW_PRESETS[3]]);
+  } else if (moodId === "playful") {
+    s.boxShadow = pick([SHADOW_PRESETS[9], SHADOW_PRESETS[7], SHADOW_PRESETS[8], SHADOW_PRESETS[3], SHADOW_PRESETS[6]]);
+  } else {
+    s.boxShadow = pick(SHADOW_PRESETS);
+  }
+  // Resolve shadow color placeholders
+  if (s.boxShadow !== "none") {
+    s.boxShadow = s.boxShadow.replace(/\{s\}/g, shHex).replace(/\{a\}/g, acHex);
+  }
+  // Nav/code skip shadows
+  if (isNav || isCode) s.boxShadow = "none";
+
+  // --- Subtle rotation (playful/bold only, skip nav/code) ---
+  if (!isNav && !isCode && (moodId === "playful" || (moodId === "bold" && Math.random() < 0.3))) {
+    const deg = pick([-3, -2, -1.5, -1, 1, 1.5, 2, 3]);
+    s.rotate = `${deg}deg`;
+  }
+
+  // --- Filter: brightness/saturation shifts ---
+  if (moodId === "bold" && Math.random() < 0.4) {
+    s.filter = `contrast(${randRange(1.02, 1.12).toFixed(2)})`;
+  } else if (moodId === "playful" && Math.random() < 0.35) {
+    s.filter = `saturate(${randRange(1.1, 1.35).toFixed(2)})`;
+  } else if (moodId === "elegant" && Math.random() < 0.25) {
+    s.filter = `brightness(${randRange(1.02, 1.08).toFixed(2)})`;
+  }
+
+  // --- Outline ring decoration ---
+  if (Math.random() < 0.12 && !isNav && !isCode) {
+    const offset = pick([2, 3, 4, 6]);
+    const width = pick([1, 1.5, 2]);
+    const opacity = pick(["18", "22", "30"]);
+    s.outline = `${width}px solid ${acHex}${opacity}`;
+    s.outlineOffset = `${offset}px`;
+  }
+
+  // --- Backdrop blur for glass-tagged variants ---
+  const tags = getVariantTags(type, (VARIANTS[type] || []).length || 1);
+  if (variant === tags.glass && Math.random() < 0.6) {
+    s.backdropFilter = `blur(${pick([8, 12, 16, 20])}px)`;
+  }
+
+  return s;
 }
 
 /**

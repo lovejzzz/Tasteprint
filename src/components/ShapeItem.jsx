@@ -26,6 +26,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
   const fontIdx = selFont !== null && isPrimary ? selFont : (s.font || 0);
   const fn = FONTS[fontIdx]?.name || FONTS[0].name;
   const ff = FONTS[fontIdx]?.family || FONTS[0].family;
+  const ds = s.dStyles || {};
   const pb = pillBtn(p);
   const ph = pillHover(p);
   const sep = <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px", flexShrink: 0 }} />;
@@ -151,12 +152,15 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
         style={{
           width: sw, height: sh,
           cursor: (s.type === "code-block" || s.type === "chat") ? "default" : (isDrg ? "grabbing" : "grab"),
-          transition: isDrg ? "none" : "transform .15s ease, filter .2s ease",
-          transform: isDrg ? "scale(1.015)" : "scale(1)",
-          filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : "none",
-          outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : "none",
-          outlineOffset: 4, borderRadius: 14,
-          ...(device !== "free" ? { overflow: "hidden" } : {}),
+          transition: isDrg ? "none" : "transform .15s ease, filter .2s ease, box-shadow .3s ease, border-radius .3s ease",
+          transform: isDrg ? "scale(1.015)" : ds.rotate ? `rotate(${ds.rotate})` : "scale(1)",
+          filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : (ds.filter || "none"),
+          outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : (ds.outline || "none"),
+          outlineOffset: isSel ? 4 : (ds.outlineOffset ? parseInt(ds.outlineOffset) : 4),
+          borderRadius: ds.borderRadius ?? 14,
+          boxShadow: ds.boxShadow && ds.boxShadow !== "none" ? ds.boxShadow : undefined,
+          backdropFilter: ds.backdropFilter,
+          overflow: (device !== "free" || ds.borderRadius === 999) ? "hidden" : undefined,
           WebkitTapHighlightColor: "transparent", touchAction: "none",
         }}>
         <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} fsize={s.fsize || 1} texture={texture} />
@@ -196,7 +200,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     prev.designMood === next.designMood &&
     prev.hasRndUndo === next.hasRndUndo &&
     prev.hasCopiedStyle === next.hasCopiedStyle &&
-    prev.dScore === next.dScore;
+    prev.dScore === next.dScore &&
+    prev.s.dStyles === next.s.dStyles;
 });
 
 export default ShapeItem;
