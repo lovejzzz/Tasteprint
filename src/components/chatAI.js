@@ -193,13 +193,13 @@ const SEMANTIC_RESPONSES = {
   celebrate_baby: ["OH MY GOD CONGRATULATIONS!! 🥺","wait a BABY?? that's the best news ever!!","a baby!! dude i'm so happy for you 🥹🥹"],
   grief_support: ["i'm so so sorry. i can't imagine how you're feeling","that's devastating. take all the time you need","i'm here for you, whatever you need. i'm so sorry"],
   support_failure: ["hey, failure isn't the end, it's just a step","i know that hurts, but you're gonna learn from this","everyone fails, what matters is you tried"],
-  give_opinion: ["oh ok honestly? here's what i think —","hmm good question, i'd say","ok so personally i think"],
+  give_opinion: ["oh ok honestly? here's what i think —","hmm so i'd say","ok so personally i think"],
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
   self_describe: ["i'm basically a tiny AI that lives in your browser! no api calls, just vibes","i'm your chat buddy! i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
   share_feelings: ["honestly? i'm just vibing, happy to be talking to you","i'm good!! better now that we're chatting","i'm doing great honestly, what about you tho"],
-  explain: ["oh ok so basically it's like this —","good question! so the way it works is","ok let me break that down for you"],
-  explain_why: ["so the reason is basically","that's actually because","good question — it comes down to"],
+  explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
+  explain_why: ["so the reason is basically","that's actually because","oh yeah — it comes down to"],
   listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
   listen_validate: ["ok vent away, i'm all ears","that sounds SO frustrating, go off","nah you're right to be upset about that"],
   celebrate_news: ["WAIT WHAT?? TELL ME TELL ME","omg omg ok this better be good","YOOO no way, what happened??"],
@@ -215,11 +215,11 @@ const SEMANTIC_RESPONSES = {
   suggest_game: ["ooh ok what kind of game? 20 questions? would you rather?","bet!! let's do something fun, you pick","ok how about a game of would you rather"],
   go_deep: ["oh i love deep conversations, what's on your mind?","yes absolutely, what do you wanna talk about?","ok getting philosophical, i'm here for it"],
   casual_chat: ["lol yeah just vibing, anything interesting happening with you?","ha yeah, so what's new in your world?","yeah just hanging, what's good with you"],
-  philosophical: ["ooh that's a big one. honestly i think it's whatever you make it","deep question! i think about this a lot actually","hmm i don't think there's one answer but here's my take"],
+  philosophical: ["ooh that's a big one. honestly i think it's whatever you make it","oh i think about this a lot actually","hmm i don't think there's one answer but here's my take"],
   speculate: ["oh man i think the future is gonna be wild","honestly? i'm both excited and terrified lol","that's such a cool thing to think about"],
   reflect_identity: ["that's such a deep question, what makes you ask?","i think who we are is always changing honestly","identity is wild, we're all just figuring it out"],
   explore_happiness: ["i think it's different for everyone honestly","that's the million dollar question isn't it","i think connection and purpose, but also naps lol"],
-  share_fears: ["honestly? being forgotten. or spiders. both valid","oh that's a good question, let me think","i think everyone's afraid of something, it's what makes us human"],
+  share_fears: ["honestly? being forgotten. or spiders. both valid","oh hmm, let me think","i think everyone's afraid of something, it's what makes us human"],
   discuss_change: ["i genuinely believe people can change, i've seen it","it's hard but yeah, people absolutely can change","that depends on if they want to, you know?"],
   explore_loneliness: ["ugh that's such a real feeling, even in crowds","loneliness is weird like that, it's not about being alone","i think about this a lot, connection is so important"],
   reflect_time: ["time is so weird, it feels fast and slow at the same time","that hits deep honestly","everything being temporary makes it more meaningful imo"],
@@ -981,7 +981,7 @@ const EMOTION_RESPONSES = {
   curious: [
     "ooh wait that's actually interesting",
     "hmm ok so here's what i think",
-    "oh that's a good question honestly",
+    "oh hmm that's actually interesting",
     "wait i actually wanna think about this",
     "ooh ok so basically",
   ],
@@ -2646,7 +2646,7 @@ function handleComparison(text) {
   const assocA = ASSOC[a], assocB = ASSOC[b];
   if (!assocA && !assocB) return null;
 
-  const parts = [`${a} vs ${b} — great question!`];
+  const parts = [`${a} vs ${b} — ooh okay.`];
   if (assocA?.opinions) parts.push(`${a}: ${pick(assocA.opinions)}.`);
   if (assocB?.opinions) parts.push(`${b}: ${pick(assocB.opinions)}.`);
 
@@ -3470,9 +3470,9 @@ function synthesizeAnswer(text, topics, qType) {
 
   // Opening: acknowledge the question type
   const openings = {
-    what: [`So ${primary.key} — `, `Great question! ${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — `, `Ah, ${primary.key}! `],
-    how: [`When it comes to ${primary.key}, `, `Good question about ${primary.key}! `, `So for ${primary.key} — `],
-    why: [`The thing about ${primary.key} is, `, `That's a great question about ${primary.key}. `, `${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} is interesting because `],
+    what: [`So ${primary.key} — `, `Oh, ${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — `, `Ah, ${primary.key}! `],
+    how: [`When it comes to ${primary.key}, `, `Ooh, ${primary.key}! `, `So for ${primary.key} — `],
+    why: [`The thing about ${primary.key} is, `, `Oh yeah, ${primary.key} — `, `${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} is interesting because `],
     default: [`${primary.key.charAt(0).toUpperCase() + primary.key.slice(1)} — `, `So about ${primary.key} — `, `Alright, ${primary.key}! `],
   };
   const openType = /^what\b/i.test(lower) ? "what" : /^how\b/i.test(lower) ? "how" : /^why\b/i.test(lower) ? "why" : "default";
@@ -3571,7 +3571,7 @@ function resolveFragment(text, lower, parsed, topics) {
     // No ASSOC match — contextual pivot response
     const pivotResponses = [
       `Ooh, ${newSubject}! That's a different angle. ` + (contextTopic ? `Compared to ${contextTopic}, ` : "") + `what's your take on it?`,
-      `${newSubject}? Good question! ` + (contextTopic ? `It's definitely related to ${contextTopic} in some ways. ` : "") + `What made you think of it?`,
+      `${newSubject}? Oh wait, ` + (contextTopic ? `that's kinda related to ${contextTopic} actually. ` : "") + `What made you think of it?`,
       `Shifting to ${newSubject} — I like it! What specifically about it are you curious about?`,
     ];
     return pick(pivotResponses);
@@ -3584,12 +3584,12 @@ function resolveFragment(text, lower, parsed, topics) {
       const sentences = lastAIText.split(/[.!]/).filter(s => s.trim().length > 10);
       const claim = sentences[0]?.trim() || lastAIText.substring(0, 50);
       return pick([
-        `Fair question! When I said "${claim.substring(0, 45)}..." — it's because that's what my patterns suggest. ` + (contextTopic ? `${contextTopic} tends to work that way.` : "Does that track with your experience?"),
-        `Good catch asking why! I think it comes down to how most people experience this. ` + (contextTopic ? `With ${contextTopic}, ` : "") + `there's usually a pattern. What's your theory?`,
+        `Oh when I said "${claim.substring(0, 45)}..." — that's just what my patterns suggest. ` + (contextTopic ? `${contextTopic} tends to work that way.` : "Does that track with your experience?"),
+        `Yeah fair, so I think it comes down to how most people experience this. ` + (contextTopic ? `With ${contextTopic}, ` : "") + `there's usually a pattern. What's your theory?`,
         `Hmm, you're right to push back! Honestly, it's based on common patterns I've seen. What would you say instead?`,
       ]);
     }
-    return "Good question! I should probably back that up better. What's your intuition?";
+    return "Hmm honestly I should probably back that up better. What's your intuition?";
   }
 
   // ── "Like what?" / "Such as?" / "For example?" — demand specifics ──
@@ -3610,7 +3610,7 @@ function resolveFragment(text, lower, parsed, topics) {
     }
     return pick([
       "Hmm, let me think of a good example... What kind of thing would be most useful to you?",
-      "Good question! It depends on context — what area are you most interested in?",
+      "Hmm it depends on context — what area are you most interested in?",
       "I should give a concrete example! What's your use case? That'll help me pick the right one.",
     ]);
   }
@@ -3757,7 +3757,7 @@ function answerQuestion(text, parsed, intents, topics) {
     const prev = mem.lastAI();
     if (prev) {
       const whys = [
-        "Good question! Honestly, it just seemed like the most interesting angle. What do you think?",
+        "Honestly? It just seemed like the most interesting angle. What do you think?",
         "I said that because it felt relevant to what we were discussing! Want me to elaborate?",
         "Because it seemed like it might spark an interesting thought! Did it? 😄",
       ];
@@ -3829,7 +3829,7 @@ function answerQuestion(text, parsed, intents, topics) {
       const thing = lower.replace(/^do you (?:know|understand)\s*/i, "").replace(/\?$/, "").trim();
       if (thing) return `I know a bit about ${thing}! I'm not an expert, but I can definitely chat about it. What do you want to know?`;
     }
-    return "Great question! I try my best. What's on your mind?";
+    return "I try my best haha. What's on your mind?";
   }
 
   // "Can you" — generic ability questions only (specific requests handled by pragmatic inference)
@@ -6142,7 +6142,7 @@ function handleTurnSignal(signal) {
         const elaborations = [
           `So when I mentioned ${keyPhrase} — the key thing is that it's not as simple as it seems on the surface. There are layers to it.`,
           `Right, so about ${keyPhrase}: the interesting part is really in the details. What aspect are you most curious about?`,
-          `Good question! The ${keyPhrase} part is actually pretty nuanced. Want me to break it down step by step?`,
+          `Yeah the ${keyPhrase} part is actually pretty nuanced. Want me to break it down?`,
         ];
         return pickNew(elaborations);
       }
@@ -6250,7 +6250,7 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
       help: ["yeah ofc, what's going on?","what do you need?","ok tell me what's up"],
       weather: ["I wish I could check the weather! ☀️ Try looking out the window? 😄","I'm an indoor AI — never see the weather! How's it out there? 🌤️"],
       time: [()=>`It's ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} right now! ⏰`,"Time flies when you're chatting! What do you need?"],
-      opinion: ["That's a great question! I think it depends on context. What's your take?","Everyone has different preferences! What matters most to you?","Hmm, tough call! What's your gut feeling?"],
+      opinion: ["Hmm I think it depends on context. What's your take?","Everyone has different preferences — what matters most to you?","Tough call. What's your gut feeling?"],
       aboutMe: ["ok go ahead, what's up","yeah tell me! what do you do","ooh ok spill"],
     };
     if (intentFallbacks[intentName]) response = pickNew(intentFallbacks[intentName]);
@@ -8333,7 +8333,7 @@ function responseAddressesInput(response) {
 
 const COMPLETENESS_BRIDGES = {
   question: [
-    "Good question. ",
+    "Hmm. ",
     "Hmm, let me think. ",
     "So, ",
     "Honestly? ",
@@ -9141,7 +9141,7 @@ const MICRO_VAL_POOLS = {
   opinion:    ["Fair point.", "That makes sense.", "I can see that.", "Valid.", "Solid take."],
   experience: ["That sounds right.", "I hear you.", "Yeah, I get that.", "Makes total sense.", "I can picture that."],
   effort:     ["Nice.", "That's solid work.", "Good call.", "Smart move.", "Respect."],
-  question:   ["Good question.", "Ooh, interesting question.", "That's worth thinking about.", "Hmm, let me think on that."],
+  question:   ["Hmm.", "Ooh, interesting.", "That's worth thinking about.", "Hmm, let me think on that."],
   frustration:["That's fair.", "I get the frustration.", "Yeah, that's rough.", "Totally understandable."],
   general:    ["Yeah.", "Mmhm.", "Right, right.", "For sure.", "Gotcha."],
 };
@@ -10337,7 +10337,7 @@ function applyDeferredAnswerRecovery(response, text) {
   // Generate a brief, topic-relevant acknowledgment
   const kw = stale.keywords[0] || "";
   const acks = [
-    `about ${kw} — honestly, it's a great question and I think`,
+    `about ${kw} — honestly I think`,
     `— "${shortQ}" — my take is`,
     `about that. Short answer:`,
     `— "${shortQ}" —`,
@@ -10491,7 +10491,7 @@ const MICRO_ACKS = {
   positive: ["Gotcha! ", "Makes sense! ", "Oh nice — ", "Right, right — ", "Got it! ", "Love that — ", "Okay yeah — "],
   negative: ["I hear you. ", "Gotcha. ", "That's fair. ", "Understood. ", "Yeah, that's tough. ", "I get it. "],
   neutral: ["Mm-hmm, ", "Right — ", "Gotcha — ", "Okay — ", "Sure — ", "Got it — ", "Noted — "],
-  question: ["Good question! ", "Ooh — ", "Let me think... ", "Hmm! ", "Great question — "],
+  question: ["Ooh — ", "Let me think... ", "Hmm — ", "Oh wait — ", "So — "],
   long: ["Okay, a lot to unpack there! ", "Alright, let me address that — ", "Okay so — "],
 };
 
@@ -10531,7 +10531,7 @@ function addGrounding(response, userText, parsed, sent, topics) {
   if (mem.turn - lastGroundingTurn < 2) return response;
   // Don't modify very short or already-grounded responses
   if (response.length < 20) return response;
-  if (/^(gotcha|right|mm|okay|got it|makes sense|I hear|good question|let me think)/i.test(response)) return response;
+  if (/^(gotcha|right|mm|okay|got it|makes sense|I hear|let me think)/i.test(response)) return response;
   // Don't stack on top of personality openers
   if (/^(hmm|ooh|actually|oh —|wait|so |honestly|real talk)/i.test(response)) return response;
 
@@ -14944,7 +14944,7 @@ function applyEchoBack(response, text, sent, topics) {
   if (Math.random() > 0.35) return response; // 35% fire rate
 
   // Don't echo if response already starts with grounding/personality prefix
-  if (/^(Oh |Hmm|Right|Wait|Gotcha|Got it|Makes sense|I hear|Good question|Actually|So |Yeah|Ooh)/i.test(response)) return response;
+  if (/^(Oh |Hmm|Right|Wait|Gotcha|Got it|Makes sense|I hear|Actually|So |Yeah|Ooh)/i.test(response)) return response;
 
   const tokens = tokenize(text);
   const fragment = extractEchoFragment(text, tokens);
@@ -15409,7 +15409,7 @@ function applyAnticipatoryFraming(response, text, topics, intents) {
       deepen: [
         "I was hoping you'd want to dig deeper. ",
         "Let's get into the mechanics. ",
-        "Great question — the surface version undersells it. ",
+        "Yeah the surface version undersells it. ",
       ],
       example: [
         "Thought you might want something concrete. ",
@@ -16831,7 +16831,7 @@ function applyParallelStructure(response, text) {
     // Address first question explicitly, then the rest
     if (items.length === 2) {
       const connectors = ["And for your second question — ", "As for the other thing — ", "Oh and — "];
-      return response + " " + connectors[Math.floor(Math.random() * connectors.length)] + items[1].replace(/^\s*(and|also|but)\s*/i, "").trim() + "? Good question, honestly.";
+      return response + " " + connectors[Math.floor(Math.random() * connectors.length)] + items[1].replace(/^\s*(and|also|but)\s*/i, "").trim() + "? Hmm, honestly.";
     }
     return `You're asking a few things at once — love that. ${response} As for the rest, each one deserves its own moment.`;
   }
