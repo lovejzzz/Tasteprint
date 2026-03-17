@@ -20527,6 +20527,36 @@ function polishOutput(response) {
     r = r.replace(/  +/g, " ");
   }
 
+  // 14. Trailing period softening (Round 224).
+  // In modern texting, ending with "." signals formality or passive-aggression.
+  // Friends end with no punctuation, "!", "?", emoji, or trailing off "...".
+  // This strips the final period ~65% of the time, making texts feel natural.
+  // Exception: multi-sentence responses keep internal periods, only the LAST one is touched.
+  // Exception: don't strip if response is very short (< 15 chars) — looks weird.
+  // Exception: keep period after abbreviations (e.g., "etc.", "vs.", "Dr.")
+  if (r.length >= 15 && r.endsWith(".") && !r.endsWith("..") && !r.endsWith("etc.") && !r.endsWith("vs.")) {
+    const rollP = Math.random();
+    if (rollP < 0.45) {
+      // Just drop the period — most casual option
+      r = r.slice(0, -1);
+    } else if (rollP < 0.60) {
+      // Replace with trailing off "..." (~15% of the time)
+      // Only if response isn't a clear declarative statement (those sound weird trailing off)
+      if (!/\b(?:you should|you need|make sure|don't forget)\b/i.test(r)) {
+        r = r.slice(0, -1) + "...";
+      } else {
+        r = r.slice(0, -1);
+      }
+    }
+    // 40% of the time: keep the period (sometimes friends do end with periods)
+  }
+
+  // Also soften internal mid-sentence periods in short casual messages
+  // "yeah. same." → "yeah same" (only for 2-word sentences joined by period)
+  if (r.length < 80) {
+    r = r.replace(/^([a-z]{2,12})\.\s+([a-z]{2,12})\.?$/i, "$1 $2");
+  }
+
   return r.trim();
 }
 
