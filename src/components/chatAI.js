@@ -3151,7 +3151,7 @@ function shapeToRhythm(response, targetMove) {
     case "question":
       // If response doesn't end with a question, try to add one
       if (!response.includes("?")) {
-        const qs = ["What do you think?","Curious to hear your take!","How about you?","What's your experience been?","Does that resonate?"];
+        const qs = ["what do u think","ok but what's YOUR take","hbu","have u dealt with that before","does that track"];
         return response.replace(/[.!]?$/, ". " + pick(qs));
       }
       break;
@@ -3161,10 +3161,10 @@ function shapeToRhythm(response, targetMove) {
         const factKeys = Object.keys(mem.facts);
         const fact = pick(factKeys);
         if (fact === "project" && Math.random() > 0.5) {
-          return response + ` Oh, and that connects to your ${mem.facts.project} project!`;
+          return response + ` wait that kinda connects to your ${mem.facts.project} thing right`;
         }
         if (fact.startsWith("likes_") && Math.random() > 0.5) {
-          return response + ` That reminds me of what you said about ${mem.facts[fact]}!`;
+          return response + ` oh wait didn't you say something about ${mem.facts[fact]} earlier`;
         }
       }
       break;
@@ -7669,10 +7669,10 @@ function offerTopicRescue() {
   const suggestion = unexplored.length > 0 ? pick(unexplored) : pick(allTopics);
 
   const rescues = [
-    `Hey, totally different direction — have you been into any ${suggestion} stuff lately?`,
-    `Okay wild card: let's talk about ${suggestion}. What's your take?`,
-    `Plot twist — ${suggestion}. Go. First thought that comes to mind!`,
-    `Let me try something different: if you had to teach someone about ${suggestion}, where would you start?`,
+    `ok completely different topic but have you been into ${suggestion} at all lately`,
+    `wait random but — ${suggestion}. thoughts?`,
+    `ok plot twist — ${suggestion}. first thing that comes to mind go`,
+    `ngl i've been thinking about ${suggestion} lately. are you into that at all`,
   ];
   return pickNew(rescues);
 }
@@ -10899,11 +10899,11 @@ function applyReciprocityBalance(response, text) {
     if (Math.random() < 0.25) {
       lastReciprocityNudgeTurn = turn;
       const nudgeQs = [
-        " What do you think?",
-        " Does that resonate?",
-        " How does that land?",
-        " Sound right?",
-        " Anything you'd push back on?",
+        " what do u think tho",
+        " does that track?",
+        " idk does that hit different for u",
+        " right?",
+        " or am i off",
       ];
       const q = nudgeQs[Math.floor(Math.random() * nudgeQs.length)];
       return response.replace(/[.!]\s*$/, ".") + q;
@@ -12195,9 +12195,9 @@ function breakPattern(response, text, topics, energy) {
     const stripped = response.replace(/\s*[^.!]*\?$/g, "").trim();
     if (stripped.length > 20) {
       const closers = [
-        " I don't even need to ask — I can tell you've thought about this.",
-        " And honestly, I think you already know the answer.",
-        " Full stop. No question mark needed.",
+        " honestly i already know what you'd say",
+        " and honestly you already know the answer",
+        " yeah that's just facts",
       ];
       return stripped + pick(closers);
     }
@@ -12207,10 +12207,10 @@ function breakPattern(response, text, topics, energy) {
   // Acknowledge the AI's own predictability
   if (strategy <= 1.0 && rut) {
     const metas = {
-      identical: "I just realized I've been giving you the same kind of answer over and over. Let me switch it up — ",
-      always_questions: "Okay I've been asking you a LOT of questions. Let me just say something for once: ",
-      always_long: "I've been kinda verbose lately. Let me try the short version: ",
-      always_multi: "I keep giving you these multi-part answers. Here's the simple take: ",
+      identical: "ok i keep saying the same thing lol let me switch it up — ",
+      always_questions: "ok i've been asking way too many questions lmao. here's just a take: ",
+      always_long: "ok i've been yapping. short version: ",
+      always_multi: "i keep writing essays lol. simple take: ",
     };
     const prefix = metas[rut];
     if (prefix) {
