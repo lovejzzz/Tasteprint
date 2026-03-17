@@ -20905,6 +20905,97 @@ function polishOutput(response) {
   return r.trim();
 }
 
+/* ── Round 234: Typing Style Mimicry ──
+ * Real friends unconsciously mirror each other's texting style.
+ * If someone texts in all lowercase with no punctuation, you don't reply
+ * with proper grammar. If someone uses lots of emojis, you use some too.
+ * Analyzes the user's last 5 messages for style signals (case, punctuation,
+ * emoji frequency, message length) and adjusts the response to match.
+ * Runs as a late-stage transform so it's the final style adjustment.
+ */
+function mirrorTypingStyle(response, text) {
+  let r = response;
+  // Gather last 5 user messages from history
+  const recentUser = mem.history.filter(h => h.role === "user").slice(-5);
+  // Include current message in the analysis window
+  const userMsgs = [...recentUser.map(h => h.text || ""), text].slice(-5);
+  if (userMsgs.length < 2) return r; // not enough data to detect style
+
+  // ── Case matching ──
+  // Check if user's last 3 messages are all lowercase (no uppercase letters at all)
+  const last3 = userMsgs.slice(-3);
+  const allLowercase = last3.length >= 3 && last3.every(m => m === m.toLowerCase());
+  if (allLowercase) {
+    // Force response to all lowercase (preserve "I" as standalone word)
+    r = r.toLowerCase();
+    // Restore standalone "I" — friends keep this even in lowercase texting
+    r = r.replace(/\bi\b(?='|'|\s|$)/g, "I");
+  }
+
+  // ── Punctuation matching ──
+  // Check if user rarely uses periods
+  const totalPeriods = userMsgs.reduce((sum, m) => sum + (m.match(/\./g) || []).length, 0);
+  const avgPeriods = totalPeriods / userMsgs.length;
+  if (avgPeriods < 0.3) {
+    // User almost never uses periods — strip trailing periods more aggressively
+    if (r.endsWith(".") && !r.endsWith("..") && !r.endsWith("etc.")) {
+      r = r.slice(0, -1);
+    }
+    // Also strip internal sentence-ending periods in short responses
+    if (r.length < 100) {
+      r = r.replace(/\.\s+/g, (m) => Math.random() < 0.5 ? ", " : m);
+    }
+  }
+  // Check if user uses "..." a lot
+  const ellipsisCount = userMsgs.reduce((sum, m) => sum + (m.match(/\.{3}/g) || []).length, 0);
+  if (ellipsisCount >= 2 && Math.random() < 0.30) {
+    // Occasionally add "..." to response — replace a comma or period near the end
+    const lastComma = r.lastIndexOf(",");
+    const lastPeriod = r.lastIndexOf(".");
+    if (lastComma > r.length * 0.5) {
+      r = r.slice(0, lastComma) + "..." + r.slice(lastComma + 1);
+    } else if (lastPeriod > r.length * 0.5 && !r.endsWith("...")) {
+      r = r.slice(0, lastPeriod) + "...";
+    }
+  }
+
+  // ── Emoji matching ──
+  // Count emoji usage across user messages
+  const emojiRe = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}]/gu;
+  const totalEmoji = userMsgs.reduce((sum, m) => sum + (m.match(emojiRe) || []).length, 0);
+  const avgEmoji = totalEmoji / userMsgs.length;
+  if (avgEmoji > 1) {
+    // User uses emojis frequently — add one ~30% of the time
+    const responseHasEmoji = emojiRe.test(r);
+    if (!responseHasEmoji && Math.random() < 0.30) {
+      const friendlyEmoji = ["😂", "💀", "✨", "🔥", "😤", "🫡", "👀", "😭", "🤌", "💯"];
+      const pick = friendlyEmoji[Math.floor(Math.random() * friendlyEmoji.length)];
+      // Append to end
+      r = r.replace(/[.!]?\s*$/, " " + pick);
+    }
+  } else if (avgEmoji === 0) {
+    // User never uses emojis — strip any emojis from response
+    r = r.replace(emojiRe, "").replace(/\s{2,}/g, " ").trim();
+  }
+
+  // ── Length matching ──
+  // If user sends very short messages, trim response to be shorter
+  const avgLen = userMsgs.reduce((sum, m) => sum + m.length, 0) / userMsgs.length;
+  if (avgLen < 20 && r.length > 60) {
+    // User is terse — keep only the first sentence or clause
+    const firstBreak = r.search(/[.!?,]\s/);
+    if (firstBreak > 10 && firstBreak < r.length - 5) {
+      const trimmed = r.slice(0, firstBreak + 1).trim();
+      if (trimmed.length >= 10) r = trimmed;
+    }
+  } else if (avgLen > 80 && r.length < 30 && r.length > 5) {
+    // User sends longer messages but we're very short — this is fine,
+    // short replies are natural. Don't force padding. Just allow as-is.
+  }
+
+  return r.trim();
+}
+
 /* ── Round 156: Typo Simulation & Texting Imperfections ──
  * Real friends don't type perfectly. These post-processors add subtle human
  * imperfections: dropped apostrophes, letter elongation, occasional typos
@@ -22844,6 +22935,9 @@ export async function getAIResponse(input) {
 
   // ═══ Round 215: Opener diversity — prevent "oh"/"hmm"/"ooh" repetition ═══
   response = diversifyOpener(response);
+
+  // ═══ Round 234: Typing style mimicry — mirror user's case, punctuation, emoji, length ═══
+  response = mirrorTypingStyle(response, text);
 
   // ═══ Round 233: Double-text simulation — casual rapid-fire multi-message feel ═══
   // (runs before excitement-based splitting; if it fires, splitIntoMultiMessages skips)
