@@ -3698,6 +3698,46 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  /* ── Round 74: Multi-layered artistic shadow compositions ────────────
+     ~20% chance to UPGRADE an existing shadow into an elaborate
+     3-5 layer composition (Figma/Dribbble "modern design tool" aesthetic). */
+  if (s.boxShadow && s.boxShadow !== "none" && Math.random() < 0.2) {
+    const _sm = moodId; // resolved mood
+    if (_sm === "bold") {
+      // Stacked brutalist or neon stack
+      s.boxShadow = Math.random() < 0.5
+        ? `4px 4px 0 ${acHex}20, 8px 8px 0 ${gc1}15, 12px 12px 0 ${shHex}10`
+        : `0 0 4px ${acHex}30, 0 0 12px ${gcGlow}18, 2px 4px 0 ${gc1}20, 6px 8px 0 ${shHex}12`;
+    } else if (_sm === "playful") {
+      // Bouncy layers — floating-on-a-trampoline feel
+      s.boxShadow = Math.random() < 0.5
+        ? `0 2px 4px ${shHex}08, 0 8px 16px ${gc1}06, 0 16px 32px ${shHex}04, 0 24px 48px ${gc2}03`
+        : `0 3px 6px ${gcGlow}0A, 0 10px 20px ${gc1}08, 0 20px 40px ${gc2}05, 0 30px 60px ${shHex}03`;
+    } else if (_sm === "elegant") {
+      // Diffused ambient — studio lighting
+      s.boxShadow = Math.random() < 0.5
+        ? `0 1px 2px ${shHex}06, 0 4px 8px ${shHex}04, 0 12px 24px ${shHex}03, 0 0 40px ${acHex}02`
+        : `0 1px 3px ${shHex}08, 0 6px 12px ${shHex}04, 0 16px 32px ${shHex}02, 0 0 60px ${acHex}02, 0 0 80px ${gc1}01`;
+    } else if (_sm === "minimal") {
+      // Whisper — ultra-subtle 2-layer
+      s.boxShadow = Math.random() < 0.5
+        ? `0 1px 2px ${shHex}04, 0 4px 8px ${shHex}02`
+        : `0 1px 3px ${shHex}05, 0 2px 6px ${shHex}03`;
+    } else {
+      // Auto — random pick from all styles
+      const _pick = Math.random();
+      if (_pick < 0.25) {
+        s.boxShadow = `4px 4px 0 ${acHex}20, 8px 8px 0 ${gc1}15, 12px 12px 0 ${shHex}10`;
+      } else if (_pick < 0.5) {
+        s.boxShadow = `0 2px 4px ${shHex}08, 0 8px 16px ${gc1}06, 0 16px 32px ${shHex}04, 0 24px 48px ${gc2}03`;
+      } else if (_pick < 0.75) {
+        s.boxShadow = `0 1px 2px ${shHex}06, 0 4px 8px ${shHex}04, 0 12px 24px ${shHex}03, 0 0 40px ${acHex}02`;
+      } else {
+        s.boxShadow = `0 1px 2px ${shHex}04, 0 4px 8px ${shHex}02`;
+      }
+    }
+  }
+
   return s;
 }
 
