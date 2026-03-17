@@ -1257,6 +1257,69 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.mixBlendMode = pick(["soft-light", "luminosity"]);
       }
     }
+
+    // --- Text shadow dimension: mood-driven typographic depth ---
+    // Apply to medium/large components (most have text content)
+    if (sizeCat === "medium" || sizeCat === "large") {
+      const tsChance = moodId === "bold" ? 0.35 : moodId === "elegant" ? 0.30 : moodId === "playful" ? 0.28 : moodId === "minimal" ? 0.12 : 0.20;
+      if (Math.random() < tsChance) {
+        if (moodId === "bold") {
+          s.textShadow = pick([
+            // Hard offset — retro/poster feel
+            `2px 2px 0 ${gc1}30`,
+            `3px 3px 0 ${acHex}25`,
+            // Stacked 3D depth
+            `1px 1px 0 ${gc1}20, 2px 2px 0 ${gc1}15, 3px 3px 0 ${gc1}10`,
+            // Glow punch
+            `0 0 ${pick([8, 12, 16])}px ${acHex}35`,
+            // Double shadow — offset + glow
+            `2px 2px 0 ${gc1}20, 0 0 10px ${acHex}15`,
+          ]);
+        } else if (moodId === "elegant") {
+          s.textShadow = pick([
+            // Soft ambient — barely visible, adds depth
+            `0 1px 3px ${shHex}20`,
+            `0 2px 4px ${dc.muted}15`,
+            // Letterpress/emboss — inset feel
+            `0 1px 0 ${gc1}08, 0 -1px 0 ${shHex}12`,
+            // Delicate glow
+            `0 0 6px ${dc.muted}18`,
+            // Crisp thin shadow
+            `1px 1px 1px ${shHex}15`,
+          ]);
+        } else if (moodId === "playful") {
+          s.textShadow = pick([
+            // Neon glow
+            `0 0 ${pick([10, 14, 20])}px ${pick([dc.vivid, dc.analog1, gcGlow])}40`,
+            // Rainbow stacked
+            `1px 1px 0 ${dc.analog1}30, -1px -1px 0 ${dc.comp}25`,
+            // Bold color offset
+            `${pick([2, 3])}px ${pick([2, 3])}px 0 ${pick([gc1, dc.vivid])}35`,
+            // Double neon
+            `0 0 6px ${dc.vivid}30, 0 0 14px ${dc.analog1}20`,
+            // Playful hard offset
+            `-2px 2px 0 ${gc1}25`,
+          ]);
+        } else if (moodId === "minimal") {
+          s.textShadow = pick([
+            // Ultra-subtle ambient
+            `0 1px 2px ${shHex}10`,
+            // Barely-there depth
+            `0 0 3px ${shHex}08`,
+          ]);
+        } else {
+          // auto: mix of everything
+          s.textShadow = pick([
+            `0 1px 3px ${shHex}18`,
+            `2px 2px 0 ${gc1}22`,
+            `0 0 ${pick([8, 12])}px ${acHex}25`,
+            `1px 1px 0 ${gc1}18, 2px 2px 0 ${gc1}12`,
+            `0 1px 0 ${gc1}10, 0 -1px 0 ${shHex}08`,
+            `0 0 8px ${dc.muted}20, 0 0 16px ${acHex}10`,
+          ]);
+        }
+      }
+    }
   }
 
   /* ── MOOD SIGNATURE EFFECTS — unique treatments per mood ── */
