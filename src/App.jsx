@@ -432,8 +432,13 @@ export default function App() {
     setSelAll(new Set(duped.map(s => s.id))); setSel(duped[0]?.id || null);
   }, [selAll, shapes, push]);
 
+  const cycleMood = useCallback(() => {
+    const idx = DESIGN_MOODS.findIndex(m => m.id === (designMood || "auto"));
+    setDesignMood(DESIGN_MOODS[(idx + 1) % DESIGN_MOODS.length].id);
+  }, [designMood]);
+
   /* ---- KEYBOARD ---- */
-  useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes });
+  useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood });
 
   /* ---- WHEEL: pan & zoom ---- */
   useEffect(() => {

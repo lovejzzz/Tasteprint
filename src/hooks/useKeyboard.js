@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { uid } from "../utils";
 
-export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes }) {
+export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood }) {
   useEffect(() => {
     const h = e => {
       const ae = document.activeElement;
@@ -25,6 +25,13 @@ export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes }) 
         }
         return;
       }
+      // Designer shortcuts (no modifier keys, not while editing text)
+      if (!isEditing && !(e.metaKey || e.ctrlKey || e.altKey)) {
+        if (e.key === "r" && !e.shiftKey && sel && randomize) { e.preventDefault(); randomize(sel); return; }
+        if (e.key === "R" && e.shiftKey && randomizeAll) { e.preventDefault(); randomizeAll(); return; }
+        if (e.key === "u" && undoRandomize) { e.preventDefault(); undoRandomize(); return; }
+        if (e.key === "m" && cycleMood) { e.preventDefault(); cycleMood(); return; }
+      }
       if (selAll.size > 0 && !isEditing && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault();
         const d = e.shiftKey ? 10 : 1;
@@ -35,5 +42,5 @@ export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes }) 
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onDel, undo, redo, dupShape, selAll, setShapes]);
+  }, [onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood]);
 }
