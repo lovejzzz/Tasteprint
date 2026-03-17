@@ -2245,6 +2245,61 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── 3D spatial transforms ──
+  // Mood-driven perspective + rotation combos that make components feel dimensional
+  // Combines perspective, rotateX/Y, translateY, and scale for spatial personality
+  if (!isNav && !isCode && !isSmall && !s.perspective) {
+    const tdRoll = Math.random();
+
+    if (moodId === "elegant" && tdRoll < 0.18) {
+      // Elegant: subtle isometric tilt — like a luxury product shot
+      s.perspective = pick([900, 1100, 1400]);
+      const axis = Math.random();
+      if (axis < 0.45) {
+        // Gentle Y-axis rotation — card slightly angled
+        s.rotateY = pick([-2, -1.5, -1, 1, 1.5, 2]);
+      } else if (axis < 0.75) {
+        // Slight X-axis tilt — looking down at the card
+        s.rotateX = pick([1, 1.5, 2, 2.5]);
+        s.translateY = pick([-1, -2]);
+      } else {
+        // Combined subtle XY — true isometric hint
+        s.rotateX = pick([1, 1.5]);
+        s.rotateY = pick([-1, -0.5, 0.5, 1]);
+        s.scale = pick([1.01, 1.02]);
+      }
+    } else if (moodId === "bold" && tdRoll < 0.15) {
+      // Bold: dramatic tilt — confident, assertive angle
+      s.perspective = pick([600, 800, 1000]);
+      const axis = Math.random();
+      if (axis < 0.50) {
+        // Strong Y rotation — card dramatically angled
+        s.rotateY = pick([-4, -3, 3, 4]);
+        s.scale = pick([1.02, 1.03, 1.04]);
+      } else {
+        // Strong X tilt — looking up at the card (heroic angle)
+        s.rotateX = pick([-3, -2, 2, 3]);
+        s.translateY = pick([-2, -3, -4]);
+      }
+    } else if (moodId === "playful" && tdRoll < 0.20) {
+      // Playful: fun asymmetric tilts — like a scattered desk
+      s.perspective = pick([800, 1000, 1200]);
+      s.rotateX = pick([-2, -1, 1, 2]);
+      s.rotateY = pick([-3, -2, -1, 1, 2, 3]);
+      s.rotate = `${pick([-1.5, -1, -0.5, 0.5, 1, 1.5])}deg`;
+      if (Math.random() < 0.4) s.translateY = pick([-2, -1, 1, 2]);
+    } else if (moodId === "minimal" && tdRoll < 0.06) {
+      // Minimal: barely-there tilt — just enough to notice
+      s.perspective = pick([1400, 1800, 2200]);
+      s.rotateY = pick([-0.5, 0.5, -1, 1]);
+    } else if (moodId === "auto" && tdRoll < 0.08) {
+      // Auto: random subtle 3D from any personality
+      s.perspective = pick([1000, 1200, 1500]);
+      s.rotateY = pick([-2, -1, 1, 2]);
+      if (Math.random() < 0.3) s.rotateX = pick([-1, 1, 1.5]);
+    }
+  }
+
   // ── Gradient border effects ──
   // Replace solid borders with gradient borders for striking visual impact
   // Uses border-image for linear/conic gradient borders per mood
