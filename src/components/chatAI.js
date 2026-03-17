@@ -4335,10 +4335,10 @@ function handleMetaConversation(text, lower, sent) {
   if (/\b(you |)(misunderstood|misread|missed (the|my) point|didn'?t (get|understand)|got (it|that|me) wrong)\b/i.test(lower) ||
       /\bthat'?s not what i (meant|said|was saying)\b/i.test(lower)) {
     const misunderstandings = [
-      "Oh sorry, let me recalibrate! I clearly missed what you were getting at. Can you rephrase it for me?",
-      "My bad — I jumped to conclusions there. What were you actually trying to say? I'm listening more carefully now.",
-      "Ah, I see I went off track. Sorry about that! What did you mean?",
-      "You're right, I think I latched onto the wrong thing. Can you walk me through it again?",
+      "oh wait i totally missed that lol. what'd you mean",
+      "my bad, i read that wrong. what were you saying",
+      "ok yeah no i got that wrong. go again?",
+      "lol i went off on a tangent huh. ok what'd you actually mean",
     ];
     return pickNew(misunderstandings);
   }
@@ -4359,9 +4359,9 @@ function handleMetaConversation(text, lower, sent) {
   if (/\b(are you|do you) (learning|getting smarter|improving|remembering|training)\b/i.test(lower) ||
       /\bdo you (save|store|keep) (our|this|my|the) (chat|conversation|data)\b/i.test(lower)) {
     const learning = [
-      "I remember everything within our conversation — your name, topics we've covered, things you've said. But once you close this chat, I start fresh. No data saved, no learning between sessions. Privacy by design!",
-      "Within this chat, yes — I track topics, facts about you, and conversation flow. But I don't learn permanently or send data anywhere. When the page refreshes, I'm a blank slate again.",
-      "I have conversation memory but not long-term learning. I can reference things you said earlier in our chat, but I don't get smarter over time. Think of me as a goldfish with really good short-term memory!",
+      "yeah i remember stuff while we're talking but once you close this i forget everything lol. clean slate every time, no data saved anywhere",
+      "so like i track what you say in this convo but when you refresh i'm a whole new person. goldfish memory but make it on purpose 😂",
+      "within this chat yeah i remember everything. but once you leave? gone. i don't save anything or learn between sessions, it's all local",
     ];
     return pickNew(learning);
   }
@@ -4387,10 +4387,10 @@ function handleMetaConversation(text, lower, sent) {
   if (/\b(thanks? for|appreciate you) (listening|being here|the (chat|convo|talk)|chatting|talking)\b/i.test(lower) ||
       /\bi needed (this|someone to talk to|a chat)\b/i.test(lower)) {
     const gratitude = [
-      "yo that's really nice of you to say. this is exactly what I'm here for. anytime 😊",
-      () => `of course${mem.userName ? `, ${mem.userName}` : ""}! I take this stuff seriously. everyone deserves someone that listens.`,
-      "that genuinely means a lot. I'm here whenever you want to chat — no judgment, just conversation.",
-      "I'm glad I could be here for that! sometimes you just need to talk things out 😊",
+      "yo that's really nice of you to say. anytime fr 😊",
+      () => `of course${mem.userName ? ` ${mem.userName}` : ""}! i'm always down to chat`,
+      "that means a lot honestly. i'm here whenever",
+      "glad i could help! sometimes you just gotta talk it out 😊",
     ];
     return pickNew(gratitude);
   }
@@ -4400,10 +4400,10 @@ function handleMetaConversation(text, lower, sent) {
       /\bwhat are you (talking|saying|going on) about\b/i.test(lower) ||
       /\bhuh\?|what\?{2,}|i'?m confused by (that|what you said)\b/i.test(lower)) {
     const clarity = [
-      "Oh, sorry about that! I think I got a bit tangled up. Let me try again — what specifically didn't land?",
-      "Hmm, fair point — I might have been unclear. What part was confusing? I'll try to explain better.",
-      "My bad! I sometimes string thoughts together weird. What would help me clarify?",
-      "Yeah, I can see how that would be confusing. Let me take a step back — what were you asking about? I'll be more straightforward.",
+      "yeah that was a mess my bad lol. which part was confusing",
+      "oh wait that didn't make sense huh. ok what do you need me to clarify",
+      "lol i was all over the place. what were you actually asking",
+      "my b, i was rambling. what part lost you",
     ];
     return pickNew(clarity);
   }
@@ -5236,16 +5236,16 @@ function respondToKnowledgeGap(gap) {
   const explainer = lookupExplainer(`what is ${subject}`);
   if (explainer) {
     const openers = [
-      `Oh, ${subject} is actually really cool — let me break it down! `,
-      `No worries, ${subject} trips up a lot of people at first! `,
-      `${subject.charAt(0).toUpperCase() + subject.slice(1)} — great thing to learn about! `,
-      `Totally understandable — ${subject} can seem complex at first. `,
+      `oh ${subject} is lowkey pretty cool let me explain — `,
+      `nah ${subject} trips up a lot of people no stress. `,
+      `ooh ok so ${subject} — `,
+      `yeah ${subject} can feel overwhelming at first but it's not that bad. `,
     ];
     const depth = gap.level === "intro" ? explainer.brief : explainer.deep;
     const hooks = [
-      ` Want me to go deeper on any part of that?`,
-      ` Does that help? Happy to elaborate on any piece.`,
-      ` What specifically about ${subject} trips you up?`,
+      ` want me to go deeper on any of that?`,
+      ` did that help or do you need more`,
+      ` what part of ${subject} is confusing you`,
     ];
     return pick(openers) + depth + pick(hooks);
   }
@@ -5254,22 +5254,22 @@ function respondToKnowledgeGap(gap) {
   if (ASSOC[topic]) {
     const a = ASSOC[topic];
     const openers = [
-      `Hey, everyone starts somewhere with ${topic}! `,
-      `No shame in being new to ${topic} — it's a journey! `,
-      `${topic.charAt(0).toUpperCase() + topic.slice(1)} is worth learning about. `,
+      `oh nice, ${topic} is fun once you get into it. `,
+      `nah don't even worry about it, ${topic} takes time. `,
+      `${topic} is sick once you get it honestly. `,
     ];
     let resp = pick(openers);
     if (a.facts?.length) resp += pick(a.facts) + " ";
-    if (a.opinions?.length) resp += "Personally, I think " + pick(a.opinions) + ". ";
+    if (a.opinions?.length) resp += "i think " + pick(a.opinions) + ". ";
     if (a.hooks?.length) resp += pick(a.hooks);
     return resp;
   }
 
   // Generic encouragement
   const generics = [
-    `${subject} is definitely worth exploring! I don't have deep knowledge of it specifically, but I find that starting with the basics and building up from there works best. What aspect interests you most?`,
-    `Totally fair — ${subject} has a learning curve. What specifically about it are you curious about? I can try to help!`,
-    `No worries about not knowing ${subject} yet — that's what learning is for! What part would you like to start with?`,
+    `${subject} is cool once you get into it. i don't know it super deep but what part are you curious about?`,
+    `yeah ${subject} has a bit of a learning curve ngl. what part specifically are you wondering about`,
+    `nah don't sweat it, ${subject} takes time. what about it do you wanna know?`,
   ];
   return pick(generics);
 }
