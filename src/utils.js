@@ -276,12 +276,19 @@ function _analyzeHarmony(shapes) {
   const fsizes = [];
   const radii = [];
   const shadowTypes = []; // "none", "soft", "hard", "glow", "brutal"
+  const hueShifts = [];
+  const hasGradient = [];
+  const hasBorder = [];
+  const fontCats = [];
   for (const s of shapes) {
     const t = s.type;
     if (!variantsByType[t]) variantsByType[t] = [];
     variantsByType[t].push(s.variant || 0);
     fonts.push(s.font || 0);
     fsizes.push(s.fsize || 1);
+    // Track font category
+    const fc = Object.entries(FONT_CATS).find(([, ids]) => ids.includes(s.font || 0))?.[0] || "body";
+    fontCats.push(fc);
     const ds = s.dStyles || {};
     radii.push(ds.borderRadius ?? 14);
     const sh = ds.boxShadow || "none";
@@ -290,11 +297,18 @@ function _analyzeHarmony(shapes) {
     else if (sh.includes("20px") || sh.includes("40px")) shadowTypes.push("dramatic");
     else if (sh.includes("inset")) shadowTypes.push("inset");
     else shadowTypes.push("soft");
+    if (ds.hueRotate) hueShifts.push(ds.hueRotate);
+    hasGradient.push(!!ds.gradientOverlay);
+    hasBorder.push(!!(ds.border || ds.borderTop || ds.borderBottom));
   }
   const avgFsize = fsizes.length ? fsizes.reduce((a, b) => a + b, 0) / fsizes.length : 1;
   const avgRadius = radii.length ? radii.reduce((a, b) => a + b, 0) / radii.length : 14;
   const dominantShadow = shadowTypes.length ? _mode(shadowTypes) : "none";
-  return { variantsByType, fonts, fsizes, avgFsize, radii, avgRadius, shadowTypes, dominantShadow };
+  const dominantFontCat = fontCats.length ? _mode(fontCats) : "body";
+  const avgHueShift = hueShifts.length ? Math.round(hueShifts.reduce((a, b) => a + b, 0) / hueShifts.length) : 0;
+  const gradientRate = hasGradient.length ? hasGradient.filter(Boolean).length / hasGradient.length : 0;
+  const borderRate = hasBorder.length ? hasBorder.filter(Boolean).length / hasBorder.length : 0;
+  return { variantsByType, fonts, fsizes, avgFsize, radii, avgRadius, shadowTypes, dominantShadow, fontCats, dominantFontCat, avgHueShift, gradientRate, borderRate };
 }
 
 function _mode(arr) {
@@ -444,7 +458,29 @@ export function generateDesignDNA(palette, mood) {
     gradientStyle = Math.random() < 0.3 ? pick(["diagonal", "radial", "conic"]) : "none";
   }
 
-  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2 };
+  // Font pairing strategy — pick a heading category + body category for canvas cohesion
+  let headingFontCat, bodyFontCat;
+  if (m === "minimal") {
+    headingFontCat = pick(["body", "body", "serif"]);
+    bodyFontCat = "body";
+  } else if (m === "bold") {
+    headingFontCat = pick(["display", "display", "serif"]);
+    bodyFontCat = pick(["body", "body", "display"]);
+  } else if (m === "elegant") {
+    headingFontCat = pick(["serif", "serif", "display"]);
+    bodyFontCat = pick(["body", "serif"]);
+  } else if (m === "playful") {
+    headingFontCat = pick(["display", "display", "serif", "body"]);
+    bodyFontCat = pick(["body", "display"]);
+  } else {
+    headingFontCat = pick(["display", "serif", "body"]);
+    bodyFontCat = pick(["body", "body", "serif"]);
+  }
+  // Pre-pick specific fonts from categories for consistency
+  const headingFont = pick(FONT_CATS[headingFontCat] || FONT_CATS.body);
+  const bodyFont = pick(FONT_CATS[bodyFontCat] || FONT_CATS.body);
+
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat };
 }
 
 /**
@@ -499,13 +535,23 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
     }
   }
 
-  /* ── 2. Font selection (harmony + mood-aware) ── */
+  /* ── 2. Font selection (DNA > harmony > mood-aware) ── */
   let font;
   if (isCode) {
     font = pick(FONT_CATS.mono);
+  } else if (dna && Math.random() < 0.75) {
+    // DNA font pairing: heading components get heading font, others get body font
+    // with slight variation (15% chance to swap) for natural variety
+    if (isLarge) {
+      font = Math.random() < 0.85 ? dna.headingFont : dna.bodyFont;
+    } else if (isSmall || isNav || SIZE_CAT.input.has(type)) {
+      font = dna.bodyFont;
+    } else {
+      font = Math.random() < 0.7 ? dna.bodyFont : dna.headingFont;
+    }
   } else if (harmony && harmony.fonts.length >= 2 && Math.random() < 0.6) {
     // Harmonize: reuse dominant font category 60% of the time
-    const dominantCat = _dominantFontCat(harmony.fonts);
+    const dominantCat = harmony.dominantFontCat || _dominantFontCat(harmony.fonts);
     font = pick(FONT_CATS[dominantCat] || FONT_CATS.body);
   } else if (moodCfg && moodCfg.fontPool) {
     font = moodCfg.fontPool(isLarge, isSmall);
@@ -1077,6 +1123,15 @@ export function designScore(shape, palette, otherShapes = []) {
     if (myShadowType === dominantShadow) score += 0.2;             // matches canvas shadow vibe
     else if ((myShadowType === "brutal" && dominantShadow === "soft") ||
              (myShadowType === "soft" && dominantShadow === "brutal")) score -= 0.3; // brutal + soft = clash
+
+    // Hue shift cohesion — if canvas has a hue direction, matching is good
+    const myHue = ds.hueRotate || 0;
+    const otherHues = otherShapes.map(s => (s.dStyles || {}).hueRotate || 0).filter(h => h !== 0);
+    if (otherHues.length >= 2) {
+      const avgHue = otherHues.reduce((a, b) => a + b, 0) / otherHues.length;
+      if (myHue !== 0 && Math.sign(myHue) === Math.sign(avgHue)) score += 0.15; // same direction
+      else if (myHue !== 0 && Math.sign(myHue) !== Math.sign(avgHue)) score -= 0.15; // opposing
+    }
   }
 
   return Math.max(1, Math.min(5, Math.round(score)));
