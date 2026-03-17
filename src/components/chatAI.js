@@ -160,7 +160,7 @@ const SEMANTIC_RESPONSES = {
   morning_greeting: ["morning, how'd you sleep","good morning, got any plans today","hey good morning, what's the vibe today"],
   welcome_back: ["ayy you're back, what's new","oh hey welcome back, what'd I miss","heyyy missed you, what's going on"],
   bored_opener: ["ok bet let's fix that, what are you in the mood for","lol same tbh. wanna play a game or just talk","bored gang 🤝 ok what sounds fun rn"],
-  lonely_opener: ["hey i'm right here, what's going on","aww i gotchu, what's on your mind","i'm here for it, tell me everything"],
+  lonely_opener: ["hey what's going on, talk to me","aww i gotchu, what's on your mind","ok tell me everything, what happened"],
   casual_bye: ["ok byeee, talk later","see ya, was fun talking","laterrr 👋"],
   goodnight: ["night night, sleep well","goodnight, sweet dreams","nighty night, don't let the bed bugs bite lol"],
   brb: ["ok i'll be here","take your time","k waiting 👀"],
@@ -170,7 +170,7 @@ const SEMANTIC_RESPONSES = {
   calm_anxiety: ["ok what's the worst case scenario tho, like actually","ugh anxiety is the worst, what's the main thing getting to you","hey you've gotten through worse than this, what's going on"],
   ease_stress: ["ok what's the biggest fire rn, let's start there","dude you're doing too much, what can you drop","that's a lot, have you eaten today at least"],
   match_excitement: ["LETS GOOOO 🔥🔥","ok i'm literally so hyped for you rn","YOOO that's amazing tell me everything"],
-  be_present: ["hey i'm not going anywhere, what's up","you're not in this alone ok","i'm here, talk to me"],
+  be_present: ["hey what's going on, talk to me","you're not in this alone ok","ok sit down and tell me what happened"],
   accept_gratitude: ["aww of course, always","no need to thank me, that's what friends are for","🥺 you're so sweet, happy i could help"],
   help_clarity: ["ok wait what part is confusing","which part lost you","lol no worries, what doesn't make sense"],
   empathize_tired: ["same honestly, today was brutal","dude go take a nap fr","ugh that's the worst, have you had coffee at least"],
@@ -201,19 +201,19 @@ const SEMANTIC_RESPONSES = {
   explain: ["oh ok so basically it's like this,","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah it comes down to"],
   listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
-  listen_validate: ["ok vent away, i'm all ears","no fr that's so annoying, go off","nah you're right to be upset about that"],
+  listen_validate: ["ok vent away, go off","no fr that's so annoying, go off","nah you're right to be upset about that"],
   celebrate_news: ["WAIT WHAT?? TELL ME TELL ME","omg omg ok this better be good","YOOO no way, what happened??","ok that's literally the best thing i've ever heard, TELL ME MORE","i'm SCREAMING, ok go on"],
-  empathize_bad_news: ["oh no... what happened?","aw man i'm sorry, are you ok?","that sucks, i'm here for you"],
-  engage_opinion: ["oh interesting, why do you think that?","hmm ok fair, but have you considered","that's a hot take lol, i kinda agree tho","big if true, tell me more","that's giving hot take energy, i'm here for it"],
+  empathize_bad_news: ["oh no... what happened?","aw man i'm sorry, are you ok?","that sucks, do you wanna talk about it"],
+  engage_opinion: ["oh interesting, why do you think that?","hmm ok fair, but have you considered","that's a hot take lol, i kinda agree tho","big if true, tell me more","that's giving hot take energy, lowkey agree"],
   show_interest: ["ooh how was it??","wait what'd you think","ok that sounds sick, and then what"],
   accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks, you're pretty cool yourself","aw that made my day honestly"],
   playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤","chose violence today huh 😭","and i took that personally"],
   respectful_disagree: ["hmm i see where you're coming from but i kinda think","ok valid, but i actually see it differently tho","ok fair but counterpoint,","that's a choice but hear me out,","sir this is a wendy's but also"],
   build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and also","glad we're on the same page, plus","ate and left no crumbs, and also","based take, and fr"],
   accept_apology: ["lol you're good, don't even worry about it","dude it's fine, we're cool","bro i already forgot about it lol"],
-  be_present_comfort: ["i'm here, not going anywhere","you don't have to say anything if you don't want, i'm just here","i gotchu, say as much or as little as you want"],
+  be_present_comfort: ["you don't gotta explain everything rn if you don't want","i gotchu, say as much or as little as you want","take your time, no rush on this one"],
   suggest_game: ["ooh ok what kind of game? 20 questions? would you rather?","bet!! let's do something fun, you pick","ok how about a game of would you rather"],
-  go_deep: ["oh i love deep convos, what's on your mind?","yes for sure, what do you wanna talk about?","ok getting philosophical, i'm here for it"],
+  go_deep: ["oh i love deep convos, what's on your mind?","yes for sure, what do you wanna talk about?","ok getting philosophical, let's go"],
   casual_chat: ["lol yeah just vibing, anything interesting happening with you?","ha yeah, so what's new in your world?","yeah just hanging, what's good with you"],
   philosophical: ["ok we're going DEEP rn, honestly i think it's whatever you make it","lol i think about this way too much","there's no right answer but here's my hot take"],
   speculate: ["dude the future is gonna be so unhinged","ngl i'm equal parts hyped and terrified lol","ok this is such a fun thing to think about tho"],
@@ -251,10 +251,10 @@ const SEMANTIC_RESPONSES = {
   recall: ["oh yeah i remember!","let me think... yeah i've got that","oh for sure, you mentioned that"],
   accept_feedback: ["ok that's fair, my bad","lol you're right, i'll work on it","noted noted, i hear you"],
   warm_connection: ["aww that means a lot fr 🥺","i like talking to you too, for real","aw stop you're gonna make me blush (if i could)"],
-  build_trust: ["of course, i'm here. whatever you tell me stays between us","yeah for sure, i'm listening","hey, safe space. what's going on?"],
+  build_trust: ["of course, whatever you tell me stays between us","yeah for sure, go ahead","hey, safe space. what's going on?"],
   gentle_probe: ["that's ok! what's on your mind tho?","no pressure, just curious what you're thinking about","fair enough, wanna figure it out together?"],
   keep_going: ["cool cool, so what else?","nice, what's next?","ok ok, and then?"],
-  give_space: ["take your time, no rush","no rush, i'm here when you're ready","all good, think away"],
+  give_space: ["take your time, no rush","no rush at all, whenever you're ready","all good, think away"],
   redirect: ["lol ok so anyway what were we talking about","right right, so what's up","ok so what's on your mind"],
   confirm_working: ["yep i'm here, working great 👍","hello, yes i'm working, what's up","test received, everything's good, what's up"],
 };
@@ -532,7 +532,7 @@ function respondToFragment(fragment, text, slangInfo) {
 
   if (fragment === "pause") {
     // "wait", "hold on" — they want attention
-    return pickNew(["what what what","ok i'm listening","👀","what happened","lol what"]);
+    return pickNew(["what what what","ok go on","👀","what happened","lol what"]);
   }
 
   if (fragment === "reaction") {
@@ -562,7 +562,7 @@ function respondToFragment(fragment, text, slangInfo) {
 
   if (fragment === "setup") {
     // "imagine", "hear me out", "picture this"
-    return pickNew(["ok go on 👀","i'm listening","ok ok what","lol this better be good"]);
+    return pickNew(["ok go on 👀","lol ok what","ok ok what","lol this better be good"]);
   }
 
   if (fragment === "justifying") {
@@ -2273,7 +2273,7 @@ const KB = {
     ],
     feelings: [
       "i mean i'm made of code so idk lol but how are YOU doing",
-      "i mean i just process text but i appreciate you asking 😊 what about you tho",
+      "i mean i just process text lol but what about you tho",
     ],
     capabilities: [
       "i can chat about a bunch of stuff — code, design, music, movies, whatever. i'm not perfect but i try lol",
@@ -4426,7 +4426,7 @@ function handleMetaConversation(text, lower, sent) {
     const gratitude = [
       "yo that's really nice of you to say. anytime fr 😊",
       () => `of course${mem.userName ? ` ${mem.userName}` : ""}! i'm always down to chat`,
-      "that means a lot honestly. i'm here whenever",
+      "that means a lot honestly. anytime fr",
       "glad i could help! sometimes you just gotta talk it out 😊",
     ];
     return pickNew(gratitude);
@@ -4843,7 +4843,7 @@ function generateObservationalWit(response, text, topics) {
     // User suddenly wrote a novel
     if (recent > avg * 3 && recent > 100) {
       observations.push(
-        "oh we're writing essays now?? i'm here for it lol",
+        "oh we're writing essays now?? ok ok i see you",
         "wait you went OFF, ok ok i see you",
         "lol that was a LOT more than your usual messages, what happened 😂",
       );
@@ -5329,7 +5329,7 @@ function respondToTeaser(teaserType) {
     story_tease: [
       "oh?? tell me everything 👀",
       "wait what happened",
-      "ok go on, i'm listening",
+      "ok go on go on",
       "wait tell me tell me",
     ],
     question_tease: [
@@ -5829,7 +5829,7 @@ function respondToRevelation(rev, text) {
         health_news: [
           "oh no, that's a lot. how are you doing with all that",
           "dude that's heavy, are you ok? like really",
-          "ugh that's so much to deal with, i'm here tho",
+          "ugh that's so much to deal with, are you doing ok",
         ],
       };
       return pick(reactions[rev.type] || reactions.relationship_end);
@@ -5837,8 +5837,8 @@ function respondToRevelation(rev, text) {
     case "deep_empathy": {
       return pick([
         "dude... i don't even know what to say. i'm so sorry 💙",
-        "oh my god. i'm so sorry. i'm here, whatever you need",
-        "i'm really really sorry. that's just... yeah. i'm here 💙",
+        "oh my god. i'm so sorry. that's just... god",
+        "i'm really really sorry. that's just... yeah 💙",
       ]);
     }
     default:
@@ -6181,8 +6181,8 @@ function generateResponse(text) {
       "ok ok, i hear you. what's your take",
       "hmm ok that's fair actually",
       "that's a choice... but ok what's your take",
-      "sir this is a wendy's — but no ok, tell me your version",
-      "the vibes are off on this one but i'm listening",
+      "sir this is a wendy's lol but no ok, tell me your version",
+      "the vibes are off on this one but ok tell me your take",
     ];
     return pickNew(disags);
   }
@@ -6716,7 +6716,7 @@ function respondFallback(text, tokens, keywords) {
     "wait what lol",
     "oh word?",
     "lol wdym",
-    "ok i'm listening",
+    "ok go on",
     "hmm",
     "that's wild",
   ];
@@ -9369,7 +9369,7 @@ const META_HUMOR_LINES = {
   ],
   // When conversation has been long
   long_chat: [
-    "we've been talking for a minute lol i'm here for it tho",
+    "we've been talking for a minute lol this is fun tho",
     "lol if i had a battery it'd still be full, i could do this all day",
     "i literally never get tired of this, perks of being code 😂",
   ],
@@ -10083,7 +10083,7 @@ const EMOTION_SIGNALS = [
   { patterns: [/\b(so (excited|pumped|hyped|stoked|thrilled)|can('?t| not) wait|omg|oh my god|finally|amazing|incredible|!!!)\b/i, /!{2,}/], emotion: "excitement", labels: [
     "dude you're so hype about this i love it",
     "ok the energy rn 🔥🔥",
-    "this clearly means a lot to you and i'm here for it",
+    "this clearly means a lot to you and honestly same",
     "the excitement is contagious lol",
   ]},
   { patterns: [/\b(sad|depressed|down|lonely|miss(ing)?|lost|empty|heartbr(oken|eaking)|grief|mourning|crying)\b/i, /\b(feel(s|ing)? (so )?(alone|empty|hollow|numb))\b/i], emotion: "sadness", labels: [
@@ -13545,7 +13545,7 @@ function detectConversationArc() {
   if (deepTopic) {
     lastArcTurn = mem.turn;
     return pick([
-      `ok you keep coming back to ${deepTopic[0]} and honestly i'm here for it, it's clearly your thing`,
+      `ok you keep coming back to ${deepTopic[0]} and honestly it's clearly your thing`,
       `we keep ending up at ${deepTopic[0]} lol — what is it about it that keeps pulling you back`,
       `${deepTopic[0]} is living rent free in your brain huh. lowkey love that tho`,
     ]);
@@ -13562,7 +13562,7 @@ function detectConversationArc() {
       lastArcTurn = mem.turn;
       return pick([
         "ok is it just me or has this convo gotten way better as we've been talking",
-        "ngl the vibes have been getting progressively better and i'm here for it",
+        "ngl the vibes have been getting progressively better, love that",
         "we really hit our stride huh, the energy is way up from earlier",
       ]);
     }
@@ -14259,7 +14259,7 @@ function trySynthesis(response) {
   } else {
     const deepSynths = [
       `ok we're getting somewhere with this ${a.topic} thing fr.`,
-      `ngl this ${a.topic} convo is building and i'm here for it.`,
+      `ngl this ${a.topic} convo is building and it keeps getting better.`,
       `we keep going deeper on ${a.topic} and it keeps getting better lol.`,
     ];
     prefix = deepSynths[Math.floor(Math.random() * deepSynths.length)];
@@ -15708,6 +15708,16 @@ function guardVibeMismatch(response, text, sent, parsed) {
     r = r.replace(/\bI can see that\b/gi, "yeah fair");
     r = r.replace(/\bI hear you\b/gi, "yeah i get it");
   }
+
+  // ═══ Round 216: Kill "i'm here" support-bot saturation ═══
+  // Real friends don't announce their presence — they just show up
+  r = r.replace(/\bi'?m here for you\b/gi, "i gotchu");
+  r = r.replace(/\bi'?m here if you (need|want)\b/gi, "anytime fr");
+  r = r.replace(/\bi'?m here,? whatever you need\b/gi, "i gotchu fr");
+  r = r.replace(/\bi'?m (always )?here for it\b/gi, "love that");
+  r = r.replace(/\bi'?m (just )?here\b(?!\s*(lol|tho|rn|too|at|in|with|for the|because|cause|cuz|bc))/gi, "i gotchu");
+  r = r.replace(/\bi'?m all ears\b/gi, "go off");
+  r = r.replace(/\bi'?m listening\b/gi, "ok go on");
 
   // Don't be dismissive/joke-y when they're being serious
   if (vibe === "serious" && vibeStreak >= 2) {
@@ -20804,7 +20814,7 @@ function weaveContext(response, topics, text) {
     lastWeaveTurn = turn;
     const depth = frame.recentThread.depth;
     const threadAcks = [
-      `ok we're deep in ${frame.recentThread.topic} rn and i'm here for it. `,
+      `ok we're deep in ${frame.recentThread.topic} rn and honestly love it. `,
       `the more we talk about ${frame.recentThread.topic} the more i think about it. `,
     ];
     return threadAcks[Math.floor(Math.random() * threadAcks.length)] + response;
@@ -21529,7 +21539,7 @@ function applyEngagementMirroring(response, text) {
 export async function getAIResponse(input) {
   const text = input.trim();
   if (!text) {
-    const emptyResponses = ["I'm listening... 👂","hey, you there?","👀","type something, i'm here!","i'm all ears"];
+    const emptyResponses = ["👂","hey, you there?","👀","type something lol","...hello?"];
     return { text: pickNew(emptyResponses), typingMs: 400, pause: null };
   }
 
