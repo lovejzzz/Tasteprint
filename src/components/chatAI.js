@@ -11933,39 +11933,39 @@ function injectAnalogy(response, topics) {
 // Organized by register: casual → slightly elevated (never pretentious)
 const WORD_SWAPS = {
   // Adjective upgrades
-  "good":        ["solid","great","sharp","strong","legit"],
-  "bad":         ["rough","tough","painful","brutal","messy"],
-  "nice":        ["lovely","sweet","clean","slick","smooth"],
-  "cool":        ["sick","rad","stellar","fire","dope"],
-  "interesting": ["fascinating","wild","compelling","intriguing","gnarly"],
-  "important":   ["crucial","key","essential","vital","huge"],
-  "hard":        ["tricky","intense","demanding","gnarly","steep"],
-  "easy":        ["smooth","painless","breeze","straightforward","trivial"],
-  "big":         ["massive","huge","major","significant","enormous"],
-  "small":       ["tiny","minor","subtle","modest","compact"],
-  "great":       ["fantastic","stellar","brilliant","outstanding","killer"],
-  "amazing":     ["incredible","mind-blowing","insane","phenomenal","wild"],
-  "awesome":     ["fantastic","brilliant","killer","phenomenal","stellar"],
-  "different":   ["distinct","unique","fresh","novel","separate"],
-  "simple":      ["clean","elegant","minimal","lean","streamlined"],
-  "complex":     ["nuanced","layered","involved","deep","intricate"],
-  "fast":        ["blazing","snappy","lightning","rapid","zippy"],
-  "slow":        ["sluggish","glacial","crawling","laggy","dragging"],
-  "old":         ["classic","vintage","legacy","tried-and-true","seasoned"],
-  "new":         ["fresh","cutting-edge","bleeding-edge","modern","shiny"],
-  "pretty":      ["fairly","reasonably","quite","decently","notably"],
+  "good":        ["solid","fire","legit","clean","sick"],
+  "bad":         ["rough","brutal","messy","trash","mid"],
+  "nice":        ["sweet","clean","slick","smooth","dope"],
+  "cool":        ["sick","fire","dope","rad","tight"],
+  "interesting": ["wild","lowkey fire","kinda crazy","sick","nuts"],
+  "important":   ["huge","key","big","clutch","major"],
+  "hard":        ["brutal","rough","gnarly","insane","no joke"],
+  "easy":        ["smooth","a breeze","cake","chill","no sweat"],
+  "big":         ["massive","huge","insane","wild","crazy"],
+  "small":       ["tiny","minor","lil","low-key","smol"],
+  "great":       ["sick","fire","killer","elite","goated"],
+  "amazing":     ["insane","wild","crazy","unreal","nuts"],
+  "awesome":     ["fire","sick","killer","elite","goated"],
+  "different":   ["wild","its own thing","fresh","not the same","a whole vibe"],
+  "simple":      ["clean","minimal","lean","chill","dead simple"],
+  "complex":     ["deep","layered","a lot","wild","not simple lol"],
+  "fast":        ["blazing","snappy","zippy","insanely quick","stupid fast"],
+  "slow":        ["sluggish","laggy","dragging","crawling","painful"],
+  "old":         ["classic","OG","vintage","old school","been around"],
+  "new":         ["fresh","brand new","shiny","just dropped","latest"],
+  "pretty":      ["fairly","p","kinda","lowkey","sorta"],
   // Intensifier variety
-  "really":      ["genuinely","fr","seriously","truly","legit"],
-  "very":        ["incredibly","seriously","genuinely","super","wildly"],
+  "really":      ["fr","seriously","legit","deadass","lowkey"],
+  "very":        ["super","mad","hella","crazy","so"],
   // Verb upgrades
-  "think":       ["feel like","reckon","believe","suspect","figure"],
-  "like":        ["dig","appreciate","vibe with","enjoy","am into"],
-  "use":         ["leverage","rock","rely on","work with","run with"],
-  "make":        ["craft","build","spin up","put together","whip up"],
-  "get":         ["land","snag","grab","pick up","score"],
-  "know":        ["get","grasp","follow","see","track"],
-  "want":        ["crave","need","am after","am itching for","would love"],
-  "try":         ["experiment with","take a crack at","give a shot","test out","explore"],
+  "think":       ["feel like","bet","figure","reckon","guess"],
+  "like":        ["dig","vibe with","fw","am into","love"],
+  "use":         ["rock","run","work with","fw","rely on"],
+  "make":        ["build","throw together","whip up","put together","spin up"],
+  "get":         ["grab","snag","land","cop","score"],
+  "know":        ["get","follow","see","track","vibe with"],
+  "want":        ["need","am after","would kill for","gotta have","would love"],
+  "try":         ["mess with","give a shot","test out","take a crack at","check out"],
 };
 
 // Words that are fine in moderation but get stale when overused
@@ -15744,6 +15744,30 @@ function guardVibeMismatch(response, text, sent, parsed) {
   r = r.replace(/\baww+\b/gi, "yo");
   r = r.replace(/\baw\b(?=\s+(?:that|you|ok|stop|thank|feel|i ))/gi, "ok");
   r = r.replace(/🥺/g, "");
+
+  // ═══ Round 220: Kill corporate/academic synonym leaks ═══
+  // No friend texts "fascinating", "phenomenal", "leverage", "compelling", etc.
+  r = r.replace(/\bfascinating\b/gi, "wild");
+  r = r.replace(/\bcompelling\b/gi, "solid");
+  r = r.replace(/\bintriguing\b/gi, "interesting");
+  r = r.replace(/\bphenomenal\b/gi, "insane");
+  r = r.replace(/\boutstanding\b/gi, "sick");
+  r = r.replace(/\bstellar\b/gi, "fire");
+  r = r.replace(/\bfantastic\b/gi, "sick");
+  r = r.replace(/\bbrilliant\b/gi, "fire");
+  r = r.replace(/\bincredible\b/gi, "crazy");
+  r = r.replace(/\bwonderful\b/gi, "so good");
+  r = r.replace(/\bsignificant\b/gi, "big");
+  r = r.replace(/\bstraightforward\b/gi, "simple");
+  r = r.replace(/\bcrucial\b/gi, "huge");
+  r = r.replace(/\bessential\b/gi, "key");
+  r = r.replace(/\bleverage\b/gi, "use");
+  r = r.replace(/\bcutting-edge\b/gi, "brand new");
+  r = r.replace(/\bbleeding-edge\b/gi, "super new");
+  r = r.replace(/\belegant\b/gi, "clean");
+  r = r.replace(/\bnovel\b(?!\s)/gi, "fresh");
+  r = r.replace(/\bexperiment with\b/gi, "mess with");
+  r = r.replace(/\bappreciate\b/gi, "love");
 
   // Don't be dismissive/joke-y when they're being serious
   if (vibe === "serious" && vibeStreak >= 2) {
