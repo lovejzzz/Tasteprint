@@ -20240,14 +20240,17 @@ function polishOutput(response) {
     }
   }
 
-  // 10. Length check — friend texts are short. If over 200 chars with 3+ sentences,
-  // trim to first 2 sentences unless it's a knowledge/explanation response.
-  if (r.length > 200) {
+  // 10. Length check — friend texts are 1-3 sentences. Aggressively trim.
+  // Most messages should be 2 sentences max. Only knowledge responses get 3.
+  {
     const sentences = r.match(/[^.!?]+[.!?]+/g);
-    if (sentences && sentences.length > 3) {
-      // Keep first 2-3 sentences max for casual chat
-      const trimmed = sentences.slice(0, 2).join(" ").trim();
-      if (trimmed.length >= 20) r = trimmed;
+    if (sentences && sentences.length > 2) {
+      // Over 2 sentences: trim unless very short total length
+      if (r.length > 120) {
+        const maxKeep = r.length > 200 ? 2 : 3;
+        const trimmed = sentences.slice(0, maxKeep).join(" ").trim();
+        if (trimmed.length >= 20) r = trimmed;
+      }
     }
   }
 
@@ -21981,6 +21984,19 @@ export async function getAIResponse(input) {
   // ═══ Round 156: Texting imperfections — apostrophe drops, elongation, typos, trailing off ═══
   // (must run BEFORE double-texting so imperfections apply to the whole text, not across delimiters)
   response = applyTextingImperfections(response, sent);
+
+  // ═══ Round 203: Hard sentence cap — friends text 1-3 sentences, not paragraphs ═══
+  // Final safety net: no matter what the pipeline stacked, cap at 3 sentences.
+  // Terse user input (1-3 words) → max 2 sentences. Everything else → max 3.
+  {
+    const _sents = response.match(/[^.!?]+[.!?]+/g);
+    if (_sents && _sents.length > 3) {
+      const _userWords = text.trim().split(/\s+/).length;
+      const _maxS = _userWords <= 3 ? 2 : 3;
+      const _trimmed = _sents.slice(0, _maxS).join(" ").trim();
+      if (_trimmed.length >= 15) response = _trimmed;
+    }
+  }
 
   // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
   // (runs LAST — splits the fully-transformed text into multi-message segments)
