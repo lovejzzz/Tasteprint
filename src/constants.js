@@ -184,7 +184,7 @@ export const DEFAULT_PROPS = {
   accordion:     { open: [true, false, false] },
   dropdown:      { active: 0 },
   "cmd-palette": { active: 0 },
-  progress:      { pct: 68 },
+  progress:      { pct: 68, indeterminate: false },
   slider:        { pct: 65 },
   "media-player":{ pct: 42, playing: true, liked: false, shuffle: false },
   testimonial:   { stars: 4, verified: 1 },
