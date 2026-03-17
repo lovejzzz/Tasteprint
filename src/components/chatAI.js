@@ -20886,6 +20886,22 @@ function splitIntoMultiMessages(response, text, sent) {
     return pick(reactions) + MULTI_MSG_DELIMITER + trimmed;
   }
 
+  // ── Pattern 4: Casual afterthought double-text (~12%, no excitement needed) ──
+  // Real friends double-text for afterthoughts, tangents, additions — not just excitement
+  if (response.length > 40 && mem.turn >= 3 && Math.random() < 0.12) {
+    const sentences = response.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length >= 2) {
+      const main = sentences.slice(0, -1).join(" ").trim();
+      const last = sentences[sentences.length - 1].trim();
+      // Add a casual afterthought connector
+      const connectors = [
+        "oh also", "wait also", "oh and", "also tho", "oh wait",
+        "ngl also", "oh one more thing", "ps", "unrelated but",
+      ];
+      return main + MULTI_MSG_DELIMITER + pick(connectors) + " " + last.charAt(0).toLowerCase() + last.slice(1);
+    }
+  }
+
   return response;
 }
 
