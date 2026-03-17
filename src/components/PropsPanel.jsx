@@ -205,6 +205,15 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Shape (image-placeholder) */
+  if ("shape" in defaults) {
+    const sh = G("shape");
+    const shLabels = ["◻", "●", "■"];
+    controls.push(<React.Fragment key="shape"><span style={label}>Shape</span>
+      {shLabels.map((l, i) => <button key={i} style={btn(sh === i)} onMouseDown={stop} onClick={() => onProp("shape", i)}>{l}</button>)}
+    </React.Fragment>);
+  }
+
   /* Align (heading) */
   if ("align" in defaults) {
     const al = G("align");

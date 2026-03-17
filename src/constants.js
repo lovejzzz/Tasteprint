@@ -226,6 +226,7 @@ export const DEFAULT_PROPS = {
   search:        { results: 3 },
   tooltip:       { on: true },
   heading:       { align: 0 },
+  "image-placeholder": { shape: 0 },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
