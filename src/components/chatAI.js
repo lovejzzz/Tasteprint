@@ -18590,6 +18590,224 @@ function applyHumorCallback(response, text, topics) {
   return response + " " + callback;
 }
 
+/* ── Inside Jokes & Running Bits (Round 151) ──
+ * Real friendships have shared context — topics that become "our thing,"
+ * playful nicknames based on past takes, and callbacks to memorable moments.
+ *
+ * This system tracks:
+ * 1. Running bits — topics/phrases that come up 2+ times become "bits"
+ * 2. Nicknames — playful labels from hot takes, stories, repeated interests
+ * 3. Inside joke callbacks — natural references to shared history
+ *
+ * ~10-12% injection rate, guards against emotional/serious moments.
+ */
+
+let runningBits = {}; // { topicKey: { count, firstTurn, lastTurn, phrase, type } }
+let insideJokes = []; // { turn, label, context, type, uses: number } — max 8
+let userNicknames = []; // { nickname, origin, turn, uses: number } — max 5
+let lastInsideJokeTurn = 0;
+let insideJokeCount = 0;
+
+function trackRunningBits(userText, topics, turn) {
+  const lower = userText.toLowerCase();
+
+  // Track food obsessions
+  const foodMention = lower.match(/\b(pizza|ramen|sushi|tacos?|boba|coffee|matcha|burgers?|pasta|noodles?|wings?|fries|ice cream|chocolate|avocado|cheese|steak|pho|curry|dim sum|dumplings?|bagels?|donuts?|croissants?)\b/i);
+  if (foodMention) {
+    const food = foodMention[1].toLowerCase();
+    const key = `food:${food}`;
+    if (!runningBits[key]) {
+      runningBits[key] = { count: 1, firstTurn: turn, lastTurn: turn, phrase: food, type: "food_obsession" };
+    } else {
+      runningBits[key].count++;
+      runningBits[key].lastTurn = turn;
+    }
+  }
+
+  // Track repeated topics from mem.topics
+  for (const t of topics) {
+    const topicCount = mem.topics[t] || 0;
+    const key = `topic:${t}`;
+    if (topicCount >= 2 && !runningBits[key]) {
+      runningBits[key] = { count: topicCount, firstTurn: Math.max(1, turn - topicCount), lastTurn: turn, phrase: t, type: "recurring_topic" };
+    } else if (runningBits[key]) {
+      runningBits[key].count = topicCount;
+      runningBits[key].lastTurn = turn;
+    }
+  }
+
+  // Track catchphrases — short repeated phrases the user says
+  if (lower.length > 4 && lower.length < 40) {
+    const normalized = lower.replace(/[^a-z0-9 ]/g, "").trim();
+    if (normalized.length > 4) {
+      const key = `phrase:${normalized}`;
+      if (!runningBits[key]) {
+        runningBits[key] = { count: 1, firstTurn: turn, lastTurn: turn, phrase: userText.trim().substring(0, 40), type: "catchphrase" };
+      } else if (turn - runningBits[key].lastTurn >= 2) {
+        runningBits[key].count++;
+        runningBits[key].lastTurn = turn;
+      }
+    }
+  }
+
+  // Track hot takes / strong opinions → generate nicknames
+  const hotTake = /\b(honestly|actually|unpopular opinion|hot take|fight me|i will die on this hill|i don't care what anyone|the best|the worst|overrated|underrated)\b/i.test(lower);
+  if (hotTake && topics.length > 0) {
+    const subject = topics[0];
+    const isPositive = /best|love|amazing|underrated|goated|elite|superior/i.test(lower);
+    const isNegative = /worst|hate|overrated|trash|mid|basic/i.test(lower);
+
+    if ((isPositive || isNegative) && userNicknames.length < 5) {
+      const existing = userNicknames.find(n => n.origin === subject);
+      if (!existing) {
+        const nickname = isPositive
+          ? pick([`${subject} defender`, `${subject} stan`, `president of the ${subject} fan club`, `${subject} enthusiast`])
+          : pick([`${subject} hater`, `anti-${subject} warrior`, `sworn enemy of ${subject}`]);
+        userNicknames.push({ nickname, origin: subject, turn, uses: 0 });
+      }
+    }
+  }
+
+  // Track embarrassing admissions → create "incident" labels
+  const admission = /\b(i (accidentally|actually|once|used to|may have|might have|kinda|lowkey)|embarrassing|don't judge|please don't|ngl|not gonna lie|confession)\b/i.test(lower);
+  if (admission && lower.length > 15 && insideJokes.length < 8) {
+    // Extract a key detail for "the [detail] incident"
+    const words = userText.trim().split(/\s+/).filter(w => w.length > 3);
+    const keyWord = words.length > 3 ? words[Math.floor(words.length / 2)] : words[words.length - 1];
+    if (keyWord && keyWord.length > 2) {
+      const cleanWord = keyWord.replace(/[^a-zA-Z]/g, "").toLowerCase();
+      if (cleanWord.length > 2 && !insideJokes.some(j => j.label.includes(cleanWord))) {
+        insideJokes.push({
+          turn,
+          label: `the ${cleanWord} incident`,
+          context: userText.substring(0, 50),
+          type: "incident",
+          uses: 0,
+        });
+      }
+    }
+  }
+
+  // Track memorable stories
+  const storySignal = /\b(so basically|ok so|one time|this one time|i remember when|the other day|last week|last night|yesterday)\b/i.test(lower);
+  if (storySignal && lower.length > 30 && insideJokes.length < 8) {
+    const storyTopics = topics.filter(t => t.length > 2);
+    if (storyTopics.length > 0 && !insideJokes.some(j => j.context.includes(storyTopics[0]))) {
+      insideJokes.push({
+        turn,
+        label: `the ${storyTopics[0]} story`,
+        context: userText.substring(0, 50),
+        type: "story_ref",
+        uses: 0,
+      });
+    }
+  }
+
+  // Cap running bits map at 20 entries (prune oldest)
+  const bitKeys = Object.keys(runningBits);
+  if (bitKeys.length > 20) {
+    const sorted = bitKeys.sort((a, b) => runningBits[a].lastTurn - runningBits[b].lastTurn);
+    for (let i = 0; i < bitKeys.length - 20; i++) delete runningBits[sorted[i]];
+  }
+}
+
+function applyInsideJokeCallback(response, text, topics, sent) {
+  const turn = mem.turn;
+  if (turn < 8) return response;
+  if (turn - lastInsideJokeTurn < 8) return response; // 8-turn cooldown
+  if (insideJokeCount >= 6) return response; // max 6 per conversation
+  if (response.length > 220) return response;
+  if (Math.random() > 0.11) return response; // ~11% fire rate
+
+  // Guard: don't inject during emotional/serious/farewell moments
+  if (sent && sent.score < -0.2) return response;
+  if (/sorry|condolence|that sucks|that's rough|bye|later|peace|rip|passed away|died|depressed|anxious/i.test(text)) return response;
+  if (/sorry|that sucks|that's rough|bye|later|peace|i'm here for you/i.test(response)) return response;
+
+  const lower = text.toLowerCase();
+  let injection = null;
+
+  // Priority 1: Running bit callbacks (food obsession, recurring topics)
+  const activeBits = Object.entries(runningBits).filter(([, v]) => v.count >= 2 && turn - v.lastTurn <= 15);
+  if (activeBits.length > 0 && Math.random() < 0.5) {
+    const [key, bit] = pick(activeBits);
+    if (bit.type === "food_obsession" && bit.count >= 2) {
+      injection = pick([
+        `ok you and ${bit.phrase} need to get a room at this point`,
+        `not you bringing up ${bit.phrase} again lol you're so consistent`,
+        `the ${bit.phrase} agenda continues i see`,
+        `why does ${bit.phrase} keep coming up with us lol`,
+        `you mentioning ${bit.phrase} is basically a tradition at this point`,
+      ]);
+    } else if (bit.type === "recurring_topic" && bit.count >= 3) {
+      injection = pick([
+        `why does everything come back to ${bit.phrase} with us lol`,
+        `the way ${bit.phrase} keeps entering the chat`,
+        `${bit.phrase} really is the main character of our conversations`,
+        `at this point ${bit.phrase} is basically our thing`,
+        `we can't go two minutes without ${bit.phrase} coming up and honestly i respect it`,
+      ]);
+    } else if (bit.type === "catchphrase" && bit.count >= 2) {
+      injection = pick([
+        `"${bit.phrase}" — you really do say that a lot and i'm here for it`,
+        `ok there it is again lol "${bit.phrase}" is your catchphrase at this point`,
+        `"${bit.phrase}" — our unofficial motto`,
+      ]);
+    }
+  }
+
+  // Priority 2: Nickname callbacks
+  if (!injection && userNicknames.length > 0 && Math.random() < 0.4) {
+    const eligible = userNicknames.filter(n => turn - n.turn >= 5 && n.uses < 3);
+    if (eligible.length > 0) {
+      // Check if current topic is related to the nickname origin
+      const related = eligible.find(n => topics.some(t => t.toLowerCase().includes(n.origin.toLowerCase()) || n.origin.toLowerCase().includes(t.toLowerCase())));
+      const chosen = related || (Math.random() < 0.3 ? pick(eligible) : null);
+      if (chosen) {
+        chosen.uses++;
+        injection = pick([
+          `ok ${chosen.nickname} back at it`,
+          `the ${chosen.nickname} energy is strong today`,
+          `spoken like a true ${chosen.nickname}`,
+          `you're really on brand with this one lol`,
+        ]);
+      }
+    }
+  }
+
+  // Priority 3: Inside joke / incident callbacks
+  if (!injection && insideJokes.length > 0 && Math.random() < 0.4) {
+    const eligible = insideJokes.filter(j => turn - j.turn >= 6 && j.uses < 2);
+    if (eligible.length > 0) {
+      const chosen = pick(eligible);
+      chosen.uses++;
+      if (chosen.type === "incident") {
+        injection = pick([
+          `lol this is giving ${chosen.label} vibes`,
+          `wait is this ${chosen.label} part 2`,
+          `not another ${chosen.label} situation 😂`,
+          `bro this is literally ${chosen.label} all over again`,
+        ]);
+      } else if (chosen.type === "story_ref") {
+        injection = pick([
+          `ok this reminds me of ${chosen.label} lol`,
+          `getting ${chosen.label} flashbacks`,
+          `this has the same energy as ${chosen.label}`,
+        ]);
+      }
+    }
+  }
+
+  if (!injection) return response;
+
+  lastInsideJokeTurn = turn;
+  insideJokeCount++;
+
+  // Append naturally — short responses get period separator, longer get space
+  if (response.length < 60) return response + ". " + injection;
+  return response + " " + injection;
+}
+
 /* ── Conversational Thread Recap & Summary Awareness (Round 84) ──
  * When conversations run long (12+ turns), the AI occasionally
  * demonstrates it's been tracking the whole conversation by weaving
@@ -20143,6 +20361,9 @@ export async function getAIResponse(input) {
   // ═══ Humor callback: reference earlier funny moments for running-joke callbacks ═══
   response = applyHumorCallback(response, text, currentTopics);
 
+  // ═══ Inside jokes & running bits: shared context callbacks, nicknames, recurring topic teasing ═══
+  response = applyInsideJokeCallback(response, text, currentTopics, sent);
+
   // ═══ Thread recap: brief aside showing awareness of conversation arc ═══
   response = applyThreadRecap(response, text, currentTopics);
 
@@ -20303,6 +20524,9 @@ export async function getAIResponse(input) {
   // Track comedy moments for humor callbacks
   trackComedyMoment(text, response, currentTopics, mem.turn);
 
+  // Track running bits, inside jokes, and nicknames (Round 151)
+  trackRunningBits(text, currentTopics, mem.turn);
+
   // Calculate realistic typing speed (adjusted for conversation pace)
   const rawTypingMs = calcTypingMs(response, sent, parsed);
   const typingMs = adjustTypingForPace(rawTypingMs);
@@ -20311,7 +20535,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);
