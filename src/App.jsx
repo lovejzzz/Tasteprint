@@ -203,16 +203,18 @@ export default function App() {
       rndUndo.current = { id, prev: { ...target }, prevPrefV: { ...prefV } };
       setHasRndUndo(true);
     }
+    // Gather canvas context for multi-component harmony
+    const otherShapes = shapes.filter(s => s.id !== id);
     setShapes(prev => prev.map(s => {
       if (s.id !== id) return s;
       const defaults = DEFAULT_PROPS[s.type];
-      const result = designerRandomize(s.type, p, defaults, designMood);
+      const result = designerRandomize(s.type, p, defaults, designMood, otherShapes);
       return { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
     }));
     setPrefV(pv => {
       const s = shapes.find(x => x.id === id);
       if (!s) return pv;
-      const result = designerRandomize(s.type, p, DEFAULT_PROPS[s.type], designMood);
+      const result = designerRandomize(s.type, p, DEFAULT_PROPS[s.type], designMood, otherShapes);
       return { ...pv, [s.type]: result.variant };
     });
   }, [shapes, p, designMood, prefV]);

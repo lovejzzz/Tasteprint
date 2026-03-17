@@ -269,12 +269,47 @@ const MOOD_CONFIG = {
   },
 };
 
+/* ── Multi-component harmony helpers ── */
+function _analyzeHarmony(shapes) {
+  const variantsByType = {};
+  const fonts = [];
+  const fsizes = [];
+  for (const s of shapes) {
+    const t = s.type;
+    if (!variantsByType[t]) variantsByType[t] = [];
+    variantsByType[t].push(s.variant || 0);
+    fonts.push(s.font || 0);
+    fsizes.push(s.fsize || 1);
+  }
+  const avgFsize = fsizes.length ? fsizes.reduce((a, b) => a + b, 0) / fsizes.length : 1;
+  return { variantsByType, fonts, fsizes, avgFsize };
+}
+
+function _mode(arr) {
+  const counts = {};
+  let best = arr[0], bestC = 0;
+  for (const v of arr) { counts[v] = (counts[v] || 0) + 1; if (counts[v] > bestC) { best = v; bestC = counts[v]; } }
+  return best;
+}
+
+function _dominantFontCat(fonts) {
+  const catCount = { display: 0, body: 0, mono: 0, serif: 0 };
+  for (const f of fonts) {
+    for (const [cat, indices] of Object.entries(FONT_CATS)) {
+      if (indices.includes(f)) { catCount[cat]++; break; }
+    }
+  }
+  let best = "body", bestC = 0;
+  for (const [cat, c] of Object.entries(catCount)) { if (c > bestC) { best = cat; bestC = c; } }
+  return best;
+}
+
 /**
  * Smart designer randomization.
  * Returns { variant, font, fsize, props } for a given component type + palette.
  * @param {string} mood - Design mood: "auto"|"minimal"|"bold"|"elegant"|"playful"
  */
-export function designerRandomize(type, palette, defaults, mood = "auto") {
+export function designerRandomize(type, palette, defaults, mood = "auto", otherShapes = []) {
   const varCount = (VARIANTS[type] || []).length || 1;
   const dark = isDarkPalette(palette);
   const tags = getVariantTags(type, varCount);
@@ -286,22 +321,48 @@ export function designerRandomize(type, palette, defaults, mood = "auto") {
   const isNav = SIZE_CAT.nav.has(type);
   const sizeCat = isLarge ? "large" : isSmall ? "small" : isNav ? "nav" : isCode ? "code" : "medium";
 
-  /* ── 1. Variant selection (mood-aware) ── */
+  /* ── 0. Harmony profile from canvas context ── */
+  const harmony = otherShapes.length > 0 ? _analyzeHarmony(otherShapes) : null;
+
+  /* ── 1. Variant selection (harmony + mood-aware) ── */
   let variant;
-  if (moodCfg && moodCfg.variantBias) {
-    variant = moodCfg.variantBias(tags, varCount, dark);
-  } else {
-    const r = Math.random();
-    if (dark && tags.glass !== undefined && r < 0.35) variant = tags.glass;
-    else if (!dark && tags.brutal !== undefined && r < 0.2) variant = tags.brutal;
-    else if (r < 0.25 && tags.gradient !== undefined) variant = tags.gradient;
-    else { const sc = Math.max(1, varCount - 3); variant = Math.floor(Math.random() * sc); }
+  if (harmony && harmony.variantsByType[type]?.length && Math.random() < 0.65) {
+    // Complementary: avoid the dominant variant of same-type components
+    const used = harmony.variantsByType[type];
+    const dominant = _mode(used);
+    const candidates = [];
+    for (let i = 0; i < varCount; i++) {
+      if (i === dominant) continue;
+      const dist = Math.abs(i - dominant);
+      candidates.push({ idx: i, w: dist >= 2 ? 3 : 1 });
+    }
+    if (candidates.length) {
+      const total = candidates.reduce((a, c) => a + c.w, 0);
+      let r = Math.random() * total;
+      for (const c of candidates) { r -= c.w; if (r <= 0) { variant = c.idx; break; } }
+      if (variant === undefined) variant = candidates[0].idx;
+    }
+  }
+  if (variant === undefined) {
+    if (moodCfg && moodCfg.variantBias) {
+      variant = moodCfg.variantBias(tags, varCount, dark);
+    } else {
+      const r = Math.random();
+      if (dark && tags.glass !== undefined && r < 0.35) variant = tags.glass;
+      else if (!dark && tags.brutal !== undefined && r < 0.2) variant = tags.brutal;
+      else if (r < 0.25 && tags.gradient !== undefined) variant = tags.gradient;
+      else { const sc = Math.max(1, varCount - 3); variant = Math.floor(Math.random() * sc); }
+    }
   }
 
-  /* ── 2. Font selection (mood-aware) ── */
+  /* ── 2. Font selection (harmony + mood-aware) ── */
   let font;
   if (isCode) {
     font = pick(FONT_CATS.mono);
+  } else if (harmony && harmony.fonts.length >= 2 && Math.random() < 0.6) {
+    // Harmonize: reuse dominant font category 60% of the time
+    const dominantCat = _dominantFontCat(harmony.fonts);
+    font = pick(FONT_CATS[dominantCat] || FONT_CATS.body);
   } else if (moodCfg && moodCfg.fontPool) {
     font = moodCfg.fontPool(isLarge, isSmall);
   } else if (isLarge) {
@@ -316,9 +377,15 @@ export function designerRandomize(type, palette, defaults, mood = "auto") {
     font = rr < 0.7 ? pick(FONT_CATS.body) : rr < 0.9 ? pick(FONT_CATS.display) : pick(FONT_CATS.serif);
   }
 
-  /* ── 3. Font sizing (mood-aware) ── */
+  /* ── 3. Font sizing (harmony + mood-aware) ── */
   let fsize;
-  if (moodCfg && moodCfg.fsizeRange) {
+  if (harmony && harmony.fsizes.length >= 2 && Math.random() < 0.55) {
+    // Sympathetic: stay within ±0.15 of canvas average
+    const avg = harmony.avgFsize;
+    const lo = Math.max(0.6, avg - 0.15);
+    const hi = Math.min(1.8, avg + 0.15);
+    fsize = randRange(lo, hi);
+  } else if (moodCfg && moodCfg.fsizeRange) {
     fsize = moodCfg.fsizeRange(sizeCat);
   } else if (isLarge)       fsize = randRange(1.05, 1.4);
   else if (isSmall)  fsize = randRange(0.85, 1.05);
