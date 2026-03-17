@@ -64,20 +64,23 @@ function EditableMsg({ text, style, onEdit }) {
 }
 
 /* ── Typing indicator component ── */
-function TypingDots({ color, variant }) {
+function TypingDots({ color, variant, exiting }) {
   // Terminal variant uses blinking cursor instead of dots
   if (variant === "terminal") {
-    return <span style={{ fontSize: 10, color, animation: "tp-blink 1s step-end infinite" }}>█</span>;
+    return <span style={{ fontSize: 10, color, animation: exiting ? "tp-typing-exit .25s ease-in forwards" : "tp-blink 1s step-end infinite" }}>█</span>;
   }
   return (
-    <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "4px 0" }}>
+    <div style={{
+      display: "flex", gap: 5, alignItems: "center", padding: "4px 0",
+      animation: exiting ? "tp-typing-exit .25s ease-in forwards" : undefined,
+    }}>
       {[0, 1, 2].map(i => (
         <div
           key={i}
           style={{
             width: i === 1 ? 7 : 6, height: i === 1 ? 7 : 6, borderRadius: 999,
             background: color,
-            animation: `tp-typing-dot 1.6s cubic-bezier(.4,0,.2,1) ${i * 0.18}s infinite`,
+            animation: exiting ? undefined : `tp-typing-dot 1.6s cubic-bezier(.4,0,.2,1) ${i * 0.18}s infinite`,
             willChange: "transform, opacity",
           }}
         />
@@ -89,12 +92,13 @@ function TypingDots({ color, variant }) {
 /* ── Main ChatBubble component ── */
 export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fsize, b, onAc }) {
   const [messages, setMessages] = useState([
-    { from: "ai", text: "Hey! 👋 How can I help you today?", id: 0 },
-    { from: "me", text: "Hi! Just checking out this chat.", id: 1 },
-    { from: "ai", text: "Nice! Feel free to ask me anything 😊", id: 2 },
+    { from: "ai", text: "Hey! 👋 How can I help you today?", id: 0, ts: Date.now() - 2000 },
+    { from: "me", text: "Hi! Just checking out this chat.", id: 1, ts: Date.now() - 1000 },
+    { from: "ai", text: "Nice! Feel free to ask me anything 😊", id: 2, ts: Date.now() },
   ]);
   const [inputVal, setInputVal] = useState("");
   const [typing, setTyping] = useState(false);
+  const [typingExit, setTypingExit] = useState(false);
   const [sending, setSending] = useState(null);
   const [sendBtnAnim, setSendBtnAnim] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -103,10 +107,11 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const idRef = useRef(3);
+  const busyRef = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }
   }, []);
 
@@ -116,55 +121,79 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     setMessages(prev => prev.map(m => m.id === id ? { ...m, text: newText } : m));
   }, []);
 
+  /* Gracefully hide typing indicator with exit animation before removing */
+  const hideTyping = useCallback(() => {
+    return new Promise(resolve => {
+      setTypingExit(true);
+      setTimeout(() => {
+        setTyping(false);
+        setTypingExit(false);
+        resolve();
+      }, 220);
+    });
+  }, []);
+
   const sendMessage = useCallback(() => {
     const text = inputVal.trim();
-    if (!text) return;
+    if (!text || busyRef.current) return;
+    busyRef.current = true;
 
     const myId = idRef.current++;
-    const myMsg = { from: "me", text, id: myId };
+    const myMsg = { from: "me", text, id: myId, ts: Date.now() };
+
+    // Phase 1: Send user message with bounce animation
     setSending(myId);
     setSendBtnAnim(true);
-    setTimeout(() => setSendBtnAnim(false), 500);
     setMessages(prev => [...prev, myMsg]);
     setInputVal("");
 
-    // Get AI response + typing speed
+    // Compute AI response synchronously (it's local SLM, no network)
     const ai = getAIResponse(text);
     const aiText = typeof ai === "string" ? ai : ai.text;
     const typingMs = typeof ai === "object" ? ai.typingMs : (800 + Math.random() * 1200);
     const pause = typeof ai === "object" ? ai.pause : null;
 
+    // Phase 2: After send animation settles, clear sending state + start typing
+    // Send anim is 500ms, we clear at 500ms so it plays fully
     setTimeout(() => {
       setSending(null);
-    }, 450);
+      setSendBtnAnim(false);
+    }, 500);
+
+    // Phase 3: Start typing indicator after a natural "reading" delay
+    // Delay scales with user message length — longer messages = AI "reads" longer
+    const readDelay = Math.min(300 + text.length * 8, 800);
 
     setTimeout(() => {
       setTyping(true);
 
-      const finishAi = () => {
+      const finishAi = async () => {
+        // Graceful exit: fade out typing dots, THEN add AI message
+        await hideTyping();
         const aiId = idRef.current++;
-        setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId }]);
-        setTyping(false);
-        // Show delivered checkmark briefly on the user's last message
+        setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId, ts: Date.now() }]);
+        // Show delivered checkmark on user's message
         setDeliveredId(myId);
         setTimeout(() => setDeliveredId(null), 2000);
+        busyRef.current = false;
       };
 
-      if (pause) {
-        // Simulate typing correction: type, pause (dots disappear), restart, finish
-        setTimeout(() => {
-          setTyping(false); // dots disappear — "rethinking"
+      if (pause && pause.pauseAt > 0 && pause.pauseAt < typingMs) {
+        // Typing correction: type → pause (dots fade) → restart → finish
+        setTimeout(async () => {
+          await hideTyping();         // dots gracefully fade out
           setTimeout(() => {
-            setTyping(true); // restart typing
-            setTimeout(finishAi, typingMs - pause.pauseAt);
-          }, pause.pauseMs);
+            setTyping(true);          // restart typing
+            const remaining = Math.max(typingMs - pause.pauseAt, 400);
+            setTimeout(finishAi, remaining);
+          }, pause.pauseMs || 350);
         }, pause.pauseAt);
       } else {
         // Normal typing flow
         setTimeout(finishAi, typingMs);
       }
-    }, 350);
-  }, [inputVal]);
+    }, readDelay);
+  }, [inputVal, hideTyping]);
 
   const handleKeyDown = useCallback((e) => {
     e.stopPropagation();
@@ -180,8 +209,12 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     inputRef.current?.focus();
   }, []);
 
-  /* Helper: directional message animation based on sender */
+  /* Helper: directional message animation based on sender.
+   * Only animate messages that are "fresh" (within 600ms of creation).
+   * Old messages on re-render get no animation — prevents replay artifacts. */
   const msgAnim = (m, isSending) => {
+    const age = Date.now() - (m.ts || 0);
+    if (age > 800 && !isSending) return "none";
     if (isSending) return "tp-msg-send .5s cubic-bezier(.22,1.2,.36,1) both";
     return m.from === "me"
       ? "tp-msg-me-in .4s cubic-bezier(.22,1,.36,1) both"
@@ -239,9 +272,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ padding: "8px 14px", borderRadius: "14px 14px 14px 4px", background: p.su }}>
-              <TypingDots color={p.mu} />
+              <TypingDots color={p.mu} exiting={typingExit} />
             </div>
           </div>
         )}
@@ -336,9 +369,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 2px", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 2px", animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ width: 22, height: 22, borderRadius: 999, background: p.mu + "20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600, color: p.mu }}>A</div>
-            <TypingDots color={p.mu} />
+            <TypingDots color={p.mu} exiting={typingExit} />
           </div>
         )}
       </div>
@@ -417,9 +450,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", gap: 8, animation: "tp-typing-enter .3s cubic-bezier(.22,1,.36,1) both" }}>
+          <div style={{ display: "flex", gap: 8, animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .3s cubic-bezier(.22,1,.36,1) both" }}>
             <span style={{ fontSize: 9, color: "#666", opacity: 0.6 }}>AI &gt;</span>
-            <TypingDots color={p.ac} variant="terminal" />
+            <TypingDots color={p.ac} variant="terminal" exiting={typingExit} />
           </div>
         )}
       </div>
@@ -493,9 +526,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ padding: "9px 16px", borderRadius: "16px 16px 16px 4px", background: `${p.card}70`, backdropFilter: "blur(8px)", border: `1px solid ${p.ac}12`, boxShadow: `inset 0 1px 0 ${p.card}40` }}>
-              <TypingDots color={p.ac} />
+              <TypingDots color={p.ac} exiting={typingExit} />
             </div>
           </div>
         )}
@@ -557,12 +590,12 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ width: 22, height: 22, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}30, ${p.ac2}30)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /></svg>
             </div>
             <div style={{ padding: "9px 14px", borderRadius: "14px 14px 14px 4px", background: p.su, border: `1px solid ${p.bd}` }}>
-              <TypingDots color={p.ac} />
+              <TypingDots color={p.ac} exiting={typingExit} />
             </div>
           </div>
         )}
@@ -609,9 +642,9 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .3s cubic-bezier(.22,1,.36,1) both" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .3s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ padding: "8px 12px", borderRadius: 2, border: `2px solid ${p.tx}`, boxShadow: `2px 2px 0 ${p.tx}40` }}>
-              <TypingDots color={p.tx} />
+              <TypingDots color={p.tx} exiting={typingExit} />
             </div>
           </div>
         )}
@@ -669,12 +702,12 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         ))}
         {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start", animation: "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .35s cubic-bezier(.22,1,.36,1) both" }}>
             <div style={{ width: 20, height: 20, borderRadius: 999, background: `linear-gradient(135deg, ${p.ac}20, ${ac2}15)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 6, boxShadow: `0 0 8px ${p.ac}15` }}>
               <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
             </div>
             <div style={{ padding: "9px 14px", borderRadius: "14px 14px 14px 4px", background: p.card, border: `1px solid ${p.ac}15`, boxShadow: `0 1px 6px ${p.tx}06` }}>
-              <TypingDots color={p.ac} />
+              <TypingDots color={p.ac} exiting={typingExit} />
             </div>
           </div>
         )}

@@ -38,6 +38,7 @@ const ANIM_STYLE = `
 @keyframes tp-badge-pop{0%{opacity:0;transform:scale(.5)}60%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
 @keyframes tp-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes tp-typing-dot{0%,100%{transform:translateY(0) scale(1);opacity:.3}15%{transform:translateY(-6px) scale(1.25);opacity:1}30%{transform:translateY(1px) scale(.9);opacity:.7}45%{transform:translateY(-2px) scale(1.08);opacity:.85}60%{transform:translateY(0) scale(.98);opacity:.5}}
+@keyframes tp-typing-exit{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(4px) scale(.9)}}
 `;
 
 function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1}){
