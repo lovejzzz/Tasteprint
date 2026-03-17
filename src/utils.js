@@ -868,9 +868,21 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     else if (r < 0.75) s.boxShadow = pick([SHADOW_PRESETS[7], SHADOW_PRESETS[9]]); // dramatic/glow
     else s.boxShadow = pick([SHADOW_PRESETS[4], SHADOW_PRESETS[5], SHADOW_PRESETS[8]]); // hard/inset/brutal
   }
-  // Resolve shadow color placeholders
+  // Resolve shadow color placeholders — use derived colors for creative colored shadows
   if (s.boxShadow !== "none") {
-    s.boxShadow = s.boxShadow.replace(/\{s\}/g, shHex).replace(/\{a\}/g, acHex);
+    // Mood-driven colored shadows: replace {s} with palette-derived tints instead of pure dark
+    let shadowColor = shHex;
+    if (moodId === "elegant" && Math.random() < 0.55) {
+      // Elegant: muted accent-tinted shadows for warmth
+      shadowColor = dc.muted;
+    } else if (moodId === "playful" && Math.random() < 0.45) {
+      // Playful: vivid colored shadows
+      shadowColor = pick([dc.analog1, dc.vivid, gc1]);
+    } else if (moodId === "bold" && Math.random() < 0.35) {
+      // Bold: complementary shadow for dramatic contrast
+      shadowColor = pick([dc.comp, dc.split1, gcGlow]);
+    }
+    s.boxShadow = s.boxShadow.replace(/\{s\}/g, shadowColor).replace(/\{a\}/g, acHex);
   }
   // Nav/code skip shadows
   if (isNav || isCode) s.boxShadow = "none";
@@ -1206,8 +1218,8 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
 
     /* ── WILD CARDS — creative surprise combos with DNA colors + mood-weighted selection ── */
-    // Auto: 50% chance, Bold: 12%, Playful: 18%
-    const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : 0;
+    // Auto: 50%, Bold: 12%, Playful: 18%, Elegant: 10%, Minimal: 6%
+    const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.06 : 0;
     if (wildChance > 0 && Math.random() < wildChance) {
       // Mood-weighted wild card selection — each mood favors certain aesthetics
       const WILD_CARDS = [
@@ -1216,10 +1228,14 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         "chromatic-shift", "split-tone", "layered-depth", "accent-frame",
         "soft-bloom", "brutalist-type",
       ];
+      // Elegant favors: glassmorphism, glow, floating-card, split-tone, soft-bloom
+      // Minimal favors: neumorphism, paper-cutout, monochrome-flat, floating-card, ink-bleed, soft-bloom
       const MOOD_WEIGHTS = {
         auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9],
         bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12],
         playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4],
+        elegant: [14, 4, 1, 8, 1, 2, 10, 3, 2, 3, 12, 8, 4, 14, 1],
+        minimal: [4, 10, 1, 1, 10, 14, 6, 4, 8, 1, 3, 2, 4, 8, 1],
       };
       const weights = MOOD_WEIGHTS[moodId] || MOOD_WEIGHTS.auto;
       const totalW = weights.reduce((a, b) => a + b, 0);
