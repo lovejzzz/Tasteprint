@@ -8173,24 +8173,24 @@ const NEGATIVE_FRAME_PATTERNS = [
 
 const REFRAME_TEMPLATES = {
   "self-doubt": [
-    "I hear the frustration — but the fact that you're wrestling with this means you care about getting it right.",
-    "That self-criticism is loud right now. But honestly? You're further along than you think.",
+    "ok but you're literally wrestling with this because you care about getting it right. that's not nothing",
+    "that inner critic is being so loud rn. honestly? you're further along than you think",
   ],
   "catastrophe": [
-    "I know it feels like everything — but let's zoom in on just one piece. What's the smallest thing that's actually broken?",
-    "It feels like a lot. But from what you've described, there are pieces here that are working.",
+    "ok i know it feels like everything is on fire — but what's the one thing that's actually broken rn?",
+    "it feels like a lot but from what you said there are pieces here that are working",
   ],
   "stuck": [
-    "Being stuck is actually a sign you've outgrown the obvious answers. Let's try a different angle.",
-    "Sometimes 'stuck' just means you need one new piece of information. What's the last thing you tried?",
+    "being stuck lowkey means you've outgrown the obvious answers. let's try a different angle",
+    "sometimes stuck just means you need one new thing to click. what'd you try last?",
   ],
   "futility": [
-    "I get the frustration. But you wouldn't be talking about it if some part of you didn't think there's a way forward.",
-    "It might not feel like it, but you're closer than you were when you started.",
+    "ok but you wouldn't even be talking about it if part of you didn't think there's a way forward",
+    "might not feel like it but you're closer than when you started fr",
   ],
   "inadequacy": [
-    "That voice in your head is being way too harsh. From what I've seen, you're handling this well.",
-    "Competence isn't a fixed thing — you're actively growing by working through this.",
+    "that voice in your head is being way too harsh rn. from what i can tell you're handling this well",
+    "competence isn't a fixed thing — you're literally growing by working through this",
   ],
 };
 
@@ -8392,9 +8392,9 @@ function applyImplicitAgreement(response, text) {
   // After 3+ consecutive implicit agreements, acknowledge momentum once
   if (implicitAgreeStreak >= 3 && Math.random() < 0.3) {
     const momentumAcks = [
-      "We're really vibing on this — ",
-      "Okay we're locked in — ",
-      "This flow though — ",
+      "ok we're really vibing on this — ",
+      "ok we're locked in — ",
+      "this flow though — ",
     ];
     const ack = momentumAcks[Math.floor(Math.random() * momentumAcks.length)];
     if (!recentImplicitAcks.includes(ack)) {
@@ -18286,36 +18286,36 @@ const EMOTION_EXTRACT_PATTERNS = [
 
 const EMO_CALLBACK_TEMPLATES = {
   frustrated: [
-    "I remember you were frustrated about {topic} earlier — has that shifted at all?",
-    "You seemed pretty frustrated with {topic} before. How's that sitting now?",
+    "wait weren't you frustrated about {topic} earlier? has that gotten better at all?",
+    "you seemed pretty annoyed about {topic} before. how's that sitting now?",
   ],
   excited: [
-    "You were really excited about {topic} earlier — still feeling that energy?",
-    "I remember the enthusiasm about {topic}! That's coming back around.",
+    "wait you were so hyped about {topic} earlier — still feeling it?",
+    "lol the {topic} energy from earlier is coming back i can tell",
   ],
   worried: [
-    "Earlier you seemed worried about {topic}. Has anything changed on that front?",
-    "I noticed you were concerned about {topic} before — still weighing on you?",
+    "you were worried about {topic} before right? has anything changed?",
+    "i remember {topic} was stressing you out — still on your mind?",
   ],
   happy: [
-    "You were in a great mood about {topic} earlier — love that it's coming back up.",
-    "I remember how happy {topic} made you! Still feeling good about it?",
+    "you were in such a good mood about {topic} earlier lol love that it's back",
+    "remember how happy {topic} made you? still feeling good about it?",
   ],
   confused: [
-    "You were confused about {topic} before — do things make more sense now?",
-    "I remember {topic} was tricky earlier. Are we in a better spot now?",
+    "you were confused about {topic} before — does it make more sense now?",
+    "{topic} was tricky earlier lol. are we in a better spot now?",
   ],
   sad: [
-    "I know {topic} was tough earlier. How are you feeling about it now?",
-    "You seemed down about {topic} before — hope things are looking up.",
+    "{topic} was tough earlier. how are you feeling about it now?",
+    "you seemed down about {topic} before — hope things are better",
   ],
   proud: [
-    "You were proud of {topic} earlier — and honestly, you should be!",
-    "I remember how good you felt about {topic}. That energy's still here.",
+    "you were proud of {topic} earlier — and honestly you should be",
+    "remember how good you felt about {topic}? that energy's still here",
   ],
   stressed: [
-    "You were pretty stressed about {topic} earlier — any relief since then?",
-    "I remember {topic} had you overwhelmed. How's the pressure now?",
+    "you were pretty stressed about {topic} earlier — any relief?",
+    "{topic} had you overwhelmed before. how's the pressure now?",
   ],
 };
 
@@ -18498,11 +18498,11 @@ function captureConversationStart(text, topics) {
 }
 
 const BOOKEND_TEMPLATES = [
-  "Full circle — remember when we kicked this off talking about {topic}? Look how far we've come.",
-  "We started this whole conversation with {topic} — and honestly, that thread is still running through everything.",
-  "Going all the way back to {topic} from when we started — I think that's still the core of this.",
-  "Funny how this connects right back to {topic}, which is where we started.",
-  "This is giving me {topic} vibes from the beginning of our chat. Everything circles back.",
+  "wait didn't we literally start this whole convo on {topic}?? full circle lol",
+  "we started on {topic} and honestly that thread's been running through everything",
+  "lol remember at the top you brought up {topic}? i think that's still the core of this",
+  "it's kinda funny how this connects right back to {topic} from the beginning",
+  "this is giving {topic} vibes from the start of our chat. everything circles back lol",
 ];
 
 function applyConversationBookend(response, text, topics) {
