@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
 import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT, HAS_PROPS, VARIANTS, DEFAULT_PROPS } from "./constants";
-import { load, uid, maxV, varName, snap, validateImport, designerRandomize, getCuratedPreset, DESIGN_MOODS } from "./utils";
+import { load, uid, maxV, varName, snap, validateImport, designerRandomize, getCuratedPreset, designScore, DESIGN_MOODS } from "./utils";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TpContext } from "./contexts/TpContext";
 import Header from "./components/Header";
@@ -602,7 +602,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} copyStyle={copyStyle} pasteStyle={pasteStyle} hasCopiedStyle={!!copiedStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} copyStyle={copyStyle} pasteStyle={pasteStyle} hasCopiedStyle={!!copiedStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} />
               ))}
             </div>
 

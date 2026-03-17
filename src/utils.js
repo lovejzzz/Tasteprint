@@ -480,3 +480,58 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
 
   return { variant, font, fsize, props };
 }
+
+/**
+ * Design quality score for a component's current style.
+ * Returns 1-5 (stars). Evaluates variant-palette fit, font appropriateness,
+ * fsize proportionality, and cross-component consistency.
+ */
+export function designScore(shape, palette, otherShapes = []) {
+  let score = 3; // baseline: decent
+  const { type, variant = 0, font = 0, fsize = 1 } = shape;
+  const varCount = (VARIANTS[type] || []).length || 1;
+  const tags = getVariantTags(type, varCount);
+  const dark = isDarkPalette(palette);
+  const isLarge = SIZE_CAT.large.has(type);
+  const isSmall = SIZE_CAT.small.has(type);
+  const isCode = SIZE_CAT.code.has(type);
+
+  // 1. Variant-palette fit (+1/-1)
+  if (dark && tags.glass !== undefined && variant === tags.glass) score += 0.5;      // glass on dark = great
+  if (!dark && tags.brutal !== undefined && variant === tags.brutal) score += 0.5;   // brutal on light = great
+  if (dark && tags.brutal !== undefined && variant === tags.brutal) score -= 0.4;    // brutal on dark = meh
+  if (!dark && tags.glass !== undefined && variant === tags.glass) score -= 0.3;     // glass on light = weaker
+
+  // 2. Font appropriateness (+0.5/-0.5)
+  const fontCat = Object.entries(FONT_CATS).find(([, ids]) => ids.includes(font))?.[0] || "body";
+  if (isLarge && (fontCat === "display" || fontCat === "serif")) score += 0.5;
+  if (isLarge && fontCat === "mono") score -= 0.5;
+  if (isSmall && fontCat === "body") score += 0.3;
+  if (isSmall && fontCat === "display") score -= 0.3;
+  if (isCode && fontCat === "mono") score += 0.5;
+  if (isCode && fontCat !== "mono") score -= 0.5;
+
+  // 3. Fsize proportionality (+0.5/-0.5)
+  if (isLarge && fsize >= 1.05 && fsize <= 1.4) score += 0.4;
+  else if (isLarge && (fsize < 0.85 || fsize > 1.6)) score -= 0.4;
+  if (isSmall && fsize >= 0.8 && fsize <= 1.05) score += 0.3;
+  else if (isSmall && fsize > 1.3) score -= 0.4;
+
+  // 4. Cross-component consistency (+0.5/-0.5)
+  if (otherShapes.length >= 2) {
+    const otherFonts = otherShapes.map(s => s.font || 0);
+    const otherFontCats = otherFonts.map(f => Object.entries(FONT_CATS).find(([, ids]) => ids.includes(f))?.[0] || "body");
+    const dominantCat = _dominantFontCat(otherFonts);
+    if (fontCat === dominantCat) score += 0.4; // matches canvas font vibe
+    else score -= 0.2;
+
+    // Variant diversity: having some variety is good, all same is boring
+    const sameType = otherShapes.filter(s => s.type === type);
+    if (sameType.length > 0) {
+      const allSameVariant = sameType.every(s => (s.variant || 0) === variant);
+      if (allSameVariant && sameType.length >= 2) score -= 0.3; // too monotonous
+    }
+  }
+
+  return Math.max(1, Math.min(5, Math.round(score)));
+}

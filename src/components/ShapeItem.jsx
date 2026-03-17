@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, copyStyle, pasteStyle, hasCopiedStyle, delShape, setRsz, texture, designMood, setDesignMood }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, copyStyle, pasteStyle, hasCopiedStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -106,6 +106,9 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
           </button>}
+          {dScore > 0 && <span aria-label={`Design score: ${dScore} of 5`} style={{ display: "flex", gap: 1.5, alignItems: "center", padding: "0 4px" }}>
+            {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ width: 4, height: 4, borderRadius: 2, background: i <= dScore ? (dScore >= 4 ? p.ac : dScore >= 3 ? p.mu : "#E0524D") : p.bd, transition: "background .2s ease" }} />)}
+          </span>}
           {sep}
           <button aria-label="Copy style" {...ph}
             onPointerDown={e => { e.stopPropagation(); e.preventDefault(); copyStyle(s.id); }}
@@ -192,7 +195,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     prev.selAll.has(id) === next.selAll.has(id) &&
     prev.designMood === next.designMood &&
     prev.hasRndUndo === next.hasRndUndo &&
-    prev.hasCopiedStyle === next.hasCopiedStyle;
+    prev.hasCopiedStyle === next.hasCopiedStyle &&
+    prev.dScore === next.dScore;
 });
 
 export default ShapeItem;
