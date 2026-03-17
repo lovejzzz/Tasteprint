@@ -165,6 +165,15 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Period toggle (pricing-card) */
+  if ("period" in defaults) {
+    const per = G("period");
+    controls.push(<React.Fragment key="period"><span style={label}>Billing</span>
+      <button style={{ ...btn(!per), fontSize: 8, width: "auto", height: 18, padding: "0 6px", borderRadius: 4 }} onMouseDown={stop} onClick={() => onProp("period", 0)}>Mo</button>
+      <button style={{ ...btn(!!per), fontSize: 8, width: "auto", height: 18, padding: "0 6px", borderRadius: 4 }} onMouseDown={stop} onClick={() => onProp("period", 1)}>Yr</button>
+    </React.Fragment>);
+  }
+
   /* Wishlisted toggle (product-card) */
   if ("wishlisted" in defaults) {
     const on = G("wishlisted");
