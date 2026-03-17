@@ -3204,6 +3204,117 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- Neumorphic inset shadow compositions (round 65) ---
+  // Dedicated neumorphic effects using paired inset + outset shadows
+  // for pressed/raised/concave/convex tactile surfaces.
+  // Only fires when existing boxShadow is simple (not already multi-layer stacked).
+  // Low rates per mood to keep it special and avoid overriding complex shadow work.
+  if (!isNav && !isCode && !isSmall && s.boxShadow && s.boxShadow !== "none") {
+    const neuRoll = Math.random();
+    // Only apply if shadow isn't already a complex multi-layer composition (3+ commas = 4+ layers)
+    const existingLayers = (s.boxShadow.match(/,/g) || []).length;
+    const neuOk = existingLayers < 3;
+
+    if (neuOk) {
+      // Light source direction for neumorphism
+      const lightColor = dark ? "#ffffff" : "#ffffff";
+      const darkColor = dark ? "#000000" : palette.tx || "#333333";
+      const surfaceHint = dark ? gc1 : acHex;
+      // Neumorphic shadow distance scales with border-radius for visual harmony
+      const numBr = typeof s.borderRadius === "number" ? s.borderRadius : 12;
+      const dist = Math.max(3, Math.min(8, Math.round(numBr * 0.4)));
+      const blur = dist * 2;
+      const bigBlur = dist * 3;
+
+      if (moodId === "elegant" && neuRoll < 0.12) {
+        // Elegant: "soft raised" — gentle pillow effect with tinted light edge
+        s.boxShadow = [
+          `${dist}px ${dist}px ${bigBlur}px ${darkColor}10`,
+          `-${dist}px -${dist}px ${bigBlur}px ${lightColor}${dark ? "06" : "50"}`,
+          `inset 1px 1px ${Math.round(blur * 0.4)}px ${lightColor}${dark ? "04" : "15"}`,
+          `inset -1px -1px ${Math.round(blur * 0.4)}px ${darkColor}06`,
+        ].join(", ");
+      } else if (moodId === "elegant" && neuRoll < 0.18) {
+        // Elegant: "concave basin" — sunken surface catching light at rim
+        s.boxShadow = [
+          `inset ${dist}px ${dist}px ${blur}px ${darkColor}0C`,
+          `inset -${dist}px -${dist}px ${blur}px ${lightColor}${dark ? "05" : "30"}`,
+          `0 1px 2px ${darkColor}04`,
+        ].join(", ");
+      } else if (moodId === "bold" && neuRoll < 0.10) {
+        // Bold: "hard pressed" — deep inset with sharp outset rim for dramatic tactile effect
+        const pressDepth = dist + 2;
+        s.boxShadow = [
+          `inset ${pressDepth}px ${pressDepth}px ${pressDepth * 2}px ${darkColor}20`,
+          `inset -${pressDepth}px -${pressDepth}px ${pressDepth * 2}px ${lightColor}${dark ? "06" : "35"}`,
+          `0 0 0 1px ${surfaceHint}0A`,
+        ].join(", ");
+      } else if (moodId === "bold" && neuRoll < 0.16) {
+        // Bold: "extruded button" — thick raised slab with strong directional light
+        s.boxShadow = [
+          `${dist + 2}px ${dist + 2}px ${blur}px ${darkColor}1A`,
+          `-${Math.round(dist * 0.5)}px -${Math.round(dist * 0.5)}px ${blur}px ${lightColor}${dark ? "08" : "40"}`,
+          `inset 0 -2px ${Math.round(blur * 0.3)}px ${darkColor}08`,
+          `inset 0 2px ${Math.round(blur * 0.3)}px ${lightColor}${dark ? "03" : "18"}`,
+        ].join(", ");
+      } else if (moodId === "playful" && neuRoll < 0.12) {
+        // Playful: "color-tinted pillow" — neumorphic with accent-colored light/shadow
+        const tintLight = pick([gc1, gc2, acHex]);
+        const tintDark = pick([dc.comp, dc.split1, dc.analog1]);
+        s.boxShadow = [
+          `${dist}px ${dist}px ${bigBlur}px ${tintDark}14`,
+          `-${dist}px -${dist}px ${bigBlur}px ${tintLight}${dark ? "0A" : "20"}`,
+          `inset 1px 1px ${Math.round(blur * 0.5)}px ${tintLight}${dark ? "06" : "12"}`,
+          `inset -1px -1px ${Math.round(blur * 0.5)}px ${tintDark}08`,
+        ].join(", ");
+      } else if (moodId === "playful" && neuRoll < 0.18) {
+        // Playful: "bubble pop" — convex dome surface with colorful rim glow
+        s.boxShadow = [
+          `inset -${dist}px -${dist}px ${blur}px ${darkColor}0A`,
+          `inset ${dist}px ${dist}px ${blur}px ${lightColor}${dark ? "06" : "25"}`,
+          `0 ${dist}px ${bigBlur}px ${pick([gc1, gcGlow])}12`,
+          `0 0 0 1px ${pick([gc1, gc2, acHex])}0C`,
+        ].join(", ");
+      } else if (moodId === "minimal" && neuRoll < 0.08) {
+        // Minimal: "whisper neumorphic" — barely perceptible raised surface
+        const microDist = Math.max(2, dist - 2);
+        const microBlur = microDist * 2;
+        s.boxShadow = [
+          `${microDist}px ${microDist}px ${microBlur}px ${darkColor}08`,
+          `-${microDist}px -${microDist}px ${microBlur}px ${lightColor}${dark ? "04" : "25"}`,
+        ].join(", ");
+      } else if (moodId === "minimal" && neuRoll < 0.12) {
+        // Minimal: "soft indentation" — subtle concave pressed feel
+        const microDist = Math.max(2, dist - 2);
+        s.boxShadow = [
+          `inset ${microDist}px ${microDist}px ${microDist * 2}px ${darkColor}06`,
+          `inset -${microDist}px -${microDist}px ${microDist * 2}px ${lightColor}${dark ? "03" : "18"}`,
+        ].join(", ");
+      } else if (moodId === "auto" && neuRoll < 0.06) {
+        // Auto: random neumorphic style — pick from raised/pressed/concave
+        const neuStyle = pick(["raised", "pressed", "concave"]);
+        if (neuStyle === "raised") {
+          s.boxShadow = [
+            `${dist}px ${dist}px ${bigBlur}px ${darkColor}12`,
+            `-${dist}px -${dist}px ${bigBlur}px ${lightColor}${dark ? "06" : "40"}`,
+            `inset 1px 1px ${Math.round(blur * 0.3)}px ${lightColor}${dark ? "03" : "10"}`,
+          ].join(", ");
+        } else if (neuStyle === "pressed") {
+          s.boxShadow = [
+            `inset ${dist}px ${dist}px ${blur}px ${darkColor}14`,
+            `inset -${dist}px -${dist}px ${blur}px ${lightColor}${dark ? "05" : "30"}`,
+          ].join(", ");
+        } else {
+          s.boxShadow = [
+            `inset ${dist}px ${dist}px ${blur}px ${darkColor}0A`,
+            `inset -${dist}px -${dist}px ${blur}px ${lightColor}${dark ? "04" : "20"}`,
+            `${Math.round(dist * 0.5)}px ${Math.round(dist * 0.5)}px ${blur}px ${darkColor}06`,
+          ].join(", ");
+        }
+      }
+    }
+  }
+
   return s;
 }
 
