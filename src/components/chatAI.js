@@ -4154,7 +4154,7 @@ const GREETINGS = {
 const FAREWELLS = {
   basic: ["laterrr ✌️","bye bye","aight peace","see ya 👋","later!"],
   named: ["bye {name}! ✌️","later {name} 👋","peace {name}!"],
-  long: ["aight it was fun, don't be a stranger","this was great honestly, come back anytime","ok bye for real tho, talk soon 👋"],
+  long: ["aight this was fun fr, come back anytime","ok bye for real tho talk soon 👋","this was great ngl, ok laterrr"],
 };
 
 const THANKS = ["ofc!","no worries!","anytime 😊","lol you don't gotta thank me","all good!"];
@@ -4294,11 +4294,11 @@ function handleMetaConversation(text, lower, sent) {
   if (/\b(you'?re|you are|ur) (pretty |really |so |actually |surprisingly )?(smart|clever|good|great|amazing|impressive|helpful|awesome|cool|fun|funny|brilliant)\b/i.test(lower) ||
       /\b(wow|damn|whoa),? (you'?re|that'?s|that was) (really |pretty |actually )?(good|smart|helpful|impressive)\b/i.test(lower)) {
     const compliments = [
-      "Ha, thanks — blushing rn, as much as JavaScript can blush 😊 Good convos need two people tho. You're asking great stuff.",
-      "That means a lot honestly. I'm just a tiny model running in your browser, so I gotta be clever with what I've got. You make it easy tho.",
-      "Okay that actually made my day ngl. But you bring the interesting topics — that's the real ingredient.",
-      () => `Aw, thank you${mem.userName ? `, ${mem.userName}` : ""}! I'm honestly just pattern-matching really hard, but I appreciate you saying that 😊`,
-      "You're too kind! I'm literally just JavaScript and vibes, but I'm glad it's working 😄",
+      "stoppp you're too nice 🥺 fr tho it takes two to have a good convo",
+      "aww ok that actually made my day ngl. you make it easy tho",
+      "lmao i'm literally just vibes and javascript but i'll take it 😂",
+      () => `aw thank u${mem.userName ? ` ${mem.userName}` : ""} 🥺 fr tho the convos are good cuz of you`,
+      "ok now i'm blushing 😊 but nah you bring the good topics fr",
     ];
     return pickNew(compliments);
   }
@@ -5309,13 +5309,13 @@ function respondToTeaser(teaserType) {
 function respondToImplicitFarewell() {
   const tf = timeFarewell();
   const responses = [
-    "no worries, go do your thing! this was fun 😊",
-    "totally — catch you later! ✌️",
-    "aight take care! come back whenever",
-    "go get some rest! or whatever you're off to lol. later! 👋",
-    "fair enough — sometimes you just gotta go. see ya!",
-    "ok byeee, don't be a stranger!",
-    "peace! this was great honestly",
+    "ok go do ur thing, this was fun 😊",
+    "aight catch you later ✌️",
+    "ok peace! come back whenever",
+    "go rest or whatever lol. later 👋",
+    "aight bet, catch you next time",
+    "ok byeee come back soon!",
+    "peace! this was great fr",
   ];
   let resp = pickNew(responses);
   if (tf && Math.random() > 0.5) resp = tf;
@@ -10405,32 +10405,32 @@ const BREAKTHROUGH_SIGNALS = [
 
 const CELEBRATION_RESPONSES = {
   high: [
-    "YES! I love when it clicks like that!",
-    "There it is!! That's the exact realization that changes everything.",
-    "YESSS — that's the breakthrough moment right there!",
-    "You just connected the dots that most people miss. That's huge.",
-    "That lightbulb moment! You literally just leveled up your understanding.",
+    "YOOO wait you got it!!",
+    "ok yes THAT'S it, you literally just figured it out",
+    "YESSS dude there it is 🔥",
+    "wait no you actually nailed it tho",
+    "ok that was sick, you just clicked on it fr",
   ],
   medium: [
-    "Oh you're seeing it now — yeah, that's exactly right.",
-    "There you go! That's the key insight.",
-    "Yes!! That's the piece that ties it all together.",
-    "Exactly — once you see it that way, everything else falls into place.",
+    "ohh you see it now right — yeah exactly",
+    "yep yep that's the thing right there",
+    "yes!! ok now you're cooking",
+    "exactly, once you see it like that everything makes sense",
   ],
   low: [
-    "Yeah, you're tracking — that's a solid way to think about it.",
-    "Exactly — you just articulated it better than I did.",
-    "That's it. That's the mental model.",
+    "yeah no you got it, that's exactly it",
+    "lol you literally said it better than me",
+    "that's it. that's the whole thing",
   ],
 };
 
 // Follow-up phrases that reinforce the breakthrough
 const CELEB_REINFORCERS = [
-  " and honestly figuring that out yourself is way more valuable than me just telling you.",
-  " that's the kind of thing that sticks because you earned it.",
-  " and the cool part? that understanding transfers to so many other things.",
-  " most people need to be told that directly — you figured it out from context.",
-  " hold onto that — once you see it you literally can't unsee it.",
+  " and you figured that out yourself which is way better",
+  " that's gonna stick cuz you earned it fr",
+  " and the sick part is that applies to like everything else too",
+  " most people need someone to spell it out, you just got it",
+  " once you see it you can't unsee it lol",
 ];
 
 function detectBreakthrough(text) {
