@@ -1548,15 +1548,14 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         "monochrome-flat", "floating-card", "double-border", "ink-bleed",
         "chromatic-shift", "split-tone", "layered-depth", "accent-frame",
         "soft-bloom", "brutalist-type",
+        "holographic-edge", "recessed-inset", "neon-outline", "frosted-matte", "duotone-wash",
       ];
-      // Elegant favors: glassmorphism, glow, floating-card, split-tone, soft-bloom
-      // Minimal favors: neumorphism, paper-cutout, monochrome-flat, floating-card, ink-bleed, soft-bloom
       const MOOD_WEIGHTS = {
-        auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9],
-        bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12],
-        playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4],
-        elegant: [14, 4, 1, 8, 1, 2, 10, 3, 2, 3, 12, 8, 4, 14, 1],
-        minimal: [4, 10, 1, 1, 10, 14, 6, 4, 8, 1, 3, 2, 4, 8, 1],
+        auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9, 7, 5, 8, 6, 7],
+        bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12, 10, 8, 14, 3, 6],
+        playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4, 12, 4, 14, 3, 8],
+        elegant: [14, 4, 1, 8, 1, 2, 10, 3, 2, 3, 12, 8, 4, 14, 1, 6, 10, 3, 12, 10],
+        minimal: [4, 10, 1, 1, 10, 14, 6, 4, 8, 1, 3, 2, 4, 8, 1, 2, 6, 1, 10, 4],
       };
       const weights = MOOD_WEIGHTS[moodId] || MOOD_WEIGHTS.auto;
       const totalW = weights.reduce((a, b) => a + b, 0);
@@ -1649,8 +1648,8 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.borderRadius = pick([16, 20, 24, 999]);
         s.border = "none";
         s.gradientOverlay = `radial-gradient(circle at ${pick([30, 50, 70])}% ${pick([30, 50])}%, ${gc2}08 0%, transparent 60%)`;
-      } else {
-        // "Brutalist Type": zero decoration, max typography presence
+      } else if (wildCard === "brutalist-type") {
+        // Zero decoration, max typography presence
         s.boxShadow = "none";
         s.border = "none";
         s.borderRadius = 0;
@@ -1659,6 +1658,59 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.gradientOverlay = undefined;
         s.filter = `contrast(${randRange(1.08, 1.2).toFixed(2)})`;
         s.scale = pick([1.02, 1.04, 1.06]);
+      } else if (wildCard === "holographic-edge") {
+        // Rainbow prismatic edge glow — like a holographic card catch
+        const haloSpread = pick([3, 4, 6]);
+        const haloBlur = pick([8, 12, 16]);
+        s.boxShadow = [
+          `${haloSpread}px 0 ${haloBlur}px ${acHex}25`,
+          `-${haloSpread}px 0 ${haloBlur}px ${gc2}20`,
+          `0 ${haloSpread}px ${haloBlur}px ${gcGlow}18`,
+          `0 -${haloSpread}px ${haloBlur}px ${gc1}15`,
+        ].join(", ");
+        s.border = `1px solid ${gc1}12`;
+        s.borderRadius = pick([8, 12, 16]);
+        s.gradientOverlay = `linear-gradient(${pick([105, 135, 160])}deg, ${acHex}06 0%, ${gc2}04 35%, ${gcGlow}06 65%, ${gc1}04 100%)`;
+      } else if (wildCard === "recessed-inset") {
+        // Sunken/pressed-in appearance — like stamped into the surface
+        const inDepth = pick([3, 4, 6]);
+        s.boxShadow = [
+          `inset ${inDepth}px ${inDepth}px ${inDepth * 2}px ${shHex}18`,
+          `inset -${inDepth}px -${inDepth}px ${inDepth * 2}px ${dark ? gc1 : "#ffffff"}12`,
+          `0 1px 2px ${shHex}06`,
+        ].join(", ");
+        s.border = `1px solid ${dark ? gc1 + "08" : shHex + "06"}`;
+        s.borderRadius = pick([6, 8, 12]);
+        s.filter = `brightness(${(dark ? randRange(0.92, 0.97) : randRange(0.97, 1.0)).toFixed(2)})`;
+      } else if (wildCard === "neon-outline") {
+        // Glowing outline with electric color pop
+        const neonColor = pick([acHex, gcGlow, gc2]);
+        const neonWidth = pick([1, 2]);
+        const glowSize = pick([6, 10, 14]);
+        s.border = `${neonWidth}px solid ${neonColor}90`;
+        s.boxShadow = [
+          `0 0 ${glowSize}px ${neonColor}30`,
+          `0 0 ${glowSize * 2}px ${neonColor}15`,
+          `inset 0 0 ${pick([8, 12])}px ${neonColor}08`,
+        ].join(", ");
+        s.borderRadius = pick([4, 8, 12, 999]);
+        s.gradientOverlay = undefined;
+      } else if (wildCard === "frosted-matte") {
+        // Frosted glass with matte finish — soft and understated
+        s.backdropFilter = `blur(${pick([8, 12, 16])}px) saturate(${randRange(0.6, 0.85).toFixed(2)})`;
+        s.border = `1px solid ${gc1}08`;
+        s.boxShadow = `0 2px 8px ${shHex}06`;
+        s.borderRadius = pick([12, 16, 20]);
+        s.gradientOverlay = `linear-gradient(${pick([160, 180, 200])}deg, ${gc1}04 0%, transparent 100%)`;
+        s.filter = `brightness(${randRange(0.97, 1.02).toFixed(2)})`;
+      } else if (wildCard === "duotone-wash") {
+        // Two-color tonal wash — everything through a chromatic filter
+        const dtAngle = pick([120, 145, 165, 200]);
+        s.gradientOverlay = `linear-gradient(${dtAngle}deg, ${acHex}12 0%, ${gc2}10 50%, ${ac2}08 100%)`;
+        s.filter = `saturate(${randRange(0.7, 0.9).toFixed(2)}) contrast(${randRange(1.02, 1.1).toFixed(2)})`;
+        s.boxShadow = `0 4px 16px ${pick([acHex, gc2])}12`;
+        s.border = `1px solid ${pick([acHex, gc2])}10`;
+        s.borderRadius = pick([8, 12, 16]);
       }
     }
   }
