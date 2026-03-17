@@ -16951,33 +16951,33 @@ let storyCount = 0;
 // Micro-story templates by domain — each has a setup and a punchline
 const MICRO_STORIES = {
   tech: [
-    { setup: "It's like building a house", bridge: "— you can't just start with the roof.", punchline: "You need the foundation first, even if it's boring." },
-    { setup: "Think of it like a recipe", bridge: "— you have all the ingredients,", punchline: "but the order you add them completely changes the dish." },
-    { setup: "It's like learning to drive", bridge: "— at first you're thinking about every single step,", punchline: "then one day your hands just know what to do." },
-    { setup: "Imagine you're untangling headphones", bridge: "— pulling one knot tight just creates another somewhere else.", punchline: "Sometimes you have to loosen everything first." },
-    { setup: "It's like organizing a closet", bridge: "— you have to make a bigger mess before it gets clean.", punchline: "That messy middle phase is actually progress." },
+    { setup: "ok it's literally like building a house", bridge: ", you can't just start with the roof.", punchline: "foundation first even if it's boring" },
+    { setup: "think of it like a recipe", bridge: ", you have all the ingredients", punchline: "but the order you add them completely changes the dish" },
+    { setup: "it's literally like learning to drive", bridge: ", at first you're thinking about every single step", punchline: "then one day your hands just know what to do" },
+    { setup: "ok imagine you're untangling headphones", bridge: ", pulling one knot tight just creates another somewhere else.", punchline: "sometimes you gotta loosen everything first" },
+    { setup: "ngl it's like organizing a closet", bridge: ", you have to make a bigger mess before it gets clean.", punchline: "that messy middle phase is actually progress" },
   ],
   design: [
-    { setup: "Picture walking into a room", bridge: "— you don't notice the paint color first, you notice how it *feels*.", punchline: "Good design works the same way." },
-    { setup: "It's like a good outfit", bridge: "— you notice the person, not the clothes.", punchline: "When design disappears, it's working." },
-    { setup: "Think of a really good waiter", bridge: "— they refill your glass before you notice it's empty.", punchline: "That's what great UX feels like." },
-    { setup: "It's like jazz", bridge: "— the notes you don't play matter as much as the ones you do.", punchline: "Whitespace is the silence between the music." },
+    { setup: "ok like when you walk into a room", bridge: " you don't notice the paint color first, you notice how it feels.", punchline: "good design works the same way" },
+    { setup: "it's like a good outfit", bridge: ", you notice the person not the clothes.", punchline: "when design disappears it's working" },
+    { setup: "think of a really good waiter", bridge: ", they refill your glass before you notice it's empty.", punchline: "that's what great ux feels like" },
+    { setup: "ok it's literally like jazz", bridge: ", the notes you don't play matter as much as the ones you do.", punchline: "whitespace is the silence between the music" },
   ],
   work: [
-    { setup: "It's like being in a band", bridge: "— you can all be incredible musicians,", punchline: "but if no one's listening to each other, it's just noise." },
-    { setup: "Think of it like a garden", bridge: "— you plant seeds now and most of the work is invisible.", punchline: "But in three months, you'll know exactly which ones you watered." },
-    { setup: "It's like packing for a trip", bridge: "— you always think you need more than you do.", punchline: "The best trips usually have the lightest bags." },
+    { setup: "it's like being in a band", bridge: ", you can all be incredible musicians", punchline: "but if no one's listening to each other it's just noise" },
+    { setup: "ok think of it like a garden", bridge: ", you plant seeds now and most of the work is invisible.", punchline: "but in three months you'll know exactly which ones you watered" },
+    { setup: "it's literally like packing for a trip", bridge: ", you always think you need more than you do.", punchline: "the best trips usually have the lightest bags" },
   ],
   life: [
-    { setup: "It's like standing in line for a rollercoaster", bridge: "— the anxiety is always worse than the ride.", punchline: "Once you're on it, you're just... on it." },
-    { setup: "Think of learning to swim", bridge: "— no amount of reading about it replaces getting in the water.", punchline: "At some point you just have to get wet." },
-    { setup: "It's like a good playlist", bridge: "— the transitions between songs matter as much as the songs.", punchline: "Life's kind of like that too — the in-between moments count." },
-    { setup: "Imagine you're lost in a new city", bridge: "— scary at first,", punchline: "but that's how you find the best hidden spots." },
+    { setup: "ok it's like standing in line for a rollercoaster", bridge: ", the anxiety is always worse than the ride.", punchline: "once you're on it you're just... on it" },
+    { setup: "it's like learning to swim", bridge: ", no amount of reading about it replaces getting in the water.", punchline: "at some point you just gotta get wet" },
+    { setup: "it's like a good playlist tho", bridge: ", the transitions between songs matter as much as the songs.", punchline: "life's kind of like that too, the in-between moments count" },
+    { setup: "ok imagine you're lost in a new city", bridge: ", scary at first", punchline: "but that's how you find the best hidden spots" },
   ],
   general: [
-    { setup: "It's like trying to catch a word on the tip of your tongue", bridge: "— the harder you chase it, the further it runs.", punchline: "Stop thinking about it and it just... appears." },
-    { setup: "Think of it like a puzzle", bridge: "— you don't see the picture until the last few pieces click.", punchline: "Everything before that is just trusting the box." },
-    { setup: "It's like that moment when you're reading a book", bridge: "and suddenly you realize you've been staring at the page but thinking about something else entirely.", punchline: "Your brain was doing something more important." },
+    { setup: "it's like trying to catch a word on the tip of your tongue", bridge: ", the harder you chase it the further it runs.", punchline: "stop thinking about it and it just... appears" },
+    { setup: "ok think of it like a puzzle", bridge: ", you don't see the picture until the last few pieces click.", punchline: "everything before that is just trusting the box" },
+    { setup: "it's like that moment when you're reading a book", bridge: " and suddenly you realize you've been staring at the page but thinking about something else entirely.", punchline: "your brain was doing something more important" },
   ],
 };
 
@@ -17043,13 +17043,13 @@ function applyMicroStory(response, text, topics) {
 
   if (roll < 0.7) {
     // Append: response first, then "it's kind of like..."
-    const connectors = ["Kind of like — ", "It's a bit like — ", "Like, ", "Sort of like how "];
+    const connectors = ["kinda like ", "like, ", "sort of like how ", "lowkey like "];
     const connector = connectors[Math.floor(Math.random() * connectors.length)];
-    return `${response.replace(/[.!]\s*$/, ".")} ${connector}${story.setup.replace(/^It's like /i, "").replace(/^Think of /i, "")} ${story.bridge} ${story.punchline}`;
+    return `${response.replace(/[.!]\s*$/, ".")} ${connector}${story.setup.replace(/^ok it's literally like /i, "").replace(/^it's literally like /i, "").replace(/^it's like /i, "").replace(/^ok like /i, "").replace(/^ok think of /i, "").replace(/^think of /i, "").replace(/^ngl it's like /i, "").replace(/^ok imagine /i, "")} ${story.bridge} ${story.punchline}`;
   }
 
   // Inline: story as prefix, response as the "real point"
-  return `${story.setup} ${story.bridge} ${story.punchline} And honestly, ${response.charAt(0).toLowerCase() + response.slice(1)}`;
+  return `${story.setup} ${story.bridge} ${story.punchline}. and honestly, ${response.charAt(0).toLowerCase() + response.slice(1)}`;
 }
 
 /* ── Rhetorical Device Engine (Round 74) ──
