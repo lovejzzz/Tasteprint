@@ -12161,6 +12161,75 @@ function addDisfluency(response) {
 let lastPatternBreakTurn = 0;
 let recentResponseShapes = []; // tracks structural patterns: "long_question", "medium_statement", etc.
 
+// ── Opener diversity: prevent "oh"/"hmm"/"ooh" repetition ──
+let recentOpeners = []; // last 6 opening words
+
+// Map of common openers to casual alternatives
+const OPENER_SWAPS = {
+  "oh":   ["yo", "ok", "wait", "dude", "lol", "bruh", "ngl"],
+  "hmm":  ["ok so", "yo", "honestly", "wait", "i mean", "tbh"],
+  "ooh":  ["oh nice", "yo", "wait", "ok", "dude", "ayy"],
+  "ok":   ["yo", "honestly", "ngl", "wait", "so", "lol"],
+  "wait": ["oh", "yo", "hold on", "ok", "dude", "bruh"],
+  "yeah": ["honestly", "fr", "ngl", "true", "ok yeah", "tbh"],
+  "ngl":  ["honestly", "ok", "tbh", "fr", "real talk"],
+  "honestly": ["ngl", "fr", "ok", "tbh", "yo"],
+};
+
+function getOpenerWord(text) {
+  const m = text.match(/^([a-z]+)/i);
+  return m ? m[1].toLowerCase() : "";
+}
+
+function diversifyOpener(response) {
+  if (response.length < 10) return response; // too short to mess with
+  const opener = getOpenerWord(response);
+  if (!opener) return response;
+
+  // Check if this opener was used in the last 2 responses
+  const recent2 = recentOpeners.slice(-2);
+  if (!recent2.includes(opener)) {
+    recentOpeners.push(opener);
+    if (recentOpeners.length > 6) recentOpeners.shift();
+    return response;
+  }
+
+  // Opener is repeating — swap it
+  const alts = OPENER_SWAPS[opener];
+  if (!alts) {
+    recentOpeners.push(opener);
+    if (recentOpeners.length > 6) recentOpeners.shift();
+    return response;
+  }
+
+  // Pick an alt that wasn't recently used
+  const available = alts.filter(a => !recent2.includes(a.split(" ")[0]));
+  if (available.length === 0) {
+    recentOpeners.push(opener);
+    if (recentOpeners.length > 6) recentOpeners.shift();
+    return response;
+  }
+
+  const swap = available[Math.floor(Math.random() * available.length)];
+  // Replace just the opening word(s), preserving case pattern
+  const openerLen = opener.length;
+  const rest = response.slice(openerLen);
+  // If rest starts with space/comma/punctuation, swap cleanly
+  if (/^[\s,!?.]/.test(rest) || rest === "") {
+    const newOpener = response[0] === response[0].toUpperCase()
+      ? swap.charAt(0).toUpperCase() + swap.slice(1)
+      : swap;
+    const newResponse = newOpener + rest;
+    recentOpeners.push(getOpenerWord(newResponse));
+    if (recentOpeners.length > 6) recentOpeners.shift();
+    return newResponse;
+  }
+
+  recentOpeners.push(opener);
+  if (recentOpeners.length > 6) recentOpeners.shift();
+  return response;
+}
+
 function classifyResponseShape(response) {
   const len = response.length;
   const hasQ = response.includes("?");
@@ -22054,6 +22123,9 @@ export async function getAIResponse(input) {
     }
   }
 
+  // ═══ Round 215: Opener diversity — prevent "oh"/"hmm"/"ooh" repetition ═══
+  response = diversifyOpener(response);
+
   // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
   // (runs LAST — splits the fully-transformed text into multi-message segments)
   response = splitIntoMultiMessages(response, text, sent);
@@ -22096,7 +22168,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; _sessionGapMs = 0; _isVeryFirstSession = false; _sessionGapChecked = false; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; recentOpeners = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; _sessionGapMs = 0; _isVeryFirstSession = false; _sessionGapChecked = false; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);
