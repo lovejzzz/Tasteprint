@@ -204,6 +204,50 @@ function isDarkPalette(p) {
   return (r * 0.299 + g * 0.587 + b * 0.114) < 128;
 }
 
+/* ── Color math utilities for creative design ── */
+function _hexToHsl(hex) {
+  const h6 = hex.replace("#", "");
+  let r = parseInt(h6.slice(0, 2), 16) / 255;
+  let g = parseInt(h6.slice(2, 4), 16) / 255;
+  let b = parseInt(h6.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+}
+
+function _hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(100, s)); l = Math.max(0, Math.min(100, l));
+  const s1 = s / 100, l1 = l / 100;
+  const a = s1 * Math.min(l1, 1 - l1);
+  const f = n => { const k = (n + h / 30) % 12; return l1 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  const toHex = x => Math.round(x * 255).toString(16).padStart(2, "0");
+  return "#" + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+}
+
+// Derive creative colors from accent: complementary, analogous, triadic, split-complementary
+function _deriveColors(acHex) {
+  if (!acHex || acHex.length < 7) return { comp: acHex, analog1: acHex, analog2: acHex, triad1: acHex, triad2: acHex, split1: acHex, split2: acHex };
+  const [h, s, l] = _hexToHsl(acHex);
+  return {
+    comp: _hslToHex(h + 180, s, l),              // complementary
+    analog1: _hslToHex(h + 30, s, l),             // analogous warm
+    analog2: _hslToHex(h - 30, s, l),             // analogous cool
+    triad1: _hslToHex(h + 120, s, l),             // triadic 1
+    triad2: _hslToHex(h + 240, s, l),             // triadic 2
+    split1: _hslToHex(h + 150, s, l),             // split-complementary 1
+    split2: _hslToHex(h + 210, s, l),             // split-complementary 2
+    muted: _hslToHex(h, Math.max(10, s - 25), l), // desaturated variant
+    vivid: _hslToHex(h, Math.min(100, s + 20), l), // saturated variant
+  };
+}
+
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randRange = (min, max) => +(min + Math.random() * (max - min)).toFixed(2);
 
@@ -703,9 +747,12 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Nav components stay reasonable
   if (isNav) s.borderRadius = pick([0, 4, 8, 12]);
 
-  // --- Box shadow (DNA > harmony > mood) ---
+  // --- Derived color palette for creative gradients/shadows ---
   const acHex = palette.ac || "#888";
   const shHex = dark ? "#000" : palette.tx || "#333";
+  const dc = _deriveColors(acHex);
+
+  // --- Box shadow (DNA > harmony > mood) ---
   // DNA takes priority for cohesive canvas
   if (dna && Math.random() < 0.75) {
     const sf = dna.shadowFamily;
@@ -783,49 +830,53 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     // Harmony-adaptive fallback rate: match canvas gradient density
     const gradFallback = harmony ? (harmony.gradientRate > 0.6 ? 0.55 : harmony.gradientRate > 0.3 ? 0.30 : 0.12) : 0.25;
     // DNA gradient style: 70% fire rate for cohesive canvas, else harmony-adaptive
+    // Use derived colors for richer gradients (analogous, complementary, split-comp)
     if (dnaGrad && Math.random() < 0.70) {
       const gs = dna.gradientStyle;
       if (gs === "diagonal") {
         s.gradientOverlay = pick([
           `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
           `linear-gradient(160deg, ${ac2}0A 0%, ${acHex}06 100%)`,
-          `linear-gradient(120deg, ${acHex}06 0%, ${ac2}04 50%, transparent 100%)`,
+          `linear-gradient(120deg, ${dc.analog1}06 0%, ${dc.analog2}04 50%, transparent 100%)`,
+          `linear-gradient(145deg, ${acHex}08 0%, ${dc.muted}06 60%, transparent 100%)`,
         ]);
       } else if (gs === "radial") {
         s.gradientOverlay = pick([
           `radial-gradient(ellipse at top left, ${acHex}0A 0%, transparent 65%)`,
-          `radial-gradient(circle at 30% 20%, ${ac2}08 0%, transparent 50%)`,
-          `radial-gradient(ellipse at bottom right, ${acHex}06 0%, transparent 70%)`,
+          `radial-gradient(circle at 30% 20%, ${dc.analog1}08 0%, transparent 50%)`,
+          `radial-gradient(ellipse at bottom right, ${dc.split1}06 0%, transparent 70%)`,
         ]);
       } else if (gs === "conic") {
         s.gradientOverlay = pick([
-          `conic-gradient(from 180deg at 50% 50%, ${acHex}06, ${ac2}06, transparent)`,
-          `conic-gradient(from 45deg, ${acHex}04, transparent 30%, ${ac2}05, transparent)`,
+          `conic-gradient(from 180deg at 50% 50%, ${acHex}06, ${dc.analog2}06, transparent)`,
+          `conic-gradient(from 45deg, ${dc.analog1}05, transparent 30%, ${dc.comp}04, transparent)`,
         ]);
       }
     } else if (Math.random() < gradFallback) {
       if (moodId === "bold") {
         s.gradientOverlay = pick([
-          `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
-          `linear-gradient(to bottom, ${acHex}0A 0%, transparent 40%)`,
-          `linear-gradient(160deg, ${ac2}0C 0%, ${acHex}06 100%)`,
+          `linear-gradient(135deg, ${acHex}08 0%, ${dc.comp}06 60%, transparent 100%)`,
+          `linear-gradient(to bottom, ${dc.vivid}0A 0%, transparent 40%)`,
+          `linear-gradient(160deg, ${dc.triad1}0A 0%, ${acHex}06 100%)`,
+          `linear-gradient(200deg, ${acHex}0C 0%, ${dc.split2}08 50%, transparent 100%)`,
         ]);
       } else if (moodId === "elegant") {
         s.gradientOverlay = pick([
-          `linear-gradient(135deg, ${acHex}06 0%, transparent 70%)`,
-          `linear-gradient(to right, ${acHex}04 0%, ${ac2}04 100%)`,
-          `radial-gradient(ellipse at top left, ${acHex}08 0%, transparent 60%)`,
+          `linear-gradient(135deg, ${dc.muted}06 0%, transparent 70%)`,
+          `linear-gradient(to right, ${acHex}04 0%, ${dc.analog1}04 100%)`,
+          `radial-gradient(ellipse at top left, ${dc.analog2}06 0%, transparent 60%)`,
         ]);
       } else if (moodId === "playful") {
         s.gradientOverlay = pick([
-          `linear-gradient(135deg, ${acHex}0D 0%, ${ac2}0D 50%, transparent 100%)`,
-          `linear-gradient(45deg, ${ac2}0A 0%, ${acHex}0A 100%)`,
-          `conic-gradient(from 180deg, ${acHex}06, ${ac2}06, transparent)`,
+          `linear-gradient(135deg, ${dc.vivid}0D 0%, ${dc.triad1}0A 50%, transparent 100%)`,
+          `linear-gradient(45deg, ${dc.analog1}0C 0%, ${dc.analog2}0A 100%)`,
+          `conic-gradient(from 180deg, ${dc.triad1}08, ${dc.triad2}06, ${acHex}04, transparent)`,
+          `linear-gradient(90deg, ${dc.split1}0A 0%, transparent 30%, ${dc.split2}08 100%)`,
         ]);
       } else if (moodId !== "minimal") {
         s.gradientOverlay = pick([
           `linear-gradient(135deg, ${acHex}06 0%, transparent 50%)`,
-          `linear-gradient(to bottom right, ${ac2}05 0%, transparent 60%)`,
+          `linear-gradient(to bottom right, ${dc.analog1}05 0%, transparent 60%)`,
         ]);
       }
     }
@@ -952,9 +1003,9 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.3 && !s.border) {
         s.borderBottom = `4px solid ${acHex}50`;
       }
-      // Signature: double shadow (offset + glow) for dramatic depth
+      // Signature: double shadow (offset + glow) for dramatic depth — use derived color for richer glow
       if (Math.random() < 0.25 && s.boxShadow && s.boxShadow !== "none") {
-        s.boxShadow += `, 0 0 30px ${acHex}10`;
+        s.boxShadow += `, 0 0 30px ${pick([acHex, dc.vivid, dc.analog1])}10`;
       }
       // Bold always gets some visual weight — never "none" shadow
       if (s.boxShadow === "none") {
@@ -980,9 +1031,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.4) {
         s.letterSpacing = pick(["0.02em", "0.03em", "0.04em", "0.05em"]);
       }
-      // Elegant-only: gentle radial gradient shimmer
+      // Elegant-only: gentle radial gradient shimmer with analogous tones
       if (Math.random() < 0.25 && !s.gradientOverlay) {
-        s.gradientOverlay = `radial-gradient(ellipse at 30% 20%, ${acHex}05 0%, transparent 55%)`;
+        s.gradientOverlay = pick([
+          `radial-gradient(ellipse at 30% 20%, ${dc.muted}06 0%, transparent 55%)`,
+          `radial-gradient(ellipse at 70% 80%, ${dc.analog1}05 0%, transparent 50%)`,
+          `linear-gradient(160deg, ${dc.muted}04 0%, ${dc.analog2}03 100%)`,
+        ]);
       }
       // Elegant-only: scale down slightly — refined, precise
       if (Math.random() < 0.15) {
@@ -996,10 +1051,14 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
 
     if (moodId === "playful") {
-      // Signature: multicolor shadow (accent + accent2 offset shadows)
+      // Signature: multicolor shadow using derived colors for genuinely colorful depth
       const ac2 = palette.ac2 || palette.ac || "#888";
       if (Math.random() < 0.3 && !isSmall) {
-        s.boxShadow = `3px 3px 0 ${acHex}25, -2px -2px 0 ${ac2}20`;
+        s.boxShadow = pick([
+          `3px 3px 0 ${acHex}25, -2px -2px 0 ${dc.analog1}20`,
+          `4px 4px 0 ${dc.triad1}22, -3px -3px 0 ${dc.triad2}18`,
+          `3px 3px 0 ${dc.vivid}28, -2px -2px 0 ${dc.comp}15`,
+        ]);
       }
       // Signature: stronger rotation — playful tilts more
       if (s.rotate) {
@@ -1020,11 +1079,12 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.2) {
         s.scale = pick([1.03, 1.04, 1.05, 1.06]);
       }
-      // Playful-only: mixed gradient overlays with more color
+      // Playful-only: mixed gradient overlays with derived colors for real variety
       if (Math.random() < 0.2 && !s.gradientOverlay) {
         s.gradientOverlay = pick([
-          `linear-gradient(135deg, ${acHex}0E 0%, ${ac2}0E 50%, transparent 100%)`,
-          `conic-gradient(from ${pick([45, 90, 135, 180])}deg, ${acHex}08, ${ac2}08, transparent)`,
+          `linear-gradient(135deg, ${dc.triad1}0E 0%, ${dc.triad2}0A 50%, transparent 100%)`,
+          `conic-gradient(from ${pick([45, 90, 135, 180])}deg, ${dc.analog1}08, ${dc.analog2}08, transparent)`,
+          `linear-gradient(90deg, ${dc.vivid}0C 0%, ${dc.comp}08 100%)`,
         ]);
       }
     }
