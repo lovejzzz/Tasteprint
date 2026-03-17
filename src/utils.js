@@ -1457,6 +1457,62 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- Clip-path: shaped component edges beyond border-radius ---
+  // Angular cuts, beveled corners, notched edges — architectural shapes.
+  // Only on medium/large non-nav non-code. Low probability to keep special.
+  if (!isNav && !isCode && !isSmall) {
+    const clipChance = moodId === "bold" ? 0.16 : moodId === "playful" ? 0.12 : moodId === "elegant" ? 0.08 : moodId === "minimal" ? 0.05 : 0.10;
+    if (Math.random() < clipChance) {
+      // When using clip-path, border-radius becomes irrelevant (clip overrides it)
+      // and box-shadow gets clipped too, so we shift shadow to filter: drop-shadow
+      const bevel = pick([4, 6, 8, 10, 12]);
+      if (moodId === "bold") {
+        s.clipPath = pick([
+          // Angled cut corners — brutalist/geometric
+          `polygon(${bevel}px 0, calc(100% - ${bevel}px) 0, 100% ${bevel}px, 100% calc(100% - ${bevel}px), calc(100% - ${bevel}px) 100%, ${bevel}px 100%, 0 calc(100% - ${bevel}px), 0 ${bevel}px)`,
+          // Top-left chamfer only — asymmetric strength
+          `polygon(${bevel * 2}px 0, 100% 0, 100% 100%, 0 100%, 0 ${bevel * 2}px)`,
+          // Bottom-right notch — dynamic cut
+          `polygon(0 0, 100% 0, 100% calc(100% - ${bevel * 2}px), calc(100% - ${bevel * 2}px) 100%, 0 100%)`,
+        ]);
+      } else if (moodId === "playful") {
+        const notch = pick([8, 12, 16]);
+        s.clipPath = pick([
+          // Ticket/coupon notch — semicircle cuts on sides
+          `polygon(0 0, 100% 0, 100% calc(50% - ${notch}px), calc(100% - ${notch/2}px) 50%, 100% calc(50% + ${notch}px), 100% 100%, 0 100%, 0 calc(50% + ${notch}px), ${notch/2}px 50%, 0 calc(50% - ${notch}px))`,
+          // Diagonal slice bottom
+          `polygon(0 0, 100% 0, 100% calc(100% - ${notch}px), 0 100%)`,
+          // Flag/pennant edge
+          `polygon(0 0, calc(100% - ${notch}px) 0, 100% 50%, calc(100% - ${notch}px) 100%, 0 100%)`,
+        ]);
+      } else if (moodId === "elegant") {
+        const trim = pick([3, 4, 6]);
+        s.clipPath = pick([
+          // Subtle inward curve — refined edge
+          `inset(0 round ${trim * 3}px ${trim}px)`,
+          // Tiny corner chamfer — barely noticeable refinement
+          `polygon(${trim}px 0, calc(100% - ${trim}px) 0, 100% ${trim}px, 100% calc(100% - ${trim}px), calc(100% - ${trim}px) 100%, ${trim}px 100%, 0 calc(100% - ${trim}px), 0 ${trim}px)`,
+        ]);
+      } else if (moodId === "minimal") {
+        // Clean geometric inset — breathing room
+        s.clipPath = `inset(${pick([1, 2])}px round ${pick([4, 6, 8])}px)`;
+      } else {
+        // Auto: mix of everything
+        s.clipPath = pick([
+          `polygon(${bevel}px 0, calc(100% - ${bevel}px) 0, 100% ${bevel}px, 100% calc(100% - ${bevel}px), calc(100% - ${bevel}px) 100%, ${bevel}px 100%, 0 calc(100% - ${bevel}px), 0 ${bevel}px)`,
+          `polygon(${bevel * 2}px 0, 100% 0, 100% 100%, 0 100%, 0 ${bevel * 2}px)`,
+          `inset(0 round ${pick([6, 8, 12])}px ${pick([2, 4])}px)`,
+        ]);
+      }
+      // Convert box-shadow to drop-shadow filter since clip-path clips box-shadow
+      if (s.boxShadow && s.boxShadow !== "none") {
+        const dropShadow = `drop-shadow(0 ${pick([2, 4, 6])}px ${pick([6, 10, 14])}px ${shHex}15)`;
+        s.filter = s.filter ? s.filter + " " + dropShadow : dropShadow;
+        s.boxShadow = "none";
+      }
+    }
+  }
+
   /* ── MOOD SIGNATURE EFFECTS — unique treatments per mood ── */
   if (!isNav && !isCode) {
     if (moodId === "minimal") {
