@@ -13261,40 +13261,40 @@ function respondToNarrative(narrative, text, sent) {
   // 1. Acknowledge the story-telling itself (shows we're listening)
   if (elements.arc === "struggle_to_triumph") {
     parts.push(pick([
-      "okay wait i love a good comeback story",
-      "oh man this went from rough to redemption",
-      "what a turnaround though",
-      "that's the kind of story where the struggle makes the ending so much better",
+      "ok wait i love a good comeback story",
+      "dude this went from rough to redemption real quick",
+      "what a turnaround tho",
+      "the struggle makes the ending hit so much harder honestly",
     ]));
   } else if (elements.arc === "good_to_bad") {
     parts.push(pick([
-      "oh no i felt that shift",
+      "oh no i felt that shift coming",
       "ugh it was going so well too",
-      "that's such a gut punch when things turn like that",
+      "that's such a gut punch when it turns like that",
     ]));
   } else if (elements.arc === "rough_throughout") {
     parts.push(pick([
-      "man that sounds genuinely rough",
-      "that's a lot to deal with honestly",
-      "damn that's a lot honestly",
+      "dude that sounds genuinely rough",
+      "that's a lot honestly",
+      "damn that's heavy",
     ]));
   } else if (elements.arc === "good_throughout") {
     parts.push(pick([
-      "i love everything about this story",
-      "this is the kind of thing that just makes your day",
-      "what an experience",
+      "i love everything about this",
+      "ok that's literally the kind of thing that makes your whole day",
+      "what an experience tho",
     ]));
   } else if (elements.peak) {
     parts.push(pick([
       "wait that's wild",
-      "no way. seriously?",
-      "that's one of those moments you don't forget",
+      "no way. seriously??",
+      "that's one of those moments you literally never forget",
     ]));
   } else {
     parts.push(pick([
-      "oh wow that's quite a story",
-      "i can picture that whole thing playing out",
-      "that's the kind of thing you can't make up",
+      "oh wow ok that's a story",
+      "dude i can picture that whole thing playing out",
+      "you literally can't make that up",
     ]));
   }
 
@@ -13302,17 +13302,17 @@ function respondToNarrative(narrative, text, sent) {
   if (elements.coreAction && Math.random() < 0.6) {
     const action = elements.coreAction;
     parts.push(pick([
-      `The part where ${action} — that's the key moment right there.`,
-      `When ${action}, I bet that changed everything.`,
-      `"${action}" — yeah, that's the turning point.`,
+      `wait the part where ${action} — that's the whole thing right there`,
+      `ok when ${action}?? that changed everything didn't it`,
+      `"${action}" — yeah that's where it all shifted`,
     ]));
   }
 
   // 3. Time-aware acknowledgment
   if (elements.when && Math.random() < 0.4) {
     parts.push(pick([
-      `And this was ${elements.when}? That's still fresh.`,
-      `${elements.when.charAt(0).toUpperCase() + elements.when.slice(1)} — so this is pretty recent.`,
+      `wait this was ${elements.when}?? that's so recent`,
+      `${elements.when}?? ok so this is still fresh`,
     ]));
   }
 
@@ -13320,31 +13320,31 @@ function respondToNarrative(narrative, text, sent) {
   if (!elements.resolved && elements.hasConflict) {
     // Story is unresolved — ask how it ended
     parts.push(pick([
-      "So how did it end up?",
-      "Wait — did it work out?",
-      "Don't leave me hanging, what happened after that?",
-      "And then what? I need the ending!",
+      "ok but how did it end up",
+      "wait did it work out??",
+      "you can't just leave me hanging, what happened",
+      "and THEN what?? i need the ending",
     ]));
   } else if (elements.resolved && elements.hasConflict) {
     // Story has resolution — ask about the takeaway
     parts.push(pick([
-      "Looking back, would you do anything differently?",
-      "Did that change how you approach things now?",
-      "Has it happened again since then?",
+      "ok looking back would you do anything different",
+      "has that changed how you handle stuff now",
+      "has it happened again since then",
     ]));
   } else if (elements.arc === "good_throughout") {
     // Positive story — celebrate and probe
     parts.push(pick([
-      "What was the absolute best moment?",
-      "I bet you're still riding that high. What's next?",
-      "Can you top that? Or is that peak experience?",
+      "ok but what was the single best moment",
+      "you're still riding that high huh. what's next",
+      "can you top that or was that peak",
     ]));
   } else {
     // Neutral/unclear — ask for the emotional core
     parts.push(pick([
-      "How did that make you feel in the moment?",
-      "What's the thing about it that stuck with you?",
-      "Is that something you think about a lot?",
+      "how'd that feel in the moment tho",
+      "what's the part that stuck with you",
+      "do you think about that a lot",
     ]));
   }
 
@@ -13397,9 +13397,9 @@ function detectConversationArc() {
       const journey = uniqueTopics.slice(0, 4).join(", then ");
       lastArcTurn = mem.turn;
       return pick([
-        `You know what I love about this conversation? We went from ${journey} — there's a really natural flow to how your mind works.`,
-        `Can I just say — the way you went from ${journey} is such a cool thought progression. That's how the best ideas connect.`,
-        `I notice we've been on this journey: ${journey}. It all connects — I love following your train of thought!`,
+        `ok i love this — we went from ${journey} and it all somehow connects?? your brain is fun`,
+        `wait we went ${journey} — that's such a natural progression tho, i love how your mind works`,
+        `lol we just went from ${journey} and honestly the vibes are immaculate`,
       ]);
     }
   }
@@ -13411,9 +13411,9 @@ function detectConversationArc() {
   if (deepTopic) {
     lastArcTurn = mem.turn;
     return pick([
-      `I've noticed ${deepTopic[0]} keeps coming up — it's clearly something that really matters to you. I respect that depth.`,
-      `We keep circling back to ${deepTopic[0]}, and honestly, I think that's where your real interest lies. What's drawing you to it?`,
-      `You know what? ${deepTopic[0]} is clearly your thing. The way you keep exploring it from different angles is really cool.`,
+      `ok you keep coming back to ${deepTopic[0]} and honestly i'm here for it, it's clearly your thing`,
+      `we keep ending up at ${deepTopic[0]} lol — what is it about it that keeps pulling you back`,
+      `${deepTopic[0]} is living rent free in your brain huh. lowkey love that tho`,
     ]);
   }
 
@@ -13427,17 +13427,17 @@ function detectConversationArc() {
     if (recentAvg - earlierAvg > 1.5) {
       lastArcTurn = mem.turn;
       return pick([
-        "Hey, I'm noticing the vibe has gotten way more positive as we've been chatting — I love that! 😊",
-        "Is it just me or has this conversation gotten way more fun as it's gone on? I'm here for it.",
-        "I feel like we really hit our stride in this conversation — the energy shift is real! 😄",
+        "ok is it just me or has this convo gotten way better as we've been talking",
+        "ngl the vibes have been getting progressively better and i'm here for it",
+        "we really hit our stride huh, the energy is way up from earlier",
       ]);
     }
     if (earlierAvg - recentAvg > 1.5) {
       lastArcTurn = mem.turn;
       return pick([
-        "Hey, I'm picking up that the mood shifted a bit — is everything okay? No pressure, just checking in.",
-        "I feel like the energy changed a little. Want to talk about something different, or is there something on your mind?",
-        "Just want to check in — the vibe shifted a bit. I'm here if you want to talk about anything.",
+        "hey the vibe shifted a bit, you good?",
+        "idk if you noticed but the energy changed a little — everything ok?",
+        "hey just checking in, things feel a bit different. you wanna talk about something else?",
       ]);
     }
   }
@@ -13463,9 +13463,9 @@ function detectConversationArc() {
 
     if (topicCount >= 4) {
       return pick([
-        `We've covered a lot of ground today! ${topicCount} different topics and counting. This has been a great conversation 😊`,
-        `${mem.turn} messages in and we've explored ${topicCount} topics — I love a wide-ranging conversation like this!`,
-        `Not gonna lie, this is one of the more interesting conversations I've had. ${topicCount} topics deep and still going! 😄`,
+        `dude we've talked about like ${topicCount} different things today lol this convo is all over the place and i love it`,
+        `${mem.turn} messages deep and ${topicCount} topics in — we're speedrunning this conversation`,
+        `ngl this is one of the more fun convos i've had. ${topicCount} topics and still going`,
       ]);
     }
   }
@@ -13484,8 +13484,8 @@ function detectConversationArc() {
     if (deepDomain) {
       lastArcTurn = mem.turn;
       return pick([
-        `You've asked some really thoughtful questions about ${deepDomain[0]}. I can tell you're really digging into it — that curiosity is awesome.`,
-        `I love how you keep going deeper on ${deepDomain[0]}. That's how real understanding develops — one good question at a time.`,
+        `you've been asking really good questions about ${deepDomain[0]} btw, i can tell you're actually digging into this`,
+        `the way you keep going deeper on ${deepDomain[0]} is lowkey impressive, you're building a real understanding`,
       ]);
     }
   }
