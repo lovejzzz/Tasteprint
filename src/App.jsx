@@ -51,6 +51,7 @@ export default function App() {
   const lastReorder = useRef(0);
   const camRef = useRef(cam);
   camRef.current = cam;
+  const p = PAL[pal];
 
   /* ---- PERSIST ---- */
   useEffect(() => {
@@ -403,8 +404,6 @@ export default function App() {
       return { ...prev, [expCat]: arr };
     });
   }, [expCat]);
-
-  const p = PAL[pal];
   const zoomPct = Math.round(cam.z * 100);
 
   /* ---- tp API for Live IDE ---- */
