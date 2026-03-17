@@ -166,6 +166,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           borderLeft: ds.borderLeft || undefined,
           borderRight: ds.borderRight || undefined,
           textShadow: ds.textShadow || undefined,
+          WebkitTextStroke: ds.textStroke || undefined,
+          WebkitTextFillColor: ds.textFillColor || undefined,
           letterSpacing: ds.letterSpacing || undefined,
           wordSpacing: ds.wordSpacing || undefined,
           fontWeight: ds.fontWeight || undefined,

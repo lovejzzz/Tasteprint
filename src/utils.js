@@ -1361,6 +1361,49 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         }
       }
     }
+
+    // --- Text-stroke: outlined/hollow text effects ---
+    // Outlined text is a huge design trend — creates dramatic typographic contrast.
+    // Only on medium/large (headline-like) components, never nav/code/small.
+    if (sizeCat === "medium" || sizeCat === "large") {
+      const strokeChance = moodId === "bold" ? 0.22 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.04 : 0.12;
+      if (Math.random() < strokeChance) {
+        if (moodId === "bold") {
+          // Thick, punchy strokes — poster/brutalist aesthetic
+          const sw = pick([1, 1.5, 2]);
+          const sc = pick([gc1, acHex, dc.vivid]);
+          s.textStroke = `${sw}px ${sc}60`;
+          // Occasionally hollow text (stroke + transparent fill)
+          if (Math.random() < 0.3) {
+            s.textFillColor = "transparent";
+            s.textStroke = `${pick([1.5, 2, 2.5])}px ${pick([acHex, gc1])}90`;
+          }
+        } else if (moodId === "playful") {
+          // Colorful, fun strokes — neon outline feel
+          const sw = pick([0.8, 1, 1.5]);
+          s.textStroke = `${sw}px ${pick([dc.vivid, dc.analog1, gcGlow])}55`;
+          // Hollow with color pop
+          if (Math.random() < 0.25) {
+            s.textFillColor = "transparent";
+            s.textStroke = `${pick([1, 1.5])}px ${pick([dc.vivid, dc.analog1])}85`;
+          }
+        } else if (moodId === "elegant") {
+          // Hairline stroke — barely perceptible refinement
+          s.textStroke = `${pick([0.3, 0.5, 0.8])}px ${pick([gc1, dc.muted])}30`;
+        } else if (moodId === "minimal") {
+          // Ultra-thin functional stroke
+          s.textStroke = `0.5px ${gc1}20`;
+        } else {
+          // Auto: mix of approaches
+          const sw = pick([0.5, 0.8, 1, 1.5]);
+          s.textStroke = `${sw}px ${pick([gc1, acHex, dc.muted])}45`;
+          if (Math.random() < 0.15) {
+            s.textFillColor = "transparent";
+            s.textStroke = `${pick([1, 1.5])}px ${pick([acHex, gc1])}80`;
+          }
+        }
+      }
+    }
   }
 
   // --- Opacity depth layering: subtle transparency for visual hierarchy ---
