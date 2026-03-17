@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { getAIResponse } from "./chatAI";
+import { getTextureStyle } from "../utils";
 
 /* ── Emoji Picker ── */
 const EMOJI_CATS = [
@@ -11,12 +12,14 @@ const EMOJI_CATS = [
 
 function EmojiPicker({ onPick, p }) {
   const [cat, setCat] = useState(0);
+  const [hovEmoji, setHovEmoji] = useState(null);
   return (
     <div
       onMouseDown={e => e.stopPropagation()}
       style={{
         position: "absolute", bottom: 0, left: "100%", marginLeft: 6,
-        background: p.card, borderRadius: 12, border: `1px solid ${p.bd}`,
+        background: p.card + "EE", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        borderRadius: 12, border: `1px solid ${p.bd}`,
         boxShadow: `0 8px 24px ${p.tx}10`, padding: 8, width: 210,
         animation: "tp-tooltip-in .15s ease-out both", zIndex: 100,
       }}
@@ -25,18 +28,26 @@ function EmojiPicker({ onPick, p }) {
       <div style={{ display: "flex", gap: 2, marginBottom: 6, borderBottom: `1px solid ${p.bd}`, paddingBottom: 4 }}>
         {EMOJI_CATS.map((c, i) => (
           <button key={i} onClick={() => setCat(i)}
-            style={{ flex: 1, background: i === cat ? p.su : "transparent", border: "none", borderRadius: 6, padding: "3px 0", cursor: "pointer", fontSize: 13, transition: "background .15s" }}>
+            style={{
+              flex: 1, background: i === cat ? p.su : "transparent", border: "none",
+              borderRadius: 6, padding: "3px 0", cursor: "pointer", fontSize: 13,
+              transition: "background .15s ease", outline: "none",
+            }}>
             {c.label}
           </button>
         ))}
       </div>
       {/* Emoji grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2, maxHeight: 120, overflowY: "auto" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2, maxHeight: 120, overflowY: "auto", scrollbarWidth: "thin" }}>
         {EMOJI_CATS[cat].emojis.map((e, i) => (
           <button key={i} onClick={() => onPick(e)}
-            style={{ background: "transparent", border: "none", borderRadius: 6, padding: 4, cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "background .1s" }}
-            onMouseEnter={ev => ev.currentTarget.style.background = p.su}
-            onMouseLeave={ev => ev.currentTarget.style.background = "transparent"}>
+            onMouseEnter={ev => { setHovEmoji(i); ev.currentTarget.style.background = p.su; ev.currentTarget.style.transform = "scale(1.15)"; }}
+            onMouseLeave={ev => { setHovEmoji(null); ev.currentTarget.style.background = "transparent"; ev.currentTarget.style.transform = "scale(1)"; }}
+            style={{
+              background: "transparent", border: "none", borderRadius: 6, padding: 4,
+              cursor: "pointer", fontSize: 16, lineHeight: 1, outline: "none",
+              transition: "background .1s ease, transform .1s ease",
+            }}>
             {e}
           </button>
         ))}
@@ -90,7 +101,7 @@ function TypingDots({ color, variant, exiting }) {
 }
 
 /* ── Main ChatBubble component ── */
-export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fsize, b, onAc }) {
+export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fsize, b, onAc, texture }) {
   const [messages, setMessages] = useState([
     { from: "ai", text: "Hey! 👋 How can I help you today?", id: 0, ts: Date.now() - 2000 },
     { from: "me", text: "Hi! Just checking out this chat.", id: 1, ts: Date.now() - 1000 },
@@ -229,7 +240,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Bubble variant (v===0) — iMessage style ── */
   if (v === 0) return (
-    <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column" }}>
+    <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", ...getTextureStyle(texture, p) }}>
       {/* Header — draggable */}
       <div data-ide-drag style={{ padding: "8px 14px", borderBottom: `1px solid ${p.bd}`, display: "flex", alignItems: "center", gap: 8, cursor: "grab", borderRadius: "16px 16px 0 0" }}>
         <div style={{ width: 8, height: 8, borderRadius: 999, background: "#4CAF50", boxShadow: "0 0 6px #4CAF5060" }} />
@@ -328,7 +339,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Thread variant (v===1) — Slack/Discord style ── */
   if (v === 1) return (
-    <div style={{ ...b, display: "flex", flexDirection: "column", gap: 0 }}>
+    <div style={{ ...b, display: "flex", flexDirection: "column", gap: 0, ...getTextureStyle(texture, p) }}>
       {/* Drag handle */}
       <div data-ide-drag style={{ padding: "6px 8px", display: "flex", alignItems: "center", gap: 6, cursor: "grab", borderBottom: `1px solid ${p.bd}` }}>
         <div style={{ width: 6, height: 6, borderRadius: 999, background: "#4CAF50" }} />
@@ -422,7 +433,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Terminal variant (v===2) — CLI style ── */
   if (v === 2) return (
-    <div style={{ ...b, background: "#0c0c0e", borderRadius: 2, border: `1px solid ${p.ac}20`, display: "flex", flexDirection: "column", fontFamily: "'JetBrains Mono',monospace" }}>
+    <div style={{ ...b, background: "#0c0c0e", borderRadius: 2, border: `1px solid ${p.ac}20`, display: "flex", flexDirection: "column", fontFamily: "'JetBrains Mono',monospace", ...getTextureStyle(texture, p) }}>
       {/* Header — draggable */}
       <div data-ide-drag style={{ padding: "4px 10px", borderBottom: `1px solid ${p.ac}15`, display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
         <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
@@ -489,7 +500,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Glass variant (v===3) — frosted glassmorphism AI chat ── */
   if (v === 3) return (
-    <div style={{ ...b, background: `${p.card}55`, backdropFilter: "blur(20px) saturate(140%)", WebkitBackdropFilter: "blur(20px) saturate(140%)", borderRadius: 20, border: `1px solid ${p.ac}15`, display: "flex", flexDirection: "column", boxShadow: `0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}50`, position: "relative" }}>
+    <div style={{ ...b, background: `${p.card}55`, backdropFilter: "blur(20px) saturate(140%)", WebkitBackdropFilter: "blur(20px) saturate(140%)", borderRadius: 20, border: `1px solid ${p.ac}15`, display: "flex", flexDirection: "column", boxShadow: `0 8px 32px ${p.tx}08, inset 0 1px 0 ${p.card}50`, position: "relative", ...getTextureStyle(texture, p) }}>
       {/* Aurora orb */}
       <div style={{ position: "absolute", top: -40, right: -40, width: 100, height: 100, borderRadius: 999, background: `radial-gradient(circle, ${p.ac}18, ${p.ac2}10, transparent 70%)`, pointerEvents: "none", animation: "tp-pulse 5s ease infinite" }} />
       {/* Header */}
@@ -549,7 +560,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Gradient variant (v===4) — modern gradient AI assistant ── */
   if (v === 4) return (
-    <div style={{ ...b, background: p.card, borderRadius: 18, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", position: "relative" }}>
+    <div style={{ ...b, background: p.card, borderRadius: 18, border: `1px solid ${p.bd}`, display: "flex", flexDirection: "column", position: "relative", ...getTextureStyle(texture, p) }}>
       {/* Gradient header */}
       <div data-ide-drag style={{ padding: "10px 14px", background: `linear-gradient(135deg, ${p.ac}, ${p.ac2 || p.ac})`, borderRadius: "18px 18px 0 0", display: "flex", alignItems: "center", gap: 10, cursor: "grab", position: "relative" }}>
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.12), transparent 70%)`, pointerEvents: "none" }} />
@@ -616,7 +627,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
 
   /* ── Brutal variant (v===5) — thick borders, dot-grid, squared bubbles, offset shadow ── */
   if (v === 5) return (
-    <div style={{ ...b, background: p.card, borderRadius: 3, border: `2.5px solid ${p.tx}`, boxShadow: `4px 4px 0 ${p.ac}`, display: "flex", flexDirection: "column", position: "relative" }}>
+    <div style={{ ...b, background: p.card, borderRadius: 3, border: `2.5px solid ${p.tx}`, boxShadow: `4px 4px 0 ${p.ac}`, display: "flex", flexDirection: "column", position: "relative", ...getTextureStyle(texture, p) }}>
       <div data-ide-drag style={{ padding: "8px 14px", borderBottom: `2.5px solid ${p.tx}`, display: "flex", alignItems: "center", gap: 8, cursor: "grab", position: "relative", backgroundImage: `radial-gradient(${p.tx}12 1px, transparent 1px)`, backgroundSize: "10px 10px" }}>
         <div style={{ width: 24, height: 24, borderRadius: 2, border: `2px solid ${p.tx}`, background: p.ac, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ fontSize: 10, fontWeight: 900, color: onAc }}>AI</span>
@@ -665,7 +676,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   /* ── Gradient glow variant (v===6) — shimmer sweep, pulsing dots, dual glow ── */
   const ac2 = p.ac2 || p.ac;
   return (
-    <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.ac}18`, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", boxShadow: `0 4px 24px ${p.ac}12, 0 0 0 1px ${p.ac}08` }}>
+    <div style={{ ...b, background: p.card, borderRadius: 16, border: `1px solid ${p.ac}18`, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", boxShadow: `0 4px 24px ${p.ac}12, 0 0 0 1px ${p.ac}08`, ...getTextureStyle(texture, p) }}>
       <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${p.ac}06, transparent 40%, ${ac2}04)`, pointerEvents: "none" }} />
       <div data-ide-drag style={{ padding: "10px 14px", background: `linear-gradient(135deg, ${p.ac}12, ${ac2}08)`, borderBottom: `1px solid ${p.ac}15`, display: "flex", alignItems: "center", gap: 10, cursor: "grab", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: `linear-gradient(90deg, transparent, ${p.ac}08, transparent)`, animation: "tp-shimmer-slide 3s ease-in-out infinite", pointerEvents: "none" }} />
