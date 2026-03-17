@@ -2175,14 +2175,16 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         "holographic-edge", "recessed-inset", "neon-outline", "frosted-matte", "duotone-wash",
         // Round 46: compound wild cards — combine 3-4 CSS dimensions for dramatic cohesive looks
         "stained-glass", "film-grain", "vapor-wave", "brutalist-stack", "silk-matte",
+        // Round 61: novel compound effects
+        "aurora-glass", "cutout-shadow", "metallic-sheen",
       ];
       const MOOD_WEIGHTS = {
-        //                                                                                                    stain film vapor brut silk
-        auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9, 7, 5, 8, 6, 7,                              7, 6, 7, 6, 7],
-        bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12, 10, 8, 14, 3, 6,                        4, 3, 12, 14, 3],
-        playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4, 12, 4, 14, 3, 8,                         10, 4, 14, 3, 5],
-        elegant: [14, 4, 1, 8, 1, 2, 10, 3, 2, 3, 12, 8, 4, 14, 1, 6, 10, 3, 12, 10,                        8, 6, 1, 1, 14],
-        minimal: [4, 10, 1, 1, 10, 14, 6, 4, 8, 1, 3, 2, 4, 8, 1, 2, 6, 1, 10, 4,                           2, 4, 1, 1, 8],
+        //                                                                                                    stain film vapor brut silk  aur  cut  met
+        auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9, 7, 5, 8, 6, 7,                              7, 6, 7, 6, 7,             7, 5, 6],
+        bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12, 10, 8, 14, 3, 6,                        4, 3, 12, 14, 3,           4, 10, 10],
+        playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4, 12, 4, 14, 3, 8,                         10, 4, 14, 3, 5,           10, 8, 4],
+        elegant: [14, 4, 1, 8, 1, 2, 10, 3, 2, 3, 12, 8, 4, 14, 1, 6, 10, 3, 12, 10,                        8, 6, 1, 1, 14,            12, 2, 12],
+        minimal: [4, 10, 1, 1, 10, 14, 6, 4, 8, 1, 3, 2, 4, 8, 1, 2, 6, 1, 10, 4,                           2, 4, 1, 1, 8,             3, 1, 2],
       };
       const weights = MOOD_WEIGHTS[moodId] || MOOD_WEIGHTS.auto;
       const totalW = weights.reduce((a, b) => a + b, 0);
@@ -2409,6 +2411,60 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.textureOverlay = `repeating-linear-gradient(${pick([0, 90])}deg, ${smColor}03 0px, ${smColor}03 1px, transparent 1px, transparent ${pick([24, 32])}px)`;
         s.letterSpacing = pick(["0.02em", "0.03em"]);
         s.maskImage = `radial-gradient(ellipse 95% 90% at center, black 60%, transparent 100%)`;
+      }
+
+      // ── Round 61: Novel compound wild cards ──
+
+      else if (wildCard === "aurora-glass") {
+        // Frosted glass + prismatic edge glow + gradient shimmer — northern lights on glass
+        const aColor1 = pick([gc1, gcGlow, acHex]);
+        const aColor2 = pick([gc2, dc.analog1, dc.vivid]);
+        s.backdropFilter = `blur(${pick([10, 14, 18])}px) saturate(${randRange(0.85, 1.10).toFixed(2)})`;
+        s.gradientOverlay = `linear-gradient(${pick([120, 150, 200, 250])}deg, ${aColor1}0C 0%, transparent 30%, ${aColor2}08 60%, ${aColor1}06 100%)`;
+        s.backgroundSize = "400% 100%";
+        s.boxShadow = [
+          `${pick([3, 4])}px 0 ${pick([10, 14])}px ${aColor1}18`,
+          `-${pick([3, 4])}px 0 ${pick([10, 14])}px ${aColor2}14`,
+          `0 ${pick([2, 3])}px ${pick([8, 12])}px ${shHex}08`,
+          `inset 0 0 ${pick([12, 18])}px ${aColor1}06`,
+        ].join(", ");
+        s.border = `1px solid ${aColor1}15`;
+        s.borderRadius = pick([12, 16, 20, 24]);
+        s.filter = `brightness(${randRange(1.02, 1.06).toFixed(2)})`;
+      } else if (wildCard === "cutout-shadow") {
+        // Clip-path shape + dramatic offset shadow + paper texture — die-cut card
+        const cutColor = pick([gc1, gcGlow, dc.comp]);
+        const offset = pick([5, 6, 8]);
+        s.clipPath = pick([
+          `polygon(0 0, 100% 0, 100% calc(100% - ${pick([8, 12, 16])}px), calc(100% - ${pick([8, 12])}px) 100%, 0 100%)`,
+          `polygon(${pick([6, 8])}px 0, 100% 0, 100% 100%, 0 100%, 0 ${pick([6, 8])}px)`,
+          `polygon(0 0, calc(100% - ${pick([10, 14])}px) 0, 100% ${pick([10, 14])}px, 100% 100%, 0 100%)`,
+        ]);
+        // clip-path clips box-shadow, so use drop-shadow on filter instead
+        s.filter = `drop-shadow(${offset}px ${offset}px 0 ${cutColor}30) drop-shadow(${offset * 2}px ${offset * 2}px 0 ${cutColor}15)`;
+        s.boxShadow = "none";
+        s.textureOverlay = `radial-gradient(circle 1px at ${pick([4, 6])}px ${pick([4, 6])}px, ${shHex}06 1px, transparent 1px)`;
+        s.textureSize = `${pick([8, 10, 12])}px ${pick([8, 10, 12])}px`;
+        s.border = "none";
+        s.borderRadius = 0;
+        s.textTransform = "uppercase";
+        s.letterSpacing = pick(["0.03em", "0.05em"]);
+      } else if (wildCard === "metallic-sheen") {
+        // High contrast + reflective highlight band + micro-texture — brushed metal surface
+        const mtColor = pick([gc1, dc.muted, dc.analog1]);
+        const sheenAngle = pick([110, 130, 150, 170]);
+        s.filter = `contrast(${randRange(1.06, 1.12).toFixed(2)}) saturate(${randRange(0.80, 0.92).toFixed(2)}) brightness(${randRange(1.02, 1.06).toFixed(2)})`;
+        s.gradientOverlay = `linear-gradient(${sheenAngle}deg, transparent 20%, ${mtColor}08 40%, ${mtColor}14 50%, ${mtColor}08 60%, transparent 80%)`;
+        s.boxShadow = [
+          `0 2px 8px ${shHex}0A`,
+          `0 0 1px ${mtColor}18`,
+          `inset 0 1px 0 ${mtColor}12`,
+          `inset 0 -1px 0 ${shHex}08`,
+        ].join(", ");
+        s.border = `1px solid ${mtColor}15`;
+        s.borderRadius = pick([4, 6, 8, 12]);
+        s.textureOverlay = `repeating-linear-gradient(${sheenAngle}deg, ${mtColor}02 0px, ${mtColor}02 1px, transparent 1px, transparent ${pick([4, 6, 8])}px)`;
+        s.letterSpacing = pick(["0.02em", "0.03em", "0.04em"]);
       }
     }
   }
