@@ -274,15 +274,27 @@ function _analyzeHarmony(shapes) {
   const variantsByType = {};
   const fonts = [];
   const fsizes = [];
+  const radii = [];
+  const shadowTypes = []; // "none", "soft", "hard", "glow", "brutal"
   for (const s of shapes) {
     const t = s.type;
     if (!variantsByType[t]) variantsByType[t] = [];
     variantsByType[t].push(s.variant || 0);
     fonts.push(s.font || 0);
     fsizes.push(s.fsize || 1);
+    const ds = s.dStyles || {};
+    radii.push(ds.borderRadius ?? 14);
+    const sh = ds.boxShadow || "none";
+    if (sh === "none") shadowTypes.push("none");
+    else if (sh.includes("4px 4px")) shadowTypes.push("brutal");
+    else if (sh.includes("20px") || sh.includes("40px")) shadowTypes.push("dramatic");
+    else if (sh.includes("inset")) shadowTypes.push("inset");
+    else shadowTypes.push("soft");
   }
   const avgFsize = fsizes.length ? fsizes.reduce((a, b) => a + b, 0) / fsizes.length : 1;
-  return { variantsByType, fonts, fsizes, avgFsize };
+  const avgRadius = radii.length ? radii.reduce((a, b) => a + b, 0) / radii.length : 14;
+  const dominantShadow = shadowTypes.length ? _mode(shadowTypes) : "none";
+  return { variantsByType, fonts, fsizes, avgFsize, radii, avgRadius, shadowTypes, dominantShadow };
 }
 
 function _mode(arr) {
@@ -509,8 +521,8 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
     if (moodCfg && moodCfg.propTweak) moodCfg.propTweak(props);
   }
 
-  /* ── 5. Design style overrides — novel CSS treatments ── */
-  const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark);
+  /* ── 5. Design style overrides — novel CSS treatments (harmony-aware) ── */
+  const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony);
 
   return { variant, font, fsize, props, dStyles };
 }
@@ -532,16 +544,24 @@ const SHADOW_PRESETS = [
 
 const RADIUS_PRESETS = [0, 4, 8, 12, 16, 20, 24, 32, 999];
 
-function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark) {
+function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony) {
   const s = {};
   const isNav = sizeCat === "nav";
   const isCode = sizeCat === "code";
   const isSmall = sizeCat === "small";
   const moodId = mood || "auto";
 
-  // --- Border radius ---
-  // Each mood has a different radius personality
-  if (moodId === "minimal") {
+  // --- Border radius (harmony-aware) ---
+  // If canvas has an established radius feel, lean toward it 60% of the time
+  if (harmony && harmony.radii.length >= 2 && Math.random() < 0.6) {
+    const avg = harmony.avgRadius;
+    // Stay within ±8 of canvas average for cohesion
+    const lo = Math.max(0, Math.round(avg - 8));
+    const hi = Math.min(999, Math.round(avg + 8));
+    s.borderRadius = lo + Math.floor(Math.random() * (Math.min(hi, 32) - lo + 1));
+    // But if canvas avg is pill (>100), sometimes join it
+    if (avg > 100 && Math.random() < 0.4) s.borderRadius = 999;
+  } else if (moodId === "minimal") {
     s.borderRadius = pick([4, 6, 8, 10, 12]);
   } else if (moodId === "bold") {
     s.borderRadius = pick([0, 2, 4, 16, 20, 999]);
@@ -558,10 +578,17 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark) {
   // Nav components stay reasonable
   if (isNav) s.borderRadius = pick([0, 4, 8, 12]);
 
-  // --- Box shadow ---
+  // --- Box shadow (harmony-aware) ---
   const acHex = palette.ac || "#888";
   const shHex = dark ? "#000" : palette.tx || "#333";
-  if (moodId === "minimal") {
+  // Lean toward canvas dominant shadow style if one exists
+  if (harmony && harmony.shadowTypes.length >= 2 && Math.random() < 0.55) {
+    const dom = harmony.dominantShadow;
+    if (dom === "none") s.boxShadow = pick(["none", "none", SHADOW_PRESETS[1]]);
+    else if (dom === "brutal") s.boxShadow = pick([SHADOW_PRESETS[4], SHADOW_PRESETS[8]]);
+    else if (dom === "dramatic") s.boxShadow = pick([SHADOW_PRESETS[7], SHADOW_PRESETS[3]]);
+    else s.boxShadow = pick([SHADOW_PRESETS[1], SHADOW_PRESETS[2], SHADOW_PRESETS[10]]);
+  } else if (moodId === "minimal") {
     s.boxShadow = pick(["none", "none", SHADOW_PRESETS[1], SHADOW_PRESETS[2]]);
   } else if (moodId === "bold") {
     s.boxShadow = pick([SHADOW_PRESETS[4], SHADOW_PRESETS[7], SHADOW_PRESETS[8], SHADOW_PRESETS[3]]);
@@ -662,6 +689,27 @@ export function designScore(shape, palette, otherShapes = []) {
       const allSameVariant = sameType.every(s => (s.variant || 0) === variant);
       if (allSameVariant && sameType.length >= 2) score -= 0.3; // too monotonous
     }
+
+    // 5. dStyles harmony — radius cohesion and shadow consistency
+    const ds = shape.dStyles || {};
+    const myRadius = ds.borderRadius ?? 14;
+    const otherRadii = otherShapes.map(s => (s.dStyles || {}).borderRadius ?? 14);
+    const allRadii = [myRadius, ...otherRadii];
+    const radiusSpread = Math.max(...allRadii) - Math.min(...allRadii);
+    if (radiusSpread <= 12) score += 0.3;           // cohesive radius palette
+    else if (radiusSpread > 40) score -= 0.3;       // jarring mix (e.g., 0 + 999)
+
+    // Shadow style clash detection
+    const myShadow = ds.boxShadow || "none";
+    const myShadowType = myShadow === "none" ? "none" : myShadow.includes("4px 4px") ? "brutal" : myShadow.includes("20px") || myShadow.includes("40px") ? "dramatic" : "soft";
+    const otherShadowTypes = otherShapes.map(s => {
+      const sh = (s.dStyles || {}).boxShadow || "none";
+      return sh === "none" ? "none" : sh.includes("4px 4px") ? "brutal" : sh.includes("20px") || sh.includes("40px") ? "dramatic" : "soft";
+    });
+    const dominantShadow = otherShadowTypes.length ? _mode(otherShadowTypes) : "none";
+    if (myShadowType === dominantShadow) score += 0.2;             // matches canvas shadow vibe
+    else if ((myShadowType === "brutal" && dominantShadow === "soft") ||
+             (myShadowType === "soft" && dominantShadow === "brutal")) score -= 0.3; // brutal + soft = clash
   }
 
   return Math.max(1, Math.min(5, Math.round(score)));
