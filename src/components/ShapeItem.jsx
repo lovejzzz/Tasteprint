@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, delShape, setRsz, texture }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, delShape, setRsz, texture }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -38,7 +38,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
       style={{ position: "absolute", left: sx, top: sy, width: sw, zIndex: isDrg ? 100 : isSel ? 50 : 1 }}>
 
       {/* ── Top toolbar (variants, fonts, font size) ── */}
-      {isPrimary && !isDrg && (mx > 1 || HAS_TEXT.has(s.type)) && (
+      {isPrimary && !isDrg && (
         <div style={{
           position: "absolute", top: -44, left: "50%", transform: "translateX(-50%)",
           display: "flex", alignItems: "center", gap: 1, zIndex: 200,
@@ -77,6 +77,21 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFsize(s.id, 1); }}
               style={{ ...pb, fontSize: 13, fontWeight: 600 }}>A+</button>
           </>}
+          {sep}
+          <button aria-label="Randomize design"
+            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); randomize(s.id); }}
+            onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.12) rotate(15deg)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; }}
+            style={{ ...pb, fontSize: 13, transition: "background .15s ease, transform .2s cubic-bezier(.4,1,.6,1)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="3" />
+              <circle cx="8" cy="8" r="1.5" fill={p.ac} stroke="none" />
+              <circle cx="16" cy="8" r="1.5" fill={p.ac} stroke="none" />
+              <circle cx="8" cy="16" r="1.5" fill={p.ac} stroke="none" />
+              <circle cx="16" cy="16" r="1.5" fill={p.ac} stroke="none" />
+              <circle cx="12" cy="12" r="1.5" fill={p.ac} stroke="none" />
+            </svg>
+          </button>
         </div>
       )}
 
