@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onText, onProp, cycle, cycleFont, cycleFsize, delShape, setRsz, texture }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, delShape, setRsz, texture }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -31,7 +31,11 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
   const sep = <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px", flexShrink: 0 }} />;
 
   return (
-    <div style={{ position: "absolute", left: sx, top: sy, width: sw, zIndex: isDrg ? 100 : isSel ? 50 : 1 }}>
+    <div
+      data-shape="1"
+      onMouseDownCapture={() => onSelect(s)}
+      onTouchStartCapture={() => onSelect(s)}
+      style={{ position: "absolute", left: sx, top: sy, width: sw, zIndex: isDrg ? 100 : isSel ? 50 : 1 }}>
 
       {/* ── Top toolbar (variants, fonts, font size) ── */}
       {isPrimary && !isDrg && (mx > 1 || HAS_TEXT.has(s.type)) && (
@@ -108,7 +112,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           ...(device !== "free" ? { overflow: "hidden" } : {}),
           WebkitTapHighlightColor: "transparent", touchAction: "none",
         }}>
-        <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} fsize={s.fsize || 1} />
+        <C type={s.type} v={s.variant || 0} p={p} editable={isPrimary} texts={s.texts || {}} onText={(k, val) => onText(s.id, k, val)} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} font={s.font || 0} fsize={s.fsize || 1} texture={texture} />
 
         {/* ── Resize handle ── */}
         {isPrimary && (

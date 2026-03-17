@@ -219,6 +219,19 @@ export default function App() {
     return shapes.reduce((h, s) => h + s.h + (device === "desktop" ? 16 : 12), device === "desktop" ? 32 : 16) + (device === "desktop" ? 32 : 16);
   }, [shapes, device]);
 
+  /* Select only — no drag. Used by capture-phase handler so clicks inside
+     interactive components still set the shape as selected. */
+  const onSelect = useCallback((s) => {
+    flushDirtyText();
+    if (s.group) {
+      const members = shapes.filter(x => x.group === s.group);
+      setSelAll(new Set(members.map(x => x.id)));
+    } else {
+      setSelAll(new Set([s.id]));
+    }
+    setSel(s.id);
+  }, [flushDirtyText, shapes]);
+
   const onDown = useCallback((e, s) => {
     e.stopPropagation(); flushDirtyText();
     const cx = e.clientX ?? e.touches?.[0]?.clientX;
@@ -490,7 +503,7 @@ export default function App() {
             onTouchEnd={onUp}
             onMouseDown={e => {
               if (e.button === 1) { e.preventDefault(); setPan({ x: e.clientX, y: e.clientY }) }
-              if (e.button === 0 && (e.target === cRef.current || e.target.closest("[data-c]"))) { flushDirtyText(); setSel(null); setSelAll(new Set()); setSelFont(null) }
+              if (e.button === 0 && !e.target.closest("[data-shape]") && (e.target === cRef.current || e.target.closest("[data-c]"))) { flushDirtyText(); setSel(null); setSelAll(new Set()); setSelFont(null) }
             }}
             onContextMenu={e => e.preventDefault()}
             style={{ ...(device === "free" || mobile ? { flex: 1 } : device === "desktop" ? { width: 1280, flexShrink: 0 } : { width: 390, flexShrink: 0 }), height: !mobile && device === "phone" ? 844 : !mobile && device === "desktop" ? Math.max(720, (deviceH || 720)) : undefined, minHeight: !mobile && device === "desktop" ? 720 : undefined, position: "relative", overflow: "hidden", cursor: pan ? "grabbing" : "default", borderRadius: device !== "free" && !mobile ? 16 : 0, border: device !== "free" && !mobile ? `1px solid ${p.bd}` : "none", boxShadow: device !== "free" && !mobile ? `0 4px 24px ${p.tx}08` : "none", background: device !== "free" && !mobile ? p.bg : "transparent" }}>
@@ -508,7 +521,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} delShape={delShape} setRsz={setRsz} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} delShape={delShape} setRsz={setRsz} />
               ))}
             </div>
 
