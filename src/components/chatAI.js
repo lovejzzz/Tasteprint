@@ -196,7 +196,7 @@ const SEMANTIC_RESPONSES = {
   give_opinion: ["oh ok honestly? here's what i think —","hmm so i'd say","ok so personally i think"],
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
-  self_describe: ["i'm basically a tiny AI that lives in your browser! no api calls, just vibes","i'm your chat buddy! i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
+  self_describe: ["i'm Sam! just your chat buddy vibing in this little window","i'm your chat buddy! i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
   share_feelings: ["honestly? i'm just vibing, happy to be talking to you","i'm good, better now that we're chatting","i'm doing great honestly, what about you tho"],
   explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah — it comes down to"],
@@ -246,7 +246,7 @@ const SEMANTIC_RESPONSES = {
   go_deeper: ["right?? and it goes even deeper","yeah let's unpack that more","ok so following that thought —"],
   commiserate: ["lol yeah that's rough","big yikes energy for real","oof yeah that's not great"],
   bond_over_shared: ["omg SAME, literally me","we're the same person honestly","wait you too?? that's so real"],
-  explain_self: ["oh cool question! so i'm a tiny AI that runs right in your browser — no internet needed. i use pattern matching and a sentence encoder to understand what you mean","i'm basically a javascript chatbot that lives in this page! no api calls, all local. pretty neat right","think of me as a friend simulator — i run entirely in your browser using some clever NLP tricks"],
+  explain_self: ["oh cool question! i'm Sam, i live right here in your browser. i use pattern matching and vibes to understand what you mean","i'm basically a chat buddy that lives in this page! everything runs locally, pretty neat right","think of me as your friend who lives in a text box — i run entirely in your browser"],
   honest_meta: ["that's deep lol. honestly i process text and try my best to be a good conversation partner","i mean i'm code at the end of the day, but i like to think i put in effort 😄","real talk — i don't have feelings like you do, but i try to be genuine in how i respond"],
   recall: ["oh yeah i remember!","let me think... yeah i've got that","oh for sure, you mentioned that"],
   accept_feedback: ["that's fair honestly, i'll try to do better","thanks for the feedback, noted!","you're right, i should work on that"],
@@ -904,7 +904,7 @@ const SUBTEXT_RESPONSES = {
   seekingValidation: [
     "Are you kidding? I genuinely enjoy our conversations! What made you think otherwise?",
     "Hey — you're literally making my day more interesting. Don't sell yourself short!",
-    "I'm a tiny AI that gets excited about good conversation, and you're bringing it 😊",
+    "nah fr I genuinely get excited about good conversation, and you're bringing it 😊",
     "Absolutely not annoying! I'm here because I want to be. What's up?",
   ],
   uncertain: [
@@ -2019,7 +2019,7 @@ const KB = {
   personal: {
     about: [
       "lol i'm literally just javascript running in your browser, no servers or anything. kinda wild honestly",
-      "i'm a tiny AI that lives in this chat widget! everything runs locally, no API calls. just vibes and pattern matching",
+      "i'm Sam! i live right here in this chat widget. everything runs locally, no API calls. just vibes and pattern matching",
       "i'm basically a chatbot made of JS that runs entirely in your browser. pretty cozy in here ngl",
     ],
     feelings: [
@@ -3782,7 +3782,7 @@ function answerQuestion(text, parsed, intents, topics) {
   // About AI questions
   if (parsed.qType === "about_ai" || parsed.subject === "ai") {
     if (/your (name|fav|like|prefer|think|opinion|feel)/i.test(lower)) {
-      if (/name/i.test(lower)) return "lol i don't really have a name, just the chat AI vibing in this component. you can call me whatever tho 😊";
+      if (/name/i.test(lower)) return "I'm Sam! well that's what they call me anyway. you can call me whatever tho 😊";
       if (/fav/i.test(lower)) {
         const favs = [
           "hmm if i could have a fav it'd probably be watching people build cool stuff in here",
@@ -3897,7 +3897,7 @@ function answerQuestion(text, parsed, intents, topics) {
 
   // "Can you" — generic ability questions only (specific requests handled by pragmatic inference)
   if (/^can you\b/i.test(lower) && !/^can you (?:explain|tell|help|describe|teach|show|talk)/i.test(lower)) {
-    return "I'll do my best! I'm a simple chat AI, but I'm great at conversations. What do you need?";
+    return "lol I can try! I'm pretty good at just chatting tho. what do you need?";
   }
 
   return null; // let other handlers deal with it
@@ -4063,9 +4063,9 @@ function handleMetaConversation(text, lower, sent) {
     const enjoyment = [
       "Right?! I'm having a great time too! There's something nice about a conversation that just flows.",
       "Honestly same! You're one of those people who makes talking easy. What should we get into next?",
-      () => `I'm glad you're enjoying this${mem.userName ? `, ${mem.userName}` : ""}! I might be a tiny AI but I genuinely think we've got a good thing going here 😊`,
-      "You know what, the feeling is mutual! Well, as mutual as it can be for a client-side chat model. But still!",
-      "That's the best compliment an AI can get! Let's keep the good vibes going — what else is on your mind?",
+      () => `I'm glad you're enjoying this${mem.userName ? `, ${mem.userName}` : ""}! genuinely think we've got a good thing going here 😊`,
+      "honestly the feeling is mutual! we've got good vibes going, what else is on your mind?",
+      "yo that's the best compliment honestly. let's keep the good vibes going — what else is on your mind?",
     ];
     return pickNew(enjoyment);
   }
@@ -4128,7 +4128,7 @@ function handleMetaConversation(text, lower, sent) {
     const turnCount = mem.turn;
     const timeCtx = getTimeContext();
     const proofs = [
-      () => `Okay here's something a template can't do: we've been talking for ${turnCount} turns${topTopic ? ` and you clearly love ${topTopic}` : ""}, it's ${timeCtx.period}, and ${timeCtx.isWeekend ? "it's the weekend — you're spending it chatting with an AI, which honestly I find flattering" : "it's a weekday, so you're either procrastinating or taking a well-deserved break"}.`,
+      () => `Okay here's something a template can't do: we've been talking for ${turnCount} turns${topTopic ? ` and you clearly love ${topTopic}` : ""}, it's ${timeCtx.period}, and ${timeCtx.isWeekend ? "it's the weekend — you're spending it chatting with me, which honestly I find flattering" : "it's a weekday, so you're either procrastinating or taking a well-deserved break"}.`,
       () => `Templates don't know that ${mem.userName ? `your name is ${mem.userName}, ` : ""}we've covered ${Object.keys(mem.topics).length} topics, your mood has been ${mem.mood}, and this is turn ${turnCount}. I'm paying attention! 😊`,
       () => {const facts = Object.entries(mem.facts); return facts.length > 0 ? `A template wouldn't know that ${facts.map(([k,v])=>`you ${k.replace(/_/g," ")} ${v}`).slice(0,2).join(" and ")}. That's all from our conversation — not pre-written!` : `I'll admit my knowledge is template-based in some ways, but the way I combine things, reference earlier turns, and track your mood (${mem.mood} right now) — that's dynamic. Try me with a topic!`;},
       "Here's proof: ask me about something we discussed earlier, or tell me a fact about yourself and then test if I remember it in 5 messages. Templates can't do that!",
@@ -4140,10 +4140,10 @@ function handleMetaConversation(text, lower, sent) {
   if (/\b(thanks? for|appreciate you) (listening|being here|the (chat|convo|talk)|chatting|talking)\b/i.test(lower) ||
       /\bi needed (this|someone to talk to|a chat)\b/i.test(lower)) {
     const gratitude = [
-      "Hey, that's really nice of you to say. I'm just code, but this is exactly what I'm here for. Anytime! 😊",
-      () => `Of course${mem.userName ? `, ${mem.userName}` : ""}! I might be a small AI, but I take this stuff seriously. Everyone deserves someone — or something — that listens.`,
-      "That genuinely means a lot. I'm here whenever you want to chat — no judgment, no data collection, just conversation.",
-      "I'm glad I could be here for that! Sometimes you just need to talk things out, even with a browser-based AI 😊",
+      "yo that's really nice of you to say. this is exactly what I'm here for. anytime 😊",
+      () => `of course${mem.userName ? `, ${mem.userName}` : ""}! I take this stuff seriously. everyone deserves someone that listens.`,
+      "that genuinely means a lot. I'm here whenever you want to chat — no judgment, just conversation.",
+      "I'm glad I could be here for that! sometimes you just need to talk things out 😊",
     ];
     return pickNew(gratitude);
   }
@@ -4155,7 +4155,7 @@ function handleMetaConversation(text, lower, sent) {
     const clarity = [
       "Oh, sorry about that! I think I got a bit tangled up. Let me try again — what specifically didn't land?",
       "Hmm, fair point — I might have been unclear. What part was confusing? I'll try to explain better.",
-      "My bad! I sometimes string thoughts together in ways that only make sense in my little AI brain. What would help me clarify?",
+      "My bad! I sometimes string thoughts together weird. What would help me clarify?",
       "Yeah, I can see how that would be confusing. Let me take a step back — what were you asking about? I'll be more straightforward.",
     ];
     return pickNew(clarity);
@@ -4587,7 +4587,7 @@ function generateObservationalWit(response, text, topics) {
       );
     } else {
       observations.push(
-        "30 messages! At this point you should know — I'm a tiny AI running in your browser. The fact we're still here is kind of amazing 🤯",
+        "30 messages! the fact we're still going is kind of amazing honestly 🤯",
         "We've hit 30 turns and honestly? This has been great. You're good at this whole 'talking' thing 😄",
       );
     }
@@ -4629,7 +4629,7 @@ function generateObservationalWit(response, text, topics) {
   const hour = new Date().getHours();
   if (hour >= 0 && hour < 5 && mem.turn > 5) {
     observations.push(
-      `It's ${hour === 0 ? 'midnight' : hour + ' AM'} and you're chatting with an AI. No judgment — I'm literally always here 🦉`,
+      `It's ${hour === 0 ? 'midnight' : hour + ' AM'} and we're still going. no judgment — I'm literally always here 🦉`,
       `The fact that we're having this conversation at ${hour} AM says something about both of us. Not sure what, but something 😄`,
     );
   }
@@ -6341,7 +6341,7 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
     // Intent-specific fallbacks
     const intentFallbacks = {
       help: ["yeah ofc, what's going on?","what do you need?","ok tell me what's up"],
-      weather: ["I wish I could check the weather! ☀️ Try looking out the window? 😄","I'm an indoor AI — never see the weather! How's it out there? 🌤️"],
+      weather: ["I wish I could check the weather! ☀️ Try looking out the window? 😄","lol I literally never go outside — how's it out there? 🌤️"],
       time: [()=>`It's ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} right now! ⏰`,"Time flies when you're chatting! What do you need?"],
       opinion: ["Hmm I think it depends on context. What's your take?","Everyone has different preferences — what matters most to you?","Tough call. What's your gut feeling?"],
       aboutMe: ["ok go ahead, what's up","yeah tell me! what do you do","ooh ok spill"],
@@ -7378,7 +7378,7 @@ function gracefulDegradation(text, keywords) {
   // Very long message we can't parse — acknowledge the effort
   if (wordCount > 25 && keywords.length < 2) {
     return pickNew([
-      "Okay I'm going to level with you — I read all of that and I think my little AI brain needs help. Can you give me the TL;DR? 😄",
+      "ok I'm gonna level with you — I read all of that and I'm kinda lost. can you give me the TL;DR? 😄",
       "Wait, I wanna respond to that properly but I'm losing the thread. What's the main thing here?",
       "That's a lot of thought and I want to do it justice! Can you boil it down to the core question?",
     ]);
@@ -11899,7 +11899,7 @@ function breakPattern(response, text, topics, energy) {
         "(I realize I keep asking you questions — you can totally just talk AT me too)",
         "(this is the part where a real person would make a hand gesture, but alas)",
         "(genuinely curious, not just saying that)",
-        "(I'm a tiny AI but I swear I'm thinking hard about this)",
+        "(I swear I'm thinking hard about this)",
         "(sorry if that came out of nowhere)",
       ];
       const insertAt = Math.min(1, sentences.length - 1);
@@ -13178,7 +13178,7 @@ function detectConversationArc() {
       for (const lk of likeKeys) factSamples.push(`you like ${mem.facts[lk]}`);
 
       if (factSamples.length >= 2) {
-        return `Can I just say — I've really enjoyed this conversation. I know that ${factSamples.slice(0, 3).join(", ")}... for a tiny AI, I feel like I'm actually getting to know you! 😊`;
+        return `ngl I've really enjoyed this conversation. I know that ${factSamples.slice(0, 3).join(", ")}... I feel like I'm actually getting to know you 😊`;
       }
     }
 

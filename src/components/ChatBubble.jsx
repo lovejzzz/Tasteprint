@@ -420,7 +420,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: p.tx }}>
-                {m.from === "me" ? "You" : "Chat AI"}
+                {m.from === "me" ? "You" : "Sam"}
               </span>
               <span style={{ fontSize: 9, color: p.mu, marginLeft: 6, opacity: 0.5 }}>now</span>
               <div style={{ marginTop: 1 }}>
@@ -491,7 +491,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       {/* Header — draggable */}
       <div data-ide-drag style={{ padding: "4px 10px", borderBottom: `1px solid ${p.ac}15`, display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
         <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
-        <span style={{ fontSize: 9, color: p.ac, opacity: 0.6, letterSpacing: "0.06em" }}>CHAT_AI v1.0</span>
+        <span style={{ fontSize: 9, color: p.ac, opacity: 0.6, letterSpacing: "0.06em" }}>CHAT v1.0</span>
       </div>
 
       {/* Messages */}
@@ -505,7 +505,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             }}
           >
             <span style={{ fontSize: 9, color: m.from === "me" ? p.ac : "#666", opacity: 0.6, flexShrink: 0 }}>
-              {m.from === "me" ? "YOU>" : "AI >"}
+              {m.from === "me" ? "YOU>" : "SAM>"}
             </span>
             <EditableMsg
               text={m.text}
@@ -516,7 +516,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
         ))}
         {typing && (
           <div style={{ display: "flex", gap: 8, animation: typingExit ? "tp-typing-exit .25s ease-in forwards" : "tp-typing-enter .3s cubic-bezier(.22,1,.36,1) both" }}>
-            <span style={{ fontSize: 9, color: "#666", opacity: 0.6 }}>AI &gt;</span>
+            <span style={{ fontSize: 9, color: "#666", opacity: 0.6 }}>SAM&gt;</span>
             <TypingDots color={p.ac} variant="terminal" exiting={typingExit} />
           </div>
         )}
@@ -563,7 +563,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: p.tx }}>Chat AI</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: p.tx }}>Sam</span>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <div style={{ width: 5, height: 5, borderRadius: 999, background: "#4CAF50", boxShadow: "0 0 6px #4CAF5060", animation: "tp-pulse 2s ease infinite" }} />
             <span style={{ fontSize: 8, color: p.mu }}>Online</span>
@@ -622,7 +622,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
         </div>
         <div style={{ flex: 1, position: "relative" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: onAc, letterSpacing: "-0.01em" }}>AI Assistant</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: onAc, letterSpacing: "-0.01em" }}>Sam</span>
           <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 1 }}>
             <div style={{ width: 5, height: 5, borderRadius: 999, background: onAc, opacity: 0.7, animation: "tp-pulse 2s ease infinite" }} />
             <span style={{ fontSize: 8, color: onAc, opacity: 0.6 }}>Ready</span>
@@ -684,7 +684,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     <div style={{ ...b, background: p.card, borderRadius: 3, border: `2.5px solid ${p.tx}`, boxShadow: `4px 4px 0 ${p.ac}`, display: "flex", flexDirection: "column", position: "relative", ...getTextureStyle(texture, p) }}>
       <div data-ide-drag style={{ padding: "8px 14px", borderBottom: `2.5px solid ${p.tx}`, display: "flex", alignItems: "center", gap: 8, cursor: "grab", position: "relative", backgroundImage: `radial-gradient(${p.tx}12 1px, transparent 1px)`, backgroundSize: "10px 10px" }}>
         <div style={{ width: 24, height: 24, borderRadius: 2, border: `2px solid ${p.tx}`, background: p.ac, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 10, fontWeight: 900, color: onAc }}>AI</span>
+          <span style={{ fontSize: 10, fontWeight: 900, color: onAc }}>S</span>
         </div>
         <span style={{ fontSize: 11, fontWeight: 900, color: p.tx, letterSpacing: "0.08em", textTransform: "uppercase", flex: 1 }}>CHATBOT</span>
         <div style={{ padding: "1px 6px", background: p.tx, borderRadius: 1 }}>
@@ -738,7 +738,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           <div style={{ width: 6, height: 6, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease-in-out infinite" }} />
         </div>
         <div style={{ flex: 1, position: "relative" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: p.tx }}>AI Assistant</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: p.tx }}>Sam</span>
           <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 1 }}>
             <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, boxShadow: `0 0 6px ${p.ac}50`, animation: "tp-pulse 2s ease infinite" }} />
             <span style={{ fontSize: 8, color: p.ac, opacity: 0.7 }}>Online</span>
