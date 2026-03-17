@@ -1012,6 +1012,12 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- Complexity budget (Round 86): cap total active effects per mood to prevent visual noise ---
+  // Early effects (gradients, shadows) get priority; later decorative effects only apply if budget remains.
+  const _budgetMap = { minimal: 2, elegant: 3, auto: 4, bold: 5, playful: 5 };
+  const _maxEffects = _budgetMap[moodId] || 4;
+  let _effectCount = 0;
+
   // --- Border radius (DNA > harmony > mood) ---
   // DNA takes priority for cohesive canvas-wide randomization
   if (dna && Math.random() < 0.8) {
@@ -1168,7 +1174,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Creative multi-layer shadow stacking: combine base shadow with accent/glow layers
   // Creates hand-designed feel: elevation + color accent + ambient glow
   // Two tiers: standard stacking (~20%) adds 1 layer, deep composition (~10%) adds 3-5 layers
-  if (s.boxShadow && s.boxShadow !== "none" && !isSmall) {
+  if (_effectCount < _maxEffects && s.boxShadow && s.boxShadow !== "none" && !isSmall) {
     const stackRoll = Math.random();
     const stackLayers = [];
 
@@ -1268,6 +1274,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
     if (stackLayers.length > 0) {
       s.boxShadow = s.boxShadow + ", " + stackLayers.join(", ");
+      _effectCount++;
     }
   }
 
@@ -1403,9 +1410,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
   // --- Backdrop effects (glass variants + mood-driven for non-glass) ---
   const tags = getVariantTags(type, (VARIANTS[type] || []).length || 1);
-  if (variant === tags.glass && Math.random() < 0.6) {
+  if (_effectCount < _maxEffects && variant === tags.glass && Math.random() < 0.6) {
     s.backdropFilter = `blur(${pick([8, 12, 16, 20])}px)`;
-  } else if (!isNav && !isCode && !isSmall) {
+    _effectCount++;
+  } else if (_effectCount < _maxEffects && !isNav && !isCode && !isSmall) {
     // Advanced material system — distinct surface feels beyond simple blur
     const matRoll = Math.random();
 
@@ -1474,10 +1482,11 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         `blur(${pick([6, 10])}px) saturate(0.85) brightness(1.05)`,
       ]);
     }
+    if (s.backdropFilter) _effectCount++;
   }
 
   // --- Gradient overlay (DNA-driven or harmony-adaptive chance, skip nav/code/small) ---
-  if (!isNav && !isCode && !isSmall) {
+  if (_effectCount < _maxEffects && !isNav && !isCode && !isSmall) {
     const ac2 = palette.ac2 || palette.ac || "#888";
     const dnaGrad = dna && dna.gradientStyle !== "none";
     // Harmony-adaptive fallback rate: match canvas gradient density
@@ -1588,6 +1597,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         }
       }
     }
+    if (s.gradientOverlay) _effectCount++;
   }
 
   // --- Border treatment (DNA-driven or harmony-adaptive chance, skip nav/code) ---
@@ -1651,7 +1661,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Goes beyond simple borders — double borders, dashed art, asymmetric accents,
   // double-line style, and outline glow effects.
   // Only fires when no border/outline already set, to avoid conflicts.
-  if (!isNav && !isCode && !s.border && !s.outline && !s.borderLeft && !s.borderBottom && !s.borderTop && !s.borderRight) {
+  if (_effectCount < _maxEffects && !isNav && !isCode && !s.border && !s.outline && !s.borderLeft && !s.borderBottom && !s.borderTop && !s.borderRight) {
     const borderArtChance = moodId === "bold" ? 0.20 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.12 : moodId === "minimal" ? 0.08 : 0.15;
     if (Math.random() < borderArtChance) {
       const artStyle = Math.random();
@@ -1756,20 +1766,24 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           s.outlineOffset = `${pick([4, 5, 6])}px`;
         }
       }
+      _effectCount++;
     }
   }
 
   // --- Accent hue shift (DNA > harmony direction > random) ---
-  if (dna && dna.hueDirection && !isCode) {
+  if (_effectCount < _maxEffects && dna && dna.hueDirection && !isCode) {
     // DNA: all components shift in the same direction with slight variation
     s.hueRotate = dna.hueDirection + pick([-5, -3, 0, 0, 3, 5]);
-  } else if (!isCode && harmony && harmony.avgHueShift !== 0 && Math.random() < 0.55) {
+    _effectCount++;
+  } else if (_effectCount < _maxEffects && !isCode && harmony && harmony.avgHueShift !== 0 && Math.random() < 0.55) {
     // Harmony: bias toward canvas hue direction with variation
     const base = harmony.avgHueShift;
     s.hueRotate = base + pick([-8, -4, 0, 4, 8]);
-  } else if (!isCode && Math.random() < 0.15) {
+    _effectCount++;
+  } else if (_effectCount < _maxEffects && !isCode && Math.random() < 0.15) {
     const shift = pick([-20, -15, -10, 10, 15, 20, 30, -30]);
     s.hueRotate = shift;
+    _effectCount++;
   }
 
   // --- Scale personality (10% chance, subtle) ---
@@ -2097,7 +2111,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Creative clip-path shapes that make designs feel truly unique and editorial.
   // Skip small components (width < 120 or height < 80) and minimal mood entirely.
   // Mood-aware trigger rates: bold 15%, playful 12%, elegant 6%, minimal 0%, auto 8%.
-  if (!isNav && !isCode && !isSmall && moodId !== "minimal" && !(shapeW > 0 && shapeW < 120) && !(shapeH > 0 && shapeH < 80)) {
+  if (_effectCount < _maxEffects && !isNav && !isCode && !isSmall && moodId !== "minimal" && !(shapeW > 0 && shapeW < 120) && !(shapeH > 0 && shapeH < 80)) {
     const dnaClipBoost = dna?.effectPersonality?.clipStyle && dna.effectPersonality.clipStyle !== "none" ? 0.05 : 0;
     const clipChance = (moodId === "bold" ? 0.15 : moodId === "playful" ? 0.12 : moodId === "elegant" ? 0.06 : 0.08) + dnaClipBoost;
     if (Math.random() < clipChance) {
@@ -2196,6 +2210,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.filter = s.filter ? s.filter + " " + dropShadow : dropShadow;
         s.boxShadow = "none";
       }
+      _effectCount++;
     }
   }
 
@@ -2433,7 +2448,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     // --- Surface texture patterns: repeating gradient patterns for visual surface texture ---
     // These create subtle visual interest — pinstripes, dot grids, crosshatch, etc.
     const ac2 = palette.ac2 || palette.ac || "#888";
-    if (!isSmall) {
+    if (_effectCount < _maxEffects && !isSmall) {
       const dnaTexBoost = dna?.effectPersonality?.surfaceTexture && dna.effectPersonality.surfaceTexture !== "none" ? 0.12 : 0;
       const texChance = (moodId === "bold" ? 0.20 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.15 : moodId === "minimal" ? 0.05 : 0.12) + dnaTexBoost;
       if (Math.random() < texChance) {
@@ -2484,6 +2499,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
             s.textureOverlay = `repeating-linear-gradient(${pick([45, -45, 0, 90])}deg, ${texColor}06 0px, ${texColor}06 1px, transparent 1px, transparent ${pick([12, 16, 20])}px)`;
           }
         }
+        _effectCount++;
       }
     }
 
@@ -3958,7 +3974,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // ── Duotone & color overlay compositions ──
   // Mood-aware colored overlay effects using mix-blend-mode compositions.
   // Creates duotone / color wash / light leak aesthetics.
-  if (!isSmall && !isNav && !isCode) {
+  if (_effectCount < _maxEffects && !isSmall && !isNav && !isCode) {
     const dtRoll = Math.random();
     const dtThresh = moodId === "bold" ? 0.20
       : moodId === "playful" ? 0.18
@@ -4007,10 +4023,11 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       s.gradientOverlay4 = `radial-gradient(circle at ${pick(["30% 30%", "70% 30%", "50% 50%", "70% 70%"])}, ${dodgeColor}18, transparent 70%)`;
       s.mixBlendMode4 = "color-dodge";
     }
+    if (s.gradientOverlay4) _effectCount++;
   }
 
   /* ── Round 71: conic gradient pattern backgrounds ── */
-  if (!isSmall && !isNav && !isCode && !s.gradientOverlay3) {
+  if (_effectCount < _maxEffects && !isSmall && !isNav && !isCode && !s.gradientOverlay3) {
     const conicRoll = Math.random();
     const conicThresh = moodId === "bold" ? 0.12
       : moodId === "playful" ? 0.15
@@ -4058,6 +4075,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           s.gradientOverlay3 = `conic-gradient(from 0deg at 50% 50%, ${gc1}08, ${gc2}08, ${gc1}08)`;
         }
       }
+      if (s.gradientOverlay3) _effectCount++;
     }
   }
 
@@ -4346,6 +4364,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  s._effectCount = _effectCount;
   return s;
 }
 
