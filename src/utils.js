@@ -604,7 +604,12 @@ export function generateDesignDNA(palette, mood) {
     ]);
   }
 
-  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm };
+  // Gradient direction: canvas-wide angle so all gradients flow cohesively
+  const gradientAngle = gradientStyle !== "none" ? pick([120, 135, 145, 160, 180, 200, 225]) : 135;
+  // Radial gradient origin for canvas cohesion
+  const gradientOrigin = gradientStyle === "radial" ? pick(["top left", "30% 20%", "70% 30%", "bottom right", "50% 20%"]) : "top left";
+
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm, gradientAngle, gradientOrigin };
 }
 
 /**
@@ -942,13 +947,38 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.filter = `brightness(${randRange(1.02, 1.08).toFixed(2)})`;
   }
 
-  // --- Outline ring decoration ---
-  if (Math.random() < 0.12 && !isNav && !isCode) {
-    const offset = pick([2, 3, 4, 6]);
-    const width = pick([1, 1.5, 2]);
-    const opacity = pick(["18", "22", "30"]);
-    s.outline = `${width}px solid ${acHex}${opacity}`;
-    s.outlineOffset = `${offset}px`;
+  // --- Outline decoration (mood-driven variety) ---
+  if (!isNav && !isCode) {
+    const outlineChance = moodId === "bold" ? 0.18 : moodId === "playful" ? 0.16 : moodId === "elegant" ? 0.10 : 0.12;
+    if (Math.random() < outlineChance) {
+      const offset = pick([2, 3, 4, 6]);
+      if (moodId === "bold") {
+        // Bold: thick accent outlines, sometimes dashed
+        s.outline = pick([
+          `${pick([2, 2.5, 3])}px solid ${pick([acHex, gc1, gcGlow])}${pick(["25", "30", "40"])}`,
+          `${pick([2, 3])}px dashed ${acHex}${pick(["20", "28"])}`,
+        ]);
+        s.outlineOffset = `${pick([3, 4, 5, 6])}px`;
+      } else if (moodId === "playful") {
+        // Playful: colorful double-ring or dotted outlines
+        s.outline = pick([
+          `${pick([1.5, 2])}px dotted ${pick([gc1, gc2, gcGlow])}${pick(["22", "30"])}`,
+          `${pick([2, 2.5])}px dashed ${pick([gc1, gcGlow])}${pick(["25", "35"])}`,
+          `${pick([1.5, 2])}px solid ${gc1}28`,
+        ]);
+        s.outlineOffset = `${pick([3, 4, 5, 7])}px`;
+      } else if (moodId === "elegant") {
+        // Elegant: thin delicate rings with muted colors
+        s.outline = `${pick([0.5, 1, 1])}px solid ${dc.muted}${pick(["12", "15", "18"])}`;
+        s.outlineOffset = `${pick([4, 5, 6, 8])}px`;
+      } else {
+        // Auto/minimal: standard solid rings
+        const width = pick([1, 1.5, 2]);
+        const opacity = pick(["18", "22", "30"]);
+        s.outline = `${width}px solid ${acHex}${opacity}`;
+        s.outlineOffset = `${offset}px`;
+      }
+    }
   }
 
   // --- Backdrop effects (glass variants + mood-driven for non-glass) ---
@@ -984,24 +1014,29 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       const gs = dna.gradientStyle;
       // Use DNA color scheme (gc1/gc2) for canvas-wide gradient coherence
       if (gs === "diagonal") {
+        // Use DNA gradient angle for canvas-wide direction cohesion
+        const a = dna.gradientAngle || 135;
+        const a2 = (a + pick([-15, -10, 0, 10, 15])) % 360; // slight per-component variation
         s.gradientOverlay = pick([
-          `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
-          `linear-gradient(160deg, ${gc1}0A 0%, ${acHex}06 100%)`,
-          `linear-gradient(120deg, ${gc1}06 0%, ${gc2}04 50%, transparent 100%)`,
-          `linear-gradient(145deg, ${acHex}08 0%, ${gc2}06 60%, transparent 100%)`,
+          `linear-gradient(${a}deg, ${acHex}08 0%, transparent 60%)`,
+          `linear-gradient(${a2}deg, ${gc1}0A 0%, ${acHex}06 100%)`,
+          `linear-gradient(${a}deg, ${gc1}06 0%, ${gc2}04 50%, transparent 100%)`,
+          `linear-gradient(${a2}deg, ${acHex}08 0%, ${gc2}06 60%, transparent 100%)`,
           // Multi-stop: 3-4 color transitions for richer depth
-          `linear-gradient(135deg, ${gc1}0A 0%, ${acHex}06 35%, ${gc2}04 70%, transparent 100%)`,
-          `linear-gradient(160deg, ${gcGlow}08 0%, ${gc1}06 25%, transparent 50%, ${gc2}04 100%)`,
-          `linear-gradient(120deg, ${acHex}06 0%, transparent 20%, ${gc1}05 60%, ${gc2}04 100%)`,
+          `linear-gradient(${a}deg, ${gc1}0A 0%, ${acHex}06 35%, ${gc2}04 70%, transparent 100%)`,
+          `linear-gradient(${a2}deg, ${gcGlow}08 0%, ${gc1}06 25%, transparent 50%, ${gc2}04 100%)`,
+          `linear-gradient(${a}deg, ${acHex}06 0%, transparent 20%, ${gc1}05 60%, ${gc2}04 100%)`,
         ]);
       } else if (gs === "radial") {
+        // Use DNA gradient origin for canvas-wide radial cohesion
+        const o = dna.gradientOrigin || "top left";
         s.gradientOverlay = pick([
-          `radial-gradient(ellipse at top left, ${acHex}0A 0%, transparent 65%)`,
-          `radial-gradient(circle at 30% 20%, ${gc1}08 0%, transparent 50%)`,
-          `radial-gradient(ellipse at bottom right, ${gc2}06 0%, transparent 70%)`,
+          `radial-gradient(ellipse at ${o}, ${acHex}0A 0%, transparent 65%)`,
+          `radial-gradient(circle at ${o}, ${gc1}08 0%, transparent 50%)`,
+          `radial-gradient(ellipse at ${o}, ${gc2}06 0%, transparent 70%)`,
           // Multi-stop radials: layered depth
-          `radial-gradient(circle at 25% 25%, ${gc1}0A 0%, ${acHex}04 30%, transparent 60%)`,
-          `radial-gradient(ellipse at 70% 30%, ${gcGlow}08 0%, ${gc2}05 40%, transparent 75%)`,
+          `radial-gradient(circle at ${o}, ${gc1}0A 0%, ${acHex}04 30%, transparent 60%)`,
+          `radial-gradient(ellipse at ${o}, ${gcGlow}08 0%, ${gc2}05 40%, transparent 75%)`,
         ]);
       } else if (gs === "conic") {
         s.gradientOverlay = pick([
