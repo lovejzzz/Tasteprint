@@ -2191,6 +2191,101 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Mood-based micro-animations ──
+  // Subtle CSS animations that make designs feel alive without being distracting
+  // Only fires ~20-30% of the time to keep it special
+  if (!isNav && !isCode) {
+    const animRoll = Math.random();
+    const animSpeed = dna?.effectPersonality?.motionSpeed || "normal";
+    const durMul = animSpeed === "slow" ? 1.5 : animSpeed === "fast" ? 0.7 : 1.0;
+
+    if (moodId === "elegant" && animRoll < 0.25) {
+      // Elegant: gentle breathing or shimmer
+      const sub = Math.random();
+      if (sub < 0.45) {
+        // Slow breathe — ultra-subtle opacity pulse
+        const dur = (6 + Math.random() * 4) * durMul;
+        s.animation = `tp-d-breathe ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (sub < 0.80) {
+        // Gradient shimmer on overlay
+        const dur = (8 + Math.random() * 6) * durMul;
+        s.animation = `tp-d-shimmer ${dur.toFixed(1)}s linear infinite`;
+        if (!s.gradientOverlay) {
+          s.gradientOverlay = `linear-gradient(90deg, transparent 0%, ${gcGlow}08 25%, transparent 50%, ${gcGlow}06 75%, transparent 100%)`;
+          s.backgroundSize = "400% 100%";
+        }
+      } else {
+        // Glow pulse — box-shadow oscillation
+        const dur = (5 + Math.random() * 3) * durMul;
+        s.cssVars = {
+          "--d-glow-base": `0 0 8px ${gcGlow}08, 0 2px 12px ${shHex}06`,
+          "--d-glow-peak": `0 0 20px ${gcGlow}18, 0 4px 24px ${shHex}0C`,
+        };
+        s.animation = `tp-d-glow-pulse ${dur.toFixed(1)}s ease-in-out infinite`;
+      }
+    } else if (moodId === "playful" && animRoll < 0.30) {
+      // Playful: float or tilt — fun, bouncy energy
+      const sub = Math.random();
+      if (sub < 0.50) {
+        // Gentle float — components hover slightly
+        const dur = (3 + Math.random() * 2) * durMul;
+        s.animation = `tp-d-float ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (sub < 0.80) {
+        // Micro-tilt — gentle rocking
+        const dur = (4 + Math.random() * 3) * durMul;
+        s.animation = `tp-d-tilt ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else {
+        // Border color dance — cycling border hues
+        const dur = (6 + Math.random() * 4) * durMul;
+        const bc1 = gc1, bc2 = gc2, bc3 = gcGlow;
+        s.cssVars = { "--d-bc1": `${bc1}50`, "--d-bc2": `${bc2}50`, "--d-bc3": `${bc3}50` };
+        s.border = `2px solid ${bc1}50`;
+        s.animation = `tp-d-border-dance ${dur.toFixed(1)}s linear infinite`;
+      }
+    } else if (moodId === "bold" && animRoll < 0.20) {
+      // Bold: intense glow pulse or shimmer — dramatic presence
+      const sub = Math.random();
+      if (sub < 0.55) {
+        // Strong glow pulse
+        const dur = (3 + Math.random() * 2) * durMul;
+        s.cssVars = {
+          "--d-glow-base": `0 0 12px ${gcGlow}12, 0 4px 16px ${shHex}0A`,
+          "--d-glow-peak": `0 0 30px ${gcGlow}28, 0 6px 32px ${shHex}14`,
+        };
+        s.animation = `tp-d-glow-pulse ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else {
+        // Fast shimmer — energetic sweep
+        const dur = (4 + Math.random() * 2) * durMul;
+        s.animation = `tp-d-shimmer ${dur.toFixed(1)}s linear infinite`;
+        if (!s.gradientOverlay) {
+          s.gradientOverlay = `linear-gradient(90deg, transparent 0%, ${gcGlow}10 30%, transparent 50%, ${gc1}0C 70%, transparent 100%)`;
+          s.backgroundSize = "400% 100%";
+        }
+      }
+    } else if (moodId === "minimal" && animRoll < 0.08) {
+      // Minimal: very rare, very subtle breathe only
+      const dur = (8 + Math.random() * 4) * durMul;
+      s.animation = `tp-d-breathe ${dur.toFixed(1)}s ease-in-out infinite`;
+    } else if (moodId === "auto" && animRoll < 0.12) {
+      // Auto: random pick from the subtle end
+      const autoPick = Math.random();
+      if (autoPick < 0.4) {
+        const dur = (5 + Math.random() * 3) * durMul;
+        s.animation = `tp-d-float ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else if (autoPick < 0.7) {
+        const dur = (7 + Math.random() * 3) * durMul;
+        s.animation = `tp-d-breathe ${dur.toFixed(1)}s ease-in-out infinite`;
+      } else {
+        const dur = (6 + Math.random() * 4) * durMul;
+        s.cssVars = {
+          "--d-glow-base": `0 0 6px ${gcGlow}06`,
+          "--d-glow-peak": `0 0 14px ${gcGlow}12`,
+        };
+        s.animation = `tp-d-glow-pulse ${dur.toFixed(1)}s ease-in-out infinite`;
+      }
+    }
+  }
+
   return s;
 }
 
