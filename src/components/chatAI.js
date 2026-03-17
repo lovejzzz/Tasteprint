@@ -1282,108 +1282,244 @@ function respondToSemantics(sem, text, topics, sent) {
 
   // ── Switch/Migration ──
   if (action === "switch" && details.from && details.to) {
-    const teamNote = involves ? `, especially with ${involves === "team" ? "a whole team" : "your " + involves} involved` : "";
-    const reasonNote = reason ? ` The fact that ${reason} is a solid reason.` : "";
-    const responses = [
-      `That's a big migration call${teamNote}.${reasonNote} What's the biggest friction point with ${details.from} right now?`,
-      `${details.from} to ${details.to} — interesting${teamNote}.${reasonNote} What's pulling you toward ${details.to} specifically?`,
-      `Switching ${details.from} → ${details.to}${teamNote} is no small thing.${reasonNote} Have you done a small proof-of-concept yet?`,
-    ];
-    return pick(responses);
+    const teamNote = involves ? ` with ${involves === "team" ? "your whole team" : "your " + involves}` : "";
+    return pick([
+      `oh ${details.from} to ${details.to}${teamNote}?? that's a big move. what's making you want to switch`,
+      `wait you're switching from ${details.from} to ${details.to}${teamNote}? what happened with ${details.from}`,
+      `${details.from} → ${details.to}${teamNote}, ok i have thoughts. what's pulling you toward ${details.to}`,
+    ]);
   }
 
   // ── Build/Create ──
   if (action === "build" && details.target) {
     const target = details.target.replace(/\b(a|an|the|my|our|some)\b/gi, "").trim();
     if (stance === "planning") return pick([
-      `Love the ambition — building ${target} sounds like a fun challenge! What's your tech stack looking like?`,
-      `Oh cool, ${target}! What's the first milestone you're aiming for?`,
+      `ooh you're building ${target}?? what's the plan`,
+      `oh sick, ${target}! how far along are you`,
     ]);
-    if (stance === "attempting" || stance === "struggling") {
-      const empathy = stance === "struggling" ? "I know that can be rough. " : "";
-      return `${empathy}Building ${target} — what's the trickiest part you've hit so far?`;
-    }
-    if (stance === "accomplished") return `You built ${target}? That's awesome! 🎉 How did it turn out?`;
-    return `Building ${target} — exciting! What stage are you at?`;
+    if (stance === "struggling") return `ugh building ${target} can be rough, what part is giving you trouble`;
+    if (stance === "attempting") return `oh you're working on ${target}? how's it going so far`;
+    if (stance === "accomplished") return `wait you built ${target}?? LETS GO how'd it turn out`;
+    return `oh ${target}! what stage are you at with that`;
   }
 
   // ── Learn ──
   if (action === "learn" && details.target) {
     const target = details.target.replace(/\b(a|an|the|my|some|how to)\b/gi, "").trim();
     if (stance === "learning") return pick([
-      `Welcome to the ${target} journey! What made you decide to start?`,
-      `${target} is a great thing to learn! Are you going with tutorials, docs, or just diving in?`,
+      `oh nice, you're getting into ${target}? what made you start`,
+      `${target}! are you like self-teaching or what`,
     ]);
-    if (stance === "struggling") return `${target} can definitely be tricky at first. What part is giving you the most trouble?`;
-    return `Learning ${target} — nice! What's clicked so far, and what still feels murky?`;
+    if (stance === "struggling") return `yeah ${target} is tough at first ngl, what part is tripping you up`;
+    return `ooh ${target}, what's clicked so far`;
   }
 
   // ── Fix/Debug ──
   if (action === "fix" && details.target) {
     const target = details.target.replace(/\b(a|an|the|this|my)\b/gi, "").trim();
-    if (stance === "struggling") return `Debugging ${target} — the worst! What have you tried so far? Sometimes talking through it helps.`;
-    if (stance === "accomplished") return `You fixed ${target}? YES! 🎉 What was the root cause?`;
-    return `What's ${target} doing (or not doing)? Let's think through it.`;
+    if (stance === "struggling") return `ugh debugging ${target} is the worst, what have you tried`;
+    if (stance === "accomplished") return `wait you fixed ${target}?? what was wrong with it`;
+    return `what's ${target} doing wrong`;
   }
 
   // ── Choose/Compare ──
   if (action === "choose" && (details.optionA || details.from)) {
     const a = details.optionA || details.from;
     const b = details.optionB || details.to;
-    const reasonNote = reason ? ` You mentioned ${reason} — that's a key factor.` : "";
-    return `${a} vs ${b} — that's a genuine dilemma!${reasonNote} What matters most to you: ${pick(["learning curve","community support","long-term maintainability","performance","developer experience"])}?`;
+    return pick([
+      `${a} vs ${b} ok that's tough. what matters more to you`,
+      `hmm ${a} or ${b}... what are you leaning toward`,
+      `oh that's a real dilemma. what's the main thing you care about`,
+    ]);
   }
 
   // ── Improve/Optimize ──
   if (action === "improve" && details.target) {
     const target = details.target.replace(/\b(a|an|the|my|our)\b/gi, "").trim();
-    return `Improving ${target} — good instinct! What's the current bottleneck: ${pick(["speed","readability","architecture","user experience","reliability"])}?`;
+    return `oh you're trying to improve ${target}? what's the main issue rn`;
   }
 
-  // ── Stance-only responses (no specific action detected but stance is clear) ──
+  // ── Stance-only responses ──
   if (stance === "considering" && !action) {
-    const topicStr = topics[0] || "that";
-    return pick([
-      `Sounds like you're weighing your options on ${topicStr}. What's the main thing holding you back?`,
-      `The fact that you're thinking it through carefully says a lot. What would tip the scales for you?`,
-    ]);
+    const t = topics[0] || "that";
+    return pick([`hmm so you're thinking about ${t}? what's holding you back`,`ok what's making you consider ${t}`]);
   }
   if (stance === "struggling" && !action) {
-    const topicStr = topics[0] || "this";
-    const reasonNote = reason ? ` I hear you — ${reason} makes it extra tough.` : "";
-    return `${topicStr} giving you a hard time, huh?${reasonNote} Want to talk through what you've tried?`;
+    const t = topics[0] || "this";
+    return pick([`ugh ${t} is giving you trouble?`,`yeah ${t} can be rough honestly. what's going on`]);
   }
   if (stance === "accomplished" && !action) {
-    return pick([
-      "That's a real win — you should feel proud! What made it finally click?",
-      "YES! That's the kind of progress that makes everything worth it. What's next on the horizon?",
-    ]);
+    return pick(["LETS GOOO what made it finally click","wait that's huge, what happened"]);
   }
   if (stance === "celebrating") {
-    return pick([
-      "I love that energy! 🎉 What's got you fired up?",
-      "That excitement is contagious! Tell me everything!",
-    ]);
+    return pick(["yooo i love this energy 🔥","LETS GO tell me everything"]);
   }
   if (stance === "abandoning") {
-    const topicStr = topics[0] || "it";
-    return pick([
-      `Walking away from ${topicStr} takes guts too. What pushed you to that decision?`,
-      `Sometimes knowing when to stop is the smartest move. What are you pivoting to instead?`,
-    ]);
+    const t = topics[0] || "it";
+    return pick([`oh you're done with ${t}? what happened`,`nah that's fair, sometimes you gotta walk away. what made you decide`]);
   }
   if (stance === "doubting") {
-    const topicStr = topics[0] || "it";
-    return pick([
-      `Healthy skepticism about ${topicStr} is totally valid. What's raising the red flag for you?`,
-      `Trust that instinct — what specifically doesn't sit right?`,
-    ]);
+    const t = topics[0] || "it";
+    return pick([`hmm what about ${t} isn't sitting right with you`,`nah trust that instinct, what feels off`]);
   }
-  if (stance === "sharing") {
-    return null; // let the regular opinion/sharing handlers take it
-  }
+  if (stance === "sharing") return null;
 
-  return null; // no semantic match strong enough
+  return null;
+}
+
+/* ── Life Event Understanding ──
+ * Catches everyday events the semantic system misses. When someone says
+ * "my cat knocked over my coffee" or "I failed my driving test", this
+ * extracts WHAT HAPPENED and generates a response that references the
+ * actual event — not a generic "that sucks" but "wait your CAT?? lol rip
+ * the coffee tho". A friend responds to the specifics.
+ */
+
+const LIFE_EVENT_PATTERNS = [
+  // Got/received something
+  { pat: /i (?:just )?(?:got|received|landed|scored|won|earned) (?:a |an |the |my )?(.+?)(?:\.|!|$)/i,
+    type: "got", extract: 1 },
+  // Lost something
+  { pat: /i (?:just )?(?:lost|missed|dropped|broke|ruined|destroyed|spilled) (?:my |the |a )?(.+?)(?:\.|!|$)/i,
+    type: "lost", extract: 1 },
+  // Failed at something
+  { pat: /i (?:just )?(?:failed|bombed|flunked|messed up|screwed up|blew) (?:my |the |a )?(.+?)(?:\.|!|$)/i,
+    type: "failed", extract: 1 },
+  // Met/saw someone
+  { pat: /i (?:just )?(?:met|saw|ran into|bumped into|talked to) (?:my |a |an )?(.+?)(?:\.|!|$)/i,
+    type: "met", extract: 1 },
+  // Forgot something
+  { pat: /i (?:just )?(?:forgot|can't remember|blanked on|spaced on) (?:my |the |a |to )?(.+?)(?:\.|!|$)/i,
+    type: "forgot", extract: 1 },
+  // Found/discovered something
+  { pat: /i (?:just )?(?:found|discovered|noticed|realized|figured out) (?:that |a |an |the |my )?(.+?)(?:\.|!|$)/i,
+    type: "found", extract: 1 },
+  // Started something new
+  { pat: /i (?:just )?(?:started|began|signed up for|enrolled in|joined) (?:a |an |the |my )?(.+?)(?:\.|!|$)/i,
+    type: "started", extract: 1 },
+  // Finished/completed something
+  { pat: /i (?:just )?(?:finished|completed|wrapped up|done with|submitted) (?:my |the |a )?(.+?)(?:\.|!|$)/i,
+    type: "finished", extract: 1 },
+  // Bought something
+  { pat: /i (?:just )?(?:bought|ordered|picked up) (?:a |an |the |some |new )?(.+?)(?:\.|!|$)/i,
+    type: "bought", extract: 1 },
+  // Someone/something did something to them
+  { pat: /my (\w+(?:\s+\w+)?) (?:just )?(\w+(?:ed|s))\s+(?:my |the |a )?(.+?)(?:\.|!|$)/i,
+    type: "someone_did", extractAgent: 1, extractVerb: 2, extractObject: 3 },
+  // Overslept / woke up late
+  { pat: /i (?:just )?(?:overslept|woke up late|slept through|missed my alarm)/i,
+    type: "overslept" },
+  // Got sick/hurt
+  { pat: /i (?:just )?(?:got sick|feel sick|caught a cold|have a headache|twisted my|hurt my|burned my|cut my)\s*(.+)?/i,
+    type: "sick", extract: 1 },
+  // Locked out / forgot keys
+  { pat: /i (?:just )?(?:locked myself out|forgot my keys|lost my keys|can't find my keys)/i,
+    type: "locked_out" },
+  // Weather affected them
+  { pat: /i (?:just )?got (?:soaked|drenched|caught in the rain|rained on|sunburned)/i,
+    type: "weather_hit" },
+  // Moved / moving
+  { pat: /i(?:'m| am) (?:moving|thinking about moving|about to move) (?:to )?(.+?)(?:\.|!|$)/i,
+    type: "moving", extract: 1 },
+  // Broke up / relationship
+  { pat: /(?:i|we) (?:just )?(?:broke up|split up|ended things|got dumped|separated)/i,
+    type: "breakup" },
+  // Got in trouble
+  { pat: /i (?:just )?got (?:in trouble|yelled at|written up|a ticket|pulled over|caught)/i,
+    type: "trouble" },
+];
+
+function parseLifeEvent(text) {
+  const lower = text.toLowerCase();
+  for (const ev of LIFE_EVENT_PATTERNS) {
+    const m = lower.match(ev.pat);
+    if (m) {
+      const result = { type: ev.type };
+      if (ev.extract && m[ev.extract]) result.what = m[ev.extract].trim();
+      if (ev.extractAgent && m[ev.extractAgent]) result.agent = m[ev.extractAgent].trim();
+      if (ev.extractVerb && m[ev.extractVerb]) result.verb = m[ev.extractVerb].trim();
+      if (ev.extractObject && m[ev.extractObject]) result.object = m[ev.extractObject].trim();
+      return result;
+    }
+  }
+  return null;
+}
+
+function respondToLifeEvent(event, text, sent) {
+  const { type, what } = event;
+  const w = what || "";
+
+  switch (type) {
+    case "got":
+      if (/job|offer|promotion|raise/i.test(w)) return pick([`WAIT WHAT?? ${w}?? where`,`NO WAY congrats!! tell me everything`,`dude that's huge, ${w}!! how`]);
+      if (/pet|dog|cat|puppy|kitten/i.test(w)) return pick([`WAIT YOU GOT A ${w.toUpperCase()}?? pics or it didn't happen`,`omg a ${w}!! what's their name`,`ok i need to see this ${w} immediately`]);
+      if (/ticket|tickets/i.test(w)) return pick([`ooh ${w}?? to what`,`wait nice, for what`,`oh sick ${w}!`]);
+      return pick([`oh nice, ${w}!`,`wait you got ${w}??`,`ooh ${w}, how`]);
+
+    case "lost":
+      if (/phone|wallet|keys/i.test(w)) return pick([`oh noo not your ${w} 😭 did you retrace your steps`,`ugh losing your ${w} is the worst`,`wait ${w}?? that's so stressful`]);
+      if (/game|match/i.test(w)) return pick([`rip, how close was it`,`oof the ${w}?? what happened`,`nooo was it close at least`]);
+      return pick([`oh no your ${w}?? what happened`,`wait you lost ${w}?`,`ugh that sucks`]);
+
+    case "failed":
+      if (/test|exam|quiz/i.test(w)) return pick([`ugh ${w}?? was it close`,`noo the ${w}?? what happened`,`that's rough, was it hard`]);
+      if (/interview/i.test(w)) return pick([`ugh their loss honestly`,`nah fr ${w}s are so random sometimes`,`that's rough but everyone bombs ${w}s`]);
+      return pick([`oh no the ${w}?? what happened`,`ugh that sucks`,`rip, was it close`]);
+
+    case "met":
+      if (/crush|someone|girl|guy|person/i.test(w)) return pick([`WAIT ok tell me everything`,`ooh ${w}?? spill`,`ok wait i need details`]);
+      return pick([`oh wait you met ${w}?? how'd that go`,`wait ${w}?? tell me`,`ooh how was that`]);
+
+    case "forgot":
+      return pick([`oh noo not ${w} 😭`,`ugh forgetting ${w} is the worst`,`rip lol`]);
+
+    case "found":
+      return pick([`wait really??`,`ooh ok tell me`,`oh how'd you figure that out`]);
+
+    case "started":
+      if (/job|work|position/i.test(w)) return pick([`oh nice!! where at`,`wait new ${w}?? how is it`,`oh that's exciting, how's it going`]);
+      return pick([`oh ${w}! how's it going so far`,`ooh what made you start ${w}`,`nice, how is ${w}`]);
+
+    case "finished":
+      return pick([`wait you finished ${w}?? how do you feel`,`LETS GO you're done with ${w}!`,`oh nice, how'd it turn out`]);
+
+    case "bought":
+      return pick([`ooh what'd you get`,`wait ${w}?? nice, how is it`,`oh how do you like it`]);
+
+    case "someone_did": {
+      const { agent, verb, object } = event;
+      if (agent && object) {
+        const neg = /broke|knocked|spilled|ruined|destroyed|ate|bit|scratched|stole|chewed|ripped/i.test(verb || "");
+        if (neg) return pick([`wait your ${agent}?? lol rip the ${object}`,`hahaha not the ${object} 😭`,`omg your ${agent} is a menace`]);
+        return pick([`wait your ${agent}?? lol`,`hahaha ${agent} energy`,`your ${agent} really did that`]);
+      }
+      return null;
+    }
+
+    case "overslept":
+      return pick(["oh noo how late were you","ugh that's the worst feeling","lol rip, the alarm really betrayed you"]);
+
+    case "sick":
+      return pick(["ugh noo feel better 😔","that sucks, are you resting at least","oh no, you ok?"]);
+
+    case "locked_out":
+      return pick(["oh nooo that's the worst","ugh did you figure it out","rip, how long were you stuck"]);
+
+    case "weather_hit":
+      return pick(["lol rip","ugh that's the worst","oh noo were you far from home"]);
+
+    case "moving":
+      return pick([`wait you're moving${w ? " to " + w : ""}?? that's huge`,`oh wow${w ? " " + w : ""}! what made you decide`,`that's a big move, are you excited`]);
+
+    case "breakup":
+      return pick(["oh no 😔 are you ok","dude i'm sorry, that's rough","nah that sucks, how are you doing"]);
+
+    case "trouble":
+      return pick(["oh noo what happened","ugh that sucks, what for","rip, how bad was it"]);
+
+    default:
+      return null;
+  }
 }
 
 /* ── Intent Classification (expanded) ── */
@@ -5351,6 +5487,15 @@ function generateResponse(text) {
     if (sem && sem.confidence >= 0.5) {
       const semResp = respondToSemantics(sem, text, topics, sent);
       if (semResp) return semResp;
+    }
+  }
+
+  // ═══ 15.7. Life event understanding — catch everyday events (got/lost/failed/met/etc.) ═══
+  if (tokens.length >= 3) {
+    const lifeEvent = parseLifeEvent(effectiveText);
+    if (lifeEvent) {
+      const eventResp = respondToLifeEvent(lifeEvent, text, sent);
+      if (eventResp) return eventResp;
     }
   }
 
