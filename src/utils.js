@@ -1197,6 +1197,47 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.scale = pick([0.97, 0.98, 1.02, 1.03, 1.04]);
   }
 
+  // --- Creative transform compositions: skew, translateY, perspective ---
+  // Subtle spatial transforms that make components feel hand-placed and dynamic
+  if (!isNav && !isCode && !isSmall) {
+    const txChance = moodId === "playful" ? 0.30 : moodId === "bold" ? 0.22 : moodId === "elegant" ? 0.15 : moodId === "minimal" ? 0.06 : 0.18;
+    if (Math.random() < txChance) {
+      if (moodId === "playful") {
+        // Playful: visible skews, bouncy translateY, tilted energy
+        pick([
+          () => { s.skewX = pick([-2, -1.5, -1, 1, 1.5, 2]); },
+          () => { s.skewY = pick([-1.5, -1, 1, 1.5]); },
+          () => { s.translateY = pick([-4, -3, -2, 2, 3, 4]); },
+          () => { s.skewX = pick([-1, 1]); s.translateY = pick([-2, 2, 3]); },
+        ])();
+      } else if (moodId === "bold") {
+        // Bold: strong architectural angles, confident offsets
+        pick([
+          () => { s.skewX = pick([-1.5, -1, 1, 1.5]); },
+          () => { s.translateY = pick([-3, -2, 2, 3]); },
+          () => { s.perspective = pick([800, 1000, 1200]); s.rotateY = pick([-2, -1, 1, 2]); },
+        ])();
+      } else if (moodId === "elegant") {
+        // Elegant: barely perceptible, adds subtle depth without disruption
+        pick([
+          () => { s.translateY = pick([-2, -1, 1, 2]); },
+          () => { s.perspective = pick([1000, 1400, 1800]); s.rotateY = pick([-1, -0.5, 0.5, 1]); },
+        ])();
+      } else if (moodId === "minimal") {
+        // Minimal: micro-offset only
+        s.translateY = pick([-1, 1, 2]);
+      } else {
+        // Auto: mix of everything
+        pick([
+          () => { s.skewX = pick([-1.5, -1, 1, 1.5]); },
+          () => { s.translateY = pick([-3, -2, 2, 3]); },
+          () => { s.skewX = pick([-1, 1]); s.translateY = pick([-2, 2]); },
+          () => { s.perspective = pick([900, 1100, 1400]); s.rotateY = pick([-1.5, -1, 1, 1.5]); },
+        ])();
+      }
+    }
+  }
+
   // --- Typography dimension: rhythm + textTransform + mixBlendMode ---
   if (!isNav && !isCode) {
     // DNA typography rhythm: canvas-wide letter-spacing, word-spacing, font-weight
@@ -1398,8 +1439,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.15) {
         s.scale = pick([0.98, 0.99]);
       }
-      // Elegant never rotates, never has dotted/dashed borders
+      // Elegant never rotates or skews, never has dotted/dashed borders
       s.rotate = undefined;
+      s.skewX = undefined;
+      s.skewY = undefined;
       if (s.border && (s.border.includes("dashed") || s.border.includes("dotted"))) {
         s.border = undefined;
       }

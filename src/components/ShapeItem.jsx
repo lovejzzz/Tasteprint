@@ -153,7 +153,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           width: sw, height: sh,
           cursor: (s.type === "code-block" || s.type === "chat") ? "default" : (isDrg ? "grabbing" : "grab"),
           transition: isDrg ? "none" : "transform .15s ease, filter .2s ease, box-shadow .3s ease, border-radius .3s ease",
-          transform: isDrg ? "scale(1.015)" : [ds.rotate && `rotate(${ds.rotate})`, ds.scale && `scale(${ds.scale})`].filter(Boolean).join(" ") || "scale(1)",
+          transform: isDrg ? "scale(1.015)" : [ds.perspective && `perspective(${ds.perspective}px)`, ds.rotate && `rotate(${ds.rotate})`, ds.rotateY && `rotateY(${ds.rotateY}deg)`, ds.scale && `scale(${ds.scale})`, ds.skewX && `skewX(${ds.skewX}deg)`, ds.skewY && `skewY(${ds.skewY}deg)`, ds.translateY && `translateY(${ds.translateY}px)`].filter(Boolean).join(" ") || "scale(1)",
           filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : [ds.filter, ds.hueRotate && `hue-rotate(${ds.hueRotate}deg)`].filter(Boolean).join(" ") || "none",
           outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : (ds.outline || "none"),
           outlineOffset: isSel ? 4 : (ds.outlineOffset ? parseInt(ds.outlineOffset) : 4),
