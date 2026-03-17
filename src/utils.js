@@ -667,7 +667,56 @@ export function generateDesignDNA(palette, mood) {
     colorTemperature = pick(["warm", "cool", "neutral", "neutral"]);
   }
 
-  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm, gradientAngle, gradientOrigin, effectPersonality, colorTemperature };
+  // --- Design DNA coherence genes (Round 94) ---
+  // These three properties ensure every component on the same canvas shares the same
+  // corner style, color temperature, and spacing density — like a design system.
+
+  // cornerStyle: unified border-radius language across the canvas
+  // Maps to specific px ranges that all components share (tighter than radiusFamily alone)
+  let cornerStyle;
+  if (m === "bold") {
+    cornerStyle = pick(["sharp", "sharp", "sharp", "soft"]);
+  } else if (m === "elegant") {
+    cornerStyle = pick(["soft", "soft", "soft", "round"]);
+  } else if (m === "playful") {
+    cornerStyle = pick(["round", "round", "pill", "pill"]);
+  } else if (m === "minimal") {
+    cornerStyle = pick(["sharp", "sharp", "soft", "soft"]);
+  } else {
+    cornerStyle = pick(["sharp", "soft", "round", "pill"]);
+  }
+  // cornerStyle radius ranges: tighter than radiusFamily for stronger cohesion
+  const CORNER_RANGES = {
+    sharp: { min: 2, max: 4 },
+    soft: { min: 8, max: 14 },
+    round: { min: 16, max: 24 },
+    pill: { min: 999, max: 999 },
+  };
+  const cornerRange = CORNER_RANGES[cornerStyle];
+
+  // temperature: warm/cool/neutral — influences filter tinting across the canvas
+  // (Strengthened version of colorTemperature — this is the authoritative gene)
+  const temperature = colorTemperature;
+
+  // density: spacing personality — tight, normal, or airy
+  // Affects padding multipliers and gap sizing across all components
+  let density;
+  if (m === "bold") {
+    density = pick(["tight", "tight", "tight", "normal"]);
+  } else if (m === "elegant") {
+    density = pick(["airy", "airy", "airy", "normal"]);
+  } else if (m === "playful") {
+    density = pick(["normal", "normal", "tight", "airy"]);
+  } else if (m === "minimal") {
+    density = pick(["airy", "airy", "normal", "normal"]);
+  } else {
+    density = pick(["tight", "normal", "normal", "airy"]);
+  }
+  // Density multipliers: applied to padding/gap values in _generateDesignStyles
+  const DENSITY_MULTIPLIERS = { tight: 0.75, normal: 1.0, airy: 1.35 };
+  const densityMultiplier = DENSITY_MULTIPLIERS[density];
+
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm, gradientAngle, gradientOrigin, effectPersonality, colorTemperature, cornerStyle, cornerRange, temperature, density, densityMultiplier };
 }
 
 /**
@@ -1102,9 +1151,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   const _maxEffects = _budgetMap[moodId] || 4;
   let _effectCount = 0;
 
-  // --- Border radius (DNA > harmony > mood) ---
-  // DNA takes priority for cohesive canvas-wide randomization
-  if (dna && Math.random() < 0.8) {
+  // --- Border radius (DNA cornerStyle > DNA radiusMap > harmony > mood) ---
+  // DNA cornerStyle (Round 94) takes highest priority — all components share the same corner language
+  if (dna && dna.cornerRange && Math.random() < 0.88) {
+    const { min, max } = dna.cornerRange;
+    if (min === 999) s.borderRadius = 999;
+    else s.borderRadius = min + Math.floor(Math.random() * (max - min + 1));
+  } else if (dna && Math.random() < 0.8) {
     const { base, range } = dna.radiusMap;
     if (base === 999) s.borderRadius = 999;
     else s.borderRadius = Math.max(0, base + Math.floor(Math.random() * range * 2) - range);
@@ -3367,33 +3420,38 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
-  // ── Color temperature tinting ──
-  // DNA-driven warm/cool atmospheric bias applied to existing shadows and filters
-  // Warm = amber/golden tint, Cool = blue/teal tint, Neutral = no change
-  if (dna?.colorTemperature && dna.colorTemperature !== "neutral" && !isNav && !isCode) {
-    const temp = dna.colorTemperature;
-    // Apply subtle hue-rotate to existing filter (or add one)
-    if (temp === "warm" && Math.random() < 0.40) {
-      const warmShift = pick([5, 8, 10, -5, -8]); // slight warm direction
-      if (s.filter && !s.filter.includes("hue-rotate")) {
-        s.filter += ` hue-rotate(${warmShift}deg)`;
+  // ── Color temperature tinting (Round 94: strengthened via DNA temperature gene) ──
+  // DNA temperature creates canvas-wide warm/cool atmospheric coherence
+  // Warm = amber/golden sepia tint, Cool = blue/teal tint, Neutral = no change
+  // Round 94: increased application rate from 40% to 65% for stronger cohesion
+  const _tempGene = dna?.temperature || dna?.colorTemperature;
+  if (_tempGene && _tempGene !== "neutral" && !isNav && !isCode) {
+    const temp = _tempGene;
+    if (temp === "warm" && Math.random() < 0.65) {
+      // Warm: sepia-like golden tint — consistent across all components
+      const sepiaAmt = randRange(0.03, 0.08).toFixed(2);
+      const warmShift = pick([3, 5, 8, -3, -5]); // subtle warm direction
+      if (s.filter && !s.filter.includes("sepia") && !s.filter.includes("hue-rotate")) {
+        s.filter += ` sepia(${sepiaAmt}) hue-rotate(${warmShift}deg)`;
       } else if (!s.filter) {
-        s.filter = `hue-rotate(${warmShift}deg) saturate(1.04)`;
+        s.filter = `sepia(${sepiaAmt}) hue-rotate(${warmShift}deg) saturate(1.04)`;
       }
       // Warm tinted inner glow overlay
-      if (!s.gradientOverlay && Math.random() < 0.25) {
+      if (!s.gradientOverlay && Math.random() < 0.30) {
         const warmColor = pick(["#F59E0B", "#D97706", "#EA580C", "#DC2626"]);
         s.gradientOverlay = `radial-gradient(ellipse at ${pick(["30% 20%", "70% 30%", "50% 50%"])} , ${warmColor}06 0%, transparent 70%)`;
       }
-    } else if (temp === "cool" && Math.random() < 0.40) {
-      const coolShift = pick([170, 175, 180, 185, 190]); // blue direction
+    } else if (temp === "cool" && Math.random() < 0.65) {
+      // Cool: blue-tinted atmosphere — slight hue shift toward blue + desaturation
+      const coolDeg = pick([-8, -6, -4, 4, 6, 8]); // subtle cool shift
+      const coolSat = randRange(0.95, 0.98).toFixed(2);
       if (s.filter && !s.filter.includes("hue-rotate")) {
-        s.filter += ` hue-rotate(${pick([5, -5, 8, -8])}deg)`;
+        s.filter += ` hue-rotate(${coolDeg}deg) saturate(${coolSat})`;
       } else if (!s.filter) {
-        s.filter = `hue-rotate(${pick([-8, -5, 5, 8])}deg) saturate(1.02)`;
+        s.filter = `hue-rotate(${coolDeg}deg) saturate(${coolSat})`;
       }
       // Cool tinted inner glow overlay
-      if (!s.gradientOverlay && Math.random() < 0.25) {
+      if (!s.gradientOverlay && Math.random() < 0.30) {
         const coolColor = pick(["#0EA5E9", "#06B6D4", "#6366F1", "#8B5CF6"]);
         s.gradientOverlay = `radial-gradient(ellipse at ${pick(["30% 20%", "70% 30%", "50% 50%"])} , ${coolColor}06 0%, transparent 70%)`;
       }
@@ -4531,10 +4589,12 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
-    // 3. Color temperature shift — warm (sepia-like) or cool (hue-rotate toward blue)
+    // 3. Color temperature shift — DNA temperature gene takes priority (Round 94)
+    // When DNA has a temperature, align with it for canvas coherence instead of random warm/cool
     const tempRoll = Math.random();
     if (tempRoll < 0.30) {
-      const warm = Math.random() < 0.5;
+      const dnaTemp = dna?.temperature;
+      const warm = dnaTemp === "warm" ? true : dnaTemp === "cool" ? false : Math.random() < 0.5;
       if (warm) {
         // Warm: subtle sepia tint
         const sepiaAmount = moodId === "elegant" ? randRange(0.03, 0.08) : moodId === "bold" ? randRange(0.04, 0.10) : randRange(0.02, 0.06);
@@ -4634,6 +4694,24 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
     _effectCount++;
+  }
+
+  // --- Density gene: canvas-wide spacing coherence (Round 94) ---
+  // DNA density adjusts padding on the wrapper to create tight/normal/airy feel
+  // All components on the same canvas share the same spatial rhythm
+  if (dna?.densityMultiplier && dna.densityMultiplier !== 1.0 && !isNav && !isCode) {
+    const dm = dna.densityMultiplier;
+    if (dm < 1.0) {
+      // Tight: reduce breathing room — compact, information-dense feel
+      s.densityPadding = pick([2, 3, 4]);
+      s.densityGap = pick([4, 6]);
+    } else if (dm > 1.0) {
+      // Airy: add breathing room — spacious, luxurious feel
+      s.densityPadding = pick([10, 12, 14, 16]);
+      s.densityGap = pick([12, 14, 16]);
+    }
+    // Store multiplier for components that want to scale their own internal spacing
+    s.densityMultiplier = dm;
   }
 
   s._effectCount = _effectCount;

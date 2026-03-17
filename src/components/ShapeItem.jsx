@@ -252,6 +252,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           outline: isStyleSource ? `2px dashed ${p.ac}` : isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : (ds.outline || "none"),
           outlineOffset: isStyleSource ? 6 : isSel ? 4 : (ds.outlineOffset ? parseInt(ds.outlineOffset) : 4),
           background: ds.background || undefined,
+          padding: ds.densityPadding ? ds.densityPadding : undefined,
           borderRadius: ds.borderRadius ?? 14,
           boxShadow: ds.boxShadow && ds.boxShadow !== "none" ? ds.boxShadow : undefined,
           backdropFilter: ds.backdropFilter,
