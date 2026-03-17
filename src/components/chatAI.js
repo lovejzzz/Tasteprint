@@ -2800,7 +2800,7 @@ function momentumResponse() {
     // Use the threading system for richer topic transitions
     const transition = threadManager.handleTopicSwitch();
     if (transition) return transition;
-    return "Oh, new topic — I'm here for it! ";
+    return "ooh ok switching gears — ";
   }
   return null; // steady/engaged = no intervention needed
 }
@@ -7698,9 +7698,9 @@ function gracefulDegradation(text, keywords) {
   const caught = keywords.slice(0, 2).join(" and ");
   return pickNew([
     `Hmm, I caught "${caught}" but I'm not 100% sure what you're getting at. Can you tell me more?`,
-    `I heard you say something about ${caught} — but I want to make sure I'm on the right track. What specifically are you wondering?`,
-    `Okay, ${caught} — I want to give you a real answer, not a generic one. Can you rephrase that for me?`,
-    `"${caught}" — interesting! But I'd rather ask than guess wrong. What's the actual question?`,
+    `ok i caught "${caught}" — but what specifically are you getting at?`,
+    `${caught} — ok yeah, but can you give me a bit more to work with?`,
+    `"${caught}" — ooh ok but what's the actual question tho?`,
   ]);
 }
 
@@ -10656,7 +10656,7 @@ const MAX_CLARIFIES_SESSION = 4;
 const AMBIGUITY_PATTERNS = [
   { re: /^(it|that|this|those|these|they|them)\b/i, type: "pronoun", q: "Wait — when you say \"{word}\", what are you referring to?" },
   { re: /^(yeah|yes|no|maybe|sure|ok|okay|yep|nah|nope|idk|dunno)\s*$/i, type: "bare_response", q: null }, // handled by follow-up system
-  { re: /\b(the thing|the stuff|the one|that thing|this thing)\b/i, type: "vague_ref", q: "Which thing specifically? I want to make sure I'm tracking." },
+  { re: /\b(the thing|the stuff|the one|that thing|this thing)\b/i, type: "vague_ref", q: "wait which thing? i wanna follow but im lost lol" },
   { re: /\b(or something|or whatever|or anything|sort of|kind of|ish)\s*[.!?]?\s*$/i, type: "hedged", q: "Sounds like you're still forming the thought — what direction are you leaning?" },
   { re: /^(what about|how about|and|but|so)\s+\S{1,12}\s*\??$/i, type: "fragment", q: "Oh wait, say more — I wanna follow that thread" },
   { re: /\b(should i|would it|is it|can i|do you think)\b.*\b(good|bad|right|wrong|better|worse|worth)\b/i, type: "judgment_seek", q: "That depends on context — what's the specific situation you're weighing?" },
@@ -13841,7 +13841,7 @@ function applyTrajectoryAwareness(response, sent) {
         "Yo this convo has gotten so much better.",
         "Ok wait, this chat is actually getting good.",
         "Ngl you're getting into this — and honestly same.",
-        "The energy shifted and I'm here for it.",
+        "ok the energy just shifted and i'm into it.",
       ];
       prefix = warmers[Math.floor(Math.random() * warmers.length)] + " ";
       break;
@@ -14437,7 +14437,7 @@ function applyRapportCalibration(response, text) {
   // ── Rapport-calibrated pronoun shifting ──
   // At higher rapport, shift from "you/I" to "we" framing
   if (rapportLevel >= 3 && Math.random() < 0.25) {
-    r = r.replace(/\bI think (that |we |it )/i, (_, rest) => "I think we can agree " + rest.trim() + " ");
+    r = r.replace(/\bI think (that |we |it )/i, (_, rest) => "ok yeah " + rest.trim() + " ");
     r = r.replace(/\byou and I\b/i, "we");
   }
 
@@ -18010,11 +18010,11 @@ function applySpecificityAnchoring(response, text, topics) {
     [/^(Hmm,? (?:that|it)(?:'s| is) (?:a )?(?:fair|valid|solid) (?:point|take))/i,
       (m) => `Hmm, ${anchor} — ${m[1].replace(/^hmm,?\s*/i, "").toLowerCase()}`],
     [/(I (?:hadn't|haven't) thought (?:about|of) (?:it|that) (?:that way|like that|before))/i,
-      (m) => `I hadn't thought about ${anchor} that way`],
+      (m) => `huh the ${anchor} angle is kinda different tho`],
     [/^(That(?:'s| is) (?:exactly|precisely) (?:it|right|what I mean))/i,
-      (m) => `The ${anchor} thing — that's exactly it`],
+      (m) => `the ${anchor} thing — that's exactly it`],
     [/(I can see (?:that|how|why))/i,
-      (m) => `I can see how ${anchor} plays into this`],
+      (m) => `yeah ${anchor} def plays into this`],
   ];
 
   let modified = false;
@@ -18306,7 +18306,7 @@ function applyTemporalCallback(response, text, topics) {
     timeFrame = midFrames[Math.floor(Math.random() * midFrames.length)];
   } else {
     const farFrames = [
-      `OK this has been bugging me — way back you said something about ${claim}. I think there's a connection here I didn't see at first.`,
+      `ok wait this has been bugging me — way back you said something about ${claim}. theres definitely a connection here.`,
       `Full circle moment — remember ${claim} from a while back? It's coming back around.`,
       `Something you said a while ago about ${claim} just clicked for me in the context of this.`,
     ];
@@ -19252,7 +19252,7 @@ function applyThreadRecap(response, text, topics) {
 
   // Brief "I've been tracking" asides — not a full summary, just a flash of awareness
   const asides = [
-    `(We've been jumping between ${topicStr} and I'm here for all of it.)`,
+    `(we've been jumping between ${topicStr} and tbh i'm into all of it.)`,
     `Side note — love that we've gone from ${recapTopics[0]} to ${recapTopics[recapTopics.length - 1]} in this conversation.`,
     `We've covered some ground, huh? ${topicStr} and counting.`,
     `${hadLaughs ? "This has been fun — " : ""}we've really gotten into ${topicStr} today.`,
@@ -19527,7 +19527,7 @@ const ENCOURAGEMENT_POOLS = {
   ],
   insight: [
     "ooh ok that's sharp",
-    "wait actually that's a really good point",
+    "wait ok that's actually sharp",
     "huh i hadn't thought of it like that —",
     "ok that's a clever way to frame it",
     "you're onto something there fr",
@@ -21870,7 +21870,7 @@ export async function getAIResponse(input) {
   if (trend === "losing_interest" && Math.random() > 0.6) {
     response = response.replace(/\?[^?]*$/, ".") + " But hey — what would you actually want to talk about?";
   } else if (trend === "withdrawing" && Math.random() > 0.7) {
-    response = "Hey, I want to make sure I'm being helpful here. " + response;
+    response = "hey wait — " + response;
   }
 
   // ═══ Conversation arc: rare "wow" moments that acknowledge the journey ═══
