@@ -648,7 +648,22 @@ export function generateDesignDNA(palette, mood) {
     };
   }
 
-  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm, gradientAngle, gradientOrigin, effectPersonality };
+  // Color temperature: warm/cool/neutral bias that tints all shadows and glows
+  // Creates a unified atmospheric feel across the entire canvas
+  let colorTemperature;
+  if (m === "minimal") {
+    colorTemperature = pick(["neutral", "neutral", "cool"]);
+  } else if (m === "bold") {
+    colorTemperature = pick(["warm", "warm", "cool", "neutral"]);
+  } else if (m === "elegant") {
+    colorTemperature = pick(["cool", "cool", "warm", "neutral"]);
+  } else if (m === "playful") {
+    colorTemperature = pick(["warm", "warm", "neutral"]);
+  } else {
+    colorTemperature = pick(["warm", "cool", "neutral", "neutral"]);
+  }
+
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm, gradientAngle, gradientOrigin, effectPersonality, colorTemperature };
 }
 
 /**
@@ -2461,6 +2476,39 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           "--d-glow-peak": `0 0 14px ${gcGlow}12`,
         };
         s.animation = `tp-d-glow-pulse ${dur.toFixed(1)}s ease-in-out infinite`;
+      }
+    }
+  }
+
+  // ── Color temperature tinting ──
+  // DNA-driven warm/cool atmospheric bias applied to existing shadows and filters
+  // Warm = amber/golden tint, Cool = blue/teal tint, Neutral = no change
+  if (dna?.colorTemperature && dna.colorTemperature !== "neutral" && !isNav && !isCode) {
+    const temp = dna.colorTemperature;
+    // Apply subtle hue-rotate to existing filter (or add one)
+    if (temp === "warm" && Math.random() < 0.40) {
+      const warmShift = pick([5, 8, 10, -5, -8]); // slight warm direction
+      if (s.filter && !s.filter.includes("hue-rotate")) {
+        s.filter += ` hue-rotate(${warmShift}deg)`;
+      } else if (!s.filter) {
+        s.filter = `hue-rotate(${warmShift}deg) saturate(1.04)`;
+      }
+      // Warm tinted inner glow overlay
+      if (!s.gradientOverlay && Math.random() < 0.25) {
+        const warmColor = pick(["#F59E0B", "#D97706", "#EA580C", "#DC2626"]);
+        s.gradientOverlay = `radial-gradient(ellipse at ${pick(["30% 20%", "70% 30%", "50% 50%"])} , ${warmColor}06 0%, transparent 70%)`;
+      }
+    } else if (temp === "cool" && Math.random() < 0.40) {
+      const coolShift = pick([170, 175, 180, 185, 190]); // blue direction
+      if (s.filter && !s.filter.includes("hue-rotate")) {
+        s.filter += ` hue-rotate(${pick([5, -5, 8, -8])}deg)`;
+      } else if (!s.filter) {
+        s.filter = `hue-rotate(${pick([-8, -5, 5, 8])}deg) saturate(1.02)`;
+      }
+      // Cool tinted inner glow overlay
+      if (!s.gradientOverlay && Math.random() < 0.25) {
+        const coolColor = pick(["#0EA5E9", "#06B6D4", "#6366F1", "#8B5CF6"]);
+        s.gradientOverlay = `radial-gradient(ellipse at ${pick(["30% 20%", "70% 30%", "50% 50%"])} , ${coolColor}06 0%, transparent 70%)`;
       }
     }
   }
