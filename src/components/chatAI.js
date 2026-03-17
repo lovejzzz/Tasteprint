@@ -4249,45 +4249,45 @@ const RIDDLES = [
 
 const FUN_FACTS = {
   code: [
-    "Fun fact: the first computer bug was an actual bug — a moth found in a Harvard Mark II computer in 1947! 🦋",
-    "Did you know? The first programmer was Ada Lovelace in the 1840s — she wrote programs for a computer that didn't even exist yet!",
-    "Random fact: there are ~700 programming languages in existence. Most programmers use about 3. 😄",
-    "Fun fact: the average developer writes about 10 lines of finished code per day. The rest is debugging!",
-    "Did you know Git was created by Linus Torvalds in just 10 days? He literally speedran version control.",
+    "ok wait so the first computer bug was literally a bug — a moth stuck in a harvard computer in 1947 🦋",
+    "so like the first programmer was ada lovelace in the 1840s — she wrote code for a computer that didn't even exist yet lol",
+    "there are like 700 programming languages and most devs use maybe 3. the rest are just vibes",
+    "the average developer writes about 10 lines of finished code per day. the rest is debugging lmao",
+    "linus torvalds made git in 10 days. literally speedran version control",
   ],
   design: [
-    "Fun fact: the human eye can distinguish about 10 million different colors, but designers still argue about which blue is best 😄",
-    "Did you know? Comic Sans was designed for Microsoft Bob in 1994. It was never meant to leave that program!",
-    "Random fact: users form a first impression of a website in 50 milliseconds. That's faster than a blink!",
-    "Fun fact: the golden ratio (1.618) appears everywhere in nature — and great designers use it instinctively.",
+    "the human eye can see like 10 million colors but designers still fight about which blue is right 😄",
+    "comic sans was made for microsoft bob in 1994. it was never supposed to leave that program lol",
+    "users form a first impression of a website in 50 milliseconds. that's faster than a blink",
+    "the golden ratio (1.618) shows up everywhere in nature — good designers just kinda feel it",
   ],
   food: [
-    "Fun fact: honey never spoils. Archaeologists have found 3,000-year-old honey in Egyptian tombs that was still edible! 🍯",
-    "Did you know? Bananas are technically berries, but strawberries aren't. Botany is wild!",
-    "Random fact: the most expensive pizza in the world costs $12,000 and takes 72 hours to make! 🍕",
+    "honey literally never spoils. they found 3,000-year-old honey in egyptian tombs and it was still good 🍯",
+    "bananas are technically berries but strawberries aren't. botany makes no sense",
+    "the most expensive pizza costs $12,000 and takes 72 hours to make 🍕 like why",
   ],
   music: [
-    "Fun fact: 'Happy Birthday' was copyrighted until 2016. People had to pay royalties to sing it in movies!",
-    "Did you know? Listening to music releases dopamine — the same chemical triggered by food and... other pleasures 🎵",
-    "Random fact: the longest concert ever was 639 years long. It started in 2001 and is still playing in Germany!",
+    "'happy birthday' was copyrighted until 2016. people had to pay to sing it in movies lol",
+    "listening to music releases dopamine — same chemical as food and... other fun stuff 🎵",
+    "the longest concert ever is 639 years. started in 2001 and still going in germany. who's attending",
   ],
   general: [
-    "Fun fact: octopuses have three hearts, blue blood, and can taste with their arms! 🐙",
-    "Did you know? A group of flamingos is called a 'flamboyance.' Best collective noun ever.",
-    "Random fact: there are more possible chess games than atoms in the observable universe!",
-    "Fun fact: sharks have been around longer than trees. They're 400 million years old!",
-    "Did you know? Astronauts grow about 2 inches taller in space because there's no gravity compressing their spine!",
+    "octopuses have three hearts, blue blood, and can taste with their arms 🐙 like what",
+    "a group of flamingos is called a 'flamboyance.' best name ever honestly",
+    "there are more possible chess games than atoms in the observable universe. that broke my brain",
+    "sharks have been around longer than trees. 400 million years. respect",
+    "astronauts grow like 2 inches taller in space bc no gravity compressing their spine. space is wild",
   ],
 };
 
 const HYPOTHETICALS = [
-  "Hypothetical: if you could have any superpower but only for 1 hour a day, what would you pick?",
-  "Random scenario: you wake up and discover you can read animals' thoughts for a day. What's the first animal you find? 🐕",
-  "Thought experiment: if you had to explain the internet to someone from 1850, where would you start?",
-  "Fun question: would you rather be able to fly but only at walking speed, or run at 200mph but only on the ground?",
-  "Hypothetical: if you could master any skill instantly but had to forget one you already have, what would you trade?",
-  "What if: you can live in any fictional universe for a month. Where do you go?",
-  "Scenario: you're in charge of naming a new color that's never been seen before. What do you call it?",
+  "ok but if you could have any superpower but only for 1 hour a day what would you pick",
+  "wait ok — you wake up and you can read animals' thoughts for a day. what's the first animal you find 🐕",
+  "ok random but if you had to explain the internet to someone from 1850 where would you even start",
+  "would you rather fly but only at walking speed, or run at 200mph but only on the ground",
+  "if you could master any skill instantly but had to forget one you already have, what's the trade",
+  "ok so you can live in any fictional universe for a month. where do you go",
+  "you're in charge of naming a brand new color that's never been seen before. what do you call it",
 ];
 
 /* ══════════════════════════════════════════════════════════════════
@@ -4601,10 +4601,10 @@ function reasonThroughWYR(hyp) {
   const chosenSeeds = choice === "A" ? aSeeds : bSeeds;
 
   const openers = [
-    `Okay, I've thought about it and I'm going with "${chosen}."`,
-    `This is tough but I'd pick "${chosen}" — hear me out.`,
-    `Hmm... I think I'd go "${chosen}."`,
-    `After thinking it through: "${chosen}", no question.`,
+    `ok i'm going with "${chosen}"`,
+    `this is tough but ${chosen} — hear me out`,
+    `hmm i think i'd go ${chosen}`,
+    `${chosen}, no question`,
   ];
 
   let response = pick(openers);
@@ -4612,30 +4612,30 @@ function reasonThroughWYR(hyp) {
   // Reason about the choice
   if (chosenSeeds.length > 0) {
     const reason = chosenSeeds[0].first;
-    response += ` Because ${reason}.`;
+    response += `. bc ${reason}`;
     if (chosenSeeds[0].twist && Math.random() > 0.5) {
-      response += ` Even though ${chosenSeeds[0].twist}.`;
+      response += `. even tho ${chosenSeeds[0].twist}`;
     }
   } else {
     const genericReasons = [
-      " It just feels like it would lead to a more interesting life.",
-      " The practical upside seems way bigger day-to-day.",
-      " I think you'd get more joy out of it long-term.",
-      " It's the one I'd be least likely to regret.",
+      ". it just feels like it'd lead to a more interesting life",
+      ". the practical upside is way bigger day-to-day",
+      ". i think you'd get more out of it long-term",
+      ". it's the one i'd least regret",
     ];
     response += pick(genericReasons);
   }
 
   // Acknowledge the other option
   const acks = [
-    ` But I can see the case for "${rejected}" too.`,
-    ` "${rejected}" was tempting though.`,
-    ` Not gonna lie, "${rejected}" almost won.`,
+    `. but i can see the case for ${rejected} too`,
+    `. ${rejected} was tempting tho`,
+    `. ngl ${rejected} almost won`,
   ];
   if (Math.random() > 0.4) response += pick(acks);
 
   // Follow up
-  response += " What about you?";
+  response += ". what about you?";
 
   return response;
 }
@@ -4663,11 +4663,11 @@ function handleHypotheticalAnswer(text, lower) {
   const answer = text.replace(/^(i('d| would) ?(say |pick |choose |go with )?|probably |definitely |hmm,? )/i, "").trim();
 
   const reactions = [
-    `"${answer}" — solid choice! `,
-    `Ooh, ${answer}! I didn't expect that but I love it. `,
-    `${answer}! Interesting pick. `,
-    `Great answer! "${answer}" says a lot. `,
-    `Ha, I had a feeling you'd say something like that! `,
+    `${answer} — solid choice. `,
+    `ooh ${answer}! didn't expect that but i love it. `,
+    `${answer}! ok interesting. `,
+    `lol ${answer} says a lot about you. `,
+    `ha i had a feeling you'd say something like that. `,
   ];
 
   let response = pick(reactions);
@@ -4683,10 +4683,10 @@ function handleHypotheticalAnswer(text, lower) {
 
   // Follow up
   const followups = [
-    "Want another hypothetical?",
-    "I've got more where that came from if you want!",
-    "That was fun — want to go deeper or switch topics?",
-    "Should we keep going with these?",
+    "want another one?",
+    "i got more if you want",
+    "that was fun — keep going or switch it up?",
+    "should we keep going with these",
   ];
   response += pick(followups);
 
