@@ -20213,6 +20213,18 @@ function polishOutput(response) {
     }
   }
 
+  // 11. Casual lowercase (~70%) — friends almost never capitalize sentence starts
+  // Skip: intentional ALL CAPS, proper nouns at start (I, I'm), single-char words
+  if (r.length > 3) {
+    r = r.replace(/(?:^|(?<=[.!?]\s))([A-Z])(?=[a-z])/g, (match, letter) => {
+      // Always keep "I" capitalized
+      const nextChar = r.charAt(r.indexOf(match) + 1);
+      if (letter === "I" && (nextChar === " " || nextChar === "'" || nextChar === "m" || nextChar === "d" || nextChar === "t")) return letter;
+      // 70% chance to lowercase
+      return Math.random() < 0.70 ? letter.toLowerCase() : letter;
+    });
+  }
+
   return r.trim();
 }
 
