@@ -2041,6 +2041,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
     // --- Surface texture patterns: repeating gradient patterns for visual surface texture ---
     // These create subtle visual interest — pinstripes, dot grids, crosshatch, etc.
+    const ac2 = palette.ac2 || palette.ac || "#888";
     if (!isSmall) {
       const dnaTexBoost = dna?.effectPersonality?.surfaceTexture && dna.effectPersonality.surfaceTexture !== "none" ? 0.12 : 0;
       const texChance = (moodId === "bold" ? 0.20 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.15 : moodId === "minimal" ? 0.05 : 0.12) + dnaTexBoost;
