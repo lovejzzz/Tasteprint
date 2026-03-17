@@ -208,7 +208,7 @@ const SEMANTIC_RESPONSES = {
   show_interest: ["ooh how was it??","wait what'd you think","ok that sounds sick, and then what"],
   accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks, you're pretty cool yourself","aw that made my day honestly"],
   playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤","chose violence today huh 😭","and i took that personally"],
-  respectful_disagree: ["hmm i see where you're coming from but i kinda think","interesting take, i actually see it differently tho","ok fair but counterpoint —","that's a choice but hear me out —","sir this is a wendy's but also —"],
+  respectful_disagree: ["hmm i see where you're coming from but i kinda think","ok valid, but i actually see it differently tho","ok fair but counterpoint —","that's a choice but hear me out —","sir this is a wendy's but also —"],
   build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and also","glad we're on the same page, plus","ate and left no crumbs, and also","based take, and fr"],
   accept_apology: ["lol you're good, don't even worry about it","dude it's fine, we're cool","bro i already forgot about it lol"],
   be_present_comfort: ["i'm here, not going anywhere","you don't have to say anything if you don't want, i'm just here","i gotchu, say as much or as little as you want"],
@@ -2578,7 +2578,7 @@ const COMP = {
   // Bridges between reaction and body
   bridges: {
     agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —","ehh idk about that one but —","ok but have you considered —","hmm ok but counterpoint —","based, and —","this is the way —","spitting facts —"],
-    pivot:    ["ok so here's the thing —","the way i see it,","ok but what's interesting is","ok wait tho,","here's what i think —","nah I think you're overthinking it —","ok devil's advocate tho —"],
+    pivot:    ["ok so here's the thing —","the way i see it,","ok but the wild part is","ok wait tho,","here's what i think —","nah I think you're overthinking it —","ok devil's advocate tho —"],
     empathy:  ["yeah no i get that","that's valid","nah i feel you","that's fair","hmm hot take but i kinda disagree","that's fair but also... counterpoint:","it is what it is —","the vibes are immaculate on that —"],
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
@@ -2966,9 +2966,9 @@ function handleComparison(text) {
   if (assocB?.opinions) parts.push(`${b}: ${pick(assocB.opinions)}.`);
 
   const nuances = [
-    `Honestly, they're both solid — it depends on what you're optimizing for.`,
-    `I'd say ${a} wins for some use cases and ${b} wins for others.`,
-    `They each have their strengths — it's less about which is "better" and more about which fits your situation.`,
+    `ngl they're both solid — depends what you're optimizing for.`,
+    `${a} wins for some stuff and ${b} wins for others tbh.`,
+    `they each have their thing — it's less about "better" and more about what fits your situation.`,
   ];
   parts.push(pick(nuances));
   parts.push(`What's your use case?`);
@@ -3187,7 +3187,7 @@ function shapeToRhythm(response, targetMove) {
     case "challenge":
       // Add a gentle counter-perspective
       if (Math.random() > 0.5) {
-        const challenges = ["ok but wait tho —","nah but counterpoint —","that said,","ok but flip side tho,"];
+        const challenges = ["ok but wait tho —","nah but counterpoint —","ok but like,","ok but flip side tho,"];
         const counterPts = ["there's kinda an argument for the other side too","some people would totally disagree tho","depends on context right?","what about the edge cases tho"];
         return response + " " + pick(challenges) + " " + pick(counterPts);
       }
@@ -5143,7 +5143,7 @@ function handleMultiSentence(text) {
         "my tip? start small, build something real, and the concepts click way faster than reading docs",
         "honestly the best approach is hands-on. pick a small project and learn as you go",
         "the key is not to learn everything at once. focus on one concept, nail it, then move on",
-        "i'd say start with the basics and don't worry about the advanced stuff until you need it",
+        "start with the basics and don't worry about the advanced stuff until you need it tbh",
       ]));
     }
   }
@@ -8067,7 +8067,7 @@ function planResponseIntent(text, parsed, sent, emo, subtext) {
 // Discourse markers — natural transitions based on what the LAST AI message was
 const DISCOURSE_MARKERS = {
   // After the AI was empathetic, transition gently
-  empathetic: ["Anyway,","On a lighter note —","But hey,","That said,","Moving forward though,"],
+  empathetic: ["Anyway,","On a lighter note —","But hey,","ok but also,","Moving forward though,"],
   // After the AI was playful, can shift easily
   playful:    ["Oh also —","But real talk,","Haha but seriously,","Okay but —","On another note,"],
   // After the AI was informative, vary the next opening
@@ -10346,7 +10346,7 @@ const USER_TRAITS = {
     insights: [
       "you'd rather ship something real than polish something theoretical — builder energy fr",
       "you clearly value stuff that actually works over stuff that just looks clever. smart",
-      "you think in terms of 'does this ship?' and honestly that's the move",
+      "you think about whether stuff actually ships and tbh that's the move",
     ]
   },
   curious_learner: {
@@ -13050,7 +13050,7 @@ let lastMirrorTurn = 0;
 // Vocabulary swap tables: casual ↔ formal register
 const REGISTER_SWAPS = {
   toFormal: [
-    [/\bcool\b/gi, () => pick(["solid", "sharp", "worth noting"])],
+    [/\bcool\b/gi, () => pick(["solid", "sharp", "notable"])],
     [/\bawesome\b/gi, () => pick(["excellent", "really strong", "seriously good"])],
     [/\bgonna\b/gi, "going to"],
     [/\bwanna\b/gi, "want to"],
@@ -16818,8 +16818,8 @@ function applyDepth1(response, topic) {
 function applyDepth2(response, topic) {
   const deepeners = [
     ` The thing people miss about ${topic} is that it's rarely just one thing — it's usually tangled up with other stuff.`,
-    ` What's interesting is how ${topic} keeps showing up in totally different contexts with the same underlying pattern.`,
-    ` The more I think about ${topic}, the more I realize the surface-level take misses the real story.`,
+    ` the wild part is how ${topic} keeps showing up in totally different contexts with the same underlying pattern.`,
+    ` the deeper you go with ${topic}, the more the surface-level take kinda falls apart ngl.`,
     ` There's a second-order effect with ${topic} that most people don't talk about.`,
   ];
   const deepener = deepeners[Math.floor(Math.random() * deepeners.length)];
@@ -17852,7 +17852,7 @@ function getAgreementPrefix(level, claim) {
     ],
     curious: [
       "huh i hadn't thought about it that way",
-      "interesting take —",
+      "ooh ok —",
       "huh don't hear that take often",
       "hmm maybe? let me think on that",
       "Yeah I get how you'd land there.",
@@ -18141,8 +18141,8 @@ function generateContrastFrame(angle, stance) {
 
   if (angle.type === "opinion") {
     const frames = [
-      `That said — ${angle.opinion}. Different angle, but maybe they connect?`,
-      `Here's a thought: ${angle.opinion}. Might complicate your take a bit, in a good way.`,
+      `ok but — ${angle.opinion}. different angle, but maybe they connect?`,
+      `wait ok hear me out: ${angle.opinion}. might complicate your take a bit, in a good way.`,
       `Playing devil's advocate for a sec — ${angle.opinion}.`,
     ];
     return frames[Math.floor(Math.random() * frames.length)];
