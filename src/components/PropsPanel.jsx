@@ -1,5 +1,6 @@
 import React from "react";
 import { DEFAULT_PROPS, HAS_PROPS } from "../constants";
+import { getTextureStyle } from "../utils";
 
 /* ── Toggle switch helper ── */
 function Sw({ on, color, stop, onClick }) {
@@ -21,7 +22,7 @@ function Sw({ on, color, stop, onClick }) {
 }
 
 /* Compact props panel for customizing component visual state */
-export default function PropsPanel({ type, props, onProp, p }) {
+export default function PropsPanel({ type, props, onProp, p, texture }) {
   if (!HAS_PROPS.has(type)) return null;
   const defaults = DEFAULT_PROPS[type] || {};
   const G = (k) => props[k] !== undefined ? props[k] : defaults[k];
@@ -35,6 +36,7 @@ export default function PropsPanel({ type, props, onProp, p }) {
     padding: "6px 10px", boxShadow: `0 4px 16px ${p.tx}10`,
     display: "flex", gap: 6, alignItems: "center",
     userSelect: "none", whiteSpace: "nowrap",
+    ...getTextureStyle(texture, p),
   };
   const label = { fontSize: 8, color: p.mu, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 };
   const btn = (active) => ({
