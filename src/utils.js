@@ -985,6 +985,26 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           stackLayers.push(`3px 2px 0 ${gc1}18`, `-2px 3px 0 ${gc2}14`, `0 0 12px ${gcGlow}0A`);
         }
       }
+    } else if (stackRoll < 0.15) {
+      // === Chromatic fan: prismatic color dispersion — light-through-a-prism effect ===
+      // 3-5 shadows fan out in different directions, each a different palette color
+      const fanColors = [gc1, gc2, gcGlow, dc.comp || acHex, dc.vivid || gc1];
+      const fanCount = pick([3, 4, 5]);
+      const fanSpread = moodId === "bold" ? pick([5, 6, 8]) : moodId === "playful" ? pick([4, 5, 6]) : pick([3, 4, 5]);
+      const fanBlur = moodId === "elegant" ? pick([8, 12, 16]) : moodId === "minimal" ? pick([4, 6]) : pick([4, 8, 12]);
+      const baseAngle = Math.random() * 360;
+      const angleStep = 360 / fanCount;
+
+      for (let i = 0; i < fanCount; i++) {
+        const angle = ((baseAngle + angleStep * i) * Math.PI) / 180;
+        const dx = Math.round(Math.cos(angle) * fanSpread);
+        const dy = Math.round(Math.sin(angle) * fanSpread);
+        const color = fanColors[i % fanColors.length];
+        const opacity = moodId === "minimal" ? "08" : moodId === "elegant" ? "0C" : pick(["12", "15", "18"]);
+        stackLayers.push(`${dx}px ${dy}px ${fanBlur}px ${color}${opacity}`);
+      }
+      // Add a soft base shadow for grounding
+      stackLayers.push(`0 2px 8px ${shHex}06`);
     } else if (stackRoll < 0.30) {
       // === Standard stacking: 1 accent layer ===
       if (moodId === "bold" || moodId === "auto") {
