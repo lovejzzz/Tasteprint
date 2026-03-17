@@ -174,6 +174,15 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Shipping mode (order-summary) */
+  if ("shipping" in defaults) {
+    const sh = G("shipping");
+    const shipOpts = [{ l: "Std", v: 0 }, { l: "Exp", v: 1 }, { l: "Free", v: 2 }];
+    controls.push(<React.Fragment key="shipping"><span style={label}>Ship</span>
+      {shipOpts.map(o => <button key={o.v} style={{ ...btn(sh === o.v), fontSize: 8, width: "auto", height: 18, padding: "0 5px", borderRadius: 4 }} onMouseDown={stop} onClick={() => onProp("shipping", o.v)}>{o.l}</button>)}
+    </React.Fragment>);
+  }
+
   /* Wishlisted toggle (product-card) */
   if ("wishlisted" in defaults) {
     const on = G("wishlisted");

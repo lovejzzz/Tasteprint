@@ -204,7 +204,7 @@ export const DEFAULT_PROPS = {
   "feature-table":{ highlight: 1 },
   "cart-item":   { qty: 1 },
   receipt:       { tip: 0 },
-  "order-summary":{ discount: false },
+  "order-summary":{ discount: false, shipping: 0 },
   "promo-banner":{ dismissed: false },
   table:         { highlight: 0 },
   card:          { featured: false },
