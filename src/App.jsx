@@ -44,7 +44,7 @@ export default function App() {
   const [designMood, setDesignMood] = useState("auto");
   const rndUndo = useRef(null); // { id, prev: shapeSnapshot, prevPrefV }
   const [hasRndUndo, setHasRndUndo] = useState(false);
-  const [copiedStyle, setCopiedStyle] = useState(null); // { variant, font, fsize }
+  const [styleSource, setStyleSource] = useState(null); // shape ID for style transfer
   const curatedIdx = useRef({}); // { [shapeId]: nextPresetIndex }
   const cRef = useRef(null);
   const dRef = useRef(null);
@@ -278,46 +278,33 @@ export default function App() {
     setHasRndUndo(false);
   }, []);
 
-  const copyStyle = useCallback((id) => {
-    const s = shapes.find(x => x.id === id);
-    if (!s) return;
-    setCopiedStyle({
-      type: s.type,
-      variant: s.variant || 0,
-      font: s.font || 0,
-      fsize: s.fsize || 1,
-      props: s.props ? { ...s.props } : {},
-      dStyles: s.dStyles ? { ...s.dStyles } : {},
-    });
-  }, [shapes]);
-
-  const pasteStyle = useCallback((id) => {
-    if (!copiedStyle) return;
+  const copyStyle = useCallback((sourceId, targetId) => {
+    const src = shapes.find(x => x.id === sourceId);
+    if (!src) return;
     setShapes(prev => prev.map(s => {
-      if (s.id !== id) return s;
-      // Clamp variant to target component's max
+      if (s.id !== targetId) return s;
       const targetMax = maxV(s.type);
-      const safeVariant = copiedStyle.variant < targetMax ? copiedStyle.variant : copiedStyle.variant % targetMax;
-      // Transfer props that the target component also supports
+      const safeVariant = (src.variant || 0) < targetMax ? (src.variant || 0) : (src.variant || 0) % targetMax;
       let mergedProps = { ...(s.props || {}) };
-      if (copiedStyle.props) {
+      if (src.props) {
         const targetDefaults = DEFAULT_PROPS[s.type];
         if (targetDefaults) {
-          for (const [k, v] of Object.entries(copiedStyle.props)) {
+          for (const [k, v] of Object.entries(src.props)) {
             if (k in targetDefaults) mergedProps[k] = v;
           }
         }
       }
-      return { ...s, variant: safeVariant, font: copiedStyle.font, fsize: copiedStyle.fsize, props: mergedProps, dStyles: copiedStyle.dStyles ? { ...copiedStyle.dStyles } : undefined };
+      return { ...s, variant: safeVariant, font: src.font || 0, fsize: src.fsize || 1, props: mergedProps, dStyles: src.dStyles ? { ...src.dStyles } : undefined };
     }));
     setPrefV(pv => {
-      const s = shapes.find(x => x.id === id);
-      if (!s) return pv;
-      const targetMax = maxV(s.type);
-      const safeVariant = copiedStyle.variant < targetMax ? copiedStyle.variant : copiedStyle.variant % targetMax;
-      return { ...pv, [s.type]: safeVariant };
+      const tgt = shapes.find(x => x.id === targetId);
+      if (!tgt) return pv;
+      const targetMax = maxV(tgt.type);
+      const safeVariant = (src.variant || 0) < targetMax ? (src.variant || 0) : (src.variant || 0) % targetMax;
+      return { ...pv, [tgt.type]: safeVariant };
     });
-  }, [copiedStyle, shapes]);
+    setStyleSource(null);
+  }, [shapes]);
 
   const delShape = useCallback(() => {
     flushDirtyText();
@@ -652,7 +639,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} copyStyle={copyStyle} pasteStyle={pasteStyle} hasCopiedStyle={!!copiedStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} />
               ))}
             </div>
 

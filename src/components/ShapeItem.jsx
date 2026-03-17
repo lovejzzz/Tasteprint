@@ -17,10 +17,12 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, copyStyle, pasteStyle, hasCopiedStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
+  const isStyleSource = styleSource === s.id;
+  const hasActiveSource = styleSource != null && styleSource !== s.id;
   const mx = maxV(s.type);
   const vn = varName(s.type, s.variant || 0);
   const fontIdx = selFont !== null && isPrimary ? selFont : (s.font || 0);
@@ -123,20 +125,31 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             </span>
           </span>}
           {sep}
-          <button aria-label="Copy style" {...ph}
-            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); copyStyle(s.id); }}
-            style={{ ...pb, fontSize: 10, fontWeight: 500, width: "auto", padding: "0 5px", color: p.mu }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
-          </button>
-          {hasCopiedStyle && <button aria-label="Paste style" {...ph}
-            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); pasteStyle(s.id); }}
-            style={{ ...pb, fontSize: 10, fontWeight: 500, width: "auto", padding: "0 5px", color: p.ac }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" />
-            </svg>
-          </button>}
+          {/* Style transfer: eyedropper to set source, or paste if source is active */}
+          {hasActiveSource ? (
+            <button aria-label="Paste style from source"
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); copyStyle(styleSource, s.id); }}
+              onMouseEnter={e => { e.currentTarget.style.background = p.ac + "30"; e.currentTarget.style.transform = "scale(1.08)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = p.ac + "18"; e.currentTarget.style.transform = "scale(1)"; }}
+              style={{ ...pb, fontSize: 9, fontWeight: 600, width: "auto", padding: "0 7px", gap: 3, background: p.ac + "18", color: p.ac }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v6M12 16v6M2 12h6M16 12h6" />
+              </svg>
+              <span>Apply</span>
+            </button>
+          ) : (
+            <button aria-label={isStyleSource ? "Cancel style source" : "Set as style source"}
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); isStyleSource ? setStyleSource(null) : setStyleSource(s.id); }}
+              onMouseEnter={e => { e.currentTarget.style.background = isStyleSource ? "#E0524D22" : p.ac + "28"; e.currentTarget.style.transform = "scale(1.08)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = isStyleSource ? p.ac + "18" : p.su; e.currentTarget.style.transform = "scale(1)"; }}
+              style={{ ...pb, fontSize: 9, fontWeight: 500, width: "auto", padding: "0 6px", gap: 3, color: isStyleSource ? p.ac : p.mu, background: isStyleSource ? p.ac + "18" : p.su }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-3.54 3.54 3.75 3.75 3.54-3.54a1 1 0 0 0 0-1.41z" />
+                <path d="M13.42 6.83L3 17.25V21h3.75L17.17 10.58" />
+              </svg>
+              {isStyleSource && <span>Source</span>}
+            </button>
+          )}
         </div>
       )}
 
@@ -168,8 +181,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           transformOrigin: ds.transformOrigin || "center center",
           transform: isDrg ? "scale(1.015)" : [ds.perspective && `perspective(${ds.perspective}px)`, ds.rotate && `rotate(${ds.rotate})`, ds.rotateX && `rotateX(${ds.rotateX}deg)`, ds.rotateY && `rotateY(${ds.rotateY}deg)`, ds.scale && `scale(${ds.scale})`, ds.transform, ds.skewX && `skewX(${ds.skewX}deg)`, ds.skewY && `skewY(${ds.skewY}deg)`, ds.translateY && `translateY(${ds.translateY}px)`].filter(Boolean).join(" ") || "scale(1)",
           filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : [ds.filter, ds.hueRotate && `hue-rotate(${ds.hueRotate}deg)`].filter(Boolean).join(" ") || "none",
-          outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : (ds.outline || "none"),
-          outlineOffset: isSel ? 4 : (ds.outlineOffset ? parseInt(ds.outlineOffset) : 4),
+          outline: isStyleSource ? `2px dashed ${p.ac}` : isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : (ds.outline || "none"),
+          outlineOffset: isStyleSource ? 6 : isSel ? 4 : (ds.outlineOffset ? parseInt(ds.outlineOffset) : 4),
           background: ds.background || undefined,
           borderRadius: ds.borderRadius ?? 14,
           boxShadow: ds.boxShadow && ds.boxShadow !== "none" ? ds.boxShadow : undefined,
@@ -230,6 +243,35 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
         )}
       </div>
 
+      {/* ── Style source badge (visible when not primary-selected) ── */}
+      {isStyleSource && !isPrimary && (
+        <div style={{
+          position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
+          background: p.ac, color: "#fff", fontSize: 9, fontWeight: 600,
+          padding: "2px 8px", borderRadius: 999, zIndex: 200,
+          letterSpacing: ".03em", whiteSpace: "nowrap",
+          boxShadow: `0 2px 8px ${p.ac}40`,
+        }}>Style Source</div>
+      )}
+
+      {/* ── Paste style target button (visible on non-source when source is active and not primary) ── */}
+      {hasActiveSource && !isPrimary && (
+        <button
+          aria-label="Apply style from source"
+          onPointerDown={e => { e.stopPropagation(); e.preventDefault(); copyStyle(styleSource, s.id); }}
+          onMouseEnter={e => { e.currentTarget.style.background = p.ac; e.currentTarget.style.transform = "translateX(-50%) scale(1.08)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = p.ac + "CC"; e.currentTarget.style.transform = "translateX(-50%) scale(1)"; }}
+          style={{
+            position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
+            background: p.ac + "CC", color: "#fff", fontSize: 9, fontWeight: 600,
+            padding: "2px 10px", borderRadius: 999, zIndex: 200,
+            border: "none", cursor: "pointer", whiteSpace: "nowrap",
+            boxShadow: `0 2px 8px ${p.ac}30`,
+            transition: "background .15s, transform .15s",
+            fontFamily: "system-ui",
+          }}>Apply Style</button>
+      )}
+
       {/* ── Props panel ── */}
       {isPrimary && !isDrg && HAS_PROPS.has(s.type) && (
         <PropsPanel type={s.type} props={s.props || {}} onProp={(k, val) => onProp(s.id, k, val)} p={p} />
@@ -248,7 +290,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     prev.selAll.has(id) === next.selAll.has(id) &&
     prev.designMood === next.designMood &&
     prev.hasRndUndo === next.hasRndUndo &&
-    prev.hasCopiedStyle === next.hasCopiedStyle &&
+    prev.styleSource === next.styleSource &&
     prev.dScore === next.dScore &&
     prev.s.dStyles === next.s.dStyles;
 });
