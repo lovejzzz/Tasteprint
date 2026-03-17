@@ -210,7 +210,7 @@ export const DEFAULT_PROPS = {
   card:          { featured: false, liked: false },
   badge:         { level: 0 },
   modal:         { on: true },
-  "stat-card":   { trend: 0 },
+  "stat-card":   { trend: 0, sparkline: true },
   "list-item":   { on: true, pinned: false },
   "avatar-row":  { active: 0 },
   "tag-input":   { active: 0 },
