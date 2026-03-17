@@ -7832,12 +7832,12 @@ function modulateEpistemics(response, topics, parsed) {
   // MODERATE confidence (0.5-0.8): subtle hedging
   if (conf.score >= 0.5) {
     const moderateHedges = [
-      ["I think ", "I think "],
-      ["From what I know, ", "From what I know, "],
-      ["If I remember right, ", "If I remember right, "],
+      ["i think ", "i think "],
+      ["from what i know, ", "from what i know, "],
+      ["if i remember right, ", "if i remember right, "],
     ];
     const [prefix] = pick(moderateHedges);
-    if (!/^(I |From|If )/i.test(response)) {
+    if (!/^(i |from|if )/i.test(response)) {
       return prefix + response.charAt(0).toLowerCase() + response.slice(1);
     }
     return response;
@@ -7846,9 +7846,9 @@ function modulateEpistemics(response, topics, parsed) {
   // LOW confidence (0.3-0.5): honest hedging
   if (conf.score >= 0.3) {
     const lowHedges = [
-      "I might be off on this, but " + response.charAt(0).toLowerCase() + response.slice(1),
-      response + " (Though honestly, I might be fuzzy on some details!)",
-      "Hmm, I'm not 100% on this, but " + response.charAt(0).toLowerCase() + response.slice(1),
+      "i might be off on this but " + response.charAt(0).toLowerCase() + response.slice(1),
+      response + " (tho ngl i might be fuzzy on some of this)",
+      "hmm not 100% sure but " + response.charAt(0).toLowerCase() + response.slice(1),
     ];
     return pick(lowHedges);
   }
@@ -8334,30 +8334,30 @@ const IMPLICIT_AGREE_PATTERNS = [
 
 const IMPLICIT_AGREE_RESPONSES = {
   affirmation: [
-    "Glad we're on the same page. ",
-    "Okay, so we're aligned — ",
-    "Great, running with that — ",
+    "glad we're on the same page. ",
+    "ok so we're aligned — ",
+    "nice, running with that — ",
   ],
   validation: [
-    "Cool. So building from there — ",
-    "Right, and that opens up — ",
+    "cool. so building from there — ",
+    "right, and that opens up — ",
   ],
   expansion: [
-    "Oh nice, you're taking it further. ",
-    "Good add — ",
-    "Yes and — ",
+    "oh nice you're taking it further. ",
+    "good add — ",
+    "yes and — ",
   ],
   restatement: [
-    "Exactly how I'd frame it too. ",
-    "Yeah, that's the clean version. ",
+    "exactly how i'd frame it too. ",
+    "yeah that's the clean version. ",
   ],
   comprehension: [
-    "Perfect. So next thought — ",
-    "Okay great, then — ",
+    "perfect. so next thought — ",
+    "ok great then — ",
   ],
   minimal: [
-    "Cool. ",
-    "Gotcha — ",
+    "cool. ",
+    "gotcha — ",
   ],
 };
 
@@ -11013,9 +11013,9 @@ function applyCommitmentFollowup(response, text) {
 
 // Micro-acks — tiny signals that show we're tracking
 const MICRO_ACKS = {
-  positive: ["Gotcha! ", "Makes sense! ", "Oh nice — ", "Right, right — ", "Got it! ", "Love that — ", "Okay yeah — "],
-  negative: ["I hear you. ", "Gotcha. ", "That's fair. ", "Oof yeah. ", "Yeah, that's tough. ", "I get it. "],
-  neutral: ["Mm-hmm, ", "Right — ", "Gotcha — ", "Okay — ", "Sure — ", "Got it — ", "Noted — "],
+  positive: ["gotcha! ", "makes sense — ", "oh nice — ", "right right — ", "got it! ", "love that — ", "ok yeah — "],
+  negative: ["i hear you. ", "gotcha. ", "that's fair. ", "oof yeah. ", "yeah that's tough. ", "i get it. "],
+  neutral: ["mm-hmm, ", "right — ", "gotcha — ", "ok — ", "sure — ", "got it — ", "noted — "],
   question: ["ooh — ", "hmm ", "oh wait — ", "so — ", "uh "],
   long: ["ok a lot to unpack here — ", "alright so — ", "ok so — "],
 };
@@ -16562,11 +16562,11 @@ function addCourseCorrection(response) {
 // Mode 3: Uncertainty surfacing — genuine not-knowing
 function addUncertainty(response, topics) {
   const hedges = [
-    `I'm not 100% sure about this, but `,
-    `My honest sense is... `,
-    `I could be wrong, but `,
-    `Take this with a grain of salt — `,
-    `I think — and I'm kind of working this out as I go — `,
+    `not 100% sure on this but `,
+    `my honest take is... `,
+    `i could be wrong but `,
+    `take this with a grain of salt — `,
+    `i think — and i'm kinda working this out as i go — `,
   ];
   const hedge = hedges[Math.floor(Math.random() * hedges.length)];
 
@@ -19349,8 +19349,8 @@ const DECLARATIVE_PATTERNS = [
 
 // Hedge insertions — grouped by where they go
 const HEDGE_PREFIXES = [
-  "i think ", "honestly i think ", "from what i can tell, ",
-  "if i had to guess, ", "in my experience, ", "the way i see it, ",
+  "i think ", "honestly ", "from what i can tell, ",
+  "if i had to guess, ", "ime ", "the way i see it, ",
   "i'd say ", "my read is ", "feels like ",
 ];
 
@@ -19362,9 +19362,9 @@ const HEDGE_INJECTS = [
   { find: /\bneed to\b/i, replace: "might want to" },
   { find: /\bhave to\b/i, replace: "could try to" },
   { find: /\bobviously\b/i, replace: "I think" },
-  { find: /\bclearly\b/i, replace: "it seems like" },
+  { find: /\bclearly\b/i, replace: "looks like" },
   { find: /\bdefinitely\b/i, replace: "probably" },
-  { find: /\bcertainly\b/i, replace: "I'd say" },
+  { find: /\bcertainly\b/i, replace: "i'd say" },
 ];
 
 function applyEpistemicHedge(response) {
