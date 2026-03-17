@@ -938,13 +938,49 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.rotate = `${deg}deg`;
   }
 
-  // --- Filter: brightness/saturation shifts ---
-  if (moodId === "bold" && Math.random() < 0.4) {
-    s.filter = `contrast(${randRange(1.02, 1.12).toFixed(2)})`;
+  // --- Compound filter recipes (mood-signature visual treatments) ---
+  // Combines 2-3 CSS filters for distinctive looks — like Instagram filters per mood
+  if (moodId === "bold" && Math.random() < 0.40) {
+    s.filter = pick([
+      `contrast(${randRange(1.04, 1.12).toFixed(2)})`,
+      `contrast(${randRange(1.05, 1.10).toFixed(2)}) saturate(${randRange(1.05, 1.15).toFixed(2)})`,
+      `contrast(${randRange(1.06, 1.14).toFixed(2)}) brightness(${randRange(0.97, 1.02).toFixed(2)})`,
+      // "Punchy": high contrast + slight desaturation = editorial magazine look
+      `contrast(${randRange(1.08, 1.15).toFixed(2)}) saturate(${randRange(0.88, 0.95).toFixed(2)})`,
+    ]);
   } else if (moodId === "playful" && Math.random() < 0.35) {
-    s.filter = `saturate(${randRange(1.1, 1.35).toFixed(2)})`;
-  } else if (moodId === "elegant" && Math.random() < 0.25) {
-    s.filter = `brightness(${randRange(1.02, 1.08).toFixed(2)})`;
+    s.filter = pick([
+      `saturate(${randRange(1.1, 1.35).toFixed(2)})`,
+      `saturate(${randRange(1.15, 1.30).toFixed(2)}) brightness(${randRange(1.02, 1.06).toFixed(2)})`,
+      // "Candy": vivid + warm brightness = bubbly pop feel
+      `saturate(${randRange(1.20, 1.40).toFixed(2)}) contrast(${randRange(0.95, 1.02).toFixed(2)}) brightness(${randRange(1.03, 1.07).toFixed(2)})`,
+      // "Dreamy": slight blur look via low contrast + high saturation
+      `saturate(${randRange(1.15, 1.25).toFixed(2)}) contrast(${randRange(0.92, 0.98).toFixed(2)})`,
+    ]);
+  } else if (moodId === "elegant" && Math.random() < 0.30) {
+    s.filter = pick([
+      `brightness(${randRange(1.02, 1.08).toFixed(2)})`,
+      // "Porcelain": bright + slightly desaturated = refined luxury
+      `brightness(${randRange(1.03, 1.07).toFixed(2)}) saturate(${randRange(0.85, 0.95).toFixed(2)})`,
+      // "Warm tone": subtle brightness + micro contrast for depth
+      `brightness(${randRange(1.02, 1.05).toFixed(2)}) contrast(${randRange(1.01, 1.04).toFixed(2)})`,
+      // "Matte": reduced saturation + slight brightness = editorial elegance
+      `saturate(${randRange(0.82, 0.92).toFixed(2)}) brightness(${randRange(1.04, 1.08).toFixed(2)})`,
+    ]);
+  } else if (moodId === "minimal" && Math.random() < 0.20) {
+    s.filter = pick([
+      // "Clean": very subtle desaturation for airy neutrality
+      `saturate(${randRange(0.88, 0.96).toFixed(2)})`,
+      // "Paper": bright + desaturated = paper-like flatness
+      `saturate(${randRange(0.85, 0.93).toFixed(2)}) brightness(${randRange(1.02, 1.05).toFixed(2)})`,
+    ]);
+  } else if (moodId === "auto" && Math.random() < 0.15) {
+    // Auto: occasionally gets a random compound filter for surprise
+    s.filter = pick([
+      `contrast(${randRange(1.03, 1.10).toFixed(2)}) saturate(${randRange(1.05, 1.20).toFixed(2)})`,
+      `brightness(${randRange(1.02, 1.06).toFixed(2)}) saturate(${randRange(0.90, 1.10).toFixed(2)})`,
+      `contrast(${randRange(1.02, 1.08).toFixed(2)}) brightness(${randRange(0.98, 1.04).toFixed(2)})`,
+    ]);
   }
 
   // --- Outline decoration (mood-driven variety) ---
