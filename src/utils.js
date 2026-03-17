@@ -1133,66 +1133,77 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
-    /* ── WILD CARDS — creative surprise combos ── */
+    /* ── WILD CARDS — creative surprise combos with DNA colors + mood-weighted selection ── */
     // Auto: 50% chance, Bold: 12%, Playful: 18%
     const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : 0;
     if (wildChance > 0 && Math.random() < wildChance) {
-      const wild = Math.random();
-      if (wild < 0.07) {
-        // "Glassmorphism": frosted glass + blur + subtle border
+      // Mood-weighted wild card selection — each mood favors certain aesthetics
+      const WILD_CARDS = [
+        "glassmorphism", "neumorphism", "retro", "glow", "paper-cutout",
+        "monochrome-flat", "floating-card", "double-border", "ink-bleed",
+        "chromatic-shift", "split-tone", "layered-depth", "accent-frame",
+        "soft-bloom", "brutalist-type",
+      ];
+      const MOOD_WEIGHTS = {
+        auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9],
+        bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12],
+        playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4],
+      };
+      const weights = MOOD_WEIGHTS[moodId] || MOOD_WEIGHTS.auto;
+      const totalW = weights.reduce((a, b) => a + b, 0);
+      let r = Math.random() * totalW, wIdx = 0;
+      for (let i = 0; i < weights.length; i++) { r -= weights[i]; if (r <= 0) { wIdx = i; break; } }
+      const wildCard = WILD_CARDS[wIdx];
+
+      // ac2 for backward compat in chromatic/split-tone
+      const ac2 = palette.ac2 || palette.ac || "#888";
+
+      if (wildCard === "glassmorphism") {
         s.backdropFilter = `blur(${pick([12, 16, 20])}px)`;
-        s.border = `1px solid ${acHex}15`;
+        s.border = `1px solid ${gc1}15`;
         s.boxShadow = `0 8px 32px ${shHex}10`;
-      } else if (wild < 0.13) {
-        // "Neumorphism": soft dual shadows for raised/pressed look
+      } else if (wildCard === "neumorphism") {
         s.boxShadow = dark
-          ? `5px 5px 10px #00000030, -5px -5px 10px ${acHex}08`
+          ? `5px 5px 10px #00000030, -5px -5px 10px ${gc1}08`
           : `5px 5px 15px ${shHex}12, -5px -5px 15px #ffffff80`;
         s.border = "none";
         s.borderRadius = pick([12, 16, 20]);
-      } else if (wild < 0.18) {
-        // "Retro": hard offset shadow + sharp corners + thick border
-        s.boxShadow = `6px 6px 0 ${acHex}35`;
+      } else if (wildCard === "retro") {
+        s.boxShadow = `6px 6px 0 ${gc1}35`;
         s.borderRadius = pick([0, 2, 4]);
-        s.border = `2px solid ${acHex}40`;
+        s.border = `2px solid ${gcGlow}40`;
         s.rotate = `${pick([-1, -0.5, 0.5, 1])}deg`;
         s.textTransform = "uppercase";
-      } else if (wild < 0.23) {
-        // "Glow": neon accent glow ring
-        s.boxShadow = `0 0 15px ${acHex}25, 0 0 40px ${acHex}10, inset 0 0 10px ${acHex}05`;
-        s.border = `1px solid ${acHex}30`;
+      } else if (wildCard === "glow") {
+        s.boxShadow = `0 0 15px ${gcGlow}25, 0 0 40px ${gc1}10, inset 0 0 10px ${gcGlow}05`;
+        s.border = `1px solid ${gcGlow}30`;
         s.borderRadius = pick([12, 16, 20, 999]);
-      } else if (wild < 0.28) {
-        // "Paper Cutout": hard shadow + rotation + flat
+      } else if (wildCard === "paper-cutout") {
         const offset = pick([4, 5, 6, 8]);
         s.boxShadow = `${offset}px ${offset}px 0 ${shHex}20`;
         s.borderRadius = pick([0, 2]);
         s.border = `1.5px solid ${shHex}15`;
         s.rotate = `${pick([-2, -1.5, -1, 1, 1.5, 2])}deg`;
         s.gradientOverlay = undefined;
-      } else if (wild < 0.33) {
-        // "Monochrome Flat": zero decoration, just radius + desaturation
+      } else if (wildCard === "monochrome-flat") {
         s.boxShadow = "none";
         s.border = "none";
         s.borderRadius = pick([0, 4, 8]);
         s.filter = `saturate(0.${pick([2, 25, 3, 35])}) contrast(1.05)`;
         s.gradientOverlay = undefined;
         s.hueRotate = undefined;
-      } else if (wild < 0.37) {
-        // "Floating Card": elevation + scale
+      } else if (wildCard === "floating-card") {
         s.boxShadow = `0 20px 60px ${shHex}15, 0 8px 20px ${shHex}10`;
         s.scale = pick([1.02, 1.03, 1.04]);
         s.borderRadius = pick([16, 20, 24]);
         s.border = "none";
-      } else if (wild < 0.41) {
-        // "Double Border": outline ring + inner border
-        s.border = `2px solid ${acHex}20`;
-        s.outline = `2px solid ${acHex}12`;
+      } else if (wildCard === "double-border") {
+        s.border = `2px solid ${gc1}20`;
+        s.outline = `2px solid ${gc2}12`;
         s.outlineOffset = `${pick([3, 4, 5, 6])}px`;
         s.borderRadius = pick([8, 12, 16]);
         s.boxShadow = "none";
-      } else if (wild < 0.50) {
-        // "Ink Bleed": text-shadow-like spread via multi-layer box shadow + low saturation
+      } else if (wildCard === "ink-bleed") {
         const bleed = pick([3, 4, 5, 6]);
         s.boxShadow = `0 0 ${bleed}px ${shHex}18, 0 0 ${bleed * 3}px ${shHex}08`;
         s.filter = `saturate(0.${pick([5, 6, 7])}) contrast(${randRange(1.05, 1.15).toFixed(2)})`;
@@ -1200,40 +1211,35 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.border = `1px solid ${shHex}10`;
         s.gradientOverlay = undefined;
         s.letterSpacing = pick(["0.02em", "0.03em", "0.04em"]);
-      } else if (wild < 0.58) {
-        // "Chromatic Shift": split-color offset shadows for RGB separation feel
-        s.boxShadow = `${pick([2, 3])}px ${pick([1, 2])}px 0 ${acHex}20, ${pick([-2, -3])}px ${pick([-1, -2])}px 0 ${ac2}18`;
+      } else if (wildCard === "chromatic-shift") {
+        s.boxShadow = `${pick([2, 3])}px ${pick([1, 2])}px 0 ${gc1}20, ${pick([-2, -3])}px ${pick([-1, -2])}px 0 ${gc2}18`;
         s.borderRadius = pick([6, 10, 14]);
         s.hueRotate = pick([8, 12, 15, -8, -12]);
         s.border = "none";
-      } else if (wild < 0.66) {
-        // "Split-Tone": diagonal gradient with contrasting blend mode
-        s.gradientOverlay = `linear-gradient(${pick([135, 160, 200])}deg, ${acHex}12 0%, transparent 40%, ${ac2}10 100%)`;
+      } else if (wildCard === "split-tone") {
+        s.gradientOverlay = `linear-gradient(${pick([135, 160, 200])}deg, ${gc1}12 0%, transparent 40%, ${gc2}10 100%)`;
         s.mixBlendMode = pick(["overlay", "soft-light", "multiply"]);
         s.borderRadius = pick([12, 16, 20]);
         s.boxShadow = `0 4px 20px ${shHex}10`;
-      } else if (wild < 0.74) {
-        // "Layered Depth": triple stacked shadows at different angles for 3D parallax feel
+      } else if (wildCard === "layered-depth") {
         const d1 = pick([2, 3, 4]), d2 = pick([6, 8, 10]), d3 = pick([14, 18, 22]);
         s.boxShadow = `${d1}px ${d1}px ${d1 * 2}px ${shHex}15, ${d2}px ${d2}px ${d2 * 2}px ${shHex}08, ${d3}px ${d3}px ${d3 * 3}px ${shHex}04`;
         s.borderRadius = pick([10, 14, 18]);
         s.border = "none";
         s.scale = pick([1.01, 1.02, 1.03]);
-      } else if (wild < 0.82) {
-        // "Accent Frame": thick accent border + uppercase + generous letter spacing
+      } else if (wildCard === "accent-frame") {
         const side = pick(["border", "borderLeft", "borderBottom"]);
-        s[side] = `${pick([3, 4, 5])}px solid ${acHex}45`;
+        s[side] = `${pick([3, 4, 5])}px solid ${gcGlow}45`;
         s.borderRadius = pick([0, 4, 8]);
         s.textTransform = "uppercase";
         s.letterSpacing = pick(["0.05em", "0.08em", "0.1em"]);
         s.boxShadow = "none";
-      } else if (wild < 0.91) {
-        // "Soft Bloom": radial glow + desaturated filter for dreamy feel
-        s.boxShadow = `0 0 ${pick([30, 40, 50])}px ${acHex}12, inset 0 0 ${pick([15, 20])}px ${acHex}04`;
+      } else if (wildCard === "soft-bloom") {
+        s.boxShadow = `0 0 ${pick([30, 40, 50])}px ${gc1}12, inset 0 0 ${pick([15, 20])}px ${gcGlow}04`;
         s.filter = `saturate(0.${pick([7, 75, 8])}) brightness(${randRange(1.03, 1.08).toFixed(2)})`;
         s.borderRadius = pick([16, 20, 24, 999]);
         s.border = "none";
-        s.gradientOverlay = `radial-gradient(circle at ${pick([30, 50, 70])}% ${pick([30, 50])}%, ${acHex}08 0%, transparent 60%)`;
+        s.gradientOverlay = `radial-gradient(circle at ${pick([30, 50, 70])}% ${pick([30, 50])}%, ${gc2}08 0%, transparent 60%)`;
       } else {
         // "Brutalist Type": zero decoration, max typography presence
         s.boxShadow = "none";
