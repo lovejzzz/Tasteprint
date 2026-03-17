@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { PAL } from "../constants";
 import { DESIGN_MOODS } from "../utils";
 
@@ -25,9 +25,18 @@ function reflowForDevice(deviceKey, shapes, setShapes, setDevice, setCam) {
   setCam({ x: 0, y: 0, z: 1 });
 }
 
-export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, hasRndUndo, undoRandomize, designMood, setDesignMood }) {
+export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, hasRndUndo, undoRandomize, designMood, setDesignMood, lastRandomizeStats }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredBtn, setHoveredBtn] = useState(null);
+  const [showStats, setShowStats] = useState(false);
+
+  /* Auto-show/dismiss randomize stats toast */
+  useEffect(() => {
+    if (!lastRandomizeStats) { setShowStats(false); return; }
+    setShowStats(true);
+    const timer = setTimeout(() => setShowStats(false), 3000);
+    return () => clearTimeout(timer);
+  }, [lastRandomizeStats]);
 
   const switchDevice = useCallback((key) => {
     reflowForDevice(key, shapes, setShapes, setDevice, setCam);
@@ -116,8 +125,25 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
             style={btn("m-undo", { padding: "5px 8px", fontSize: 13 })}>↩</button>
           <button onClick={redo} aria-label="Redo" {...btnHandlers("m-redo")}
             style={btn("m-redo", { padding: "5px 8px", fontSize: 13 })}>↪</button>
-          {shapes.length > 0 && <button onClick={randomizeAll} aria-label="Randomize all" {...btnHandlers("m-rndAll")}
-            style={btn("m-rndAll", { padding: "5px 8px", fontSize: 12 })}>🎲</button>}
+          {shapes.length > 0 && <span style={{ position: "relative", display: "inline-flex" }}>
+            <button onClick={randomizeAll} aria-label="Randomize all" {...btnHandlers("m-rndAll")}
+              style={btn("m-rndAll", { padding: "5px 8px", fontSize: 12 })}>🎲</button>
+            {showStats && lastRandomizeStats && (
+              <span style={{
+                position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+                background: p.ac, color: (() => { const hex = p.ac.replace("#", ""); const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); return (r*299+g*587+b*114)/1000 > 150 ? "#1a1a1a" : "#fff"; })(),
+                fontSize: 9, fontWeight: 600, fontFamily: "inherit",
+                padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap",
+                pointerEvents: "none", zIndex: 100,
+                animation: "tp-rnd-toast .2s ease-out, tp-rnd-toast .3s ease-out 2.5s reverse both",
+                boxShadow: `0 2px 8px ${p.ac}44`,
+              }}>
+                {lastRandomizeStats.skipped > 0
+                  ? `\u2713 ${lastRandomizeStats.count} \u00b7 ${lastRandomizeStats.skipped} locked`
+                  : `\u2713 ${lastRandomizeStats.count} updated`}
+              </span>
+            )}
+          </span>}
           <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" {...btnHandlers("m-menu")}
             style={btn("m-menu", { padding: "5px 10px", fontSize: 16, background: menuOpen ? p.su : hoveredBtn === "m-menu" ? p.su : "none" })}>
             ☰
@@ -228,16 +254,33 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
             <span style={{ fontSize: 12 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
             <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
           </button>}
-          <button onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
-            {...btnHandlers("rndAll")} style={btn("rndAll", { display: "flex", alignItems: "center", gap: 4 })}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="3" />
-              <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
-              <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none" />
-              <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-            </svg>
-            All
-          </button>
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            <button onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
+              {...btnHandlers("rndAll")} style={btn("rndAll", { display: "flex", alignItems: "center", gap: 4 })}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="3" />
+                <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
+                <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+              All
+            </button>
+            {showStats && lastRandomizeStats && (
+              <span style={{
+                position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+                background: p.ac, color: (() => { const hex = p.ac.replace("#", ""); const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); return (r*299+g*587+b*114)/1000 > 150 ? "#1a1a1a" : "#fff"; })(),
+                fontSize: 10, fontWeight: 600, fontFamily: "inherit",
+                padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap",
+                pointerEvents: "none", zIndex: 100,
+                animation: "tp-rnd-toast .2s ease-out, tp-rnd-toast .3s ease-out 2.5s reverse both",
+                boxShadow: `0 2px 8px ${p.ac}44`,
+              }}>
+                {lastRandomizeStats.skipped > 0
+                  ? `\u2713 ${lastRandomizeStats.count} updated \u00b7 ${lastRandomizeStats.skipped} locked`
+                  : `\u2713 ${lastRandomizeStats.count} updated`}
+              </span>
+            )}
+          </span>
           {hasRndUndo && <button onClick={undoRandomize} title="Undo last randomize" aria-label="Undo randomize"
             {...btnHandlers("rndUndo")} style={btn("rndUndo", { fontSize: 11 })}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

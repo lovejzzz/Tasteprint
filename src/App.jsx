@@ -49,6 +49,7 @@ export default function App() {
   const [candidates, setCandidates] = useState({}); // { [shapeId]: [candidate1, candidate2, candidate3] }
   const [candidateIdx, setCandidateIdx] = useState({}); // { [shapeId]: currentIndex }
   const [designHistory, setDesignHistory] = useState({}); // { [shapeId]: [{ variant, font, fsize, props, dStyles }, ...] } max 5
+  const [lastRandomizeStats, setLastRandomizeStats] = useState(null); // { count, skipped, timestamp }
   const curatedIdx = useRef({}); // { [shapeId]: nextPresetIndex }
   const cRef = useRef(null);
   const dRef = useRef(null);
@@ -295,22 +296,26 @@ export default function App() {
     setHasRndUndo(true);
     const dna = generateDesignDNA(p, designMood);
     const newPrefV = { ...prefV };
+    let randomizedCount = 0;
+    let lockedCount = 0;
     setShapes(prev => {
       const updated = [...prev];
       const already = [];
       for (let i = 0; i < updated.length; i++) {
         const s = updated[i];
         // Skip locked shapes — preserve their current design
-        if (lockedShapes.has(s.id)) { already.push(s); continue; }
+        if (lockedShapes.has(s.id)) { already.push(s); lockedCount++; continue; }
         const defaults = DEFAULT_PROPS[s.type];
         const result = designerRandomize(s.type, p, defaults, designMood, already, dna, s.w, s.h);
         updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
         newPrefV[s.type] = result.variant;
         already.push(updated[i]);
+        randomizedCount++;
       }
       return updated;
     });
     setPrefV(newPrefV);
+    setLastRandomizeStats({ count: randomizedCount, skipped: lockedCount, timestamp: Date.now() });
   }, [shapes, p, designMood, prefV, lockedShapes]);
 
   const undoRandomize = useCallback(() => {
@@ -683,7 +688,7 @@ export default function App() {
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: p.bg, fontFamily: "'DM Sans',system-ui,sans-serif", color: p.tx, transition: "background .4s,color .4s" }}>
       <link href={FONT_URL} rel="stylesheet" />
 
-      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} mobile={mobile} randomizeAll={randomizeAll} hasRndUndo={hasRndUndo} undoRandomize={undoRandomize} designMood={designMood} setDesignMood={setDesignMood} />
+      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} mobile={mobile} randomizeAll={randomizeAll} hasRndUndo={hasRndUndo} undoRandomize={undoRandomize} designMood={designMood} setDesignMood={setDesignMood} lastRandomizeStats={lastRandomizeStats} />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: mobile ? "column" : "row" }}>
         {!mobile && <LibrarySidebar expCat={expCat} setExpCat={setExpCat} catItems={catItems} prefV={prefV} p={p} pDrag={pDrag} setPDrag={setPDrag} dRef={dRef} reorderLib={reorderLib} lastReorder={lastReorder} />}
@@ -792,7 +797,7 @@ export default function App() {
         </div>
       </>}
 
-      <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.12);border-radius:2px}html,body{overscroll-behavior:none;-webkit-overflow-scrolling:touch}body{position:fixed;width:100%;height:100%}#root{width:100%;height:100%}`}</style>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.12);border-radius:2px}html,body{overscroll-behavior:none;-webkit-overflow-scrolling:touch}body{position:fixed;width:100%;height:100%}#root{width:100%;height:100%}@keyframes tp-rnd-toast{from{opacity:0;transform:translateX(-50%) translateY(4px) scale(.95)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}`}</style>
     </div>
     </TpContext.Provider>
   );
