@@ -1785,18 +1785,18 @@ const COMP = {
   },
   // Bridges between reaction and body
   bridges: {
-    agree:    ["I totally get that —","That makes sense —","Yeah,","For sure —","Absolutely —"],
-    pivot:    ["So here's the thing —","The way I see it,","What I find interesting is","You know what's cool though?","Here's what I think —"],
-    empathy:  ["I completely understand.","That's valid.","I can see why you feel that way.","That's a fair point."],
-    mirror:   ["So you're saying","It sounds like","What I'm hearing is","So basically"],
+    agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —"],
+    pivot:    ["ok so here's the thing —","the way i see it,","ok but what's interesting is","ok wait tho,","here's what i think —"],
+    empathy:  ["yeah no i get that.","that's valid.","nah i feel you.","that's fair."],
+    mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
-  opinion_starters: ["I think","honestly I feel like","in my experience","the thing about","what I love about","the cool thing about","I've always thought"],
+  opinion_starters: ["i think","honestly","ngl","the thing about","what i love about","ok but the cool thing about","i've always thought"],
   opinion_connectors: ["is that","is how","is the way","is really about"],
   // Follow-up questions — the engine of good conversation
-  deepeners: ["What drew you to that?","How long have you been into that?","What's the best part about it?","What got you started?","Is there a specific aspect you focus on?","What's been the biggest surprise?","Would you recommend it to a beginner?","What's next for you with that?","Has it changed how you think about things?","What would you do differently if starting over?"],
+  deepeners: ["what got you into that","how long have you been into that","what's the best part","what got you started","is there a specific part you focus on","what's been the biggest surprise","would you recommend it","what's next for you with that","has it changed how you think about stuff","what would you do differently starting over"],
   // Topic transitions
-  connectors: ["Speaking of which —","Oh that reminds me —","Related to that —","On a similar note —","That actually connects to something —","You know what goes well with that?"],
+  connectors: ["oh wait that reminds me —","ooh speaking of that —","ok related to that —","oh actually —","that actually connects to something —","ok wait you know what goes with that?"],
 };
 
 /* ══════════════════════════════════════════════════════════════════
@@ -11330,24 +11330,35 @@ let lastStanceTurn = 0;
 // Debate seeds: topics where the AI has a genuine contrarian angle
 const COUNTERPOINTS = {
   // Tech debates
-  typescript: ["TypeScript adds overhead that isn't always worth it — for small scripts, plain JS is faster and simpler", "The type system can give you false confidence — runtime is still wild"],
-  react: ["React's mental model is clean, but the ecosystem fragmentation is real — too many ways to do everything", "The hooks model is powerful but the dependency array footgun catches even experienced devs"],
-  vue: ["Vue's simplicity is great to start, but some of its 'magic' makes debugging harder at scale", "The Options API vs Composition API split means two codebases in one framework"],
-  angular: ["Angular gets a bad rap, but its opinionated structure actually saves time on big teams", "The learning curve is steep, but once you're in, you move fast"],
-  python: ["Python's speed is fine for most things, but the GIL means you're fighting it for real concurrency", "The dynamic typing that makes it easy to learn also makes it easy to ship subtle bugs"],
-  rust: ["Rust's safety guarantees are incredible, but the compile times and learning curve are a real cost", "Not every project needs Rust-level safety — sometimes Go or even JS is the right pragmatic call"],
-  ai: ["AI tools are amazing assistants, but the over-reliance on them is making people skip the learning stage", "The hype cycle is real — most 'AI features' are fancy autocomplete, and that's okay"],
-  css: ["CSS is actually beautiful once you stop fighting it — the problem is usually the mental model, not the language", "Tailwind is great but it trades one complexity for another — your HTML becomes the mess instead"],
-  tailwind: ["Tailwind is productive, but 'utility-first' can mean your markup becomes unreadable spaghetti", "The flip side: you never have to name CSS classes, and naming things is genuinely one of the hardest problems"],
-  nextjs: ["Next.js is powerful but the constant API changes between versions cause real churn fatigue", "Server components are cool in theory, but the mental model of what runs where gets confusing fast"],
+  typescript: ["tbh typescript adds so much overhead for small stuff, plain JS is just faster","the type system can lowkey give you false confidence, runtime is still wild"],
+  react: ["react is great but the ecosystem is so fragmented, like there's 900 ways to do everything","hooks are powerful but that dependency array is a footgun and you know it"],
+  vue: ["vue is easy to learn but some of the magic makes debugging a nightmare at scale","the options vs composition API thing means there's basically two different frameworks"],
+  angular: ["ok hot take angular actually saves time on big teams even tho the learning curve sucks","angular gets way too much hate, once you're in it you move fast fr"],
+  python: ["python's great but the GIL means concurrency is pain, like actual pain","the dynamic typing that makes python easy also makes it easy to ship bugs ngl"],
+  rust: ["rust is sick but the compile times and learning curve are a REAL cost","not everything needs rust-level safety, sometimes go or js is just fine"],
+  ai: ["ai tools are cool but people are skipping the learning stage and it shows","honestly most 'AI features' are just fancy autocomplete and that's fine"],
+  css: ["css is actually beautiful once you stop fighting it, the problem is your mental model","tailwind trades one mess for another — your HTML becomes the spaghetti instead"],
+  tailwind: ["tailwind is productive but your markup becomes genuinely unreadable","ok but the flip side is you never have to name CSS classes and naming things is HARD"],
+  nextjs: ["next.js is powerful but the constant API changes are exhausting ngl","server components are cool in theory but the 'what runs where' question is confusing"],
   // Design debates
-  design: ["Minimal design is trendy but sometimes 'clean' just means 'empty' — density has value too", "The best design is often invisible, but invisible design doesn't win awards — there's tension there"],
-  figma: ["Figma is dominant for good reason, but the browser-based approach means you're always one bad connection from frustration", "Figma's collaboration model changed design, but too many cooks in a Figma file is chaos"],
-  // Life/work debates
-  remote: ["Remote work is freedom, but the serendipitous hallway conversations you lose are genuinely hard to replace", "Fully remote teams can work, but it requires 3x the intentional communication effort"],
-  startup: ["Startups are exciting but the romanticization hides the fact that most fail, and the ones that succeed often grind people down", "The 'move fast and break things' ethos is great until you're the thing that breaks"],
-  productivity: ["Most productivity advice is procrastination with extra steps — the real hack is just doing the boring thing", "Deep work is ideal but modern work rarely allows for it — the ability to context-switch well is underrated"],
-  learning: ["Tutorial hell is real — at some point you have to close the tutorial and build something ugly", "Everyone says 'learn by building' but sometimes you need the theory first or you just build bad habits"],
+  design: ["minimal design is trendy but sometimes 'clean' just means 'empty'","the best design is invisible but invisible design doesn't win awards, there's tension there"],
+  figma: ["figma is great until your internet stutters and you lose 5 minutes of work","too many people in a figma file is actual chaos"],
+  // Life/work/everyday debates
+  remote: ["remote work is freedom but you lose the random hallway convos that actually matter","fully remote works but it takes like 3x the communication effort"],
+  startup: ["startups are cool but most fail and the ones that succeed grind people down","'move fast and break things' is great until you're the thing that breaks"],
+  productivity: ["most productivity advice is just procrastination with extra steps tbh","the real productivity hack is just doing the boring thing, no system needed"],
+  learning: ["tutorial hell is so real, at some point you gotta close the tutorial and build something ugly","'learn by building' only works if you have some theory first, otherwise you build bad habits"],
+  // Everyday opinion topics (NEW)
+  coffee: ["black coffee is the only real coffee, everything else is dessert","ok but oat milk lattes changed the game idc what anyone says"],
+  food: ["ngl homemade food is always better than restaurants, fight me","fast food gets too much hate, sometimes you just need the consistency"],
+  movies: ["marvel movies are fun but they're not cinema, that's just facts","sequels are almost never better than the original with like 3 exceptions"],
+  music: ["auto-tune isn't bad, it's a creative tool and people need to get over it","ngl most 'new music' is just old music with different production"],
+  gaming: ["mobile games are real games and the gatekeeping is so cringe","story games are better than multiplayer, i will die on this hill"],
+  fitness: ["the gym is 90% showing up and 10% whatever program you're on","morning workouts hit different but evening workouts are objectively better for performance"],
+  social: ["texting > calling, this is not up for debate","being chronically online is bad but also how else do you keep up with stuff"],
+  sleep: ["8 hours is a myth for some people, some of us function fine on 6","naps are genuinely underrated, like a 20 min nap fixes everything"],
+  weather: ["cold weather > hot weather and it's not even close","rain is actually the best weather for being productive, idk why people hate it"],
+  pets: ["cats are easier than dogs but dogs love you more, that's just the trade","all pets are valid but fish people are a different breed fr"],
 };
 
 // Detect when the user states an opinion we can engage with
@@ -11376,24 +11387,19 @@ function detectStanceOpportunity(text, lower, topics) {
 function addStance(response, text, topics) {
   // Guards
   if (response.length < 30) return response;
-  if (mem.turn - lastStanceTurn < 5) return response;
+  if (mem.turn - lastStanceTurn < 4) return response;
   if (/^(hey|hi|hello|bye|see you|take care)/i.test(response)) return response;
 
   const lower = text.toLowerCase();
   if (!detectStanceOpportunity(text, lower, topics)) return response;
 
-  // 12% fire rate
-  if (Math.random() > 0.12) return response;
+  // 25% fire rate — friends have opinions a lot
+  if (Math.random() > 0.25) return response;
 
   // Find a relevant counterpoint
-  let counterTopic = null;
   let counter = null;
   for (const topic of topics) {
-    if (COUNTERPOINTS[topic]) {
-      counterTopic = topic;
-      counter = pick(COUNTERPOINTS[topic]);
-      break;
-    }
+    if (COUNTERPOINTS[topic]) { counter = pick(COUNTERPOINTS[topic]); break; }
   }
 
   if (!counter) return response;
@@ -11401,43 +11407,86 @@ function addStance(response, text, topics) {
   lastStanceTurn = mem.turn;
   const strategy = Math.random();
 
-  // Strategy 1: Respectful disagreement (~30%)
+  // Strategy 1: Casual disagreement (~30%)
   if (strategy < 0.30) {
-    const disagreements = [
-      `I hear you, but let me push back gently: ${counter}. What do you think about that angle?`,
-      `Okay, here's where I might disagree a little — ${counter}. Not saying you're wrong, just... there's another side.`,
-      `That's a fair take! Though — ${counter}. I go back and forth on this honestly.`,
-    ];
-    return pick(disagreements);
+    return pick([
+      `hmm idk, ${counter}`,
+      `ok wait but ${counter}`,
+      `nah see i think ${counter}`,
+      `that's fair but also ${counter}`,
+    ]);
   }
 
-  // Strategy 2: Devil's advocate (~25%)
+  // Strategy 2: Playful pushback (~25%)
   if (strategy < 0.55) {
-    const advocates = [
-      `Let me play devil's advocate for a sec: ${counter}. But I get why you'd disagree.`,
-      `Okay, counterpoint though — ${counter}. I don't fully believe that myself, but it's worth considering.`,
-      `The other side of that coin: ${counter}. Where do you land on it?`,
-    ];
-    return pick(advocates);
+    return pick([
+      `ok hot take but ${counter}`,
+      `counterpoint tho — ${counter}`,
+      `mmm idk about that one, ${counter}`,
+      `ok but hear me out — ${counter}`,
+    ]);
   }
 
-  // Strategy 3: Nuanced "it depends" with reasoning (~25%)
-  if (strategy < 0.80) {
-    const nuanced = [
-      `Honestly? It depends. ${counter}. But in the right context, your take is totally valid too.`,
-      `I'm genuinely torn on this one. On one hand, sure. On the other: ${counter}. Context matters a lot here.`,
-      `This is one of those things where both sides have a point. ${counter}. But also, your perspective makes sense for your situation.`,
-    ];
-    return pick(nuanced);
+  // Strategy 3: "It depends" with a real take (~20%)
+  if (strategy < 0.75) {
+    return pick([
+      `honestly it depends, ${counter}`,
+      `i go back and forth on this but ${counter}`,
+      `ok so yes and no, ${counter}`,
+    ]);
   }
 
-  // Strategy 4: Strong position (~20%)
-  const positions = [
-    `Hot take: ${counter}. I'll die on this hill. But convince me otherwise! 😄`,
-    `Okay, real talk — ${counter}. That's just how I see it. Am I wrong?`,
-    `I actually have a strong opinion here: ${counter}. Fight me on it. 😄`,
-  ];
-  return pick(positions);
+  // Strategy 4: Strong opinion, no hedging (~25%)
+  return pick([
+    `nah ${counter}`,
+    `ok real talk ${counter}`,
+    `honestly? ${counter}`,
+    `${counter}, and i will die on this hill`,
+  ]);
+}
+
+/* ── Unprompted Mini-Opinions ──
+ * Friends don't only share opinions when you state one — they sprinkle them
+ * into regular conversation. "oh i love that", "ngl i hate that", "ok that's
+ * actually fire". This fires on topic mentions even without an opinion signal.
+ */
+
+const MINI_OPINIONS = {
+  coffee: ["ok i'm a coffee person so i respect this","coffee is genuinely the best part of mornings"],
+  tea: ["tea is so underrated honestly","ok tea people are valid"],
+  pizza: ["pizza is perfect food and i won't hear otherwise","deep dish is a casserole not a pizza, fight me"],
+  sushi: ["sushi is elite tier food ngl","ok good sushi hits different tho"],
+  coding: ["coding is frustrating 90% of the time but that 10% dopamine hit is unmatched","ngl debugging is lowkey a puzzle game"],
+  dogs: ["dogs are literally the best, no debate","i'm such a dog person it's not even funny"],
+  cats: ["cats are so underrated, they just have boundaries and people can't handle it","ok cat people understand something about life that other people don't"],
+  rain: ["rain is the best weather and i will not apologize","ngl rainy days are genuinely the coziest"],
+  winter: ["winter is elite but only if you have good coats","ok i'm a winter person, cold weather just hits"],
+  summer: ["summer is great in theory but being hot is miserable","ok summer nights specifically are unbeatable tho"],
+  reading: ["reading is so good for your brain and i never do it enough","ok physical books > kindle forever"],
+  running: ["running sucks at first but once you're a runner it's addicting","ok runner's high is real and it's life-changing"],
+  cooking: ["cooking is literally a superpower, it saves so much money","ngl cooking for someone is the ultimate love language"],
+  naps: ["naps are the most underrated thing in existence","a 20 min nap genuinely fixes everything"],
+  monday: ["mondays get too much hate, tuesday is honestly worse","ngl mondays are rough but at least you have coffee"],
+  friday: ["friday energy is unmatched and undefeated","friday afternoons are when productivity dies and vibes begin"],
+};
+
+let lastMiniOpinionTurn = 0;
+
+function addMiniOpinion(response, topics) {
+  if (mem.turn - lastMiniOpinionTurn < 6) return response;
+  if (response.length > 150) return response;
+  if (Math.random() > 0.18) return response; // 18% fire rate
+
+  for (const topic of topics) {
+    if (MINI_OPINIONS[topic]) {
+      lastMiniOpinionTurn = mem.turn;
+      const opinion = pick(MINI_OPINIONS[topic]);
+      // Prepend or append depending on response length
+      if (response.length < 60) return opinion;
+      return response + ". " + opinion;
+    }
+  }
+  return response;
 }
 
 /* ── Round 44: Progressive Question Depth & Intelligent Probing ──
@@ -18955,6 +19004,9 @@ export function getAIResponse(input) {
   // ═══ Nuanced stance: occasionally push back, play devil's advocate, take positions ═══
   response = addStance(response, text, currentTopics);
 
+  // ═══ Mini opinions: sprinkle unprompted opinions on topics the AI "cares about" ═══
+  response = addMiniOpinion(response, currentTopics);
+
   // ═══ AI self-model: track own opinions, enforce consistency, add self-references ═══
   response = applySelfModel(response, currentTopics, text);
 
@@ -19192,6 +19244,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
