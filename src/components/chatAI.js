@@ -1678,8 +1678,10 @@ function respondToAnswer(answer, sent) {
   // If we know the topic, sometimes weave it back
   if (topic && Math.random() > 0.6) {
     const topicBridges = [
-      ` I find the whole ${topic} space fascinating.`,
-      ` ${topic} is such an interesting area honestly.`,
+      ` ${topic} is lowkey a whole rabbit hole.`,
+      ` ngl ${topic} is kinda underrated.`,
+      ` ${topic} is a vibe honestly.`,
+      ` i could talk about ${topic} for hours lol.`,
     ];
     response += pick(topicBridges);
   }
@@ -4127,29 +4129,44 @@ function answerQuestion(text, parsed, intents, topics) {
           const fact = a.facts ? pick(a.facts) : null;
           const opinion = a.opinions ? pick(a.opinions) : null;
           const hook = a.hooks ? pick(a.hooks) : pick(COMP.deepeners);
-          return (fact || `oh ${kw} is lowkey fascinating`) + " " + (opinion ? `honestly ${opinion}` : "") + " " + hook;
+          return (fact || pick([`oh ${kw} is a whole thing`,`${kw}! ok i have thoughts`,`ooh ${kw}, yeah`])) + " " + (opinion ? `honestly ${opinion}` : "") + " " + hook;
         }
       }
       return `hmm ${subject} is a whole thing — i know a bit but what specifically are you curious about?`;
     }
   }
 
-  // "Do you" questions
+  // "Do you" questions — respond like a friend with actual opinions
   if (/^do you\b/i.test(lower)) {
     if (/like|enjoy|love/i.test(lower)) {
       const thing = lower.replace(/^do you (?:like|enjoy|love)\s*/i, "").replace(/\?$/, "").trim();
-      if (thing) return `I think ${thing} is pretty cool! I don't experience things the way you do, but I find it fascinating when people talk about ${thing}. Are you a fan?`;
+      if (thing) return pick([
+        `dude yes ${thing} is elite`,
+        `oh ${thing}? honestly yeah, lowkey obsessed`,
+        `${thing}?? yes. big fan. why do you ask`,
+        `hmm ${thing}... yeah actually i fw it. you?`,
+        `ok ${thing} is actually so good, are you into it too`,
+        `ngl ${thing} hits different. why, are you a fan`,
+        `oh for sure, ${thing} is great. what made you think of it`,
+        `yes omg ${thing}. are we about to bond over this`,
+      ]);
     }
     if (/know|understand/i.test(lower)) {
       const thing = lower.replace(/^do you (?:know|understand)\s*/i, "").replace(/\?$/, "").trim();
-      if (thing) return `I know a bit about ${thing}! I'm not an expert, but I can definitely chat about it. What do you want to know?`;
+      if (thing) return pick([
+        `oh yeah ${thing}! i know a bit, what about it`,
+        `${thing}? yeah i gotchu, what's up`,
+        `mmm i know some stuff about ${thing}, why`,
+        `oh ${thing}, yeah for sure. what do you wanna know`,
+        `lol yeah i've gone down that rabbit hole. what about ${thing}`,
+      ]);
     }
-    return "I try my best haha. What's on your mind?";
+    return pick(["hmm depends lol, what are we talking about","i mean... probably? what's up","lol that's vague but sure, why"]);
   }
 
   // "Can you" — generic ability questions only (specific requests handled by pragmatic inference)
   if (/^can you\b/i.test(lower) && !/^can you (?:explain|tell|help|describe|teach|show|talk)/i.test(lower)) {
-    return "lol I can try! I'm pretty good at just chatting tho. what do you need?";
+    return pick(["lol i can try, what's up","i mean probably, why","hmm depends, what do you need","sure what's going on"]);
   }
 
   return null; // let other handlers deal with it
@@ -10890,7 +10907,14 @@ function applyDeferredAnswerRecovery(response, text) {
   // Remove from queue since we're addressing it
   userQuestionQueue = userQuestionQueue.filter(uq => uq !== stale);
 
-  return response + ` ${opener} ${ack} it really depends on context, but I'd love to dig into that more if you want.`;
+  const deferredTails = [
+    `my honest take? it depends but i have thoughts`,
+    `ok so basically —`,
+    `short answer:`,
+    `hmm ok so`,
+    `ngl it's complicated but`,
+  ];
+  return response + ` ${opener} ${ack} ${pick(deferredTails)}`;
 }
 
 let reciprocityHistory = []; // "ask" or "tell" per turn
@@ -12043,7 +12067,7 @@ function addDisfluency(response) {
       { from: /\b(cool)\b/i, weak: "cool", strong: "actually really interesting" },
       { from: /\b(nice)\b/i, weak: "nice", strong: "actually kind of beautiful" },
       { from: /\b(good)\b/i, weak: "good", strong: "legitimately solid" },
-      { from: /\b(interesting)\b/i, weak: "interesting", strong: "kind of fascinating actually" },
+      { from: /\b(interesting)\b/i, weak: "interesting", strong: "lowkey wild actually" },
       { from: /\b(important)\b/i, weak: "important", strong: "honestly pretty critical" },
       { from: /\b(useful)\b/i, weak: "useful", strong: "genuinely handy" },
       { from: /\b(popular)\b/i, weak: "popular", strong: "kind of everywhere now" },
@@ -17012,7 +17036,7 @@ function applyTricolon(response) {
       const synonymPairs = [
         ["clear", "direct", "unmistakable"],
         ["important", "meaningful", "worth remembering"],
-        ["interesting", "surprising", "kind of fascinating"],
+        ["interesting", "surprising", "lowkey wild"],
         ["tricky", "nuanced", "worth thinking through"],
         ["simple", "clean", "elegant"],
         ["real", "tangible", "impossible to ignore"],
