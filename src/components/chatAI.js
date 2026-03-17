@@ -201,10 +201,10 @@ const SEMANTIC_RESPONSES = {
   explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah — it comes down to"],
   listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
-  listen_validate: ["ok vent away, i'm all ears","that sounds SO frustrating, go off","nah you're right to be upset about that"],
+  listen_validate: ["ok vent away, i'm all ears","no fr that's so annoying, go off","nah you're right to be upset about that"],
   celebrate_news: ["WAIT WHAT?? TELL ME TELL ME","omg omg ok this better be good","YOOO no way, what happened??","ok that's literally the best thing i've ever heard, TELL ME MORE","i'm SCREAMING, ok go on"],
   empathize_bad_news: ["oh no... what happened?","aw man i'm sorry, are you ok?","that sucks, i'm here for you"],
-  engage_opinion: ["oh interesting, why do you think that?","hmm ok i can see that, but have you considered","that's a hot take lol, i kinda agree tho","big if true, tell me more","that's giving hot take energy, i'm here for it"],
+  engage_opinion: ["oh interesting, why do you think that?","hmm ok fair, but have you considered","that's a hot take lol, i kinda agree tho","big if true, tell me more","that's giving hot take energy, i'm here for it"],
   show_interest: ["ooh how was it??","wait what'd you think","ok that sounds sick, and then what"],
   accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks, you're pretty cool yourself","aw that made my day honestly"],
   playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤","chose violence today huh 😭","and i took that personally"],
@@ -1001,7 +1001,7 @@ const EMOTION_RESPONSES = {
   ],
   venting: [
     "dude no that's a lot 😔",
-    "ugh i'm sorry, that sounds rough",
+    "ugh i'm sorry, that's really rough",
     "nah fr just let it out",
     "that's so much to deal with honestly",
     "yeah no i get it, that's heavy",
@@ -1631,7 +1631,7 @@ function respondToAnswer(answer, sent) {
 
   const acks = {
     choice: [
-      `${picked.charAt(0).toUpperCase() + picked.slice(1)}, nice! I can see why over ${other}. What draws you to it?`,
+      `${picked.charAt(0).toUpperCase() + picked.slice(1)}, nice! over ${other} tho?? what draws you to it?`,
       `Oh, ${picked} for sure! That's a solid choice. What's your favorite thing about it?`,
       `${picked}! Good call. What got you into that over ${other}?`,
       `Definitely get the ${picked} appeal! Is that a recent thing or have you always leaned that way?`,
@@ -5006,7 +5006,7 @@ const JOKES = TOPIC_JOKES.general.concat(TOPIC_JOKES.code);
 const EMPATHY = [
   "ugh that sucks, i'm sorry",
   "dude no 😔 that's rough",
-  "honestly that sounds really frustrating",
+  "honestly that's so frustrating",
   "nah fr that's tough, you ok?",
   "oof 😔 yeah that's a lot",
 ];
@@ -5097,12 +5097,12 @@ function handleMultiSentence(text) {
         parts.push(pick([
           `Totally get the "${concern}" part —`,
           `And yeah, ${concern} is a real thing.`,
-          `I hear you on the ${concern} bit!`,
+          `yeah the ${concern} part is real`,
         ]));
       }
     }
   } else if (negative) {
-    parts.push(pick(["I hear you on the frustrating parts.", "The tricky bits are real!", "That's a common challenge honestly."]));
+    parts.push(pick(["yeah the frustrating parts are real.", "the tricky bits are real!", "honestly that's super common tho."]));
   }
 
   // Answer the question if there is one
@@ -5556,7 +5556,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       const openers = [
         `ugh that's the worst. ${subject} bugs can be SO maddening. `,
         `oof i feel you — being stuck is the most frustrating thing. `,
-        `nooo that sounds rough! ${subject} issues are the worst to debug. `,
+        `nooo not ${subject} issues 😩 those are the worst to debug. `,
         `been there (well, metaphorically lol). getting stuck on ${subject} is a rite of passage honestly. `,
         `ughhh ${subject} giving you problems?? that's so annoying. `,
       ];
@@ -8773,9 +8773,9 @@ const EMOTION_VOCAB = {
 
 const EMPATHY_FRAMES = {
   joy:      ["oh that's so {word}", "yoo that's {word}!", "aw that's {word} honestly"],
-  sadness:  ["aw man that's {word}", "dude that's really {word}", "yeah no that sounds {word}"],
+  sadness:  ["aw man that's {word}", "dude that's really {word}", "yeah no that's genuinely {word}"],
   anger:    ["nah fr that's {word}", "yeah that's super {word}", "ok yeah that IS {word}"],
-  fear:     ["i get it, that's {word}", "yeah that sounds {word} fr", "nah i'd be {word} too"],
+  fear:     ["i get it, that's {word}", "yeah that's {word} fr", "nah i'd be {word} too"],
   surprise: ["wait that's {word}!", "dude {word}!", "ok {word} honestly"],
   love:     ["aw that's so {word}", "ok that's really {word} tho", "that's genuinely {word} 🥺"],
 };
@@ -9677,7 +9677,7 @@ let recentMicroVals = [];
 // Context-aware validations — matched to what the user is doing
 const MICRO_VAL_POOLS = {
   opinion:    ["fair point", "that makes sense", "oh true", "valid", "solid take", "ehh idk about that one", "hmm ok but also...", "interesting, i might push back a little tho"],
-  experience: ["that sounds right", "yeah heard", "yeah totally", "makes total sense", "oh yeah for sure"],
+  experience: ["yeah that tracks", "yeah heard", "yeah totally", "makes total sense", "oh yeah for sure"],
   effort:     ["nice", "that's solid work", "good call", "smart move", "respect"],
   question:   ["hmm", "ooh interesting", "that's worth thinking about", "hmm let me think on that"],
   frustration:["that's fair", "ugh yeah", "yeah that's rough", "totally get it"],
@@ -10051,7 +10051,7 @@ const EMOTION_SIGNALS = [
     "yeah i'd be annoyed too honestly",
   ]},
   { patterns: [/\b(worried|anxious|nervous|scared|afraid|terrified|freaking out|panicking|stress(ed|ful)|dread(ing)?)\b/i, /what (if|am i going to|should i|do i)\b.*\?/i], emotion: "anxiety", labels: [
-    "yeah that sounds like it's stressing you out",
+    "yeah no that's stressful fr",
     "ngl that would have me anxious too",
     "ugh the uncertainty is the worst part right",
     "ok yeah that's a lot to be thinking about",
@@ -10064,9 +10064,9 @@ const EMOTION_SIGNALS = [
   ]},
   { patterns: [/\b(sad|depressed|down|lonely|miss(ing)?|lost|empty|heartbr(oken|eaking)|grief|mourning|crying)\b/i, /\b(feel(s|ing)? (so )?(alone|empty|hollow|numb))\b/i], emotion: "sadness", labels: [
     "aw man that's really rough",
-    "yeah that's heavy, i hear you",
+    "yeah that's heavy, ngl",
     "dude that sucks, i'm sorry",
-    "that sounds painful fr :(",
+    "that's genuinely painful fr :(",
   ]},
   { patterns: [/\b(confused|confusing|don('?t| not) (get|understand)|what (does|do) (that|you) mean|makes no sense|lost|baffled|puzzled)\b/i], emotion: "confusion", labels: [
     "yeah no that IS confusing lol",
@@ -15550,13 +15550,16 @@ function guardVibeMismatch(response, text, sent, parsed) {
     r = r.replace(/\b(lol|lmao|haha|heh)\b/gi, "").replace(/😂|💀|🔥/g, "").trim();
   }
 
-  // Don't be formal/stiff when they're being playful
-  if (vibe === "playful" && /\b(Furthermore|Additionally|I would suggest|It is important|I appreciate you)\b/i.test(r)) {
+  // Kill formal language — friends never text like this in ANY vibe
+  if (/\b(Furthermore|Additionally|I would suggest|It is important|I appreciate you|That sounds like|I can see that|I hear you)\b/i.test(r)) {
     r = r.replace(/\bFurthermore\b/gi, "also");
     r = r.replace(/\bAdditionally\b/gi, "oh and");
     r = r.replace(/\bI would suggest\b/gi, "i'd say");
     r = r.replace(/\bIt is important\b/gi, "ngl it matters");
     r = r.replace(/\bI appreciate you\b/gi, "i love that you");
+    r = r.replace(/\bThat sounds like\b/gi, "that's like");
+    r = r.replace(/\bI can see that\b/gi, "yeah fair");
+    r = r.replace(/\bI hear you\b/gi, "yeah i get it");
   }
 
   // Don't be dismissive/joke-y when they're being serious
@@ -16769,9 +16772,9 @@ function getTopicDepthLevel(topics) {
 // Depth 1: Show you're tracking — add specificity markers
 function applyDepth1(response, topic) {
   const markers = [
-    `Since we keep coming back to ${topic} — `,
-    `On the ${topic} front — `,
-    `Building on that ${topic} thread — `,
+    `ok so ${topic} again — `,
+    `wait ok more ${topic} stuff — `,
+    `back to ${topic} tho — `,
   ];
   // Add a specificity boost: replace vague words with more precise ones
   let r = response;
@@ -20555,9 +20558,9 @@ function weaveContext(response, topics, text) {
     const cb = frame.callbacks[0];
     lastWeaveTurn = turn;
     const callbackPrefixes = [
-      `This connects to what we were saying about ${cb} earlier — `,
-      `Actually this reminds me of our ${cb} discussion — `,
-      `Building on our ${cb} thread, `,
+      `wait this is like what you were saying about ${cb} — `,
+      `oh this reminds me of the ${cb} thing — `,
+      `ok so going back to ${cb} tho, `,
     ];
     const prefix = callbackPrefixes[Math.floor(Math.random() * callbackPrefixes.length)];
     return prefix + response.charAt(0).toLowerCase() + response.slice(1);
@@ -20568,8 +20571,8 @@ function weaveContext(response, topics, text) {
     lastWeaveTurn = turn;
     const depth = frame.recentThread.depth;
     const threadAcks = [
-      `We're getting really deep into ${frame.recentThread.topic} and I love it. `,
-      `The more we talk about ${frame.recentThread.topic}, the more layers I see. `,
+      `ok we're deep in ${frame.recentThread.topic} rn and i'm here for it. `,
+      `the more we talk about ${frame.recentThread.topic} the more i think about it. `,
     ];
     return threadAcks[Math.floor(Math.random() * threadAcks.length)] + response;
   }
@@ -21128,8 +21131,8 @@ function generatePointReaction(point) {
       ]);
     case "emotional":
       return pick([
-        "i hear you on that",
-        "that sounds really intense",
+        "yeah no that's a lot",
+        "that's really intense honestly",
         "i feel that honestly",
         "that part hit different",
       ]);
