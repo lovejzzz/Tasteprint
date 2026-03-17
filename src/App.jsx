@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
 import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT, HAS_PROPS, VARIANTS, DEFAULT_PROPS } from "./constants";
-import { load, uid, maxV, varName, snap, validateImport, designerRandomize, DESIGN_MOODS } from "./utils";
+import { load, uid, maxV, varName, snap, validateImport, designerRandomize, getCuratedPreset, DESIGN_MOODS } from "./utils";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TpContext } from "./contexts/TpContext";
 import Header from "./components/Header";
@@ -45,6 +45,7 @@ export default function App() {
   const rndUndo = useRef(null); // { id, prev: shapeSnapshot, prevPrefV }
   const [hasRndUndo, setHasRndUndo] = useState(false);
   const [copiedStyle, setCopiedStyle] = useState(null); // { variant, font, fsize }
+  const curatedIdx = useRef({}); // { [shapeId]: nextPresetIndex }
   const cRef = useRef(null);
   const dRef = useRef(null);
   const dirtyText = useRef(null);
@@ -199,24 +200,29 @@ export default function App() {
   const randomize = useCallback((id) => {
     // Snapshot for undo
     const target = shapes.find(x => x.id === id);
-    if (target) {
-      rndUndo.current = { id, prev: { ...target }, prevPrefV: { ...prefV } };
-      setHasRndUndo(true);
-    }
-    // Gather canvas context for multi-component harmony
+    if (!target) return;
+    rndUndo.current = { id, prev: { ...target }, prevPrefV: { ...prefV } };
+    setHasRndUndo(true);
+
+    // Try curated preset first, then fall back to smart random
+    const ci = curatedIdx.current[id] || 0;
+    const preset = getCuratedPreset(target.type, ci);
+    curatedIdx.current = { ...curatedIdx.current, [id]: ci + 1 };
+
     const otherShapes = shapes.filter(s => s.id !== id);
+    const defaults = DEFAULT_PROPS[target.type];
+
     setShapes(prev => prev.map(s => {
       if (s.id !== id) return s;
-      const defaults = DEFAULT_PROPS[s.type];
+      if (preset) {
+        // Curated: use preset variant/font/fsize, but still randomize props
+        const rnd = designerRandomize(s.type, p, defaults, designMood, otherShapes);
+        return { ...s, variant: preset.variant, font: preset.font, fsize: preset.fsize, props: { ...(s.props || {}), ...rnd.props } };
+      }
       const result = designerRandomize(s.type, p, defaults, designMood, otherShapes);
       return { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
     }));
-    setPrefV(pv => {
-      const s = shapes.find(x => x.id === id);
-      if (!s) return pv;
-      const result = designerRandomize(s.type, p, DEFAULT_PROPS[s.type], designMood, otherShapes);
-      return { ...pv, [s.type]: result.variant };
-    });
+    setPrefV(pv => ({ ...pv, [target.type]: preset ? preset.variant : designerRandomize(target.type, p, defaults, designMood, otherShapes).variant }));
   }, [shapes, p, designMood, prefV]);
 
   const undoRandomize = useCallback(() => {

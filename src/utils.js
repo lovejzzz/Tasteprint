@@ -304,6 +304,49 @@ function _dominantFontCat(fonts) {
   return best;
 }
 
+/* ── Curated preset combinations — dice cycles through these first ── */
+const CURATED_COMBOS = {
+  // Structure
+  hero:         [{ v: 0, f: 0, fs: 1.2 }, { v: 1, f: 12, fs: 1.3 }, { v: 4, f: 4, fs: 1.15 }, { v: 5, f: 13, fs: 1.1 }, { v: 6, f: 9, fs: 1.25 }],
+  heading:      [{ v: 0, f: 1, fs: 1.15 }, { v: 3, f: 12, fs: 1.3 }, { v: 4, f: 5, fs: 1.1 }, { v: 5, f: 13, fs: 1.2 }, { v: 6, f: 9, fs: 1.25 }],
+  card:         [{ v: 0, f: 1, fs: 1.0 }, { v: 1, f: 3, fs: 0.95 }, { v: 5, f: 7, fs: 1.0 }, { v: 6, f: 12, fs: 1.05 }, { v: 3, f: 2, fs: 1.0 }],
+  "card-sm":    [{ v: 0, f: 2, fs: 0.95 }, { v: 3, f: 1, fs: 1.0 }, { v: 5, f: 4, fs: 0.95 }, { v: 4, f: 8, fs: 1.0 }],
+  // Navigation
+  navbar:       [{ v: 0, f: 1, fs: 1.0 }, { v: 3, f: 0, fs: 0.95 }, { v: 5, f: 4, fs: 1.0 }, { v: 2, f: 3, fs: 0.95 }],
+  sidebar:      [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 3, fs: 0.95 }, { v: 3, f: 10, fs: 1.0 }, { v: 6, f: 0, fs: 0.95 }],
+  tabs:         [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 5, fs: 0.95 }, { v: 3, f: 0, fs: 1.0 }, { v: 5, f: 4, fs: 0.95 }],
+  footer:       [{ v: 0, f: 1, fs: 0.95 }, { v: 2, f: 3, fs: 1.0 }, { v: 4, f: 0, fs: 0.95 }, { v: 5, f: 7, fs: 1.0 }],
+  // Data
+  "stat-card":  [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 0, fs: 1.05 }, { v: 4, f: 4, fs: 1.0 }, { v: 6, f: 12, fs: 1.1 }],
+  "dash-panel": [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 10, fs: 0.95 }, { v: 4, f: 0, fs: 1.0 }, { v: 3, f: 5, fs: 1.05 }],
+  table:        [{ v: 0, f: 1, fs: 0.95 }, { v: 2, f: 10, fs: 1.0 }, { v: 3, f: 11, fs: 0.9 }, { v: 6, f: 3, fs: 0.95 }],
+  chart:        [{ v: 0, f: 1, fs: 1.0 }, { v: 1, f: 0, fs: 0.95 }, { v: 4, f: 10, fs: 1.0 }, { v: 6, f: 5, fs: 1.05 }],
+  // Commerce
+  "pricing-card": [{ v: 0, f: 1, fs: 1.05 }, { v: 3, f: 12, fs: 1.15 }, { v: 4, f: 0, fs: 1.1 }, { v: 5, f: 4, fs: 1.0 }, { v: 1, f: 9, fs: 1.1 }],
+  "product-card": [{ v: 0, f: 2, fs: 1.0 }, { v: 1, f: 5, fs: 1.0 }, { v: 4, f: 1, fs: 0.95 }, { v: 3, f: 3, fs: 1.05 }],
+  "order-summary":[{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 3, fs: 0.95 }, { v: 4, f: 10, fs: 1.0 }, { v: 5, f: 0, fs: 0.95 }],
+  receipt:      [{ v: 0, f: 1, fs: 0.95 }, { v: 2, f: 10, fs: 1.0 }, { v: 3, f: 11, fs: 0.9 }, { v: 4, f: 0, fs: 0.95 }],
+  // Interactive
+  button:       [{ v: 0, f: 0, fs: 1.0 }, { v: 1, f: 4, fs: 0.95 }, { v: 3, f: 5, fs: 1.0 }, { v: 5, f: 12, fs: 1.05 }, { v: 4, f: 13, fs: 1.0 }],
+  input:        [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 3, fs: 0.95 }, { v: 4, f: 10, fs: 1.0 }, { v: 5, f: 0, fs: 0.95 }],
+  modal:        [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 3, fs: 1.05 }, { v: 3, f: 12, fs: 1.1 }, { v: 5, f: 4, fs: 1.0 }],
+  // Content
+  testimonial:  [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 9, fs: 1.05 }, { v: 3, f: 12, fs: 1.1 }, { v: 5, f: 4, fs: 1.0 }],
+  "profile-card":[{ v: 0, f: 1, fs: 1.0 }, { v: 3, f: 12, fs: 1.1 }, { v: 4, f: 0, fs: 1.05 }, { v: 5, f: 4, fs: 1.0 }],
+  "bento-grid": [{ v: 0, f: 1, fs: 1.0 }, { v: 2, f: 5, fs: 1.05 }, { v: 3, f: 0, fs: 1.0 }, { v: 4, f: 10, fs: 0.95 }],
+};
+
+/**
+ * Get curated preset for a component type at a given cycle index.
+ * Returns preset object or null if no presets / index past presets.
+ */
+export function getCuratedPreset(type, cycleIndex) {
+  const presets = CURATED_COMBOS[type];
+  if (!presets || cycleIndex >= presets.length) return null;
+  const p = presets[cycleIndex % presets.length];
+  return { variant: p.v, font: p.f, fsize: p.fs };
+}
+
 /**
  * Smart designer randomization.
  * Returns { variant, font, fsize, props } for a given component type + palette.
