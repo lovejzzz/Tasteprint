@@ -7478,6 +7478,113 @@ function applyTraitBalancing(response, text) {
   return response;
 }
 
+/* ── Rhetorical Question Detection (Round 109) ──
+ * Users often ask rhetorical questions expressing frustration, disbelief,
+ * or emphasis: "Who even does that?", "Why bother?", "How hard can it be?"
+ * A literal answer breaks the spell. This detects rhetorical patterns and
+ * responds with agreement/empathy instead of answering.
+ */
+
+let lastRhetDetectTurn = 0;
+
+// Patterns that signal rhetorical intent (not seeking literal answers)
+const RHETORICAL_PATTERNS = [
+  /\bwho even\b/i, /\bwho cares\b/i, /\bwho knows\b/i, /\bwho does that\b/i,
+  /\bwhy bother\b/i, /\bwhy would (anyone|you|I|we)\b/i, /\bwhy not\s*\?/i,
+  /\bhow hard (can|could) it be\b/i, /\bhow (am|are|is) (I|you|we|that) supposed to\b/i,
+  /\bwhat's the point\b/i, /\bwhat even is\b/i, /\bwhat do you expect\b/i,
+  /\bcan you (even|really) believe\b/i, /\bisn't (it|that) (obvious|ironic|funny|wild|crazy)\b/i,
+  /\bdo (I|we|they) even\b/i, /\bsince when\b/i,
+  /\bright\?\s*$/i, // trailing "right?" seeking agreement
+  /\byou know\?\s*$/i, // trailing "you know?"
+];
+
+// Patterns that suggest a REAL question even if it matches rhetorical form
+const GENUINE_QUESTION_SIGNALS = [
+  /\bactually\b/i, /\bseriously asking\b/i, /\bgenuinely\b/i, /\bfor real\b/i,
+  /\bdo you (know|think|have)\b.*\?$/i, /\bcan you (tell|help|explain)\b/i,
+  /\bplease\b/i, /\bwhat (is|are|was|were) \w+ \w+ \w+/i, // specific questions with objects
+];
+
+// Emotional context: rhetorical Qs often come with frustration or emphasis
+const RHETORICAL_EMOTION = [
+  /[!]{2,}/, /\b(ugh|smh|lol|omg|bruh|sigh)\b/i, /\.{3,}/,
+  /\b(seriously|honestly|literally|obviously)\b/i,
+];
+
+const RHETORICAL_AGREEMENTS = [
+  "Right?", "Exactly.", "For real.", "Seriously.", "Tell me about it.",
+  "I know, right?", "That's what I'm saying.", "Hard agree.", "100%.",
+  "Honestly, yeah.", "No kidding.", "Fair point.", "Can't argue with that.",
+];
+
+const RHETORICAL_EMPATHY = [
+  "Yeah, that's frustrating.", "Ugh, totally.", "I feel that.",
+  "That's a mood.", "Yeah, it's kind of absurd when you think about it.",
+  "Honestly, valid.", "Yeah, no kidding.",
+];
+
+function isRhetoricalQuestion(text) {
+  // Must contain a question mark
+  if (!/\?/.test(text)) return { rhetorical: false };
+
+  // Check for genuine question signals — these override rhetorical patterns
+  const genuineScore = GENUINE_QUESTION_SIGNALS.reduce((s, p) => s + (p.test(text) ? 1 : 0), 0);
+  if (genuineScore >= 2) return { rhetorical: false };
+
+  // Check rhetorical patterns
+  const rhetScore = RHETORICAL_PATTERNS.reduce((s, p) => s + (p.test(text) ? 1 : 0), 0);
+  if (rhetScore === 0) return { rhetorical: false };
+
+  // Check emotional amplifiers
+  const emotionScore = RHETORICAL_EMOTION.reduce((s, p) => s + (p.test(text) ? 1 : 0), 0);
+
+  // Short messages with rhetorical patterns are almost always rhetorical
+  const wordCount = text.split(/\s+/).length;
+  const shortBoost = wordCount <= 8 ? 1 : 0;
+
+  // Confidence: rhetorical patterns + emotional context + brevity
+  const confidence = Math.min(1, (rhetScore * 0.35) + (emotionScore * 0.2) + (shortBoost * 0.15));
+
+  return {
+    rhetorical: confidence >= 0.35,
+    confidence,
+    frustrated: emotionScore >= 2,
+  };
+}
+
+function applyRhetoricalDetection(response, text) {
+  const turn = mem.turn;
+  if (turn - lastRhetDetectTurn < 3) return response; // 3-turn cooldown
+
+  const result = isRhetoricalQuestion(text);
+  if (!result.rhetorical) return response;
+
+  // Don't fire every time — 55% chance
+  if (Math.random() > 0.55) return response;
+
+  lastRhetDetectTurn = turn;
+
+  // Pick agreement or empathy based on frustration level
+  const pool = result.frustrated ? RHETORICAL_EMPATHY : RHETORICAL_AGREEMENTS;
+  const ack = pool[Math.floor(Math.random() * pool.length)];
+
+  // Strip any literal answer attempt from the start of the response
+  // (e.g., if AI generated "Well, about 3 million people do that...")
+  let cleaned = response;
+  // Remove leading "Well," / "Actually," / "To answer that," patterns
+  cleaned = cleaned.replace(/^(well,?\s*|actually,?\s*|to (answer|be fair),?\s*|I mean,?\s*)/i, "").trim();
+
+  // Prepend the agreement, then let the rest of the response flow
+  if (cleaned.length > 0) {
+    // Lowercase the first char of remaining response for flow
+    cleaned = cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+    return `${ack} ${cleaned}`;
+  }
+
+  return `${ack} ${response}`;
+}
+
 /* ── Conversational Reciprocity (Round 103) ──
  * Natural conversations have a rhythm of giving and receiving. If the AI
  * always asks questions, it feels interrogative. If it always makes
@@ -16720,6 +16827,9 @@ export function getAIResponse(input) {
   // ═══ Personality trait balancing: keep curiosity/warmth/humor/directness/depth balanced ═══
   response = applyTraitBalancing(response, text);
 
+  // ═══ Rhetorical question detection: agree/empathize instead of literal answers ═══
+  response = applyRhetoricalDetection(response, text);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -16750,6 +16860,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
