@@ -10709,16 +10709,16 @@ const HARD_QUESTION_SIGNALS = [
 // Different flavors of genuine admission
 const ADMISSION_TYPES = {
   honest_doubt: [
-    "honestly? i'm not entirely sure about that",
-    "that's one of those things i genuinely don't have a neat answer for",
-    "i'd be lying if i said i had a clear answer to that",
-    "real talk, i'm not confident i know the right answer here",
+    "honestly? i'm not fully sure on that one",
+    "ok that's one of those things where i don't have a clean answer",
+    "ngl i'd be lying if i said i knew for sure",
+    "real talk i'm not confident i know the answer here",
   ],
   shared_wonder: [
-    "that's actually something i find genuinely fascinating to think about",
-    "i've been turning that over in my head too honestly",
-    "that's the kind of question that doesn't have an easy answer, and i kind of love that about it",
-    "i think about this more than i probably should",
+    "ok that's genuinely something i think about a lot",
+    "i've been going back and forth on that one honestly",
+    "that's the kind of question where there's no easy answer and i kinda love that",
+    "lol i think about this way more than i should",
   ],
   humble_take: [
     "ok so like my take on this, could be wrong but —",
@@ -10787,11 +10787,11 @@ const DEFERRED_RECOVER_COOLDOWN = 5;
 const MAX_QUEUED_QUESTIONS = 4;
 
 const RECOVER_OPENERS = [
-  "Oh wait — you asked earlier",
-  "Actually, circling back to something you asked",
-  "I just realized I never answered",
-  "Oh, and to your earlier question",
-  "Come to think of it, you asked",
+  "oh wait you asked earlier",
+  "ok circling back to something you said",
+  "wait i never answered",
+  "oh also to your earlier question",
+  "oh right you asked",
 ];
 
 function extractUserQuestions(text) {
@@ -13521,41 +13521,41 @@ let lastLoopCloseTurn = 0;
 // Curiosity hook templates — these tease knowledge without dumping it
 const CURIOSITY_HOOKS = {
   factTease: [
-    "There's actually a wild story behind that.",
-    "Oh — there's a fascinating reason why that works the way it does.",
-    "There's a really interesting history behind that, actually.",
-    "Fun fact territory here — but I'll save it unless you're curious.",
+    "oh wait there's actually a wild story behind that",
+    "ok so there's a reason that works the way it does and it's kinda nuts",
+    "the history behind that is lowkey interesting actually",
+    "ok i have a fun fact about this but i'll save it unless you want it",
   ],
   connectionTease: [
-    "That connects to something completely unexpected, actually.",
-    "This is weirdly related to {related} in a way most people don't realize.",
-    "There's a link between this and {related} that I find really interesting.",
+    "ok this connects to something totally random actually",
+    "this is weirdly related to {related} and most people have no idea",
+    "there's a link between this and {related} that kinda blew my mind",
   ],
   opinionTease: [
-    "I have a kind of controversial take on this, actually.",
-    "I might get pushback for this, but I have thoughts.",
-    "This is one of those topics where I have a surprisingly strong opinion.",
+    "ok i have a kinda spicy take on this actually",
+    "i might get roasted for this but i have thoughts",
+    "this is one of those things where i have a weirdly strong opinion lol",
   ],
   depthTease: [
-    "There's a lot more to unpack there if you're into it.",
-    "We're just scratching the surface on this one.",
-    "Oh, this goes deep — how far down the rabbit hole do you want to go?",
+    "there's way more to this if you wanna go deeper",
+    "we're barely scratching the surface on this one lol",
+    "oh this goes DEEP — how far down the rabbit hole you wanna go",
   ],
 };
 
 // Open loop templates — start a thought that creates pull
 const OPEN_LOOP_TEMPLATES = [
-  { hook: "Oh wait, {topic} actually reminds me of something — but first, {response}", closers: [
-    "So, about that thing {topic} reminded me of — ",
-    "Oh right, I was going to tell you — {topic} connects to ",
+  { hook: "oh wait {topic} reminds me of something — but hold on, {response}", closers: [
+    "ok so that thing {topic} reminded me of — ",
+    "oh right i was gonna say — {topic} connects to ",
   ]},
-  { hook: "There's a really good analogy for this... actually, let me think about how to phrase it.", closers: [
-    "Okay, I thought of the analogy — ",
-    "So the way I'd put it is — ",
+  { hook: "there's a really good analogy for this... ok let me think how to say it", closers: [
+    "ok i got the analogy — ",
+    "so the way i'd put it is — ",
   ]},
-  { hook: "I started to say something about {topic} but got sidetracked — remind me to come back to that.", closers: [
-    "Oh! You know what I never came back to? That {topic} thing — ",
-    "Wait, I promised I'd circle back on {topic} — ",
+  { hook: "wait i was about to say something about {topic} but got sidetracked — remind me later", closers: [
+    "oh wait i never came back to the {topic} thing — ",
+    "ok i said i'd circle back on {topic} — ",
   ]},
 ];
 
@@ -14686,28 +14686,28 @@ const CLOSURE_SIGNALS = [
 
 const CLOSURE_AFFIRMATIONS = {
   resolved: [
-    "glad we nailed that down",
-    "that one's solid now",
-    "good, we really got to the bottom of that",
-    "nice that's a clean resolution",
-    "we covered that well",
+    "ok sick we figured that out",
+    "that one's settled",
+    "cool we got to the bottom of that lol",
+    "nice ok that's handled",
+    "we cooked on that one",
   ],
   grateful: [
-    "happy that helped",
-    "anytime, that was a good one to work through",
-    "glad it clicked",
-    "that's what we're here for",
+    "glad that helped!",
+    "anytime honestly",
+    "ayyy glad it clicked",
+    "that's what i'm here for",
   ],
   transitional: [
-    "good so that's settled",
-    "cool, that's squared away",
-    "alright that chapter's done",
-    "okay nice, moving forward with that covered",
+    "ok cool that's done",
+    "aight that's sorted",
+    "ok that chapter's closed lol",
+    "nice ok moving on",
   ],
   insightful: [
-    "we really dug into that, i think we found some solid ground",
-    "that was a meaty one. good stuff",
-    "we went deep on that and came out with something real",
+    "we went deep on that one honestly",
+    "that was a good one. we cooked fr",
+    "ok yeah we really got into it there",
   ],
 };
 
