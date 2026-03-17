@@ -45,6 +45,8 @@ export default function App() {
   const rndUndo = useRef(null); // { id, prev: shapeSnapshot, prevPrefV }
   const [hasRndUndo, setHasRndUndo] = useState(false);
   const [styleSource, setStyleSource] = useState(null); // shape ID for style transfer
+  const [candidates, setCandidates] = useState({}); // { [shapeId]: [candidate1, candidate2, candidate3] }
+  const [candidateIdx, setCandidateIdx] = useState({}); // { [shapeId]: currentIndex }
   const curatedIdx = useRef({}); // { [shapeId]: nextPresetIndex }
   const cRef = useRef(null);
   const dRef = useRef(null);
@@ -208,43 +210,76 @@ export default function App() {
       setHasRndUndo(true);
     }
 
-    // For single target, try curated preset first
-    let singlePreset = null;
-    if (targets.length === 1) {
-      const ci = curatedIdx.current[id] || 0;
-      singlePreset = getCuratedPreset(shapes.find(s => s.id === id)?.type, ci);
-      curatedIdx.current = { ...curatedIdx.current, [id]: ci + 1 };
-    }
-
     const targetSet = new Set(targets);
     const otherShapes = shapes.filter(s => !targetSet.has(s.id));
-    const dna = targets.length > 1 ? generateDesignDNA(p, designMood) : null;
 
-    // Randomize all targets — each one considers the others + canvas for harmony
+    // Generate 3 candidate designs for single-target randomization
+    if (targets.length === 1) {
+      const shape = shapes.find(s => s.id === id);
+      if (!shape) return;
+      const defaults = DEFAULT_PROPS[shape.type];
+      const allCandidates = [];
+      for (let c = 0; c < 3; c++) {
+        const ci = (curatedIdx.current[id] || 0) + c;
+        const preset = getCuratedPreset(shape.type, ci);
+        const dna = generateDesignDNA(p, designMood);
+        const rnd = designerRandomize(shape.type, p, defaults, designMood, otherShapes, dna, shape.w, shape.h);
+        if (preset) {
+          allCandidates.push({ variant: preset.variant, font: preset.font, fsize: preset.fsize, props: { ...(shape.props || {}), ...rnd.props }, dStyles: rnd.dStyles });
+        } else {
+          allCandidates.push({ variant: rnd.variant, font: rnd.font, fsize: rnd.fsize, props: { ...(shape.props || {}), ...rnd.props }, dStyles: rnd.dStyles });
+        }
+      }
+      curatedIdx.current = { ...curatedIdx.current, [id]: (curatedIdx.current[id] || 0) + 3 };
+
+      // Store candidates and apply first one
+      setCandidates(prev => ({ ...prev, [id]: allCandidates }));
+      setCandidateIdx(prev => ({ ...prev, [id]: 0 }));
+      const first = allCandidates[0];
+      const newPrefV = { ...prefV, [shape.type]: first.variant };
+      setShapes(prev => prev.map(s => s.id === id ? { ...s, variant: first.variant, font: first.font, fsize: first.fsize, props: first.props, dStyles: first.dStyles } : s));
+      setPrefV(newPrefV);
+      return;
+    }
+
+    // Multi-target: no candidate cycling, just randomize directly
+    const dna = generateDesignDNA(p, designMood);
     const newPrefV = { ...prefV };
     setShapes(prev => {
       const updated = [...prev];
-      // Build results progressively so later shapes harmonize with earlier randomized ones
       const alreadyRandomized = [...otherShapes];
       for (let i = 0; i < updated.length; i++) {
         const s = updated[i];
         if (!targetSet.has(s.id)) continue;
         const defaults = DEFAULT_PROPS[s.type];
-        if (singlePreset && targets.length === 1) {
-          const rnd = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna, s.w, s.h);
-          updated[i] = { ...s, variant: singlePreset.variant, font: singlePreset.font, fsize: singlePreset.fsize, props: { ...(s.props || {}), ...rnd.props }, dStyles: rnd.dStyles };
-          newPrefV[s.type] = singlePreset.variant;
-        } else {
-          const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna, s.w, s.h);
-          updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
-          newPrefV[s.type] = result.variant;
-        }
+        const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna, s.w, s.h);
+        updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
+        newPrefV[s.type] = result.variant;
         alreadyRandomized.push(updated[i]);
       }
       return updated;
     });
     setPrefV(newPrefV);
+    // Clear any lingering candidates for multi-target
+    for (const tid of targets) {
+      setCandidates(prev => { const n = { ...prev }; delete n[tid]; return n; });
+      setCandidateIdx(prev => { const n = { ...prev }; delete n[tid]; return n; });
+    }
   }, [shapes, p, designMood, prefV, selAll]);
+
+  const cycleVariation = useCallback((shapeId) => {
+    const cands = candidates[shapeId];
+    if (!cands || cands.length <= 1) return;
+    const curIdx = (candidateIdx[shapeId] || 0);
+    const nextIdx = (curIdx + 1) % cands.length;
+    setCandidateIdx(prev => ({ ...prev, [shapeId]: nextIdx }));
+    const cand = cands[nextIdx];
+    const shape = shapes.find(s => s.id === shapeId);
+    if (!shape) return;
+    const newPrefV = { ...prefV, [shape.type]: cand.variant };
+    setShapes(prev => prev.map(s => s.id === shapeId ? { ...s, variant: cand.variant, font: cand.font, fsize: cand.fsize, props: cand.props, dStyles: cand.dStyles } : s));
+    setPrefV(newPrefV);
+  }, [candidates, candidateIdx, shapes, prefV]);
 
   const randomizeAll = useCallback(() => {
     if (shapes.length === 0) return;
@@ -639,7 +674,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} />
               ))}
             </div>
 
