@@ -53,7 +53,7 @@ export const VARIANTS = {
   "list-item":["Card row","Divider","Tinted","Glass","Settings","Brutal","Gradient"],
   input:     ["Outlined","Labeled","Filled","Underline","Glass","Brutal","Gradient"],
   search:    ["Bordered","Pill kbd","Underline","Glass","AI","Brutal","Gradient"],
-  toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass"],
+  toggle:    ["Round","Square","Labeled","iOS","Brutal","Glass","Gradient"],
   badge:     ["Tinted","Solid","Outline","Glass","Brutal","Gradient","Counter"],
   toast:     ["Card","Dark snack","Accent bar","Glass","Brutal","Gradient"],
   progress:  ["Round","Flat","Thin","Striped","Glow","Brutal","Gradient"],
