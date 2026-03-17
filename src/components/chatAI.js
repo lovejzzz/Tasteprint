@@ -8363,6 +8363,114 @@ function applyIntuitiveLeap(response, text, topics) {
   return trimmed + separator + leapText;
 }
 
+/* ── Social Normalization (Round 119) ──
+ * Humans instinctively validate others by normalizing their experience:
+ * "a lot of people feel that way," "you're definitely not alone in that."
+ * This creates warmth and reduces shame/isolation around struggles,
+ * opinions, or uncertainties. Fire sparingly to avoid feeling hollow.
+ */
+
+let lastNormTurn = 0;
+let normCount = 0;
+const NORM_COOLDOWN = 7;
+const MAX_NORMS_SESSION = 5;
+
+// Trigger patterns: user expressing doubt, struggle, opinion, or emotion
+const NORM_TRIGGERS = [
+  { pattern: /\b(i('?m| am)\s+(struggling|confused|lost|stuck|overwhelmed|unsure|frustrated|worried|anxious|nervous|scared|afraid))\b/i, context: "struggle" },
+  { pattern: /\b(is it (just me|weird|normal|ok|okay) (that|to|if))\b/i, context: "seeking_validation" },
+  { pattern: /\b(does (anyone|everybody|everyone) (else )?((feel|think|do|have) )?)\b/i, context: "seeking_validation" },
+  { pattern: /\b(i feel like (i('?m| am)|maybe|the only))\b/i, context: "isolation" },
+  { pattern: /\b(am i (wrong|crazy|overthinking|weird|the only))\b/i, context: "self_doubt" },
+  { pattern: /\b(i can('?t| not) (figure out|understand|decide|stop|seem to))\b/i, context: "struggle" },
+  { pattern: /\b(i('?ve| have) (been|always) (terrible|bad|awful) at)\b/i, context: "self_criticism" },
+  { pattern: /\b(nobody|no one) (understands?|gets?|cares?)\b/i, context: "isolation" },
+  { pattern: /\b(i('?m| am) (probably|maybe) (just|being) (dumb|stupid|silly|dramatic|too))\b/i, context: "self_criticism" },
+  { pattern: /\b(i don('?t|t) (know|think) (if|what|how|whether))\b/i, context: "uncertainty" },
+];
+
+// Normalization phrases by context
+const NORM_PHRASES = {
+  struggle: [
+    "honestly, more people deal with this than you'd think.",
+    "this is way more common than people admit.",
+    "you'd be surprised how many people go through the exact same thing.",
+    "a lot of people hit this same wall — you're in good company.",
+    "this trips up more people than you'd expect, so don't be too hard on yourself.",
+  ],
+  seeking_validation: [
+    "definitely not just you.",
+    "this is a super common thing, honestly.",
+    "you're far from the only one — people just don't talk about it much.",
+    "way more people feel that way than will say it out loud.",
+  ],
+  isolation: [
+    "you're really not alone in this, even if it feels that way.",
+    "so many people feel exactly like this — it's just not something people broadcast.",
+    "this is a lot more universal than you might think.",
+    "I think most people have been there at some point, even if they don't show it.",
+  ],
+  self_doubt: [
+    "nah, questioning yourself like this is actually a sign you're thinking carefully.",
+    "the fact that you're even asking means you're more self-aware than most.",
+    "honestly, the smartest people I know ask themselves this all the time.",
+    "no, you're not crazy — this is a completely reasonable thing to wonder about.",
+  ],
+  self_criticism: [
+    "hey, go easy on yourself — everyone has things they're working on.",
+    "that's a really human thing, not a flaw.",
+    "most people feel like that about something — you're being way too hard on yourself.",
+    "nobody's naturally great at everything. That's just... being a person.",
+  ],
+  uncertainty: [
+    "it's okay not to know — most people don't have it all figured out either.",
+    "uncertainty is totally normal here. Anyone who says otherwise is probably bluffing.",
+    "honestly, not knowing is fine. Most of us are just figuring it out as we go.",
+    "that's a really honest place to be, and more people are there than admit it.",
+  ],
+};
+
+function detectNormContext(text) {
+  for (const { pattern, context } of NORM_TRIGGERS) {
+    if (pattern.test(text)) return context;
+  }
+  return null;
+}
+
+function applySocialNormalization(response, text) {
+  const turn = mem.turn;
+  if (turn < 3) return response;
+  if (turn - lastNormTurn < NORM_COOLDOWN) return response;
+  if (normCount >= MAX_NORMS_SESSION) return response;
+  if (response.length < 30 || response.length > 300) return response;
+  if (Math.random() > 0.55) return response; // ~55% when triggered (but triggers are specific)
+
+  const ctx = detectNormContext(text);
+  if (!ctx) return response;
+
+  const pool = NORM_PHRASES[ctx];
+  if (!pool) return response;
+  const phrase = pick(pool);
+
+  // Insert naturally — either prepend or append based on response structure
+  const trimmed = response.replace(/\s*$/, "");
+  let result;
+  if (Math.random() < 0.5) {
+    // Prepend: normalization first, then response
+    const cap = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+    result = cap + " " + trimmed;
+  } else {
+    // Append: response first, then normalization
+    const sep = /[.!?]$/.test(trimmed) ? " " : ". ";
+    const introWord = pick(["Also, ", "And hey — ", "For what it's worth, ", "Just so you know, ", ""]);
+    result = trimmed + sep + introWord + phrase;
+  }
+
+  lastNormTurn = turn;
+  normCount++;
+  return result;
+}
+
 /* ── Conversational Reciprocity (Round 103) ──
  * Natural conversations have a rhythm of giving and receiving. If the AI
  * always asks questions, it feels interrogative. If it always makes
@@ -17635,6 +17743,9 @@ export function getAIResponse(input) {
   // ═══ Intuitive leap: unexpected cross-domain insight ═══
   response = applyIntuitiveLeap(response, text, currentTopics);
 
+  // ═══ Social normalization: validate shared experience ═══
+  response = applySocialNormalization(response, text);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -17665,6 +17776,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
