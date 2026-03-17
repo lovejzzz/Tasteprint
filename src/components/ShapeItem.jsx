@@ -173,6 +173,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           fontWeight: ds.fontWeight || undefined,
           textTransform: ds.textTransform || undefined,
           opacity: ds.opacity || undefined,
+          transition: ds.transition || undefined,
           position: "relative",
           overflow: (device !== "free" || ds.borderRadius === 999) ? "hidden" : undefined,
           WebkitTapHighlightColor: "transparent", touchAction: "none",

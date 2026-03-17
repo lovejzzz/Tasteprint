@@ -1581,6 +1581,35 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
+    // --- Transition hints: give components a living, interactive feel ---
+    // Sets CSS transition so hover/interaction effects feel smooth, not snappy.
+    // Different moods = different motion personalities.
+    {
+      const txnChance = moodId === "playful" ? 0.40 : moodId === "bold" ? 0.30 : moodId === "elegant" ? 0.35 : moodId === "minimal" ? 0.20 : 0.25;
+      if (Math.random() < txnChance) {
+        const props = [];
+        // Collect which properties have been set and deserve smooth transitions
+        if (s.boxShadow && s.boxShadow !== "none") props.push("box-shadow");
+        if (s.scale || s.rotate) props.push("transform");
+        if (s.filter) props.push("filter");
+        if (s.opacity) props.push("opacity");
+        if (s.border || s.borderTop || s.borderBottom) props.push("border-color");
+        // Pick a subset to transition (not everything — that's expensive)
+        const txnProps = props.length > 0 ? props.slice(0, pick([2, 3])).join(", ") : "transform, box-shadow";
+        if (moodId === "playful") {
+          s.transition = `${txnProps} ${pick([0.25, 0.3, 0.35])}s ${pick(["ease-out", "cubic-bezier(0.34, 1.56, 0.64, 1)", "cubic-bezier(0.68, -0.55, 0.27, 1.55)"])}`;
+        } else if (moodId === "bold") {
+          s.transition = `${txnProps} ${pick([0.15, 0.2, 0.25])}s ${pick(["ease-in-out", "cubic-bezier(0.25, 0.46, 0.45, 0.94)"])}`;
+        } else if (moodId === "elegant") {
+          s.transition = `${txnProps} ${pick([0.4, 0.5, 0.6])}s ${pick(["ease", "cubic-bezier(0.4, 0, 0.2, 1)", "cubic-bezier(0.22, 0.61, 0.36, 1)"])}`;
+        } else if (moodId === "minimal") {
+          s.transition = `${txnProps} ${pick([0.2, 0.25])}s ease`;
+        } else {
+          s.transition = `${txnProps} ${pick([0.2, 0.3, 0.35])}s ${pick(["ease-out", "ease-in-out"])}`;
+        }
+      }
+    }
+
     /* ── WILD CARDS — creative surprise combos with DNA colors + mood-weighted selection ── */
     // Auto: 50%, Bold: 12%, Playful: 18%, Elegant: 10%, Minimal: 6%
     const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.06 : 0;
