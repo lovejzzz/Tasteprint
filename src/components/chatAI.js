@@ -12942,19 +12942,19 @@ function generateBridge(shift, callback) {
   if (shift.type === "related") {
     // Related topic shift — acknowledge the natural flow
     return pick([
-      `Oh, from ${shift.from} to ${shift.to} — that's a natural jump.`,
-      `${shift.to.charAt(0).toUpperCase() + shift.to.slice(1)} — yeah, that connects to what you were saying about ${shift.from}.`,
-      `That's actually closely tied to the ${shift.from} stuff.`,
+      `ooh ok ${shift.to}, yeah that tracks with the ${shift.from} thing`,
+      `${shift.to} — yeah that's kinda connected to ${shift.from} right`,
+      `oh wait yeah ${shift.to} and ${shift.from} are lowkey related`,
     ]);
   }
 
   if (shift.type === "shift") {
     // Unrelated topic shift — acknowledge the pivot
     return pick([
-      "Oh, switching gears —",
-      "Okay, new topic! I'm here for it.",
-      "Oh interesting, different direction —",
-      "Sure, let's talk about that instead.",
+      "oh ok switching gears lol",
+      "ok new topic, bet",
+      "oh we're going there now, ok ok",
+      "lol ok sure let's talk about that",
     ]);
   }
 
@@ -12967,15 +12967,16 @@ function generateCallbackWeave(callback) {
 
   if (callback.type === "project") {
     return pick([
-      `You know, this connects to that ${callback.project} project you mentioned.`,
-      `Actually, this might be relevant for ${callback.project} too.`,
+      `oh wait this is kinda relevant to ${callback.project} too`,
+      `ngl this connects to that ${callback.project} thing`,
+      `wait doesn't this tie into ${callback.project}`,
     ]);
   }
 
   return pick([
-    `This actually ties back to when we were talking about ${callback.oldTopic} earlier.`,
-    `Funny — we touched on ${callback.oldTopic} a while back, and this connects to that.`,
-    `Remember when we were on ${callback.oldTopic}? There's a thread here.`,
+    `oh wait we talked about ${callback.oldTopic} earlier right? this is connected`,
+    `lol this loops back to the ${callback.oldTopic} thing from before`,
+    `yo wait didn't we talk about ${callback.oldTopic}? same energy here`,
   ]);
 }
 
@@ -14100,15 +14101,15 @@ function applyRetroactiveInsight(response, currentTopics) {
 
   if (insight.type === "new_connection") {
     const connections = [
-      `Oh wait — you know what I just realized? The ${insight.bridge} thing connects what you were saying about ${insight.from} to ${insight.to}. That's actually a really interesting thread.`,
-      `Hold on — I'm connecting dots here. Earlier you were talking about ${insight.from}, and now ${insight.to} — ${insight.bridge} is the common thread. That's not obvious but it makes total sense.`,
-      `Okay, this is cool — ${insight.bridge} just bridged two things you've been thinking about separately: ${insight.from} and ${insight.to}. I love when conversations do that.`,
+      `oh wait ${insight.from} and ${insight.to} are kinda connected through the ${insight.bridge} thing right? that just clicked for me lol.`,
+      `yo wait — ${insight.bridge} literally ties ${insight.from} and ${insight.to} together, i just realized that.`,
+      `ok ngl the ${insight.bridge} thing lowkey connects ${insight.from} and ${insight.to}. idk if you noticed that too.`,
     ];
     prefix = connections[Math.floor(Math.random() * connections.length)] + " ";
   } else if (insight.type === "recurring_theme") {
     const recurrings = [
-      `You know, ${insight.from} and ${insight.to} keep coming up together. I think there's a pattern in how you think about these — they're clearly connected in your mind.`,
-      `I've noticed ${insight.from} and ${insight.to} are sort of a package deal for you. There's a mental model there that I find interesting.`,
+      `you keep bringing up ${insight.from} and ${insight.to} together lol, they're definitely linked in your brain.`,
+      `ngl ${insight.from} and ${insight.to} always come up together when you talk. there's a pattern there for sure.`,
     ];
     prefix = recurrings[Math.floor(Math.random() * recurrings.length)] + " ";
   }
@@ -14169,16 +14170,16 @@ function trySynthesis(response) {
   let prefix;
   if (a.topic !== b.topic) {
     const crossSynths = [
-      `You know what's interesting? We've been building toward something — between ${a.topic} and ${b.topic}, there's a through-line in how you think about things.`,
-      `I'm starting to see a pattern in our conversation — your take on ${a.topic} and ${b.topic} share the same underlying logic.`,
-      `Something cool is happening here — our ${a.topic} and ${b.topic} threads are converging.`,
+      `ok ngl the ${a.topic} and ${b.topic} stuff is kinda connected in how you think about things.`,
+      `wait your takes on ${a.topic} and ${b.topic} have the same energy lol.`,
+      `yo ${a.topic} and ${b.topic} are overlapping rn and i'm into it.`,
     ];
     prefix = crossSynths[Math.floor(Math.random() * crossSynths.length)];
   } else {
     const deepSynths = [
-      `We've been steadily building our understanding of ${a.topic} together — I feel like we're getting somewhere real.`,
-      `I like where this ${a.topic} discussion is going. We've established some solid common ground.`,
-      `We're really deepening on ${a.topic} here — each point builds on the last.`,
+      `ok we're getting somewhere with this ${a.topic} thing fr.`,
+      `ngl this ${a.topic} convo is building and i'm here for it.`,
+      `we keep going deeper on ${a.topic} and it keeps getting better lol.`,
     ];
     prefix = deepSynths[Math.floor(Math.random() * deepSynths.length)];
   }
@@ -14199,10 +14200,10 @@ function buildOnAgreement(response, text) {
   if (Math.random() > 0.35) return response;
 
   const builders = [
-    `And building on that — `,
-    `Since we're aligned on that — `,
-    `With that as a foundation — `,
-    `Okay so if that's true, then — `,
+    `ok and going off that — `,
+    `yeah and also — `,
+    `right right, and — `,
+    `ok so then — `,
   ];
 
   const builder = builders[Math.floor(Math.random() * builders.length)];
@@ -14249,9 +14250,9 @@ function addSpontaneousGift(response, topics, text) {
       if (assoc && assoc.related && assoc.related.length > 0) {
         const related = assoc.related[Math.floor(Math.random() * assoc.related.length)];
         const starters = [
-          `Oh wait — random thought: have you ever noticed how ${topic} and ${related} are kind of the same problem from different angles?`,
-          `Hm, this is going to sound random, but ${topic} just made me think of ${related} and now I can't un-see the connection.`,
-          `Okay tangent alert — but ${topic} and ${related} have this really interesting overlap that most people miss.`,
+          `wait ok random but does anyone else see how ${topic} and ${related} are kinda the same thing from different angles`,
+          `ok this is random but ${topic} just reminded me of ${related} and now i can't stop thinking about it lol`,
+          `ngl ${topic} and ${related} are lowkey connected in a way nobody talks about`,
         ];
         gift = starters[Math.floor(Math.random() * starters.length)];
       }
@@ -14260,10 +14261,10 @@ function addSpontaneousGift(response, topics, text) {
     case "mini_challenge": {
       // Quick, playful engagement
       const challenges = [
-        "Quick challenge: explain what you're working on right now in exactly five words. Go!",
-        "Pop quiz — what's one thing you believed about this topic a year ago that you've since changed your mind on?",
-        "Okay speed round: if you had to teach someone one thing about this in 30 seconds, what would it be?",
-        "Fun question: if this topic were a movie genre, what would it be and why?",
+        "ok explain what you're working on rn in 5 words go",
+        "wait what's one thing you used to think about this that you've totally flipped on",
+        "ok if you had 30 seconds to explain this to someone what would you say",
+        "random but if this topic was a movie genre what would it be lol",
       ];
       gift = challenges[Math.floor(Math.random() * challenges.length)];
       break;
@@ -14291,9 +14292,9 @@ function addSpontaneousGift(response, topics, text) {
       if (assoc && assoc.facts && assoc.facts.length > 0) {
         const fact = assoc.facts[Math.floor(Math.random() * assoc.facts.length)];
         const intros = [
-          `Oh — random ${topic} fact that I think you'd find interesting: ${fact}.`,
-          `Completely tangential, but this is too good not to share: ${fact}.`,
-          `You made me think of this: ${fact}. Wild, right?`,
+          `oh random ${topic} thing — ${fact}.`,
+          `ok this is totally random but ${fact}. kinda wild right`,
+          `wait that just reminded me — ${fact}. idk why i know that lol`,
         ];
         gift = intros[Math.floor(Math.random() * intros.length)];
       }
