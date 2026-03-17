@@ -1363,6 +1363,57 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // --- Opacity depth layering: subtle transparency for visual hierarchy ---
+  // Makes some components recede slightly, creating a depth hierarchy on the canvas
+  if (!isNav && !isCode) {
+    const opacityChance = moodId === "elegant" ? 0.20 : moodId === "minimal" ? 0.18 : moodId === "playful" ? 0.08 : moodId === "bold" ? 0.06 : 0.12;
+    if (Math.random() < opacityChance) {
+      if (moodId === "elegant") {
+        s.opacity = pick([0.88, 0.90, 0.92, 0.94]); // ethereal layering
+      } else if (moodId === "minimal") {
+        s.opacity = pick([0.85, 0.88, 0.90]); // airy negative space
+      } else {
+        s.opacity = pick([0.90, 0.92, 0.95]); // subtle depth only
+      }
+    }
+  }
+
+  // --- Inner glow: inset boxShadow for warm/cool radiance from within ---
+  // Adds an inner light source that makes components feel alive
+  if (!isNav && !isCode && !isSmall && s.boxShadow && s.boxShadow !== "none") {
+    const glowChance = moodId === "playful" ? 0.25 : moodId === "bold" ? 0.20 : moodId === "elegant" ? 0.18 : moodId === "minimal" ? 0.08 : 0.15;
+    if (Math.random() < glowChance) {
+      let innerGlow;
+      if (moodId === "playful") {
+        innerGlow = pick([
+          `inset 0 0 ${pick([20, 30, 40])}px ${pick([dc.vivid, dc.analog1, gcGlow])}12`,
+          `inset 0 ${pick([-15, -10, 10, 15])}px ${pick([20, 30])}px ${gc1}10`,
+          `inset 0 0 ${pick([15, 25])}px ${acHex}15, inset 0 0 ${pick([40, 60])}px ${gcGlow}06`,
+        ]);
+      } else if (moodId === "bold") {
+        innerGlow = pick([
+          `inset 0 0 ${pick([25, 35])}px ${acHex}12`,
+          `inset 0 -${pick([10, 15])}px ${pick([25, 35])}px ${gc1}10`,
+          `inset ${pick([-20, 20])}px 0 ${pick([30, 40])}px ${gcGlow}08`,
+        ]);
+      } else if (moodId === "elegant") {
+        innerGlow = pick([
+          `inset 0 0 ${pick([20, 30])}px ${dc.muted}08`,
+          `inset 0 ${pick([10, 15])}px ${pick([25, 35])}px ${acHex}06`,
+        ]);
+      } else if (moodId === "minimal") {
+        innerGlow = `inset 0 0 ${pick([15, 20])}px ${shHex}04`;
+      } else {
+        innerGlow = pick([
+          `inset 0 0 ${pick([20, 30])}px ${acHex}10`,
+          `inset 0 ${pick([-12, 12])}px ${pick([20, 30])}px ${gc1}08`,
+          `inset 0 0 ${pick([15, 25])}px ${gcGlow}08, inset 0 0 ${pick([40, 50])}px ${acHex}04`,
+        ]);
+      }
+      s.boxShadow = s.boxShadow + ", " + innerGlow;
+    }
+  }
+
   /* ── MOOD SIGNATURE EFFECTS — unique treatments per mood ── */
   if (!isNav && !isCode) {
     if (moodId === "minimal") {
