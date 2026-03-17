@@ -2068,6 +2068,46 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
+    // ── Compound texture layering: stack a second complementary pattern over the first ──
+    // Creates richer surface complexity — dot grid over stripes, noise over crosshatch, etc.
+    if (!isSmall && s.textureOverlay) {
+      const ctRoll = Math.random();
+      const texColor2 = pick([acHex, gc1, gc2, gcGlow || acHex]);
+      if (moodId === "bold" && ctRoll < 0.18) {
+        // Bold: heavy cross-layer — diagonal stripes + perpendicular thin lines
+        const angle2 = pick([0, 90, 135]);
+        const gap2 = pick([16, 20, 24]);
+        s.textureOverlay += `, repeating-linear-gradient(${angle2}deg, ${texColor2}06 0px, ${texColor2}06 1px, transparent 1px, transparent ${gap2}px)`;
+      } else if (moodId === "playful" && ctRoll < 0.20) {
+        // Playful: dot scatter over existing pattern — confetti depth
+        const dotR = pick([1, 2, 3]);
+        const dotGap = pick([20, 26, 32]);
+        const offsetX = pick([5, 8, 12]);
+        const offsetY = pick([5, 8, 12]);
+        s.textureOverlay += `, radial-gradient(circle ${dotR}px at ${offsetX}px ${offsetY}px, ${texColor2}0C ${dotR}px, transparent ${dotR}px)`;
+        s.textureSize = s.textureSize ? undefined : `${dotGap}px ${dotGap}px`;
+      } else if (moodId === "elegant" && ctRoll < 0.14) {
+        // Elegant: silk sheen band over fine texture — luminous stripe
+        const sheenAngle = pick([110, 130, 150, 170]);
+        s.textureOverlay += `, linear-gradient(${sheenAngle}deg, transparent 30%, ${texColor2}05 48%, ${texColor2}08 52%, transparent 70%)`;
+      } else if (moodId === "minimal" && ctRoll < 0.06) {
+        // Minimal: barely-there perpendicular whisper
+        const perpDir = s.textureOverlay.includes("0deg") ? 90 : 0;
+        s.textureOverlay += `, repeating-linear-gradient(${perpDir}deg, ${texColor2}02 0px, ${texColor2}02 1px, transparent 1px, transparent ${pick([30, 36, 44])}px)`;
+      } else if (moodId === "auto" && ctRoll < 0.12) {
+        // Auto: random second layer from any style
+        const autoLayer = pick(["lines", "dots", "sheen"]);
+        if (autoLayer === "lines") {
+          s.textureOverlay += `, repeating-linear-gradient(${pick([0, 45, 90, 135])}deg, ${texColor2}05 0px, ${texColor2}05 1px, transparent 1px, transparent ${pick([14, 18, 22])}px)`;
+        } else if (autoLayer === "dots") {
+          const ag = pick([18, 24, 30]);
+          s.textureOverlay += `, radial-gradient(circle 1px at ${Math.round(ag/2)}px ${Math.round(ag/2)}px, ${texColor2}08 1px, transparent 1px)`;
+        } else {
+          s.textureOverlay += `, linear-gradient(${pick([120, 150, 210])}deg, transparent 35%, ${texColor2}04 50%, transparent 65%)`;
+        }
+      }
+    }
+
     /* ── WILD CARDS — creative surprise combos with DNA colors + mood-weighted selection ── */
     // Auto: 50%, Bold: 12%, Playful: 18%, Elegant: 10%, Minimal: 6%
     const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.06 : 0;
