@@ -17,7 +17,7 @@ const pillHover = (p) => ({
   onMouseLeave: e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; },
 });
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore, candidates, candidateIdx, cycleVariation, designHistory, undoDesign }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore, candidates, candidateIdx, cycleVariation, designHistory, undoDesign, isLocked, toggleLock }) {
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -87,6 +87,23 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             style={{ ...pb, width: "auto", padding: "0 7px", gap: 3, fontSize: 9, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac }}>
             <span style={{ fontSize: 10 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
             <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
+          </button>
+          <button aria-label={isLocked ? "Unlock from randomize-all" : "Lock to protect from randomize-all"}
+            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); toggleLock(s.id); }}
+            onMouseEnter={e => { e.currentTarget.style.background = isLocked ? p.ac + "28" : p.ac + "18"; e.currentTarget.style.transform = "scale(1.08)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = isLocked ? p.ac + "18" : p.su; e.currentTarget.style.transform = "scale(1)"; }}
+            style={{ ...pb, fontSize: 12, background: isLocked ? p.ac + "18" : p.su, color: isLocked ? p.ac : p.mu }}>
+            {isLocked ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+              </svg>
+            )}
           </button>
           <button aria-label="Randomize design"
             onPointerDown={e => {
@@ -323,7 +340,8 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     prev.s.dStyles === next.s.dStyles &&
     prev.candidates === next.candidates &&
     prev.candidateIdx === next.candidateIdx &&
-    prev.designHistory === next.designHistory;
+    prev.designHistory === next.designHistory &&
+    prev.isLocked === next.isLocked;
 });
 
 export default ShapeItem;
