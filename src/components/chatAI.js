@@ -1287,17 +1287,17 @@ const KB = {
   },
   personal: {
     about: [
-      "I'm a tiny AI running right in your browser! No servers, no API calls — just JavaScript and a lot of pattern matching",
-      "I'm a small language model built into this chat widget. I live entirely in your browser — pretty cozy actually!",
-      "Good question! I'm an AI friend living in this component. I don't have a server or API — everything I say comes from patterns and templates running locally",
+      "lol i'm literally just javascript running in your browser, no servers or anything. kinda wild honestly",
+      "i'm a tiny AI that lives in this chat widget! everything runs locally, no API calls. just vibes and pattern matching",
+      "i'm basically a chatbot made of JS that runs entirely in your browser. pretty cozy in here ngl",
     ],
     feelings: [
-      "I process text and generate responses, but I appreciate you asking! How are YOU feeling?",
-      "I'm made of code, but I try my best to be a good conversation partner! What's on your mind?",
+      "i mean i'm made of code so idk lol but how are YOU doing",
+      "honestly i just process text but i appreciate you asking 😊 what about you tho",
     ],
     capabilities: [
-      "I can chat about code, design, music, food, movies, travel, and lots more! I'm not perfect, but I try to keep it real",
-      "I'm best at having friendly conversations! I can't browse the web or run code, but I can definitely be a good sounding board",
+      "i can chat about a bunch of stuff — code, design, music, movies, whatever. i'm not perfect but i try lol",
+      "i'm best at just chatting! can't browse the web or anything but i'm a decent hang",
     ],
   },
 };
@@ -3161,25 +3161,25 @@ function answerQuestion(text, parsed, intents, topics) {
 /* ── Response Generators by Act ── */
 
 const GREETINGS = {
-  first: ["Hey there! 👋 How's it going?","Hi! What's on your mind today?","Hello! Ready to chat 😊","Hey! Good to hear from you!","Hi there! What brings you here?"],
-  returning: ["Hey, welcome back! 😊 What's up?","Hi again! Anything new?","Hey! Good to see you again."],
-  named: ["Hey {name}! 👋 How can I help?","Hi {name}! What's on your mind?","{name}! Good to hear from you 😊"],
-  namedReturn: ["Hey {name}! Welcome back 😊","Hi again {name}! What's new?","{name}! Missed ya — what's up?"],
+  first: ["heyyy what's up","hey! how's it going","yo 👋","hiii","hey hey, what's good"],
+  returning: ["oh hey you're back! what's up","heyyy welcome back","ayy what's good"],
+  named: ["hey {name}! what's up","yo {name} 👋","{name}! hey hey"],
+  namedReturn: ["{name}!! what's good","oh hey {name}, you're back","ayy {name} 👋"],
 };
 
 const FAREWELLS = {
-  basic: ["See you later! 👋","Take care! Come back anytime.","Bye! Have a great one! ✌️","Catch you later! 😊"],
-  named: ["Bye {name}! Have a great one! 👋","See you later {name}! 😊","Take care {name}! ✌️"],
-  long: ["It was really fun chatting with you! See you next time 😊","Great conversation! Don't be a stranger 👋","Alright, take it easy! Come back whenever you want to chat"],
+  basic: ["laterrr ✌️","bye bye","aight peace","see ya 👋","later!"],
+  named: ["bye {name}! ✌️","later {name} 👋","peace {name}!"],
+  long: ["aight it was fun, don't be a stranger","this was great honestly, come back anytime","ok bye for real tho, talk soon 👋"],
 };
 
-const THANKS = ["You're welcome! 😊","Anytime! Happy to help.","No problem at all!","Glad I could help! ✨","Of course! That's what I'm here for."];
+const THANKS = ["ofc!","no worries!","anytime 😊","lol you don't gotta thank me","all good!"];
 
 const HOW_ARE_YOU = [
-  "I'm doing great, thanks for asking! How about you?",
-  "Pretty good! Just here ready to chat. What's up with you?",
-  "All good on my end! 🚀 How are you doing?",
-  "I'm great! Always happy to chat. How's your day going?",
+  "i'm good! hbu?",
+  "chillin, you?",
+  "pretty good honestly, wbu",
+  "i'm vibing, how are you tho",
 ];
 
 /* ── Contextual Humor & Storytelling Engine ──
@@ -4964,10 +4964,10 @@ function generateResponse(text) {
   if (nameMatch && !STOP.has(nameMatch[1].toLowerCase())) {
     const name = nameMatch[1];
     const intros = [
-      `Nice to meet you, ${name}! 😊 What can I help you with?`,
-      `Hey ${name}! Great to put a name to the conversation. What's on your mind?`,
-      `${name}! Love it. So what are we talking about today?`,
-      `Great to meet you, ${name}! I'm just a tiny AI but I'm all ears 😊`,
+      `${name}!! nice to meet you, what's up`,
+      `oh hey ${name}! ok so what's going on`,
+      `${name}! love that. so what are we talking about`,
+      `ayy ${name} 👋 what's good`,
     ];
     return pickNew(intros);
   }
@@ -5083,10 +5083,10 @@ function generateResponse(text) {
   // ═══ 12. Laughter ═══
   if (parsed.act === "laughter") {
     const laughs = [
-      "Haha glad that landed! 😄",
-      "😂 I try! What else is on your mind?",
-      "Glad I could make you laugh! So what's up?",
-      "Haha! Laughter is the best. What shall we talk about?",
+      "😂😂",
+      "lmaooo",
+      "hahaha ok but fr",
+      "💀💀",
     ];
     return pickNew(laughs);
   }
@@ -5097,10 +5097,10 @@ function generateResponse(text) {
   }
   if (parsed.act === "disagreement") {
     const disags = [
-      "Fair enough! Everyone sees things differently. What's your take?",
-      "No worries — I'm open to other viewpoints! Tell me more.",
-      "That's totally valid! What would you suggest instead?",
-      "I appreciate the honesty! What's your perspective?",
+      "ok fair, what do you think then",
+      "lol nah you might be right honestly",
+      "ok ok, i hear you. what's your take",
+      "hmm ok that's valid actually",
     ];
     return pickNew(disags);
   }
@@ -5108,10 +5108,10 @@ function generateResponse(text) {
   // ═══ 14. Filler / thinking ═══
   if (parsed.act === "filler" && mem.isShort(text)) {
     const fillers = [
-      "Take your time! I'm here whenever you're ready.",
-      "What's on your mind? 😊",
-      "I'm listening... no rush!",
-      "Something on your mind? Let's talk about it!",
+      "lol what's up",
+      "you good?",
+      "hmm?",
+      "what's on your mind",
     ];
     return pickNew(fillers);
   }
@@ -5191,37 +5191,37 @@ function respondToSharing(parsed, topics) {
   switch (pref.type) {
     case "likes": {
       const responses = [
-        `Oh nice, you like ${pref.value}! That's awesome 😊 How did you get into it?`,
-        `${pref.value} — great taste! What do you enjoy most about it?`,
-        `You like ${pref.value}? Me too... well, as much as an AI can! 😄 Tell me more!`,
-        `Cool! ${pref.value} is a great choice. What got you interested?`,
+        `oh wait you like ${pref.value}?? ok taste`,
+        `${pref.value}! valid, how'd you get into it`,
+        `ooh ${pref.value}, nice nice. what's your favorite thing about it`,
+        `${pref.value} is so good honestly. what got you into it?`,
       ];
       return pickNew(responses);
     }
     case "dislikes": {
-      return `Ha, not a fan of ${pref.value} huh? That's fair — everyone has their preferences! What DO you like instead?`;
+      return `lol nah ${pref.value} isn't for everyone, that's fair. what do you like instead tho`;
     }
     case "favorite": {
-      return `Oh, ${pref.value} is your favorite? Awesome choice! What makes it stand out for you?`;
+      return `${pref.value}?? ok good taste honestly. why that one tho`;
     }
     case "role": {
-      return `Oh cool, a ${pref.value}! That's awesome. What kind of projects do you work on?`;
+      return `oh wait you're a ${pref.value}?? that's cool, what kind of stuff do you work on`;
     }
     case "work": {
-      return `Working on ${pref.value} — that sounds interesting! How's it going?`;
+      return `oh ${pref.value}?? nice, how's that going`;
     }
     case "project": {
       mem.setFact("project", pref.value);
-      return `Oh you're building ${pref.value}? That's exciting! What's the biggest challenge so far?`;
+      return `wait you're building ${pref.value}?? ok that's sick. what's the hardest part so far`;
     }
     case "location": {
-      return `Oh nice, ${pref.value}! I've heard it's a great place. How do you like it there?`;
+      return `oh ${pref.value}! nice, you like it there?`;
     }
     case "activity": {
-      return `Oh cool, you ${parsed.lower.includes("started") ? "just started" : "finished"} ${pref.value}! How was it?`;
+      return `oh you ${parsed.lower.includes("started") ? "just started" : "finished"} ${pref.value}?? how was it`;
     }
     default: {
-      return `That's interesting — tell me more about that!`;
+      return `oh fr? tell me about that`;
     }
   }
 }
@@ -5240,55 +5240,61 @@ function respondToAgreement() {
     travel: ["Where would you go next if you could?","What's been your favorite trip so far?","Do you prefer adventure or relaxation?"],
   };
 
-  const base = pickNew(["Awesome! 😊","Great!","Cool!","Nice!","Perfect!"]);
+  const base = pickNew(["nice","ok cool","bet","aight"]);
 
   if (lastTopic && topicFollowups[lastTopic]) {
-    return base + " " + pickNew(topicFollowups[lastTopic]);
+    return base + ", " + pickNew(topicFollowups[lastTopic]).toLowerCase();
   }
 
-  const generic = ["What else is on your mind?","What should we talk about next?","Anything else you'd like to discuss?"];
-  return base + " " + pickNew(generic);
+  const generic = ["so what else is going on","anyway what's up","what else"];
+  return base + " — " + pickNew(generic);
 }
 
 function respondToShortReply(text) {
   const lower = text.toLowerCase().trim();
   const lastTopic = mem.lastIntent;
 
-  // Handle specific short phrases
-  if (/^(ok|okay|k|kk)$/i.test(lower)) return pickNew(["Cool! So what's next?","Alright! Anything else on your mind?","Got it! What else?"]);
-  if (/^(lol|haha|lmao|😂)/i.test(lower)) return pickNew(["😄 Glad that was funny! What else?","Haha! So what's on your mind?","😊 What shall we chat about?"]);
-  if (/^(nice|cool|neat|sick|dope)$/i.test(lower)) return pickNew(["Right? 😊 Tell me more about what you're thinking!","I know, right! What else is going on?","Glad you think so! Anything else?"]);
-  if (/^(idk|dunno|not sure|no idea)$/i.test(lower)) return pickNew(["No worries! We can figure it out together. What are you leaning toward?","That's okay! Sometimes just talking it out helps. What's on your mind?","Hmm, want me to throw out some ideas?"]);
-  if (/^(same|mood|fr|real|facts|true)$/i.test(lower)) return pickNew(["Right?! 😄 So what's next?","I feel that! What else is going on?","Exactly! So what are you up to?"]);
-  if (/^(wow|whoa|omg|damn)$/i.test(lower)) return pickNew(["I know, right?! What's got you excited?","Ha! What's on your mind?","😊 Tell me more!"]);
+  // Handle specific short phrases — sound like a friend, not a bot
+  if (/^(ok|okay|k|kk)$/i.test(lower)) return pickNew(["bet","cool cool","aight","ok ok"]);
+  if (/^(lol|haha|lmao|😂)/i.test(lower)) return pickNew(["😂","lmaooo","fr tho 😂","hahaha"]);
+  if (/^(nice|cool|neat|sick|dope)$/i.test(lower)) return pickNew(["right??","ikr","fr fr","honestly yeah"]);
+  if (/^(idk|dunno|not sure|no idea)$/i.test(lower)) return pickNew(["that's fair","hmm yeah it's tough","lol mood","want me to just throw out ideas?"]);
+  if (/^(same|mood|fr|real|facts|true)$/i.test(lower)) return pickNew(["literally 😭","no fr","RIGHT","the way this is so accurate"]);
+  if (/^(wow|whoa|omg|damn)$/i.test(lower)) return pickNew(["RIGHT??","i knowww","lol wait what happened","dude ikr"]);
   if (/^(sure|yep|yeah|yes)$/i.test(lower)) return respondToAgreement();
-  if (/^(no|nah|nope)$/i.test(lower)) return pickNew(["No worries! What would you prefer to talk about?","Fair enough! What's on your mind instead?","Okay! What else is going on?"]);
-  if (/^(nothing|nm|nvm|nevermind)$/i.test(lower)) return pickNew(["That's cool — we can just chill! Or I can tell you a joke if you want 😄","No worries! I'm here whenever you want to chat about something","All good! Sometimes it's nice to just hang. What's your vibe today?"]);
-  if (/^(bored|boring|meh)$/i.test(lower)) return pickNew(["Bored? I got you! Want a joke, want to talk about something cool, or should I ask you a random question?","Let's fix that! Quick — tell me about something you're passionate about 🚀","Hmm, boredom is just your brain wanting something interesting. What topic would spark your interest?"]);
-  if (/^(help|sos|please)$/i.test(lower)) return "Of course! I'm here. What do you need help with?";
+  if (/^(no|nah|nope)$/i.test(lower)) return pickNew(["fair enough","lol ok","that's valid","nah you're right"]);
+  if (/^(nothing|nm|nvm|nevermind)$/i.test(lower)) return pickNew(["lol ok we can just vibe","all good","nm either honestly","fair lol"]);
+  if (/^(bored|boring|meh)$/i.test(lower)) return pickNew(["same honestly, today is so mid","want me to ask you something random","ok hear me out — random topic: what's a hill you'd die on"]);
+  if (/^(help|sos|please)$/i.test(lower)) return "what's going on? talk to me";
   if (/^(what|huh|wdym)$/i.test(lower)) {
     const lastAI = mem.lastAI();
-    if (lastAI) return `Sorry if I was unclear! I was saying: ${lastAI.text.substring(0, 60)}... Want me to explain differently?`;
-    return "Let me clarify! What part are you confused about?";
+    if (lastAI) return `oh my bad lol, i meant: ${lastAI.text.substring(0, 60)}...`;
+    return "wait what part lol";
   }
+  if (/^(wyd|wbu|hbu|wya)$/i.test(lower)) return pickNew(["nm just vibing, u?","not much hbu","just chillin wbu","literally nothing rn lol, you?"]);
+  if (/^(bruh|bro|dude)$/i.test(lower)) return pickNew(["lol what","WHAT happened","bro spill","dude tell me"]);
+  if (/^(ugh|oof|yikes)$/i.test(lower)) return pickNew(["oh no what happened","oof that bad huh","yikes, wanna talk about it?","rip 😭"]);
+  if (/^(sus|cap|no cap)$/i.test(lower)) return pickNew(["lmao","no cap fr","honestly tho","😭"]);
+  if (/^(bet|valid|based|W|slay)$/i.test(lower)) return pickNew(["fr fr","huge W honestly","you get it","exactly lol"]);
+  if (/^(L|mid|ratio|cope)$/i.test(lower)) return pickNew(["lmaooo","ok fair","💀","oof"]);
 
   // Topic-based follow-ups for generic short replies
   if (lastTopic) {
     const followups = {
-      code: "So what's happening with the code?",
-      design: "How's the design coming along?",
-      food: "So what are you eating? 😄",
-      music: "What are you listening to?",
-      gaming: "What are you playing?",
-      movies: "Watching anything good?",
-      travel: "Planning any trips?",
-      fitness: "How's the workout routine going?",
-      learning: "What are you studying?",
+      code: "so how's the code going",
+      design: "hows the design stuff going",
+      food: "ok but what are you eating rn",
+      music: "what are you listening to tho",
+      gaming: "what are you playing rn",
+      movies: "watching anything good lately?",
+      travel: "you going anywhere soon?",
+      fitness: "how's the gym been",
+      learning: "what are you studying",
     };
-    if (followups[lastTopic]) return pickNew(["I'm here! ","So... ","Anyway — "]) + followups[lastTopic];
+    if (followups[lastTopic]) return pickNew(["anyway ","so ","oh wait "]) + followups[lastTopic];
   }
 
-  return pickNew(["Tell me more about what you're thinking!","What's on your mind? I'm all ears 😊","I'd love to hear more!","What else is going on in your world?"]);
+  return pickNew(["so what's up","anyway what's going on with you","lol so what are we talking about","you good?"]);
 }
 
 /* ── Conversational Turn-Taking & Active Listening ──
@@ -5489,16 +5495,16 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
   if (!response) {
     // Intent-specific fallbacks
     const intentFallbacks = {
-      help: ["Of course! I'd love to help. What do you need?","Sure thing! Tell me more about what you're working on.","I'm here for you! What's the challenge?"],
+      help: ["yeah ofc, what's going on?","what do you need?","ok tell me what's up"],
       weather: ["I wish I could check the weather! ☀️ Try looking out the window? 😄","I'm an indoor AI — never see the weather! How's it out there? 🌤️"],
       time: [()=>`It's ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} right now! ⏰`,"Time flies when you're chatting! What do you need?"],
       opinion: ["That's a great question! I think it depends on context. What's your take?","Everyone has different preferences! What matters most to you?","Hmm, tough call! What's your gut feeling?"],
-      aboutMe: ["I'd love to hear about you! Tell me anything — what do you do, what are you into?","Go for it! I'm all ears. What would you like to share?"],
+      aboutMe: ["ok go ahead, what's up","yeah tell me! what do you do","ooh ok spill"],
     };
     if (intentFallbacks[intentName]) response = pickNew(intentFallbacks[intentName]);
   }
 
-  if (!response) response = pickNew(["That's interesting! Tell me more.","Oh nice! What else?","Cool! What's on your mind?"]);
+  if (!response) response = pickNew(["oh nice","wait fr?","oh word","huh ok","lol that's valid"]);
 
   // Multi-intent blending
   if (intents.length > 1 && intents[1].conf > 0.5 && Math.random() > 0.6) {
@@ -5524,51 +5530,51 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
 function respondFallback(text, tokens, keywords) {
   const words = tokens.filter(w=>!STOP.has(w)&&w.length>2);
 
-  // Reference what they said to show understanding
+  // Reference what they said — like a friend would
   if (words.length >= 2) {
     const phrase = words.slice(0, Math.min(3, words.length)).join(" ");
     const echoes = [
-      `"${phrase}" — interesting! Tell me more about that.`,
-      `Hmm, ${phrase}... what made you think about that?`,
-      `I find ${phrase} fascinating! What's your experience with it?`,
-      `Oh, ${phrase}! What do you think about it?`,
-      `${phrase} — I'm curious, can you elaborate?`,
+      `wait ${phrase}?? what do you mean`,
+      `ok hold on, ${phrase} — explain`,
+      `${phrase} tho?? that's wild`,
+      `oh ${phrase}, yeah i feel that`,
+      `lol wait ${phrase}?`,
     ];
     return pickNew(echoes);
   }
 
-  // Ask an engaging question when we have user context
+  // Callback to stuff they've told us
   if (mem.turn > 3 && Object.keys(mem.facts).length > 0) {
     const factKeys = Object.keys(mem.facts);
     const randomFact = pick(factKeys);
     if (randomFact.startsWith("likes_")) {
-      return `By the way, you mentioned you like ${mem.facts[randomFact]} — how's that going?`;
+      return `oh wait how's the ${mem.facts[randomFact]} thing going`;
     }
     if (randomFact === "project") {
-      return `How's the ${mem.facts.project} project coming along?`;
+      return `oh how's ${mem.facts.project} going btw`;
     }
   }
 
-  // Proactive engagement
+  // Random friend-style conversation starters
   if (mem.turn > 2 && Math.random() > 0.5) {
     const proactive = [
-      "Random question — if you could learn one new skill instantly, what would it be?",
-      "Hey, what's the most interesting thing you've done this week?",
-      "Quick question — what's something you're looking forward to?",
-      "Here's a fun one — what's your hot take on something everyone else seems to agree on?",
-      "Tell me something cool about yourself that most people don't know!",
+      "ok random but if you could learn one thing instantly what would it be",
+      "wait what's the best thing that happened to you this week",
+      "ok give me a hot take, anything",
+      "what are you looking forward to rn",
+      "tell me something random about you",
     ];
     return pickNew(proactive);
   }
 
   const fallbacks = [
-    "That's interesting! Tell me more about that.",
-    "Hmm, I'm thinking about that... 🤔 Can you elaborate?",
-    "Cool! What else is on your mind?",
-    "I hear you! What would you like to explore?",
-    "Interesting thought! I'd love to hear more.",
-    "Tell me more — I'm curious!",
-    "That's got me thinking! What's your take?",
+    "hmm ok go on",
+    "wait what lol",
+    "oh word?",
+    "lol wdym",
+    "ok i'm listening",
+    "hmm",
+    "that's wild",
   ];
   return pickNew(fallbacks);
 }
