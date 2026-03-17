@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { PAL } from "../constants";
+import { DESIGN_MOODS } from "../utils";
 
 /* ── Shared layout logic for device mode switching ── */
 function reflowForDevice(deviceKey, shapes, setShapes, setDevice, setCam) {
@@ -24,7 +25,7 @@ function reflowForDevice(deviceKey, shapes, setShapes, setDevice, setCam) {
   setCam({ x: 0, y: 0, z: 1 });
 }
 
-export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, hasRndUndo, undoRandomize }) {
+export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, hasRndUndo, undoRandomize, designMood, setDesignMood }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredBtn, setHoveredBtn] = useState(null);
 
@@ -218,6 +219,15 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
           {...btnHandlers("redo")} style={btn("redo")}>Redo</button>
         {shapes.length > 0 && <>
           <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px", flexShrink: 0 }} />
+          {designMood !== undefined && <button
+            onClick={() => { const idx = DESIGN_MOODS.findIndex(m => m.id === (designMood || "auto")); setDesignMood(DESIGN_MOODS[(idx + 1) % DESIGN_MOODS.length].id); }}
+            title={`Design mood: ${(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label} (click to cycle, M key)`}
+            aria-label="Cycle design mood"
+            {...btnHandlers("mood")}
+            style={btn("mood", { display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac })}>
+            <span style={{ fontSize: 12 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
+            <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
+          </button>}
           <button onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
             {...btnHandlers("rndAll")} style={btn("rndAll", { display: "flex", alignItems: "center", gap: 4 })}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
