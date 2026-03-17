@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 146: Edge case handling, spam detection, semantic response dedup
+   Round 148: Personality selector — chill/hype/sarcastic/wise/chaotic modes
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Sentence Encoder — Semantic Understanding Brain ──
@@ -6427,6 +6427,159 @@ function respondFallback(text, tokens, keywords) {
  * Adds verbal tics, thinking phrases, and style markers to make responses
  * feel like they come from one coherent person, not random string pools.
  */
+
+/* ── Personality Mode Selector ──
+ * Switchable personality modes that post-process responses to shift tone.
+ * Default is "chill" (the existing casual friend vibe). Users can switch
+ * via setPersonality() or by saying things like "hype mode" / "be sarcastic".
+ */
+let currentPersonality = "chill";
+
+const PERSONALITY_MODES = {
+  chill: { label: "chill", description: "casual friend vibe" },
+  hype: {
+    label: "hype",
+    description: "extra enthusiastic high energy",
+    openers: ["LETS GOOO ","BRO ","OKAY WAIT ","YO ","DUDE ","OH SNAP ","NO WAY "],
+    closers: [" LETS GOOO 🔥","!! 🚀","!! you're literally amazing","!!! i'm so hyped rn 🎉"," THIS IS EVERYTHING 💯"," absolutely FIRE 🔥🔥"],
+    transforms: [
+      [/\bthat's (cool|nice|neat|great)\b/gi, "that's INCREDIBLE"],
+      [/\bi think\b/gi, "I KNOW"],
+      [/\bpretty\b/gi, "SUPER"],
+      [/\bgood\b/gi, "AMAZING"],
+      [/\blike\b/gi, "LOVE"],
+      [/\bnice\b/gi, "SICK"],
+      [/\bhonestly\b/gi, "HONESTLY THO"],
+    ],
+    emojiBoost: ["🔥","🚀","💯","⚡","🎉","✨","💪","🙌"],
+  },
+  sarcastic: {
+    label: "sarcastic",
+    description: "witty dry humor deadpan",
+    openers: ["oh wow, ","shocking, ","well well well, ","oh how original, ","color me surprised, ","imagine that, ","groundbreaking — "],
+    closers: [" ...riveting"," but what do I know"," 🙄"," *slow clap*"," truly revolutionary"," alert the press"],
+    transforms: [
+      [/\bthat's (great|awesome|amazing|cool)\b/gi, "that's... something"],
+      [/\bi love\b/gi, "i'm mildly amused by"],
+      [/\breally\b/gi, "allegedly"],
+      [/\bso cool\b/gi, "so... cool"],
+      [/\binteresting\b/gi, "fascinating (she said flatly)"],
+    ],
+    emojiBoost: ["🙄","😏","💀","😐","🫠"],
+  },
+  wise: {
+    label: "wise",
+    description: "thoughtful philosophical casual wisdom",
+    openers: ["here's the thing though — ","you know what I've realized? ","there's something deeper here — ","think about it this way: ","the way I see it, ","it's funny how "],
+    closers: [" ...and that says something, doesn't it"," — that's worth sitting with"," and honestly, that's kind of beautiful"," which is the whole point really"," — and maybe that's enough"],
+    transforms: [
+      [/\bcool\b/gi, "meaningful"],
+      [/\bfun\b/gi, "enriching"],
+      [/\bwhatever\b/gi, "it is what it is"],
+      [/\bI guess\b/gi, "I've come to understand"],
+    ],
+    emojiBoost: ["🌿","✨","💫","🧠","🤔"],
+  },
+  chaotic: {
+    label: "chaotic",
+    description: "random tangents absurd humor non-sequiturs",
+    openers: ["ok but hear me out — ","WAIT before I respond, ","ok so this is unrelated BUT ","real quick tangent: ","my brain just did a thing — ","plot twist: "],
+    tangents: [
+      "ok but what if cats could code",
+      "unrelated but do fish get thirsty",
+      "sorry I got distracted thinking about whether penguins have knees",
+      "wait do you think clouds judge us",
+      "hold on I just realized cereal is technically soup",
+      "ok sidebar: why do we park in driveways but drive on parkways",
+      "genuinely asking: has a tree ever been to a movie",
+      "random thought but what if gravity just... stopped for a sec",
+      "ok but imagine if emails had feelings",
+      "wait sorry I was thinking about whether crabs think fish can fly",
+    ],
+    closers: [" anyway where were we lol"," but ANYWAY"," ...I should probably focus huh"," ok I'm back sorry 😂"," RIGHT so what were we talking about"],
+    transforms: [
+      [/\bthat's interesting\b/gi, "that's wild and also did you know octopi have three hearts"],
+      [/\banyway\b/gi, "ANYWAY (sorry I blacked out for a sec)"],
+    ],
+    emojiBoost: ["🤪","😂","🫠","💀","🤯","👀","🦆"],
+  },
+};
+
+// Detect personality switch requests in user input
+const PERSONALITY_TRIGGERS = {
+  hype: /\b(hype mode|be (more )?hyped?|go hype|max energy|turn up|go crazy)\b/i,
+  sarcastic: /\b(sarcas(tic|m) mode|be (more )?sarcastic|deadpan mode|dry humor|roast me)\b/i,
+  wise: /\b(wise mode|be (more )?(wise|deep|philosophical)|wisdom mode|drop knowledge|sage mode)\b/i,
+  chaotic: /\b(chaotic? mode|be (more )?chaotic|chaos mode|unhinged|go feral|random mode)\b/i,
+  chill: /\b(chill mode|be (more )?chill|normal mode|calm down|default mode|regular mode|reset personality)\b/i,
+};
+
+function detectPersonalitySwitch(text) {
+  for (const [mode, pattern] of Object.entries(PERSONALITY_TRIGGERS)) {
+    if (pattern.test(text)) return mode;
+  }
+  return null;
+}
+
+function applyPersonalityMode(response) {
+  if (currentPersonality === "chill" || response.length < 10) return response;
+
+  const mode = PERSONALITY_MODES[currentPersonality];
+  if (!mode || !mode.transforms) return response;
+
+  let r = response;
+
+  // Apply word-level transforms (~60% chance each to keep it varied)
+  for (const [pattern, replacement] of mode.transforms) {
+    if (Math.random() < 0.6) {
+      r = r.replace(pattern, replacement);
+    }
+  }
+
+  // Add personality opener (~40% chance, only if response doesn't already start with one)
+  if (mode.openers && Math.random() < 0.4) {
+    const opener = mode.openers[Math.floor(Math.random() * mode.openers.length)];
+    if (!mode.openers.some(o => r.toLowerCase().startsWith(o.toLowerCase().trim()))) {
+      r = opener + r.charAt(0).toLowerCase() + r.slice(1);
+    }
+  }
+
+  // Add personality closer (~25% chance)
+  if (mode.closers && Math.random() < 0.25) {
+    const closer = mode.closers[Math.floor(Math.random() * mode.closers.length)];
+    // Remove trailing punctuation before adding closer
+    r = r.replace(/[.!?]+$/, "") + closer;
+  }
+
+  // Chaotic mode: inject random tangent (~15% chance)
+  if (currentPersonality === "chaotic" && mode.tangents && Math.random() < 0.15) {
+    const tangent = mode.tangents[Math.floor(Math.random() * mode.tangents.length)];
+    // Insert tangent between sentences
+    const sentences = r.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length >= 2) {
+      const insertAt = Math.floor(sentences.length / 2);
+      sentences.splice(insertAt, 0, ` (${tangent})`);
+      r = sentences.join("");
+    } else {
+      r += ` (${tangent})`;
+    }
+  }
+
+  // Hype mode: occasional caps boost on key words
+  if (currentPersonality === "hype" && Math.random() < 0.3) {
+    r = r.replace(/\b(so|really|very|super|actually|literally)\b/gi, m => m.toUpperCase());
+  }
+
+  // Emoji boost (~20% chance, add 1-2 relevant emojis)
+  if (mode.emojiBoost && Math.random() < 0.2) {
+    const emoji = mode.emojiBoost[Math.floor(Math.random() * mode.emojiBoost.length)];
+    if (!r.includes(emoji)) {
+      r += " " + emoji;
+    }
+  }
+
+  return r;
+}
 
 const PERSONALITY = {
   // Sentence starters — sprinkled in ~30% of responses
@@ -19476,6 +19629,24 @@ export async function getAIResponse(input) {
     _spamCount = 0;
   }
 
+  // ═══ Personality mode switch: detect "hype mode", "be sarcastic", etc. ═══
+  const personalitySwitch = detectPersonalitySwitch(text);
+  if (personalitySwitch) {
+    currentPersonality = personalitySwitch;
+    const confirmations = {
+      chill: ["back to chill mode, got it 😌","ok vibes reset, we're chill again","normal mode activated, i'm zen now"],
+      hype: ["HYPE MODE ACTIVATED LETS GOOO 🔥🔥","BRO SAY LESS, ENERGY IS CRANKED 🚀","OKAY WE'RE GOING FULL SEND NOW 💯"],
+      sarcastic: ["oh great, sarcasm mode. what a thrilling choice 🙄","sarcastic mode engaged. try to contain your excitement","well well well, looks like someone wants attitude. coming right up"],
+      wise: ["wisdom mode unlocked. let's get a little deeper 🌿","here's the thing — everything's about to get more thoughtful","settling into sage mode. the vibes are contemplative now ✨"],
+      chaotic: ["CHAOS MODE GO BRRR ok but also did you know snails can sleep for 3 years 🤪","ok buckle up because things are about to get UNHINGED 😂","chaotic mode: engaged. coherence: optional. vibes: immaculate 🫠"],
+    };
+    const pool = confirmations[personalitySwitch] || ["personality updated!"];
+    const confirmation = pool[Math.floor(Math.random() * pool.length)];
+    mem.add("user", text, [], [], 0);
+    mem.add("ai", confirmation);
+    return { text: confirmation, typingMs: 500, pause: null };
+  }
+
   // ═══ All-caps detection: match their energy ═══
   const alphaChars = text.replace(/[^a-zA-Z]/g, "");
   if (alphaChars.length >= 4 && alphaChars === alphaChars.toUpperCase() && /[A-Z]{4,}/.test(text)) {
@@ -19948,6 +20119,9 @@ export async function getAIResponse(input) {
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
 
+  // ═══ Personality mode post-processing: apply hype/sarcastic/wise/chaotic transforms ═══
+  response = applyPersonalityMode(response);
+
   // ═══ Final output polish: clean pipeline artifacts, deduplicate, tighten ═══
   response = polishOutput(response);
 
@@ -19974,6 +20148,19 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; }
+
+export function setPersonality(name) {
+  const valid = Object.keys(PERSONALITY_MODES);
+  if (valid.includes(name)) {
+    currentPersonality = name;
+    return true;
+  }
+  return false;
+}
+
+export function getPersonality() {
+  return currentPersonality;
+}
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
