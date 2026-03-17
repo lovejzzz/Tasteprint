@@ -609,7 +609,42 @@ export function generateDesignDNA(palette, mood) {
   // Radial gradient origin for canvas cohesion
   const gradientOrigin = gradientStyle === "radial" ? pick(["top left", "30% 20%", "70% 30%", "bottom right", "50% 20%"]) : "top left";
 
-  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm, gradientAngle, gradientOrigin };
+  // Effect personality: canvas-wide decisions for newer CSS dimensions
+  // These ensure text-stroke, clip-path, transitions, and opacity feel cohesive
+  let effectPersonality;
+  if (m === "minimal") {
+    effectPersonality = { textStroke: "none", clipStyle: "none", motionSpeed: "calm", depthLayer: "flat" };
+  } else if (m === "bold") {
+    effectPersonality = {
+      textStroke: pick(["thick", "thick", "hollow", "none"]),
+      clipStyle: pick(["chamfer", "chamfer", "asymmetric", "none"]),
+      motionSpeed: pick(["snappy", "snappy", "instant"]),
+      depthLayer: pick(["layered", "heavy", "layered"]),
+    };
+  } else if (m === "elegant") {
+    effectPersonality = {
+      textStroke: pick(["hairline", "hairline", "none"]),
+      clipStyle: pick(["subtle", "none", "none"]),
+      motionSpeed: pick(["slow", "slow", "calm"]),
+      depthLayer: pick(["soft", "soft", "subtle"]),
+    };
+  } else if (m === "playful") {
+    effectPersonality = {
+      textStroke: pick(["colorful", "hollow", "none"]),
+      clipStyle: pick(["notch", "flag", "none", "none"]),
+      motionSpeed: pick(["bouncy", "bouncy", "snappy"]),
+      depthLayer: pick(["layered", "soft", "vivid"]),
+    };
+  } else {
+    effectPersonality = {
+      textStroke: pick(["none", "none", "thick", "hairline", "hollow", "colorful"]),
+      clipStyle: pick(["none", "none", "none", "chamfer", "subtle", "notch"]),
+      motionSpeed: pick(["calm", "snappy", "slow", "bouncy"]),
+      depthLayer: pick(["flat", "soft", "layered", "heavy"]),
+    };
+  }
+
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2, headingFont, bodyFont, headingFontCat, bodyFontCat, colorScheme, gradColor1, gradColor2, glowColor, typoRhythm, gradientAngle, gradientOrigin, effectPersonality };
 }
 
 /**
@@ -1397,7 +1432,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     // Outlined text is a huge design trend — creates dramatic typographic contrast.
     // Only on medium/large (headline-like) components, never nav/code/small.
     if (sizeCat === "medium" || sizeCat === "large") {
-      const strokeChance = moodId === "bold" ? 0.22 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.04 : 0.12;
+      // DNA effectPersonality boost: if canvas DNA says "use text-stroke", increase chance
+      const ep = dna?.effectPersonality;
+      const dnaStrokeBoost = ep && ep.textStroke !== "none" ? 0.15 : 0;
+      const strokeChance = (moodId === "bold" ? 0.22 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.04 : 0.12) + dnaStrokeBoost;
       if (Math.random() < strokeChance) {
         if (moodId === "bold") {
           // Thick, punchy strokes — poster/brutalist aesthetic
@@ -1492,7 +1530,9 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Angular cuts, beveled corners, notched edges — architectural shapes.
   // Only on medium/large non-nav non-code. Low probability to keep special.
   if (!isNav && !isCode && !isSmall) {
-    const clipChance = moodId === "bold" ? 0.16 : moodId === "playful" ? 0.12 : moodId === "elegant" ? 0.08 : moodId === "minimal" ? 0.05 : 0.10;
+    // DNA effectPersonality boost: if canvas DNA says "use clip-path", increase chance
+    const dnaClipBoost = dna?.effectPersonality?.clipStyle && dna.effectPersonality.clipStyle !== "none" ? 0.12 : 0;
+    const clipChance = (moodId === "bold" ? 0.16 : moodId === "playful" ? 0.12 : moodId === "elegant" ? 0.08 : moodId === "minimal" ? 0.05 : 0.10) + dnaClipBoost;
     if (Math.random() < clipChance) {
       // When using clip-path, border-radius becomes irrelevant (clip overrides it)
       // and box-shadow gets clipped too, so we shift shadow to filter: drop-shadow
@@ -1672,7 +1712,9 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     // Sets CSS transition so hover/interaction effects feel smooth, not snappy.
     // Different moods = different motion personalities.
     {
-      const txnChance = moodId === "playful" ? 0.40 : moodId === "bold" ? 0.30 : moodId === "elegant" ? 0.35 : moodId === "minimal" ? 0.20 : 0.25;
+      // DNA effectPersonality: motionSpeed influences transition likelihood
+      const dnaMotionBoost = dna?.effectPersonality?.motionSpeed && dna.effectPersonality.motionSpeed !== "calm" ? 0.10 : 0;
+      const txnChance = (moodId === "playful" ? 0.40 : moodId === "bold" ? 0.30 : moodId === "elegant" ? 0.35 : moodId === "minimal" ? 0.20 : 0.25) + dnaMotionBoost;
       if (Math.random() < txnChance) {
         const props = [];
         // Collect which properties have been set and deserve smooth transitions
@@ -1683,7 +1725,15 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         if (s.border || s.borderTop || s.borderBottom) props.push("border-color");
         // Pick a subset to transition (not everything — that's expensive)
         const txnProps = props.length > 0 ? props.slice(0, pick([2, 3])).join(", ") : "transform, box-shadow";
-        if (moodId === "playful") {
+        // Use DNA motion personality if available, fall back to mood
+        const ms = dna?.effectPersonality?.motionSpeed;
+        if (ms === "bouncy") {
+          s.transition = `${txnProps} ${pick([0.25, 0.3, 0.35])}s ${pick(["cubic-bezier(0.34, 1.56, 0.64, 1)", "cubic-bezier(0.68, -0.55, 0.27, 1.55)"])}`;
+        } else if (ms === "snappy" || ms === "instant") {
+          s.transition = `${txnProps} ${pick([0.12, 0.15, 0.2])}s ${pick(["ease-in-out", "cubic-bezier(0.25, 0.46, 0.45, 0.94)"])}`;
+        } else if (ms === "slow") {
+          s.transition = `${txnProps} ${pick([0.4, 0.5, 0.6])}s ${pick(["ease", "cubic-bezier(0.4, 0, 0.2, 1)", "cubic-bezier(0.22, 0.61, 0.36, 1)"])}`;
+        } else if (moodId === "playful") {
           s.transition = `${txnProps} ${pick([0.25, 0.3, 0.35])}s ${pick(["ease-out", "cubic-bezier(0.34, 1.56, 0.64, 1)", "cubic-bezier(0.68, -0.55, 0.27, 1.55)"])}`;
         } else if (moodId === "bold") {
           s.transition = `${txnProps} ${pick([0.15, 0.2, 0.25])}s ${pick(["ease-in-out", "cubic-bezier(0.25, 0.46, 0.45, 0.94)"])}`;
