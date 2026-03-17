@@ -549,7 +549,16 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   const isNav = sizeCat === "nav";
   const isCode = sizeCat === "code";
   const isSmall = sizeCat === "small";
-  const moodId = mood || "auto";
+  // Auto mode: pick a random sub-personality so each component gets a coherent micro-style
+  // instead of bland average-of-everything
+  let moodId = mood || "auto";
+  if (moodId === "auto") {
+    // 40% chance to adopt a random mood's personality for this component
+    // 60% stays true auto (full spectrum) for variety
+    if (Math.random() < 0.4) {
+      moodId = pick(["minimal", "bold", "elegant", "playful"]);
+    }
+  }
 
   // --- Border radius (harmony-aware) ---
   // If canvas has an established radius feel, lean toward it 60% of the time
@@ -570,8 +579,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   } else if (moodId === "playful") {
     s.borderRadius = pick([16, 20, 24, 32, 999]);
   } else {
-    // auto: full spectrum
-    s.borderRadius = pick(RADIUS_PRESETS);
+    // auto: weighted spectrum — favor interesting values over boring midrange
+    const r = Math.random();
+    if (r < 0.15) s.borderRadius = 0;          // sharp
+    else if (r < 0.25) s.borderRadius = pick([2, 4]); // nearly sharp
+    else if (r < 0.50) s.borderRadius = pick([8, 12, 14, 16]); // standard
+    else if (r < 0.70) s.borderRadius = pick([20, 24, 32]); // rounded
+    else s.borderRadius = 999;                  // pill
   }
   // Small components get smaller radii
   if (isSmall && s.borderRadius > 16) s.borderRadius = pick([4, 8, 10, 12, 16]);
@@ -597,7 +611,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   } else if (moodId === "playful") {
     s.boxShadow = pick([SHADOW_PRESETS[9], SHADOW_PRESETS[7], SHADOW_PRESETS[8], SHADOW_PRESETS[3], SHADOW_PRESETS[6]]);
   } else {
-    s.boxShadow = pick(SHADOW_PRESETS);
+    // auto: favor interesting shadows over "none"
+    const r = Math.random();
+    if (r < 0.15) s.boxShadow = "none";
+    else if (r < 0.35) s.boxShadow = pick([SHADOW_PRESETS[1], SHADOW_PRESETS[2]]); // subtle/soft
+    else if (r < 0.55) s.boxShadow = pick([SHADOW_PRESETS[3], SHADOW_PRESETS[6], SHADOW_PRESETS[10]]); // elevated/layered
+    else if (r < 0.75) s.boxShadow = pick([SHADOW_PRESETS[7], SHADOW_PRESETS[9]]); // dramatic/glow
+    else s.boxShadow = pick([SHADOW_PRESETS[4], SHADOW_PRESETS[5], SHADOW_PRESETS[8]]); // hard/inset/brutal
   }
   // Resolve shadow color placeholders
   if (s.boxShadow !== "none") {
@@ -774,6 +794,36 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       // Playful gets more hue variation
       if (!s.hueRotate && Math.random() < 0.3) {
         s.hueRotate = pick([-25, -15, 15, 25, 35, -35]);
+      }
+    }
+
+    /* ── AUTO WILD CARDS — rare surprise combos that don't belong to any mood ── */
+    if (mood === "auto" || !mood) {
+      const wild = Math.random();
+      if (wild < 0.08) {
+        // "Glassmorphism" surprise: frosted glass + blur + subtle border
+        s.backdropFilter = `blur(${pick([12, 16, 20])}px)`;
+        s.border = `1px solid ${acHex}15`;
+        s.boxShadow = `0 8px 32px ${shHex}10`;
+      } else if (wild < 0.14) {
+        // "Neumorphism" surprise: soft dual shadows for raised/pressed look
+        const bg = palette.bg || "#f0f0f0";
+        s.boxShadow = dark
+          ? `5px 5px 10px #00000030, -5px -5px 10px ${acHex}08`
+          : `5px 5px 15px ${shHex}12, -5px -5px 15px #ffffff80`;
+        s.border = "none";
+        s.borderRadius = pick([12, 16, 20]);
+      } else if (wild < 0.19) {
+        // "Retro" surprise: hard offset shadow + sharp corners + thick border
+        s.boxShadow = `6px 6px 0 ${acHex}35`;
+        s.borderRadius = pick([0, 2, 4]);
+        s.border = `2px solid ${acHex}40`;
+        s.rotate = `${pick([-1, -0.5, 0.5, 1])}deg`;
+      } else if (wild < 0.23) {
+        // "Glow" surprise: neon accent glow ring
+        s.boxShadow = `0 0 15px ${acHex}25, 0 0 40px ${acHex}10, inset 0 0 10px ${acHex}05`;
+        s.border = `1px solid ${acHex}30`;
+        s.borderRadius = pick([12, 16, 20, 999]);
       }
     }
   }
