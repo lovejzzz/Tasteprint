@@ -928,40 +928,86 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
     s.boxShadow = s.boxShadow.replace(/\{s\}/g, shadowColor).replace(/\{a\}/g, acHex);
   }
-  // Creative multi-layer shadow stacking (~25%): combine base shadow with accent/glow layers
+  // Creative multi-layer shadow stacking: combine base shadow with accent/glow layers
   // Creates hand-designed feel: elevation + color accent + ambient glow
-  if (s.boxShadow && s.boxShadow !== "none" && !isSmall && Math.random() < 0.25) {
+  // Two tiers: standard stacking (~20%) adds 1 layer, deep composition (~10%) adds 3-5 layers
+  if (s.boxShadow && s.boxShadow !== "none" && !isSmall) {
+    const stackRoll = Math.random();
     const stackLayers = [];
-    if (moodId === "bold" || moodId === "auto") {
-      // Bold stacks: base + colored accent offset + subtle ambient
-      stackLayers.push(
-        pick([
+
+    if (stackRoll < 0.10) {
+      // === Deep composition: 3-5 layer shadow recipes (mood-exclusive) ===
+      if (moodId === "bold") {
+        // "Retro extrude": hard-offset color stack like 3D letterpress
+        const dir = pick([1, -1]);
+        const c = pick([gc1, gcGlow, dc.comp]);
+        stackLayers.push(
+          `${dir * 1}px 1px 0 ${c}30`,
+          `${dir * 2}px 2px 0 ${c}22`,
+          `${dir * 3}px 3px 0 ${c}16`,
+          `${dir * 4}px 4px 0 ${c}0C`,
+          `${dir * 6}px 8px 16px ${shHex}12`,
+        );
+      } else if (moodId === "elegant") {
+        // "Ambient halo": graduated concentric glow rings
+        const glowC = pick([dc.muted, gc1, dc.analog1]);
+        stackLayers.push(
+          `0 0 4px ${glowC}08`,
+          `0 0 12px ${glowC}06`,
+          `0 0 24px ${glowC}04`,
+          `0 2px 8px ${shHex}06`,
+        );
+      } else if (moodId === "playful") {
+        // "Confetti scatter": colored shadows in different directions
+        const colors = [gc1, gc2, gcGlow, acHex];
+        stackLayers.push(
+          `${pick([-4, -3, 3, 4])}px ${pick([-3, -2, 2, 3])}px 0 ${pick(colors)}20`,
+          `${pick([-2, 2, 5, -5])}px ${pick([3, 4, -3, -4])}px 0 ${pick(colors)}18`,
+          `${pick([-1, 1, 3, -3])}px ${pick([-2, 2, 5])}px 0 ${pick(colors)}14`,
+          `0 0 ${pick([12, 18])}px ${pick(colors)}0C`,
+        );
+      } else if (moodId === "minimal") {
+        // "Whisper depth": barely-there layered directional light
+        stackLayers.push(
+          `0 1px 2px ${shHex}04`,
+          `0 2px 6px ${shHex}03`,
+          `0 0 1px ${acHex}06`,
+        );
+      } else {
+        // Auto: random mood recipe
+        const autoStyle = pick(["retro", "halo", "scatter"]);
+        if (autoStyle === "retro") {
+          const c = pick([gc1, gcGlow]);
+          stackLayers.push(`2px 2px 0 ${c}22`, `4px 4px 0 ${c}14`, `6px 6px 12px ${shHex}10`);
+        } else if (autoStyle === "halo") {
+          stackLayers.push(`0 0 8px ${gc1}08`, `0 0 20px ${gc1}04`, `0 2px 8px ${shHex}08`);
+        } else {
+          stackLayers.push(`3px 2px 0 ${gc1}18`, `-2px 3px 0 ${gc2}14`, `0 0 12px ${gcGlow}0A`);
+        }
+      }
+    } else if (stackRoll < 0.30) {
+      // === Standard stacking: 1 accent layer ===
+      if (moodId === "bold" || moodId === "auto") {
+        stackLayers.push(pick([
           `${pick([-3, -2, 2, 3])}px ${pick([3, 4, 5])}px 0 ${gc1}18`,
           `0 ${pick([2, 3])}px ${pick([8, 12])}px ${gcGlow}12`,
           `inset 0 -2px ${pick([6, 10])}px ${gc1}08`,
-        ])
-      );
-    } else if (moodId === "elegant") {
-      // Elegant stacks: base + soft inner glow + ambient tint
-      stackLayers.push(
-        pick([
+        ]));
+      } else if (moodId === "elegant") {
+        stackLayers.push(pick([
           `inset 0 0 ${pick([12, 18, 24])}px ${dc.muted}06`,
           `0 0 ${pick([20, 30])}px ${gc1}08`,
           `0 ${pick([1, 2])}px ${pick([4, 6])}px ${dc.analog1}0A`,
-        ])
-      );
-    } else if (moodId === "playful") {
-      // Playful stacks: base + color offset + vibrant glow
-      stackLayers.push(
-        pick([
+        ]));
+      } else if (moodId === "playful") {
+        stackLayers.push(pick([
           `${pick([2, 3, 4])}px ${pick([2, 3, 4])}px 0 ${gc1}20`,
           `${pick([-2, -3])}px ${pick([-2, -3])}px 0 ${gc2}18`,
           `0 0 ${pick([15, 25])}px ${gcGlow}15`,
-        ])
-      );
-    } else if (moodId === "minimal") {
-      // Minimal stacks: base + barely-there accent line
-      stackLayers.push(`0 1px 0 ${acHex}08`);
+        ]));
+      } else if (moodId === "minimal") {
+        stackLayers.push(`0 1px 0 ${acHex}08`);
+      }
     }
     if (stackLayers.length > 0) {
       s.boxShadow = s.boxShadow + ", " + stackLayers.join(", ");
