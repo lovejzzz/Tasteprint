@@ -44,6 +44,7 @@ export default function App() {
   const [designMood, setDesignMood] = useState("auto");
   const rndUndo = useRef(null); // { id, prev: shapeSnapshot, prevPrefV }
   const [hasRndUndo, setHasRndUndo] = useState(false);
+  const [copiedStyle, setCopiedStyle] = useState(null); // { variant, font, fsize }
   const cRef = useRef(null);
   const dRef = useRef(null);
   const dirtyText = useRef(null);
@@ -223,6 +224,25 @@ export default function App() {
     rndUndo.current = null;
     setHasRndUndo(false);
   }, []);
+
+  const copyStyle = useCallback((id) => {
+    const s = shapes.find(x => x.id === id);
+    if (!s) return;
+    setCopiedStyle({ variant: s.variant || 0, font: s.font || 0, fsize: s.fsize || 1 });
+  }, [shapes]);
+
+  const pasteStyle = useCallback((id) => {
+    if (!copiedStyle) return;
+    setShapes(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      return { ...s, variant: copiedStyle.variant, font: copiedStyle.font, fsize: copiedStyle.fsize };
+    }));
+    setPrefV(pv => {
+      const s = shapes.find(x => x.id === id);
+      if (!s) return pv;
+      return { ...pv, [s.type]: copiedStyle.variant };
+    });
+  }, [copiedStyle, shapes]);
 
   const delShape = useCallback(() => {
     flushDirtyText();
@@ -554,7 +574,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} copyStyle={copyStyle} pasteStyle={pasteStyle} hasCopiedStyle={!!copiedStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} />
               ))}
             </div>
 
