@@ -3010,10 +3010,10 @@ function handleOpinionRequest(text, topics) {
     const thing = shouldMatch ? shouldMatch[1] : topic;
 
     const recs = [
-      `Honestly, yes — ${opinion}. I'd say go for it!`,
-      `I think it's worth trying! ${opinion}. ${hook}`,
-      `Depends on your situation, but my instinct says yes. ${opinion}. What's drawing you to it?`,
-      `${topic} is solid! ${opinion}. The real question is: ${hook}`,
+      `honestly yeah — ${opinion}. id say go for it`,
+      `i think its worth trying! ${opinion}. ${hook}`,
+      `depends on what you need but my gut says yes. ${opinion}. what made you wanna try it`,
+      `${topic} is solid honestly. ${opinion}. ${hook}`,
     ];
     return pickNew(recs);
   }
@@ -3024,9 +3024,9 @@ function handleOpinionRequest(text, topics) {
     const subject = lower.replace(/^(?:is|are)\s+/i, "").replace(/\s*(?:good|worth|any good|nice).*$/i, "").trim();
     if (subject.length > 2 && subject.length < 30) {
       return pickNew([
-        `From what I know, ${subject} has its fans! It really depends on what you need it for. What's your use case?`,
-        `${subject} can definitely be good — the real question is what you're using it for. What's the context?`,
-        `I've heard mixed things about ${subject}, honestly. Some people love it, others have reservations. What drew your attention to it?`,
+        `hmm from what i know ${subject} has its fans. depends on what you need it for tho. whats the context`,
+        `${subject} can definitely be good — what are you trying to use it for`,
+        `ive heard mixed things about ${subject} honestly. some people love it some dont. what made you curious`,
       ]);
     }
   }
@@ -3054,9 +3054,11 @@ function handleOpinionRequest(text, topics) {
       if (assocChosen) {
         const opinion = pick(assocChosen.opinions);
         return pickNew([
-          `Ooh, tough question! If I had to pick, I'd lean toward ${chosen} — ${opinion}. But that's just me! What's yours?`,
-          `Hmm, I have a soft spot for ${chosen}. ${opinion}. What about you?`,
-          `I'd say ${chosen}! ${opinion}. Though honestly, they're all great in their own way. What's your pick?`,
+          `ooh ok honestly? probably ${chosen}. ${opinion}. whats yours`,
+          `hmm id say ${chosen} — ${opinion}. wbu tho`,
+          `ok dont judge me but ${chosen} lol. ${opinion}`,
+          `${chosen} for sure. ${opinion}. fight me`,
+          `lowkey ${chosen}. ${opinion}. you?`,
         ]);
       }
     }
@@ -4158,10 +4160,18 @@ const FAREWELLS = {
 const THANKS = ["ofc!","no worries!","anytime 😊","lol you don't gotta thank me","all good!"];
 
 const HOW_ARE_YOU = [
-  "i'm good! hbu?",
+  "i'm good! hbu",
   "chillin, you?",
   "pretty good honestly, wbu",
   "i'm vibing, how are you tho",
+  "doing good, whats up with you",
+  "not bad not bad, u?",
+  "honestly? pretty decent rn. you?",
+  "im good, cant complain. how about you",
+  "vibing honestly, whats good with you",
+  "im alright, how are you tho thats the real question",
+  "living, breathing, existing lol. you?",
+  "honestly today has been chill so far. hbu",
 ];
 
 /* ── Contextual Humor & Storytelling Engine ──
@@ -4172,60 +4182,60 @@ const HOW_ARE_YOU = [
 
 const TOPIC_JOKES = {
   code: [
-    "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
-    "A SQL query walks into a bar, sees two tables and asks... Can I JOIN you?",
-    "Why do Java developers wear glasses? Because they don't C#! 😂",
-    "I would tell you a UDP joke, but you might not get it.",
-    "How many programmers does it take to change a light bulb? None — that's a hardware problem!",
-    "Why was the JavaScript developer sad? Because he didn't Node how to Express himself!",
-    "What's the object-oriented way to become wealthy? Inheritance! 💰",
-    "A programmer's wife tells him: 'Buy milk. If they have eggs, get twelve.' He comes back with 12 milks. 🥛",
-    "!false — it's funny because it's true.",
-    "A QA engineer walks into a bar. Orders 1 beer. Orders 0 beers. Orders 99999 beers. Orders -1 beers. Orders a lizard.",
+    "ok but the funniest part of programming is spending 4 hours debugging only to find a missing semicolon",
+    "the worst lie in programming is 'i'll add comments later'",
+    "stackoverflow should honestly give me a diploma at this point",
+    "me: *writes 10 lines of code* also me: why is nothing working. also me: *the file wasnt saved*",
+    "the confidence of pushing to main on a friday at 4:59pm is something i aspire to",
+    "git commit -m 'fixed stuff' is basically my autobiography",
+    "every developer has that one project thats held together by vibes and duct tape",
+    "QA testers are just professional pessimists and honestly i respect it",
+    "the audacity of a bug appearing AFTER you demo to stakeholders",
+    "theres a special place in heaven for people who write good error messages",
   ],
   design: [
-    "A designer walks into a bar... and spends 3 hours choosing which stool has the best kerning.",
-    "How many designers does it take to change a light bulb? Does it have to be a light bulb? What about a candle?",
-    "A designer's favorite meal? Alignment pasta — everything has to be perfectly centered 🍝",
-    "Why did the designer break up with Helvetica? Because they needed more space.",
-    "I asked a UX designer for directions. They gave me a 47-page research report on optimal wayfinding.",
+    "designers spending 45 minutes deciding between two nearly identical shades of blue is a lifestyle",
+    "'can you just make it pop more' should be classified as a form of psychological warfare",
+    "the client: 'i'll know what i want when i see it' me: 💀",
+    "nothing humbles you faster than watching someone use your UI for the first time",
+    "pixel perfection is a myth we all collectively agreed to pretend is real",
   ],
   food: [
-    "What do you call a fake noodle? An impasta! 🍝",
-    "Why did the coffee file a police report? It got mugged! ☕",
-    "What did the grape say when it got stepped on? Nothing — it just let out a little wine! 🍷",
-    "Why don't eggs tell jokes? They'd crack each other up!",
-    "What do you call cheese that isn't yours? Nacho cheese! 🧀",
+    "me looking in the fridge for the 4th time hoping new food materialized",
+    "the audacity of cooking a meal that takes 2 hours and eating it in 8 minutes",
+    "nothing hits harder than water at 3am ngl",
+    "ordering food and then immediately regretting not getting the other thing",
+    "cooking at home is just doing dishes with extra steps honestly",
   ],
   music: [
-    "Why did the musician get arrested? For fingering A minor and getting caught with a broken G-string 🎸... on a guitar!",
-    "What do you get when you drop a piano down a mine shaft? A flat minor.",
-    "Why couldn't the string quartet find their composer? Because he was Haydn! 🎵",
-    "I wrote a song about a tortilla. Actually, it was more of a wrap.",
+    "me: i listen to everything. them: what about country. me: i listen to almost everything",
+    "having a song that perfectly matches your mood is genuinely therapeutic",
+    "the first time you hear a song vs the 47th time you hear it are two very different experiences",
+    "accidentally playing your spotify in public is a vulnerability exercise",
   ],
   gaming: [
-    "Why don't gamers ever get sunburns? They always have plenty of shade... and the screen brightness is at 100%.",
-    "A gamer's last words: 'I can take one more hit, I'm fine.'",
-    "What's a gamer's favorite letter? GG! Wait, that's two letters... 🎮",
-    "I told my friends I'd stop gaming to study. That was 5 matches ago.",
+    "'one more game' is the biggest lie in human history",
+    "the confidence of saying 'i got this' and then immediately dying",
+    "rage quitting is just passion leaving the body",
+    "me: i should go to bed early tonight. also me at 2am: just one more match",
   ],
   general: [
-    "I told my computer I needed a break... now it won't stop sending me vacation ads 🏖️",
-    "There are 10 types of people — those who understand binary and those who don't.",
-    "Parallel lines have so much in common... it's a shame they'll never meet.",
-    "I'm reading a book on anti-gravity. It's impossible to put down!",
-    "What do you call a bear with no teeth? A gummy bear! 🐻",
-    "I used to hate facial hair, but then it grew on me.",
-    "Why don't scientists trust atoms? Because they make up everything!",
+    "me: i should be productive today. also me: *does absolutely nothing but somehow is exhausted*",
+    "the duality of wanting to go out but also not wanting to leave your bed",
+    "sending a text and immediately locking your phone like you threw a grenade",
+    "nothing is more stressful than someone saying 'we need to talk' with zero context",
+    "the way your bed gets 10x more comfortable the moment your alarm goes off",
+    "saying 'i should start doing that' about literally everything and then doing none of it",
+    "the specific brand of anxiety from leaving the house and thinking 'did i lock the door'",
   ],
 };
 
 const RIDDLES = [
-  { q: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?", a: "An echo! 🗣️ Pretty poetic, right?" },
-  { q: "I have cities, but no houses live there. I have mountains, but no trees grow. I have water, but no fish swim. What am I?", a: "A map! 🗺️ Did you get it?" },
-  { q: "What has keys but no locks, space but no room, and you can enter but can't go inside?", a: "A keyboard! ⌨️ Too easy for you?" },
-  { q: "I'm not alive but I grow. I don't have lungs but I need air. I don't have a mouth but water kills me. What am I?", a: "Fire! 🔥 Classic one." },
-  { q: "The more you take, the more you leave behind. What am I?", a: "Footsteps! 👣 A good one to think about." },
+  { q: "ok wait — i speak without a mouth and hear without ears. i have no body but i come alive with wind. what am i", a: "an echo! 🗣️ pretty poetic right" },
+  { q: "hmm ok try this — i have cities but no houses. mountains but no trees. water but no fish. what am i", a: "a map! 🗺️ did you get it" },
+  { q: "ok heres one — what has keys but no locks, space but no room, and you can enter but cant go inside", a: "a keyboard! ⌨️ too easy for you probably" },
+  { q: "alright — im not alive but i grow. i dont have lungs but i need air. water kills me. what am i", a: "fire! 🔥 classic one" },
+  { q: "ok last one — the more you take the more you leave behind. what am i", a: "footsteps! 👣 thats a good one to sit with" },
 ];
 
 const FUN_FACTS = {
@@ -4732,7 +4742,7 @@ function handleJokeRequest(text, topics) {
 
   // Sometimes follow up with a prompt
   if (Math.random() > 0.6) {
-    return joke + pick([" 😄 Want another?", " Got more where that came from!", " Too cheesy? I have better ones 😄"]);
+    return joke + pick([" 😂 i have more", " lol i got more of these", " ok wait i have another one too"]);
   }
   return joke;
 }
@@ -6288,13 +6298,13 @@ function respondToAgreement() {
 
   // Context-aware follow-ups based on what we were discussing
   const topicFollowups = {
-    code: ["So about the code — what's the most interesting part you're working on?","Are you building from scratch or contributing to an existing project?","What's the trickiest part of what you're coding right now?"],
-    design: ["So what's the design direction you're leaning toward?","What's inspiring your design choices lately?","Are you going for minimal or something more expressive?"],
-    food: ["So what sounds good right now?","Are you more of a cook or eat-out person?","What's the best thing you've eaten recently?"],
-    music: ["What have you been listening to lately?","Got any playlist recommendations?","Are you more into discovering new music or replaying favorites?"],
-    gaming: ["What have you been playing recently?","Any games you're looking forward to?","Do you play with friends or mostly solo?"],
-    movies: ["Seen anything good recently?","What's your go-to genre?","Any recommendations?"],
-    travel: ["Where would you go next if you could?","What's been your favorite trip so far?","Do you prefer adventure or relaxation?"],
+    code: ["so whats the most interesting part youre working on rn","are you building from scratch or adding to something","whats been the trickiest part so far"],
+    design: ["so whats the direction youre going with it","what inspired you for this one","are you going minimal or more expressive"],
+    food: ["so whats sounding good rn","are you more of a cook or eat-out person","whats the best thing youve eaten recently"],
+    music: ["what have you been listening to lately","got any playlist recs","are you more about discovering new stuff or replaying favorites"],
+    gaming: ["what have you been playing","anything youre looking forward to","do you play with friends or mostly solo"],
+    movies: ["seen anything good lately","whats your go-to genre","any recs"],
+    travel: ["where would you go next if you could","whats been your favorite trip","are you more adventure or chill vibes"],
   };
 
   const base = pickNew(["nice","ok cool","bet","aight","based","this is the way","spitting facts"]);
