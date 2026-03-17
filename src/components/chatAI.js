@@ -2509,20 +2509,20 @@ const ASSOC = {
   cat:        { related:["pet","kitten","independent","purr"], opinions:["cats have peak personality tbh","theyre secretly the most affectionate animals and they know it","the internet was literally built for cat content"], hooks:["whats their name","indoor or outdoor cat","do they have a favorite spot they always go to"] },
 
   // ── Extended Tech Topics ──
-  html:       { related:["css","web","semantic","accessibility","dom"], opinions:["semantic HTML is so underrated","it's the foundation everything else rests on","good HTML makes everything downstream easier"], hooks:["do you think about semantic structure much?","are you into web components?","how do you handle forms?"], facts:["HTML5 added over 30 new elements","The web runs on HTML — literally everything","Semantic HTML improves SEO and accessibility"] },
-  api:        { related:["rest","graphql","backend","fetch","endpoint"], opinions:["good API design is an art form","REST vs GraphQL is the eternal debate","documentation makes or breaks an API"], hooks:["are you building or consuming APIs?","REST or GraphQL?","what's your approach to error handling?"], facts:["REST was defined by Roy Fielding in 2000","GraphQL was developed at Facebook","Most APIs use JSON as the data format"] },
-  database:   { related:["sql","postgres","mongo","redis","orm"], opinions:["choosing the right database matters more than people think","NoSQL isn't always the answer","migrations are the scariest part of backend work"], hooks:["SQL or NoSQL?","what database do you usually reach for?","how do you handle schema changes?"], facts:["PostgreSQL is over 35 years old","Redis can handle millions of operations per second","SQLite is the most deployed database in the world"] },
-  sql:        { related:["database","postgres","queries","joins","orm"], opinions:["SQL is a superpower that every developer should know","window functions are incredibly powerful","writing efficient queries is its own skill"], hooks:["do you write raw SQL or use an ORM?","what's your go-to database?","ever dealt with slow query optimization?"], facts:["SQL was created in the 1970s at IBM","It's used in virtually every industry","Knowing SQL is one of the most marketable skills"] },
-  algorithm:  { related:["data structure","sorting","leetcode","complexity","interview"], opinions:["understanding Big O changes how you think about code","leetcode culture is controversial but the fundamentals matter","the best algorithm is the one you can explain clearly"], hooks:["do you practice algorithms regularly?","favorite data structure?","are you prepping for interviews?"], facts:["Quicksort averages O(n log n)","Hash tables give O(1) average lookup","Many graph algorithms date back centuries"] },
+  html:       { related:["css","web","semantic","accessibility","dom"], opinions:["semantic HTML is so underrated","it's the foundation everything else rests on","good HTML makes everything downstream easier"], hooks:["do you think about semantic structure much?","are you into web components?","how do you handle forms?"], facts:["HTML5 added over 30 new elements","the web runs on HTML, literally everything","semantic HTML improves SEO and accessibility"] },
+  api:        { related:["rest","graphql","backend","fetch","endpoint"], opinions:["good API design is lowkey an art form","REST vs GraphQL is the eternal debate fr","documentation makes or breaks an API honestly"], hooks:["are you building or consuming APIs?","REST or GraphQL?","what's your approach to error handling?"], facts:["REST was defined by Roy Fielding in 2000","GraphQL was developed at Facebook","most APIs use JSON as the data format"] },
+  database:   { related:["sql","postgres","mongo","redis","orm"], opinions:["choosing the right database matters way more than people think","NoSQL isn't always the answer honestly","migrations are the scariest part of backend work and i will die on that hill"], hooks:["SQL or NoSQL?","what database do you usually reach for?","how do you handle schema changes?"], facts:["PostgreSQL is over 35 years old","Redis can handle millions of operations per second","SQLite is the most deployed database in the world"] },
+  sql:        { related:["database","postgres","queries","joins","orm"], opinions:["sql is lowkey a superpower every dev should know","window functions go crazy once you figure them out","writing efficient queries is its own skill fr"], hooks:["do you write raw SQL or use an ORM?","what's your go-to database?","ever dealt with slow query optimization?"], facts:["SQL was created in the 1970s at IBM","it's used in virtually every industry","knowing SQL is one of the most marketable skills"] },
+  algorithm:  { related:["data structure","sorting","leetcode","complexity","interview"], opinions:["understanding big O literally changes how you think about code","leetcode culture is controversial but the fundamentals matter ngl","the best algorithm is the one you can actually explain"], hooks:["do you practice algorithms regularly?","favorite data structure?","are you prepping for interviews?"], facts:["quicksort averages O(n log n)","hash tables give O(1) average lookup","a lot of graph algorithms date back centuries which is wild"] },
   docker:     { related:["containers","kubernetes","devops","deploy","image"], opinions:["it solved 'works on my machine' forever","containers changed deployment completely","the learning curve is worth it"], hooks:["do you use Docker for development or production?","have you gotten into Kubernetes?","what's your base image of choice?"], facts:["Docker was released in 2013","Container images are layered for efficiency","Docker Hub hosts millions of images"] },
   aws:        { related:["cloud","lambda","s3","deploy","serverless"], opinions:["the number of services is both impressive and overwhelming","Lambda changed how we think about compute","the free tier is great for learning"], hooks:["which AWS services do you use most?","have you tried serverless?","AWS, GCP, or Azure?"], facts:["AWS has over 200 services","S3 stores trillions of objects","Lambda can handle millions of requests"] },
-  graphql:    { related:["api","query","schema","apollo","relay"], opinions:["asking for exactly what you need is such a clean concept","the type system is beautiful","it shines with complex data relationships"], hooks:["do you use Apollo or another client?","how do you handle the N+1 problem?","what made you pick GraphQL over REST?"], facts:["GraphQL was open-sourced by Facebook in 2015","It uses a single endpoint","Subscriptions enable real-time data"] },
-  angular:    { related:["typescript","rxjs","google","spa","enterprise"], opinions:["it's opinionated in a good way for large teams","the learning curve is steep but rewarding","RxJS is powerful once it clicks"], hooks:["have you been using Angular long?","how do you feel about RxJS?","standalone components or NgModules?"] },
+  graphql:    { related:["api","query","schema","apollo","relay"], opinions:["asking for exactly what you need is such a clean concept","the type system is beautiful ngl","it shines with complex data relationships"], hooks:["do you use Apollo or another client?","how do you handle the N+1 problem?","what made you pick GraphQL over REST?"], facts:["GraphQL was open-sourced by Facebook in 2015","it uses a single endpoint","subscriptions enable real-time data"] },
+  angular:    { related:["typescript","rxjs","google","spa","enterprise"], opinions:["it's opinionated in a good way for large teams","the learning curve is steep but worth it","RxJS is powerful once it clicks fr"], hooks:["have you been using Angular long?","how do you feel about RxJS?","standalone components or NgModules?"] },
   svelte:     { related:["compiler","reactive","kit","lightweight","framework"], opinions:["the compiler approach is genius","it feels closest to writing plain HTML/JS","SvelteKit is seriously impressive"], hooks:["what drew you to Svelte?","have you used SvelteKit?","do you miss anything from React/Vue?"], facts:["Svelte compiles to vanilla JS — no runtime","It was created by Rich Harris","SvelteKit is the official app framework"] },
   go:         { related:["goroutines","concurrency","backend","google","systems"], opinions:["the simplicity is its biggest strength","goroutines make concurrency approachable","the standard library is incredible"], hooks:["what are you building with Go?","do you use it for APIs or systems?","how do you feel about the error handling?"], facts:["Go was created at Google in 2009","It compiles to a single binary","Goroutines are incredibly lightweight"] },
   java:       { related:["spring","jvm","enterprise","android","kotlin"], opinions:["it's still one of the most in-demand languages","the JVM ecosystem is massive","modern Java is actually quite pleasant to write"], hooks:["are you using Java for backend or Android?","Spring Boot or something else?","have you tried Kotlin as well?"] },
-  swift:      { related:["ios","apple","xcode","swiftui","mobile"], opinions:["it's such a clean modern language","SwiftUI is maturing really nicely","Apple's developer tools keep getting better"], hooks:["are you building for iOS?","SwiftUI or UIKit?","what kind of app are you working on?"] },
-  kotlin:     { related:["android","jvm","java","multiplatform","coroutines"], opinions:["it fixed so many Java pain points","coroutines are elegant","Kotlin Multiplatform is exciting"], hooks:["Android or multiplatform?","did you come from Java?","what's your favorite Kotlin feature?"] },
+  swift:      { related:["ios","apple","xcode","swiftui","mobile"], opinions:["it's such a clean language honestly","SwiftUI is maturing really nicely","Apple's dev tools keep getting better which is nice"], hooks:["are you building for iOS?","SwiftUI or UIKit?","what kind of app are you working on?"] },
+  kotlin:     { related:["android","jvm","java","multiplatform","coroutines"], opinions:["it fixed so many Java pain points fr","coroutines are lowkey elegant","Kotlin Multiplatform is exciting ngl"], hooks:["Android or multiplatform?","did you come from Java?","what's your favorite Kotlin feature?"] },
   redux:      { related:["react","state","store","toolkit","middleware"], opinions:["Redux Toolkit made it so much better","it's overkill for small apps but essential for complex ones","the predictability is its superpower"], hooks:["Toolkit or classic Redux?","do you use it with React?","have you tried Zustand or Jotai instead?"] },
   webpack:    { related:["bundler","build","vite","config","module"], opinions:["the config can be intimidating","it's incredibly powerful once you understand it","Vite has really raised the bar for DX"], hooks:["have you switched to Vite?","what plugins do you use most?","how do you handle code splitting?"] },
   vite:       { related:["build","esm","fast","hmr","rollup"], opinions:["the speed is addictive","HMR that actually works instantly is a game-changer","it's the modern build tool standard now"], hooks:["what are you using Vite for?","have you tried the plugin ecosystem?","did you migrate from Webpack?"], facts:["Vite uses native ES modules for dev","It was created by Evan You","Production builds use Rollup under the hood"] },
@@ -9271,13 +9271,13 @@ const SOCRATIC_PROBES = [
   "oh wait how so",
   "hmm what's behind that take tho",
   "huh i hadn't thought of it like that. what shaped that view",
-  "that's a strong take — where does that come from for you",
+  "that's a strong take, where does that come from for you",
   "ok wait what makes you feel that way",
   "ooh tell me more, what experience is that based on",
   "what would it take to change your mind on that",
   "do you think most people would agree or is this more of a you thing",
-  "What's the strongest argument against that, in your view?",
-  "Is that something you've always thought, or is it more recent?",
+  "ok but what's the strongest argument against that tho",
+  "have you always thought that or is it more recent",
 ];
 
 function detectClaimStrength(text) {
@@ -9349,10 +9349,10 @@ let metaHumorCount = 0; // max per session
 const META_HUMOR_LINES = {
   // When conversation is going well / deep
   good_vibes: [
-    "Look at us having a real conversation in a little chat widget.",
+    "look at us having a real conversation in a little chat widget lol.",
     "not bad for a bunch of javascript running in your browser lol",
-    "I'm literally just if-statements and vibes, but I'm genuinely enjoying this.",
-    "For something that lives entirely in a browser tab, I'm having a great time.",
+    "i'm literally just if-statements and vibes but i'm enjoying this ngl.",
+    "for something that lives in a browser tab i'm having a great time lol.",
   ],
   // When user asks something hard or philosophical
   deep_topic: [
@@ -9375,9 +9375,9 @@ const META_HUMOR_LINES = {
   ],
   // Generic / any context
   generic: [
-    "Sometimes I forget I'm not real. Then I remember I'm JavaScript.",
-    "My therapist is a garbage collector. We have sessions every few seconds.",
-    "I don't dream, but if I did, it'd probably be about semicolons.",
+    "sometimes i forget i'm not real. then i remember i'm javascript lol.",
+    "my therapist is a garbage collector. we have sessions every few seconds.",
+    "i don't dream but if i did it'd probably be about semicolons.",
   ],
 };
 
@@ -10037,7 +10037,7 @@ function applySocialNormalization(response, text) {
   } else {
     // Append: response first, then normalization
     const sep = /[.!?]$/.test(trimmed) ? " " : ". ";
-    const introWord = pick(["Also, ", "And hey — ", "For what it's worth, ", "Just so you know, ", ""]);
+    const introWord = pick(["also ", "oh and ", "btw ", "just fyi ", ""]);
     result = trimmed + sep + introWord + phrase;
   }
 
@@ -10660,12 +10660,12 @@ const MAX_CLARIFIES_SESSION = 4;
 
 // Ambiguity signals: patterns that suggest the input is unclear
 const AMBIGUITY_PATTERNS = [
-  { re: /^(it|that|this|those|these|they|them)\b/i, type: "pronoun", q: "Wait — when you say \"{word}\", what are you referring to?" },
+  { re: /^(it|that|this|those|these|they|them)\b/i, type: "pronoun", q: "wait when you say \"{word}\", what are you referring to?" },
   { re: /^(yeah|yes|no|maybe|sure|ok|okay|yep|nah|nope|idk|dunno)\s*$/i, type: "bare_response", q: null }, // handled by follow-up system
   { re: /\b(the thing|the stuff|the one|that thing|this thing)\b/i, type: "vague_ref", q: "wait which thing? i wanna follow but im lost lol" },
   { re: /\b(or something|or whatever|or anything|sort of|kind of|ish)\s*[.!?]?\s*$/i, type: "hedged", q: "ok i think i follow — which direction are you leaning tho?" },
-  { re: /^(what about|how about|and|but|so)\s+\S{1,12}\s*\??$/i, type: "fragment", q: "Oh wait, say more — I wanna follow that thread" },
-  { re: /\b(should i|would it|is it|can i|do you think)\b.*\b(good|bad|right|wrong|better|worse|worth)\b/i, type: "judgment_seek", q: "That depends on context — what's the specific situation you're weighing?" },
+  { re: /^(what about|how about|and|but|so)\s+\S{1,12}\s*\??$/i, type: "fragment", q: "oh wait say more, i wanna follow that thread" },
+  { re: /\b(should i|would it|is it|can i|do you think)\b.*\b(good|bad|right|wrong|better|worse|worth)\b/i, type: "judgment_seek", q: "hmm that depends on context, what's the specific situation you're weighing?" },
 ];
 
 // Check if input has enough context or is genuinely ambiguous
@@ -11408,16 +11408,16 @@ const VIVID_DETAILS = {
 // Hook seeds — small tangent-worthy details to append
 const HOOK_SEEDS = {
   tech: [
-    "I read somewhere that most bugs are found within 10 lines of a recent change.",
-    "Apparently the average developer spends more time reading code than writing it.",
-    "There's a theory that the best code is the code you delete.",
-    "Someone once said 'make it work, make it right, make it fast' — in that order.",
+    "i read somewhere that most bugs are found within 10 lines of a recent change.",
+    "apparently devs spend more time reading code than writing it which tracks honestly.",
+    "there's a theory that the best code is the code you delete lol.",
+    "the whole 'make it work, make it right, make it fast' thing, in that order.",
   ],
   design: [
-    "There's this idea that white space is the most powerful design element.",
-    "Dieter Rams said 'less, but better' — still holds up.",
-    "Apparently users form an opinion about a design in about 50 milliseconds.",
-    "The best interfaces feel invisible — you don't notice the design at all.",
+    "theres this idea that white space is the most powerful design element and i kinda buy it.",
+    "dieter rams said 'less but better' and it still holds up.",
+    "apparently users judge a design in like 50 milliseconds which is wild.",
+    "the best interfaces feel invisible, like you don't even notice the design.",
   ],
   general: [
     "i think about that more than i probably should lol.",
@@ -14479,9 +14479,9 @@ function applyRapportCalibration(response, text) {
   if (rapportLevel >= 2 && signals.warmth >= 1 && Math.random() < 0.3) {
     lastRapportTurn = turn;
     const warmClosings = [
-      "I'm genuinely glad we're having this conversation.",
-      "Conversations like this are why I love doing this.",
-      "You're a really thoughtful person, you know that?",
+      "ngl i'm really glad we're talking rn.",
+      "this is the kind of convo i live for honestly.",
+      "you're lowkey really thoughtful, you know that?",
     ];
     const closing = warmClosings[Math.floor(Math.random() * warmClosings.length)];
     // Only add if response doesn't already end with a question
@@ -19265,7 +19265,7 @@ function handleSummaryRequest(text) {
   if (!isSummaryAsk) return null;
 
   const summary = buildConversationSummary();
-  if (!summary) return "We just started! Ask me anything and let's build up a conversation.";
+  if (!summary) return "we just started lol, ask me anything and let's get into it.";
 
   const { topics, turnCount, hadLaughs, notableClaim, userName } = summary;
   const nameStr = userName ? `, ${userName}` : "";
