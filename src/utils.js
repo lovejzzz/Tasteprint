@@ -3663,6 +3663,84 @@ export function designScore(shape, palette, otherShapes = []) {
     if (canvasBorderRate > 0.5 && myHasBorder) score += 0.15;
     else if (canvasBorderRate > 0.5 && !myHasBorder) score -= 0.1;
     else if (canvasBorderRate < 0.15 && myHasBorder) score -= 0.1;
+
+    // 6. Typography rhythm cohesion (Rounds 66-67: text treatments, letter-spacing)
+    const myLS = ds.letterSpacing;
+    const otherLS = otherShapes.map(s => (s.dStyles || {}).letterSpacing).filter(Boolean);
+    if (otherLS.length >= 2 && myLS) {
+      // Parse em values to compare direction (tight vs loose)
+      const parseLS = v => parseFloat(v) || 0;
+      const myDir = parseLS(myLS) < 0 ? "tight" : parseLS(myLS) > 0.03 ? "loose" : "normal";
+      const otherDirs = otherLS.map(v => parseLS(v) < 0 ? "tight" : parseLS(v) > 0.03 ? "loose" : "normal");
+      const domDir = _mode(otherDirs);
+      if (myDir === domDir) score += 0.15;         // matching tracking direction
+      else if ((myDir === "tight" && domDir === "loose") ||
+               (myDir === "loose" && domDir === "tight")) score -= 0.2; // clashing tracking
+    }
+
+    // Text transform consistency — mixed uppercase + lowercase = intentional contrast or clash
+    const myTT = ds.textTransform;
+    const otherTTs = otherShapes.map(s => (s.dStyles || {}).textTransform).filter(Boolean);
+    if (otherTTs.length >= 2 && myTT) {
+      const domTT = _mode(otherTTs);
+      if (myTT === domTT) score += 0.1;
+      // Uppercase on most + lowercase on one = interesting contrast (not penalty)
+    }
+
+    // Transition curve cohesion — all components should feel like same physics world
+    const myTrans = ds.transition;
+    const otherTrans = otherShapes.map(s => (s.dStyles || {}).transition).filter(Boolean);
+    if (otherTrans.length >= 2 && myTrans) {
+      // Check if curves are from same family (both bouncy, both smooth, etc.)
+      const classifyCurve = t => {
+        if (!t) return "none";
+        if (t.includes("1.4") || t.includes("1.56") || t.includes("1.275")) return "bounce";
+        if (t.includes(".5s") || t.includes(".6s") || t.includes(".45s")) return "slow";
+        if (t.includes(".15s") || t.includes("linear")) return "snappy";
+        return "standard";
+      };
+      const myClass = classifyCurve(myTrans);
+      const otherClasses = otherTrans.map(classifyCurve);
+      const domClass = _mode(otherClasses);
+      if (myClass === domClass) score += 0.1;       // same motion family
+      else if ((myClass === "bounce" && domClass === "snappy") ||
+               (myClass === "slow" && domClass === "bounce")) score -= 0.15; // motion mismatch
+    }
+
+    // Opacity layering — components with opacity should group, not scatter randomly
+    const myOp = ds.opacity;
+    const otherOps = otherShapes.map(s => (s.dStyles || {}).opacity).filter(Boolean);
+    if (myOp && myOp < 1) {
+      if (otherOps.length >= 1) {
+        // Other components also use opacity = coherent depth layering
+        score += 0.1;
+      } else if (otherOps.length === 0 && otherShapes.length >= 3) {
+        // Only component with opacity on a 3+ component canvas = odd one out
+        score -= 0.15;
+      }
+    }
+
+    // Effect density balance — too many simultaneous effects = visual noise
+    const effectCount = [
+      ds.textShadow, ds.gradientOverlay, ds.textureOverlay,
+      ds.clipPath, ds.backdropFilter, ds.outline,
+      ds.transform, (ds.opacity && ds.opacity < 1),
+    ].filter(Boolean).length;
+    if (effectCount >= 5) score -= 0.3;           // overloaded
+    else if (effectCount >= 3 && effectCount <= 4) score += 0.1; // rich but controlled
+    else if (effectCount <= 1) score += 0.05;     // clean and intentional
+  }
+
+  // 7. Standalone dStyles quality (no canvas context needed)
+  {
+    const ds = shape.dStyles || {};
+    // Text gradient shouldn't have text shadow (visual conflict)
+    if (ds.WebkitTextFillColor === "transparent" && ds.textShadow) score -= 0.2;
+    // Neumorphic shadows + hard box-shadow = conflicting depth models
+    if (ds.boxShadow && ds.boxShadow.includes("inset") && ds.boxShadow.split(",").length >= 3 &&
+        ds.gradientOverlay) score -= 0.15;
+    // Pill radius + clip-path = redundant (clip overrides radius)
+    if (typeof ds.borderRadius === "number" && ds.borderRadius === 999 && ds.clipPath) score -= 0.1;
   }
 
   return Math.max(1, Math.min(5, Math.round(score)));
