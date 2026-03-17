@@ -705,59 +705,92 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.backdropFilter = `blur(${pick([8, 12, 16, 20])}px)`;
   }
 
-  // --- Gradient overlay (25% chance, skip nav/code/small) ---
-  if (!isNav && !isCode && !isSmall && Math.random() < 0.25) {
+  // --- Gradient overlay (DNA-driven or 25% chance, skip nav/code/small) ---
+  if (!isNav && !isCode && !isSmall) {
     const ac2 = palette.ac2 || palette.ac || "#888";
-    if (moodId === "bold") {
-      s.gradientOverlay = pick([
-        `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
-        `linear-gradient(to bottom, ${acHex}0A 0%, transparent 40%)`,
-        `linear-gradient(160deg, ${ac2}0C 0%, ${acHex}06 100%)`,
-      ]);
-    } else if (moodId === "elegant") {
-      s.gradientOverlay = pick([
-        `linear-gradient(135deg, ${acHex}06 0%, transparent 70%)`,
-        `linear-gradient(to right, ${acHex}04 0%, ${ac2}04 100%)`,
-        `radial-gradient(ellipse at top left, ${acHex}08 0%, transparent 60%)`,
-      ]);
-    } else if (moodId === "playful") {
-      s.gradientOverlay = pick([
-        `linear-gradient(135deg, ${acHex}0D 0%, ${ac2}0D 50%, transparent 100%)`,
-        `linear-gradient(45deg, ${ac2}0A 0%, ${acHex}0A 100%)`,
-        `conic-gradient(from 180deg, ${acHex}06, ${ac2}06, transparent)`,
-      ]);
-    } else if (moodId !== "minimal") {
-      s.gradientOverlay = pick([
-        `linear-gradient(135deg, ${acHex}06 0%, transparent 50%)`,
-        `linear-gradient(to bottom right, ${ac2}05 0%, transparent 60%)`,
-      ]);
+    const dnaGrad = dna && dna.gradientStyle !== "none";
+    // DNA gradient style: 70% fire rate for cohesive canvas, else 25% random
+    if (dnaGrad && Math.random() < 0.70) {
+      const gs = dna.gradientStyle;
+      if (gs === "diagonal") {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
+          `linear-gradient(160deg, ${ac2}0A 0%, ${acHex}06 100%)`,
+          `linear-gradient(120deg, ${acHex}06 0%, ${ac2}04 50%, transparent 100%)`,
+        ]);
+      } else if (gs === "radial") {
+        s.gradientOverlay = pick([
+          `radial-gradient(ellipse at top left, ${acHex}0A 0%, transparent 65%)`,
+          `radial-gradient(circle at 30% 20%, ${ac2}08 0%, transparent 50%)`,
+          `radial-gradient(ellipse at bottom right, ${acHex}06 0%, transparent 70%)`,
+        ]);
+      } else if (gs === "conic") {
+        s.gradientOverlay = pick([
+          `conic-gradient(from 180deg at 50% 50%, ${acHex}06, ${ac2}06, transparent)`,
+          `conic-gradient(from 45deg, ${acHex}04, transparent 30%, ${ac2}05, transparent)`,
+        ]);
+      }
+    } else if (Math.random() < 0.25) {
+      if (moodId === "bold") {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
+          `linear-gradient(to bottom, ${acHex}0A 0%, transparent 40%)`,
+          `linear-gradient(160deg, ${ac2}0C 0%, ${acHex}06 100%)`,
+        ]);
+      } else if (moodId === "elegant") {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}06 0%, transparent 70%)`,
+          `linear-gradient(to right, ${acHex}04 0%, ${ac2}04 100%)`,
+          `radial-gradient(ellipse at top left, ${acHex}08 0%, transparent 60%)`,
+        ]);
+      } else if (moodId === "playful") {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}0D 0%, ${ac2}0D 50%, transparent 100%)`,
+          `linear-gradient(45deg, ${ac2}0A 0%, ${acHex}0A 100%)`,
+          `conic-gradient(from 180deg, ${acHex}06, ${ac2}06, transparent)`,
+        ]);
+      } else if (moodId !== "minimal") {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}06 0%, transparent 50%)`,
+          `linear-gradient(to bottom right, ${ac2}05 0%, transparent 60%)`,
+        ]);
+      }
     }
   }
 
-  // --- Border treatment (18% chance, skip nav/code) ---
-  if (!isNav && !isCode && Math.random() < 0.18) {
-    if (moodId === "bold") {
-      s.border = pick([
-        `2px solid ${acHex}30`,
-        `3px solid ${acHex}20`,
-        `2px dashed ${acHex}25`,
-      ]);
-    } else if (moodId === "elegant") {
-      s.border = pick([
-        `1px solid ${acHex}15`,
-        `1px solid ${palette.bd || acHex + "12"}`,
-      ]);
-    } else if (moodId === "playful") {
-      s.border = pick([
-        `2px dashed ${acHex}28`,
-        `3px dotted ${acHex}20`,
-        `2px solid ${acHex}35`,
-      ]);
-    } else if (moodId !== "minimal") {
-      s.border = pick([
-        `1px solid ${acHex}12`,
-        `1.5px solid ${acHex}18`,
-      ]);
+  // --- Border treatment (DNA-driven or 18% chance, skip nav/code) ---
+  if (!isNav && !isCode) {
+    const dnaBorder = dna && dna.borderStyle !== "none";
+    if (dnaBorder && Math.random() < 0.65) {
+      const bs = dna.borderStyle;
+      if (bs === "thin") s.border = `1px solid ${acHex}${pick(["12", "15", "18"])}`;
+      else if (bs === "accent-top") { s.borderTop = `2px solid ${acHex}${pick(["25", "30", "35"])}`; }
+      else if (bs === "accent-bottom") { s.borderBottom = `3px solid ${acHex}${pick(["30", "40", "50"])}`; }
+      else if (bs === "dashed") s.border = `2px dashed ${acHex}${pick(["20", "25", "30"])}`;
+    } else if (Math.random() < 0.18) {
+      if (moodId === "bold") {
+        s.border = pick([
+          `2px solid ${acHex}30`,
+          `3px solid ${acHex}20`,
+          `2px dashed ${acHex}25`,
+        ]);
+      } else if (moodId === "elegant") {
+        s.border = pick([
+          `1px solid ${acHex}15`,
+          `1px solid ${palette.bd || acHex + "12"}`,
+        ]);
+      } else if (moodId === "playful") {
+        s.border = pick([
+          `2px dashed ${acHex}28`,
+          `3px dotted ${acHex}20`,
+          `2px solid ${acHex}35`,
+        ]);
+      } else if (moodId !== "minimal") {
+        s.border = pick([
+          `1px solid ${acHex}12`,
+          `1.5px solid ${acHex}18`,
+        ]);
+      }
     }
   }
 
@@ -876,6 +909,35 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.boxShadow = `0 0 15px ${acHex}25, 0 0 40px ${acHex}10, inset 0 0 10px ${acHex}05`;
         s.border = `1px solid ${acHex}30`;
         s.borderRadius = pick([12, 16, 20, 999]);
+      } else if (wild < 0.27) {
+        // "Paper Cutout" surprise: hard shadow + slight rotation + no border radius
+        const offset = pick([4, 5, 6, 8]);
+        s.boxShadow = `${offset}px ${offset}px 0 ${shHex}20`;
+        s.borderRadius = pick([0, 2]);
+        s.border = `1.5px solid ${shHex}15`;
+        s.rotate = `${pick([-2, -1.5, -1, 1, 1.5, 2])}deg`;
+        s.gradientOverlay = undefined;
+      } else if (wild < 0.31) {
+        // "Monochrome Flat" surprise: zero shadow, zero border, just radius + desaturation
+        s.boxShadow = "none";
+        s.border = "none";
+        s.borderRadius = pick([0, 4, 8]);
+        s.filter = `saturate(0.${pick([2, 25, 3, 35])}) contrast(1.05)`;
+        s.gradientOverlay = undefined;
+        s.hueRotate = undefined;
+      } else if (wild < 0.34) {
+        // "Floating Card" surprise: large offset shadow + slight scale up
+        s.boxShadow = `0 20px 60px ${shHex}15, 0 8px 20px ${shHex}10`;
+        s.scale = pick([1.02, 1.03, 1.04]);
+        s.borderRadius = pick([16, 20, 24]);
+        s.border = "none";
+      } else if (wild < 0.37) {
+        // "Double Border" surprise: outline ring + inner border
+        s.border = `2px solid ${acHex}20`;
+        s.outline = `2px solid ${acHex}12`;
+        s.outlineOffset = `${pick([3, 4, 5, 6])}px`;
+        s.borderRadius = pick([8, 12, 16]);
+        s.boxShadow = "none";
       }
     }
   }
