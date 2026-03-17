@@ -42,7 +42,7 @@ export const VARIANTS = {
   button:    ["Filled","Outline","Ghost","Pill","Brutal","Glass","Terminal"],
   card:      ["Elevated","Outlined","Filled bg","Top media","Minimal","Glass","Brutal","Terminal"],
   "card-sm": ["Rounded","Horizontal","Tinted","Glass","Brutal","Gradient glow","Minimal"],
-  hero:      ["Gradient","Centered","Bold fill","Terminal","Glass","Brutal"],
+  hero:      ["Gradient","Centered","Bold fill","Terminal","Glass","Brutal","Gradient glow"],
   navbar:    ["Classic","Underline","Pill","Glass","Terminal","Brutal","Gradient"],
   tabs:      ["Segmented","Underline","Pill chips","Glass","Bordered","Brutal","Gradient"],
   heading:   ["Clean","Accent bar","Overline","Gradient","Badge","Brutal","Gradient glow"],
