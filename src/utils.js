@@ -613,13 +613,14 @@ export function generateDesignDNA(palette, mood) {
   // These ensure text-stroke, clip-path, transitions, and opacity feel cohesive
   let effectPersonality;
   if (m === "minimal") {
-    effectPersonality = { textStroke: "none", clipStyle: "none", motionSpeed: "calm", depthLayer: "flat" };
+    effectPersonality = { textStroke: "none", clipStyle: "none", motionSpeed: "calm", depthLayer: "flat", surfaceTexture: "none" };
   } else if (m === "bold") {
     effectPersonality = {
       textStroke: pick(["thick", "thick", "hollow", "none"]),
       clipStyle: pick(["chamfer", "chamfer", "asymmetric", "none"]),
       motionSpeed: pick(["snappy", "snappy", "instant"]),
       depthLayer: pick(["layered", "heavy", "layered"]),
+      surfaceTexture: pick(["stripes", "grid", "stripes", "none"]),
     };
   } else if (m === "elegant") {
     effectPersonality = {
@@ -627,6 +628,7 @@ export function generateDesignDNA(palette, mood) {
       clipStyle: pick(["subtle", "none", "none"]),
       motionSpeed: pick(["slow", "slow", "calm"]),
       depthLayer: pick(["soft", "soft", "subtle"]),
+      surfaceTexture: pick(["pinstripe", "crosshatch", "none", "none"]),
     };
   } else if (m === "playful") {
     effectPersonality = {
@@ -634,6 +636,7 @@ export function generateDesignDNA(palette, mood) {
       clipStyle: pick(["notch", "flag", "none", "none"]),
       motionSpeed: pick(["bouncy", "bouncy", "snappy"]),
       depthLayer: pick(["layered", "soft", "vivid"]),
+      surfaceTexture: pick(["dots", "zigzag", "dots", "none"]),
     };
   } else {
     effectPersonality = {
@@ -641,6 +644,7 @@ export function generateDesignDNA(palette, mood) {
       clipStyle: pick(["none", "none", "none", "chamfer", "subtle", "notch"]),
       motionSpeed: pick(["calm", "snappy", "slow", "bouncy"]),
       depthLayer: pick(["flat", "soft", "layered", "heavy"]),
+      surfaceTexture: pick(["none", "none", "stripes", "dots", "pinstripe", "grid"]),
     };
   }
 
@@ -1743,6 +1747,62 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           s.transition = `${txnProps} ${pick([0.2, 0.25])}s ease`;
         } else {
           s.transition = `${txnProps} ${pick([0.2, 0.3, 0.35])}s ${pick(["ease-out", "ease-in-out"])}`;
+        }
+      }
+    }
+
+    // --- Surface texture patterns: repeating gradient patterns for visual surface texture ---
+    // These create subtle visual interest — pinstripes, dot grids, crosshatch, etc.
+    if (!isSmall) {
+      const dnaTexBoost = dna?.effectPersonality?.surfaceTexture && dna.effectPersonality.surfaceTexture !== "none" ? 0.12 : 0;
+      const texChance = (moodId === "bold" ? 0.20 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.15 : moodId === "minimal" ? 0.05 : 0.12) + dnaTexBoost;
+      if (Math.random() < texChance) {
+        const texColor = pick([acHex, gc1, gc2, shHex]);
+        if (moodId === "bold") {
+          // Bold: strong diagonal stripes or thick grid lines
+          s.textureOverlay = pick([
+            `repeating-linear-gradient(${pick([45, -45, 135])}deg, ${texColor}08 0px, ${texColor}08 2px, transparent 2px, transparent ${pick([10, 14, 18])}px)`,
+            `repeating-linear-gradient(0deg, ${texColor}06 0px, ${texColor}06 3px, transparent 3px, transparent ${pick([12, 16, 20])}px), repeating-linear-gradient(90deg, ${texColor}06 0px, ${texColor}06 3px, transparent 3px, transparent ${pick([12, 16, 20])}px)`,
+            `repeating-linear-gradient(${pick([30, 60, 120, 150])}deg, ${texColor}0a 0px, transparent 1px, transparent ${pick([6, 8])}px)`,
+          ]);
+        } else if (moodId === "playful") {
+          // Playful: polka dots, zigzag, confetti-like scattered patterns
+          const dotSize = pick([2, 3, 4]);
+          const gap = pick([14, 18, 22, 28]);
+          const playfulTex = pick(["dots", "zigzag", "grid"]);
+          if (playfulTex === "dots") {
+            s.textureOverlay = `radial-gradient(circle ${dotSize}px at ${Math.round(gap/2)}px ${Math.round(gap/2)}px, ${texColor}10 ${dotSize}px, transparent ${dotSize}px)`;
+            s.textureSize = `${gap}px ${gap}px`;
+          } else if (playfulTex === "zigzag") {
+            s.textureOverlay = `repeating-linear-gradient(${pick([45, -45])}deg, ${texColor}08 0px, ${texColor}08 ${dotSize}px, transparent ${dotSize}px, transparent ${pick([8, 12])}px), repeating-linear-gradient(${pick([135, -135])}deg, ${pick([acHex, ac2])}06 0px, ${pick([acHex, ac2])}06 ${dotSize}px, transparent ${dotSize}px, transparent ${pick([8, 12])}px)`;
+          } else {
+            s.textureOverlay = `repeating-linear-gradient(90deg, ${texColor}06 0px, transparent 1px, transparent ${gap}px), repeating-linear-gradient(0deg, ${pick([acHex, ac2])}06 0px, transparent 1px, transparent ${gap}px)`;
+          }
+        } else if (moodId === "elegant") {
+          // Elegant: fine pinstripes, delicate crosshatch, silk-like sheen
+          const spacing = pick([20, 24, 30, 36]);
+          s.textureOverlay = pick([
+            `repeating-linear-gradient(${pick([0, 90])}deg, ${texColor}04 0px, ${texColor}04 1px, transparent 1px, transparent ${spacing}px)`,
+            `repeating-linear-gradient(45deg, ${texColor}03 0px, ${texColor}03 1px, transparent 1px, transparent ${spacing}px), repeating-linear-gradient(-45deg, ${texColor}03 0px, ${texColor}03 1px, transparent 1px, transparent ${spacing}px)`,
+            `linear-gradient(${pick([110, 130, 160])}deg, ${texColor}02 0%, ${texColor}05 50%, ${texColor}02 100%)`,
+          ]);
+        } else if (moodId === "minimal") {
+          // Minimal: barely-there dot grid or single faint line direction
+          const sp = pick([24, 32, 40]);
+          s.textureOverlay = `repeating-linear-gradient(${pick([0, 90])}deg, ${texColor}03 0px, ${texColor}03 1px, transparent 1px, transparent ${sp}px)`;
+        } else {
+          // Auto: mix of all styles
+          const autoTex = pick(["lines", "dots", "crosshatch"]);
+          if (autoTex === "dots") {
+            const ag = pick([16, 20, 24]);
+            s.textureOverlay = `radial-gradient(circle 2px at ${Math.round(ag/2)}px ${Math.round(ag/2)}px, ${texColor}08 2px, transparent 2px)`;
+            s.textureSize = `${ag}px ${ag}px`;
+          } else if (autoTex === "crosshatch") {
+            const sp = pick([14, 18]);
+            s.textureOverlay = `repeating-linear-gradient(45deg, ${texColor}04 0px, ${texColor}04 1px, transparent 1px, transparent ${sp}px), repeating-linear-gradient(-45deg, ${texColor}04 0px, ${texColor}04 1px, transparent 1px, transparent ${sp}px)`;
+          } else {
+            s.textureOverlay = `repeating-linear-gradient(${pick([45, -45, 0, 90])}deg, ${texColor}06 0px, ${texColor}06 1px, transparent 1px, transparent ${pick([12, 16, 20])}px)`;
+          }
         }
       }
     }
