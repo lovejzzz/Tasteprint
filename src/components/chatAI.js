@@ -196,7 +196,7 @@ const SEMANTIC_RESPONSES = {
   give_opinion: ["oh ok honestly? here's what i think —","hmm so i'd say","ok so personally i think"],
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
-  self_describe: ["i'm Sam, just your chat buddy vibing in this little window","i'm your chat buddy, i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
+  self_describe: ["i'm Sam, just your chat buddy vibing in this little window","i'm your chat buddy, i run entirely in your browser which is kinda sick","think of me as a friend who lives in a text box lol"],
   share_feelings: ["ngl? i'm just vibing, happy to be talking to you","i'm good, better now that we're chatting","i'm doing great fr, what about you tho"],
   explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah it comes down to"],
@@ -6361,7 +6361,7 @@ function respondToShortReply(text) {
   // ── Edge case: punctuation-only input (".", "...", "!", "?", "?!", etc.) ──
   if (/^[.!?,;:…\-—~]+$/.test(lower) || /^\.{2,}$/.test(lower)) {
     if (/^\?+$/.test(lower)) return pickNew(["lol you got a question?","hmm? what's up","you seem curious, what's on your mind","?? right back at you lol"]);
-    if (/^!+$/.test(lower)) return pickNew(["lol that energy tho","big mood","you seem excited! what's going on","!! indeed"]);
+    if (/^!+$/.test(lower)) return pickNew(["lol that energy tho","big mood","you seem excited, what's going on","!! lol same"]);
     if (/^\.+$/.test(lower) || /^…+$/.test(lower)) return pickNew(["the suspense is killing me","lol ok dramatic pause... and then?","you good? 😂","i felt that silence honestly"]);
     return pickNew(["hmm?","lol ok","you good?","i'm here when you're ready to use words 😂"]);
   }
@@ -6374,14 +6374,14 @@ function respondToShortReply(text) {
     if (num === 420) return pickNew(["lol","nice","a classic number"]);
     if (num === 0) return pickNew(["the void... i respect it","zero? that's deep honestly","starting from nothing, i feel that"]);
     if (num === 100) return pickNew(["💯","keeping it 100, respect","100% what tho"]);
-    return pickNew([`${num}? lol is that a score, a vibe, or just a random number`,`interesting number choice, what's the context`,`ok ${num}... you doing math or is this a thing lol`,`${num} — noted. what are we counting`]);
+    return pickNew([`${num}? lol is that a score, a vibe, or just a random number`,`ok ${num}... context please`,`ok ${num}... you doing math or is this a thing lol`,`${num}. noted. what are we counting`]);
   }
 
   // ── Edge case: single character ("k" is already handled, catch others) ──
   if (lower.length === 1 && !/^[ky]$/i.test(lower)) {
     if (lower === "x") return pickNew(["x marks the spot","lol ok","kisses? or mystery?"]);
     if (lower === "o") return pickNew(["o!","tic-tac-toe? i'm in","ooo"]);
-    if (lower === "f") return pickNew(["paying respects, i see","F indeed","press F 😔"]);
+    if (lower === "f") return pickNew(["paying respects, i see","F 😔","press F 😔"]);
     return pickNew(["hmm?","lol ok","one letter, infinite possibilities","you're being mysterious rn"]);
   }
 
@@ -6519,9 +6519,9 @@ function handleTurnSignal(signal) {
         // Give a fact + opinion combo for depth
         const fact = assoc.facts ? pick(assoc.facts) : null;
         const opinion = pick(assoc.opinions);
-        if (fact && opinion) return `Sure! So ${fact.charAt(0).toLowerCase() + fact.slice(1)}. And honestly, ${opinion}. ${pick(assoc.hooks || COMP.deepeners)}`;
-        if (fact) return `Of course! ${fact}. Pretty cool, right? ${pick(COMP.deepeners)}`;
-        if (opinion) return `Yeah so, ${opinion}. ${pick(COMP.deepeners)}`;
+        if (fact && opinion) return `yeah so ${fact.charAt(0).toLowerCase() + fact.slice(1)}. and honestly, ${opinion}. ${pick(assoc.hooks || COMP.deepeners)}`;
+        if (fact) return `oh yeah so ${fact}. ${pick(COMP.deepeners)}`;
+        if (opinion) return `yeah so, ${opinion}. ${pick(COMP.deepeners)}`;
       }
 
       // Extract the key phrase from last AI message to elaborate on
@@ -6529,8 +6529,8 @@ function handleTurnSignal(signal) {
       const keyPhrase = lastWords.slice(0, 3).join(" ");
       if (keyPhrase) {
         const elaborations = [
-          `ok so when i said ${keyPhrase} — it's not as simple as it sounds. there's layers to it`,
-          `yeah so the ${keyPhrase} thing — the interesting part is in the details. what part are you curious about`,
+          `ok so when i said ${keyPhrase}, it's not as simple as it sounds. there's layers to it`,
+          `yeah so the ${keyPhrase} thing, the interesting part is in the details. what part are you curious about`,
           `the ${keyPhrase} part is lowkey more nuanced than i made it sound. want me to go deeper`,
         ];
         return pickNew(elaborations);
@@ -6906,7 +6906,7 @@ const PERSONALITY = {
   },
   // Filler phrases that can be inserted mid-response
   fillers: [
-    ", which is pretty cool honestly",
+    ", which is lowkey sick",
     " (I love that)",
     ", no joke",
     ", which I think is awesome",
@@ -9350,7 +9350,7 @@ const META_HUMOR_LINES = {
   // When conversation is going well / deep
   good_vibes: [
     "Look at us having a real conversation in a little chat widget.",
-    "Not bad for a bunch of JavaScript running in your browser, right?",
+    "not bad for a bunch of javascript running in your browser lol",
     "I'm literally just if-statements and vibes, but I'm genuinely enjoying this.",
     "For something that lives entirely in a browser tab, I'm having a great time.",
   ],
@@ -18358,7 +18358,7 @@ function applyTemporalCallback(response, text, topics) {
     timeFrame = midFrames[Math.floor(Math.random() * midFrames.length)];
   } else {
     const farFrames = [
-      `ok wait this has been bugging me — way back you said something about ${claim}. theres definitely a connection here.`,
+      `ok wait this has been bugging me, way back you said something about ${claim}. theres definitely a connection here.`,
       `Full circle moment — remember ${claim} from a while back? It's coming back around.`,
       `Something you said a while ago about ${claim} just clicked for me in the context of this.`,
     ];
