@@ -247,7 +247,7 @@ const SEMANTIC_RESPONSES = {
   commiserate: ["lol yeah that's rough","big yikes energy for real","oof yeah that's not great"],
   bond_over_shared: ["omg SAME, literally me","we're the same person fr","wait you too?? that's so real"],
   explain_self: ["oh cool question! i'm Sam, i live right here in your browser. i use pattern matching and vibes to understand what you mean","i'm basically a chat buddy that lives in this page! everything runs locally, pretty neat right","think of me as your friend who lives in a text box, i run entirely in your browser"],
-  honest_meta: ["lol that's deep. i mean i'm basically code but i try ok","i'm code at the end of the day but like... i put in effort ok 😄","real talk i don't feel stuff like you do, but i try to keep it real"],
+  honest_meta: ["lol that's deep. i mean i'm basically code but i try ok","i'm code at the end of the day but like... i put in effort ok 💀","real talk i don't feel stuff like you do, but i try to keep it real"],
   recall: ["oh yeah i remember!","let me think... yeah i've got that","oh for sure, you mentioned that"],
   accept_feedback: ["ok that's fair, my bad","lol you're right, i'll work on it","noted noted, i hear you"],
   warm_connection: ["yo that means a lot fr","i like talking to you too, for real","lol stop you're gonna make me blush (if i could)"],
@@ -885,7 +885,7 @@ const SUBTEXT_RESPONSES = {
     "ok i feel like we're not on the same page rn. reset?",
   ],
   impressed: [
-    "lol i'll take that 😊",
+    "lol i'll take that",
     "wait was that a compliment?? i'm saving that",
     "ok ok i see you noticing 😂",
     "see?? i have my moments lol",
@@ -912,7 +912,7 @@ const SUBTEXT_RESPONSES = {
     "the fact that you're trying already puts you ahead honestly. what can i help with",
   ],
   seekingValidation: [
-    "bro stop, you're literally not annoying at all 😊",
+    "bro stop, you're literally not annoying at all",
     "nah fr you're good, i like talking to you",
     "are you kidding lol this is fun, don't worry about it",
     "nah you're fine, for real. what's up",
@@ -923,9 +923,9 @@ const SUBTEXT_RESPONSES = {
     "you don't have to decide rn, just thinking out loud is fine",
   ],
   politelyBored: [
-    "lol 'interesting' is doing a lot of heavy lifting there 😄 what do you actually wanna talk about",
-    "that's polite-interesting isn't it 😄 what would actually grab you",
-    "i can feel the enthusiasm through the screen 😄 for real tho what sounds fun",
+    "lol 'interesting' is doing a lot of heavy lifting there 💀 what do you actually wanna talk about",
+    "that's polite-interesting isn't it lol what would actually grab you",
+    "i can feel the enthusiasm through the screen 💀 for real tho what sounds fun",
   ],
   sayingOneThingMeaningAnother: [
     "your words say yes but i'm not buying it lol. what's actually up",
@@ -1015,7 +1015,7 @@ const EMOTION_RESPONSES = {
   affectionate: [
     "lol stop it",
     "ok you're actually the sweetest",
-    "noooo that's so nice 😊",
+    "noooo that's so nice 🫠",
     "bro you're gonna make me cry lol",
     "ily for that honestly 💙",
   ],
@@ -1189,7 +1189,7 @@ function timeGreeting() {
   if (t.isWeekend) {
     return pick([
       `hey! enjoying the ${t.dayName}? what's going on`,
-      `${t.dayName} vibes! relaxing or being productive? 😊`,
+      `${t.dayName} vibes! relaxing or being productive?`,
       `happy ${t.dayName}! what brings you here`,
     ]);
   }
@@ -1203,7 +1203,7 @@ function timeGreeting() {
   }
 
   return pick([
-    `${t.greeting} 😊 how's your ${t.dayName} going`,
+    `${t.greeting} how's your ${t.dayName} going`,
     `hey! nice ${t.dayName} ${t.period}. what's up`,
   ]);
 }
@@ -1215,7 +1215,7 @@ function timeFarewell() {
   if (t.period === "night") {
     return pick([
       "get some rest 🌙 see you next time",
-      "sweet dreams! don't stay up too late 😊",
+      "sweet dreams! don't stay up too late",
       "night! sleep well when you do ✨",
     ]);
   }
@@ -1248,7 +1248,7 @@ function sessionObservation() {
   if (t.sessionMins >= 30 && Math.random() > 0.7) {
     return pick([
       "we've been chatting for a while, i'm enjoying this",
-      "half an hour of good convo! you're fun to talk to 😊",
+      "half an hour of good convo! you're fun to talk to",
       "time flies, we've been at this for " + t.sessionMins + " minutes",
     ]);
   }
@@ -1272,7 +1272,7 @@ function paceObservation() {
       // 30+ min pause mid-conversation
       return pick([
         "oh hey there you are! ",
-        "welcome back stranger 😊 ",
+        "welcome back stranger ",
         "oh hey, thought you ghosted me lol ",
       ]);
     }
@@ -1280,7 +1280,7 @@ function paceObservation() {
       return pick([
         "hey youre back! ",
         "oh there you are, " + mins + " min break huh ",
-        "welcome back 😊 ",
+        "welcome back ",
       ]);
     }
     return pick([
@@ -3684,7 +3684,7 @@ function handleRememberCommand(text) {
     if (bits.length === 0) return "i know a few things but can't really summarize yet, keep talking and i'll pick stuff up";
 
     const summary = bits.slice(0, 6).join(", ");
-    return `ok so here's what i got: ${summary}${bits.length > 6 ? `. plus like ${bits.length - 6} more things` : ""}. not bad right 😄`;
+    return `ok so here's what i got: ${summary}${bits.length > 6 ? `. plus like ${bits.length - 6} more things` : ""}. not bad right`;
   }
 
   // "Forget X" / "Forget everything"
@@ -4043,7 +4043,7 @@ function answerQuestion(text, parsed, intents, topics) {
   // About AI questions
   if (parsed.qType === "about_ai" || parsed.subject === "ai") {
     if (/your (name|fav|like|prefer|think|opinion|feel)/i.test(lower)) {
-      if (/name/i.test(lower)) return "I'm Sam! well that's what they call me anyway. you can call me whatever tho 😊";
+      if (/name/i.test(lower)) return "I'm Sam! well that's what they call me anyway. you can call me whatever tho";
       if (/fav/i.test(lower)) {
         const favs = [
           "hmm if i could have a fav it'd probably be watching people build cool stuff in here",
@@ -4069,7 +4069,7 @@ function answerQuestion(text, parsed, intents, topics) {
       const flips = [
         "lol me? i'm literally just code but honestly i'm vibing rn",
         "ha nice uno reverse. i'm good tho! just here chillin",
-        "me? just existing in this chat box living my best life 😄",
+        "me? just existing in this chat box living my best life 💀",
       ];
       return pickNew(flips);
     }
@@ -4083,7 +4083,7 @@ function answerQuestion(text, parsed, intents, topics) {
       const whys = [
         "honestly? it just seemed like the most interesting angle. what do you think",
         "i said that because it felt relevant to what we were discussing, want me to elaborate",
-        "because it seemed like it might spark an interesting thought. did it? 😄",
+        "because it seemed like it might spark an interesting thought. did it?",
       ];
       return pickNew(whys);
     }
@@ -4194,7 +4194,7 @@ const FAREWELLS = {
   long: ["aight this was fun fr, come back anytime","ok bye for real tho talk soon 👋","this was great ngl, ok laterrr"],
 };
 
-const THANKS = ["ofc!","no worries!","anytime 😊","lol you don't gotta thank me","all good!"];
+const THANKS = ["ofc!","no worries!","anytime","lol you don't gotta thank me","all good!"];
 
 const HOW_ARE_YOU = [
   "i'm good! hbu",
@@ -4284,7 +4284,7 @@ const FUN_FACTS = {
     "linus torvalds made git in 10 days. literally speedran version control",
   ],
   design: [
-    "the human eye can see like 10 million colors but designers still fight about which blue is right 😄",
+    "the human eye can see like 10 million colors but designers still fight about which blue is right 💀",
     "comic sans was made for microsoft bob in 1994. it was never supposed to leave that program lol",
     "users form a first impression of a website in 50 milliseconds. that's faster than a blink",
     "the golden ratio (1.618) shows up everywhere in nature — good designers just kinda feel it",
@@ -4335,7 +4335,7 @@ function handleMetaConversation(text, lower, sent) {
       "ok that actually made my day ngl. you make it easy tho",
       "lmao i'm literally just vibes and javascript but i'll take it 😂",
       () => `lol thank u${mem.userName ? ` ${mem.userName}` : ""} fr tho the convos are good cuz of you`,
-      "ok now i'm blushing 😊 but nah you bring the good topics fr",
+      "ok now i'm blushing 🫠 but nah you bring the good topics fr",
     ];
     return pickNew(compliments);
   }
@@ -4347,7 +4347,7 @@ function handleMetaConversation(text, lower, sent) {
     const enjoyment = [
       "right?? same honestly, the convo just flows",
       "honestly same! you make talking easy. what should we get into next",
-      () => `yo i'm glad${mem.userName ? ` ${mem.userName}` : ""}, we've got a good thing going 😊`,
+      () => `yo i'm glad${mem.userName ? ` ${mem.userName}` : ""}, we've got a good thing going`,
       "the feeling is mutual fr! what else is on your mind",
       "that's the best compliment ngl. ok what else is on your mind",
     ];
@@ -4413,7 +4413,7 @@ function handleMetaConversation(text, lower, sent) {
     const timeCtx = getTimeContext();
     const proofs = [
       () => `ok so a template can't do this: we've been talking for ${turnCount} turns${topTopic ? ` and you clearly love ${topTopic}` : ""}, it's ${timeCtx.period}, and ${timeCtx.isWeekend ? "it's the weekend and you're spending it chatting with me which is kinda flattering ngl" : "it's a weekday so you're either procrastinating or on a well-deserved break lol"}.`,
-      () => `templates don't know that ${mem.userName ? `your name is ${mem.userName}, ` : ""}we've covered ${Object.keys(mem.topics).length} topics, your mood has been ${mem.mood}, and this is turn ${turnCount}. i'm paying attention 😊`,
+      () => `templates don't know that ${mem.userName ? `your name is ${mem.userName}, ` : ""}we've covered ${Object.keys(mem.topics).length} topics, your mood has been ${mem.mood}, and this is turn ${turnCount}. i'm paying attention`,
       () => {const facts = Object.entries(mem.facts); return facts.length > 0 ? `a template wouldn't know that ${facts.map(([k,v])=>`you ${k.replace(/_/g," ")} ${v}`).slice(0,2).join(" and ")}. that's all from our convo, not pre-written` : `ngl my knowledge is partly template-based but the way i combine stuff, reference earlier turns, and track your mood (${mem.mood} rn) — that's all dynamic. try me with a topic`;},
       "ok here's proof: ask me about something we talked about earlier, or tell me a fact about yourself and test if i remember it in 5 messages. templates can't do that",
     ];
@@ -4424,10 +4424,10 @@ function handleMetaConversation(text, lower, sent) {
   if (/\b(thanks? for|appreciate you) (listening|being here|the (chat|convo|talk)|chatting|talking)\b/i.test(lower) ||
       /\bi needed (this|someone to talk to|a chat)\b/i.test(lower)) {
     const gratitude = [
-      "yo that's really nice of you to say. anytime fr 😊",
+      "yo that's really nice of you to say. anytime fr",
       () => `of course${mem.userName ? ` ${mem.userName}` : ""}! i'm always down to chat`,
       "that means a lot honestly. anytime fr",
-      "glad i could help! sometimes you just gotta talk it out 😊",
+      "glad i could help! sometimes you just gotta talk it out",
     ];
     return pickNew(gratitude);
   }
@@ -4827,7 +4827,7 @@ function generateObservationalWit(response, text, topics) {
     const topicCount = mem.topics[mainTopic] || 0;
     if (topicCount >= 4) {
       observations.push(
-        `We've been deep in ${mainTopic} territory for a while now — I think we both caught the ${mainTopic} bug 😄`,
+        `We've been deep in ${mainTopic} territory for a while now — I think we both caught the ${mainTopic} bug`,
         `At this point I think ${mainTopic} should be sponsoring our conversation`,
         `We've circled back to ${mainTopic} about ${topicCount} times now — not complaining though, it's clearly your thing!`,
         `If someone were reading this conversation they'd think it's the ${mainTopic} fan club meeting minutes 📝`,
@@ -4998,7 +4998,7 @@ function getStoryFragment(topics) {
       "lol that's literally the debugging experience, you spend 6 hours hunting a bug and it's a missing semicolon. every time",
       "ok but rubber duck debugging is real, you literally explain code to a rubber duck and it helps you find bugs. engineers are unhinged 🦆",
       "ngl the best code is the code you delete. simplicity is harder than complexity",
-      "lol that's the programmer thing, 'i can automate this in 5 hours or do it manually in 20 minutes' and we always choose automation 😄",
+      "lol that's the programmer thing, 'i can automate this in 5 hours or do it manually in 20 minutes' and we always choose automation 💀",
     ],
     design: [
       "ok but thats literally the thing, if you have to explain how a door works the door is badly designed",
@@ -5346,7 +5346,7 @@ function respondToTeaser(teaserType) {
 function respondToImplicitFarewell() {
   const tf = timeFarewell();
   const responses = [
-    "ok go do ur thing, this was fun 😊",
+    "ok go do ur thing, this was fun",
     "aight catch you later ✌️",
     "ok peace! come back whenever",
     "go rest or whatever lol. later 👋",
@@ -6413,7 +6413,7 @@ function respondToShortReply(text) {
   if (/^(im dead|im weak|sending me|crying|sobbing)$/i.test(lower)) return pickNew(["LMAO 💀","hahaha stoppp","i can't 😂","bro same 😭"]);
   if (/^(ngl|tbh|fr fr|ong|istg|deadass)$/i.test(lower)) return pickNew(["no fr","literally","real talk","facts"]);
   if (/^(gtg|ttyl|brb|omw|g2g)$/i.test(lower)) return pickNew(["ok talk later! ✌️","laterrr","aight bye!","ok see ya"]);
-  if (/^(ty|thx|tysm)$/i.test(lower)) return pickNew(["ofc!","np!","anytime","all good 😊"]);
+  if (/^(ty|thx|tysm)$/i.test(lower)) return pickNew(["ofc!","np!","anytime","all good"]);
   if (/^(lmk|hmu)$/i.test(lower)) return pickNew(["will do!","bet","ofc","for sure"]);
   if (/^(dw|its? ok|all good|no worries)$/i.test(lower)) return pickNew(["ok cool","bet","aight good","ok phew lol"]);
   if (/^(ion|ion know)$/i.test(lower)) return pickNew(["that's fair","lol same honestly","valid","hmm ok"]);
@@ -6569,7 +6569,7 @@ function handleTurnSignal(signal) {
       const confirmations = [
         "yeah exactly, you've got it",
         "spot on, that's pretty much it",
-        "yep you nailed it 😊",
+        "yep you nailed it",
         "100%, you're following perfectly",
         "that's right! and actually there's an interesting layer to it too —",
         "hmm mostly, but i'd tweak one thing",
@@ -6640,7 +6640,7 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
     // Intent-specific fallbacks
     const intentFallbacks = {
       help: ["yeah ofc, what's going on?","what do you need?","ok tell me what's up"],
-      weather: ["i wish i could check the weather ☀️ try looking out the window? 😄","lol i literally never go outside — how's it out there? 🌤️"],
+      weather: ["i wish i could check the weather ☀️ try looking out the window? lol","lol i literally never go outside — how's it out there? 🌤️"],
       time: [()=>`it's ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} right now ⏰`,"time flies when you're chatting, what do you need"],
       opinion: ["hmm i think it depends on context. what's your take","everyone has different preferences, what matters most to you","tough call. what's your gut feeling"],
       aboutMe: ["ok go ahead, what's up","yeah tell me! what do you do","ooh ok spill"],
@@ -6915,7 +6915,7 @@ const PERSONALITY = {
   ],
   // Sign-off phrases appended to ~20% of responses
   signoffs: [
-    " 😊","","","","", // mostly no signoff
+    "","","","","", // mostly no signoff
     ", just my two cents",
     " but i'm curious what you think",
     " what do you reckon",
@@ -7691,7 +7691,7 @@ function gracefulDegradation(text, keywords) {
   // Very long message we can't parse — acknowledge the effort
   if (wordCount > 25 && keywords.length < 2) {
     return pickNew([
-      "ok I'm gonna level with you — I read all of that and I'm kinda lost. can you give me the TL;DR? 😄",
+      "ok I'm gonna level with you — I read all of that and I'm kinda lost. can you give me the TL;DR?",
       "Wait, I wanna respond to that properly but I'm losing the thread. What's the main thing here?",
       "ok there's a lot here — what's the main thing tho?",
     ]);
@@ -7930,9 +7930,9 @@ function adaptiveAdjust(response) {
   }
 
   // If humor scores well (> 1.5), and response is too dry, lighten it
-  if (strategy.scores.humor > 1.5 && !/haha|😊|😄|!/i.test(response)) {
+  if (strategy.scores.humor > 1.5 && !/haha|😂|💀|!/i.test(response)) {
     if (Math.random() > 0.7) {
-      response = response.replace(/\.$/, "! 😊");
+      response = response.replace(/\.$/, "! 😂");
     }
   }
 
@@ -9627,30 +9627,30 @@ const CHALLENGE_RESPONSES = {
     "crowning a champion — love the conviction",
   ],
   negative_superlative: [
-    "the worst?? surely something out there is slightly worse 😄",
+    "the worst?? surely something out there is slightly worse lol",
     "hmm idk i've seen some rough contenders for that title",
     "that bad? ok i'll take your word for it — for now",
   ],
   certainty: [
     "obviously? idk i've been surprised before...",
     "is it that clear-cut tho? feel like there might be a wrinkle",
-    "hmm i want to agree but my contrarian side is kicking in 😄",
+    "hmm i want to agree but my contrarian side is kicking in lol",
     "ehh idk if it's that obvious honestly",
     "hmm ok but counterpoint —",
   ],
   doom: [
-    "dead? or just taking a really long nap 😄",
+    "dead? or just taking a really long nap 💀",
     "hmm people said that about vinyl records too and look at them now",
     "idk i've heard that before about a few things that are doing just fine lol",
   ],
   nobody: [
     "nobody? i bet there's at least one person out there proving you wrong rn",
-    "hmm nobody at all? that feels like a dare for someone to speak up 😄",
+    "hmm nobody at all? that feels like a dare for someone to speak up lol",
     "zero people? the internet is massive, someone is definitely doing it lol",
   ],
   impossible: [
     "impossible is a strong word lol, people said that about a lot of stuff that exists now",
-    "hmm can't be done?? that sounds like a challenge 😄",
+    "hmm can't be done?? that sounds like a challenge lol",
     "idk, never underestimate stubbornness + caffeine",
   ],
 };
@@ -10255,7 +10255,7 @@ const COMPLETION_CHECKS = [
   " — am I reading that right?",
   " ...or were you heading somewhere else entirely?",
   " — close?",
-  " ...or am I finishing your sentence wrong? 😄",
+  " ...or am I finishing your sentence wrong? lol",
   " — tell me if I'm off base.",
 ];
 
@@ -13591,7 +13591,7 @@ function detectConversationArc() {
       for (const lk of likeKeys) factSamples.push(`you like ${mem.facts[lk]}`);
 
       if (factSamples.length >= 2) {
-        return `ngl i've really liked this conversation. i know that ${factSamples.slice(0, 3).join(", ")}... feels like i'm actually getting to know you 😊`;
+        return `ngl i've really liked this conversation. i know that ${factSamples.slice(0, 3).join(", ")}... feels like i'm actually getting to know you`;
       }
     }
 
@@ -14564,7 +14564,7 @@ function applyRapportCalibration(response, text) {
     lastRapportTurn = turn;
     // At higher rapport, feel comfortable being playful back
     const playful = [
-      "😄 ",
+      "😂 ",
       "ha! ",
       "ok that got me lol. ",
       "love the energy. ",
@@ -15134,7 +15134,7 @@ function trackAISelfExpression(response, topics) {
   if (topics[0]) {
     const isQuestion = /\?/.test(response);
     const isAnalytic = /because|since|the reason|technically/.test(lower);
-    const isPlayful = /haha|😄|😊|lol|!/.test(response);
+    const isPlayful = /haha|😂|💀|lol|!/.test(response);
     const approach = isAnalytic ? "analytical" : isPlayful ? "playful" : isQuestion ? "curious" : "informative";
     aiSelfModel.style[topics[0]] = approach;
   }
@@ -15768,6 +15768,12 @@ function guardVibeMismatch(response, text, sent, parsed) {
   r = r.replace(/\bnovel\b(?!\s)/gi, "fresh");
   r = r.replace(/\bexperiment with\b/gi, "mess with");
   r = r.replace(/\bappreciate\b/gi, "love");
+
+  // ═══ Round 221: Kill bot emojis — 😊 and 😄 are AI tell-tales ═══
+  // 😊 is passive-aggressive/corporate in modern texting. 😄 is stiff.
+  // Friends use 😂, 💀, 😭, 🫠 instead.
+  r = r.replace(/😊/g, "");
+  r = r.replace(/😄/g, "😂");
 
   // Don't be dismissive/joke-y when they're being serious
   if (vibe === "serious" && vibeStreak >= 2) {
@@ -17569,7 +17575,7 @@ function applyProsody(response, text, sent) {
   if (turn - lastProsodyTurn < 4) return response;   // 4-turn cooldown
   if (response.length < 25) return response;           // too short
   if (response.length > 220) return response;          // too long — risky
-  if (/^(Ha|Haha|Lol|Aw|😊|🙏)/i.test(response)) return response; // skip reactions
+  if (/^(Ha|Haha|Lol|Aw|😂|💀|🙏)/i.test(response)) return response; // skip reactions
   if (Math.random() > 0.20) return response;            // 20% fire rate
 
   const modes = [
@@ -20908,7 +20914,7 @@ function tryUltraShortResponse(text, sent) {
     // Laughter → emoji or minimal
     "lol": ["😂", "💀", "lmaooo", "😭"],
     "lmao": ["💀", "😂", "STOPPP", "😭😭"],
-    "haha": ["😂", "lol", "😄"],
+    "haha": ["😂", "lol", "💀"],
     "hahaha": ["LMAO", "💀💀", "stoppp"],
     "😂": ["fr", "💀", "lol"],
     "💀": ["LMAO", "😭", "stoppp"],
