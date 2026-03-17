@@ -20600,13 +20600,17 @@ function polishOutput(response) {
   // 7. If response starts with multiple prefixed observations, keep only the first
   // (catches: "Oh wait — X. I notice Y. Also Z. [actual response]")
   const prefixPatterns = /^(?:Oh wait|Hold on|I notice|I just realized|Hmm)[^.!?]*[.!?]\s*/;
-  let prefixCount = 0;
-  while (prefixPatterns.test(r) && prefixCount < 1) {
-    prefixCount++;
-    if (prefixCount > 1) {
-      r = r.replace(prefixPatterns, "");
-    } else {
-      break;
+  {
+    // Skip the first prefix (keep it), then strip any further stacked prefixes
+    const firstMatch = r.match(prefixPatterns);
+    if (firstMatch) {
+      let rest = r.slice(firstMatch[0].length);
+      while (prefixPatterns.test(rest)) {
+        rest = rest.replace(prefixPatterns, "");
+      }
+      if (rest.trim().length >= 5) {
+        r = firstMatch[0] + rest;
+      }
     }
   }
 
@@ -21084,14 +21088,15 @@ function matchEnergy(response, text, sent, mem) {
     // Strip trailing questions — low energy doesn't invite more
     r = r.replace(/\s*\?[^?]*$/, "");
     // If stripping the question left nothing useful, restore
-    if (r.trim().length < 3) r = response.toLowerCase().replace(/\bi\b(?='|'|\s|$)/g, "I");
+    if (r.trim().length < 5) r = response.toLowerCase().replace(/\bi\b(?='|'|\s|$)/g, "I");
 
-    // Shorten to first clause if long
-    if (r.length > 50) {
+    // Shorten to first clause if long — but only if mirrorTypingStyle hasn't
+    // already trimmed us short (avoid double-truncation leaving broken text)
+    if (r.length > 60) {
       const clauseBreak = r.search(/[,—–]\s/);
       if (clauseBreak > 8 && clauseBreak < r.length - 5) {
         const trimmed = r.slice(0, clauseBreak).trim();
-        if (trimmed.length >= 8) r = trimmed;
+        if (trimmed.length >= 10) r = trimmed;
       }
     }
 
@@ -23063,6 +23068,17 @@ export async function getAIResponse(input) {
   // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
   // (runs LAST — splits the fully-transformed text into multi-message segments)
   response = splitIntoMultiMessages(response, text, sent);
+
+  // ═══ Round 236: Final safety net — pipeline stages can strip content to nothing ═══
+  // Guard against empty, whitespace-only, or too-short responses after 30+ transforms.
+  // For multi-messages, check each segment; drop empty segments.
+  if (response.includes(MULTI_MSG_DELIMITER)) {
+    const segments = response.split(MULTI_MSG_DELIMITER).map(s => s.trim()).filter(s => s.length >= 1);
+    response = segments.length > 0 ? segments.join(MULTI_MSG_DELIMITER) : "hmm";
+  }
+  if (!response || response.trim().length < 1) {
+    response = "hmm";
+  }
 
   // Update discourse state for next turn
   lastDiscourseMove = plan.flavor;
