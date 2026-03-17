@@ -100,13 +100,35 @@ function TypingDots({ color, variant, exiting }) {
   );
 }
 
+/* ── Chat persistence helpers ── */
+const CHAT_STORE_KEY = "tasteprint_chat";
+const DEFAULT_MSGS = [
+  { from: "ai", text: "hey! 👋 what's up", id: 0, ts: Date.now() - 2000 },
+  { from: "me", text: "Hi! Just checking out this chat.", id: 1, ts: Date.now() - 1000 },
+  { from: "ai", text: "nice! ask me anything 😊", id: 2, ts: Date.now() },
+];
+
+function loadChat() {
+  try {
+    const raw = localStorage.getItem(CHAT_STORE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data) && data.length > 0) return data;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function saveChat(messages) {
+  try {
+    // Keep last 50 messages to avoid bloating localStorage
+    const trimmed = messages.slice(-50);
+    localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(trimmed));
+  } catch { /* ignore */ }
+}
+
 /* ── Main ChatBubble component ── */
 export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fsize, b, onAc, texture }) {
-  const [messages, setMessages] = useState([
-    { from: "ai", text: "Hey! 👋 How can I help you today?", id: 0, ts: Date.now() - 2000 },
-    { from: "me", text: "Hi! Just checking out this chat.", id: 1, ts: Date.now() - 1000 },
-    { from: "ai", text: "Nice! Feel free to ask me anything 😊", id: 2, ts: Date.now() },
-  ]);
+  const [messages, setMessages] = useState(() => loadChat() || DEFAULT_MSGS);
   const [inputVal, setInputVal] = useState("");
   const [typing, setTyping] = useState(false);
   const [typingExit, setTypingExit] = useState(false);
@@ -117,8 +139,11 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   const [deliveredId, setDeliveredId] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
-  const idRef = useRef(3);
+  const idRef = useRef((() => { const saved = loadChat(); return saved ? Math.max(...saved.map(m => m.id)) + 1 : 3; })());
   const busyRef = useRef(false);
+
+  /* Persist messages to localStorage on change */
+  useEffect(() => { saveChat(messages); }, [messages]);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
