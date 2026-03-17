@@ -703,6 +703,81 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.scale = pick([0.97, 0.98, 1.02, 1.03, 1.04]);
   }
 
+  /* ── MOOD SIGNATURE EFFECTS — unique treatments per mood ── */
+  if (!isNav && !isCode) {
+    if (moodId === "minimal") {
+      // Signature: ultra-thin top accent line + negative space emphasis
+      if (Math.random() < 0.35) {
+        s.borderTop = `2px solid ${acHex}20`;
+        s.border = undefined; // clean, only top accent
+      }
+      // Muted, desaturated feel
+      if (Math.random() < 0.3) {
+        s.filter = `saturate(${randRange(0.85, 0.95).toFixed(2)})`;
+      }
+      // No gradients, no rotation, no hue shifts — strip them
+      s.gradientOverlay = undefined;
+      s.rotate = undefined;
+      s.hueRotate = undefined;
+      s.scale = undefined;
+    }
+
+    if (moodId === "bold") {
+      // Signature: thick accent bottom border (grounding effect)
+      if (Math.random() < 0.3 && !s.border) {
+        s.borderBottom = `4px solid ${acHex}50`;
+      }
+      // Signature: double shadow (offset + glow) for dramatic depth
+      if (Math.random() < 0.25 && s.boxShadow && s.boxShadow !== "none") {
+        s.boxShadow += `, 0 0 30px ${acHex}10`;
+      }
+      // Bold always gets some visual weight — never "none" shadow
+      if (s.boxShadow === "none") {
+        s.boxShadow = `0 4px 14px ${shHex}12`;
+      }
+    }
+
+    if (moodId === "elegant") {
+      // Signature: subtle inner glow via inset shadow
+      if (Math.random() < 0.3) {
+        const inset = `inset 0 0 20px ${acHex}06`;
+        s.boxShadow = s.boxShadow && s.boxShadow !== "none" ? `${s.boxShadow}, ${inset}` : inset;
+      }
+      // Signature: letterSpacing hint (wide, airy feel)
+      if (Math.random() < 0.35) {
+        s.letterSpacing = pick(["0.02em", "0.03em", "0.04em"]);
+      }
+      // Elegant never rotates, never has dotted/dashed borders
+      s.rotate = undefined;
+      if (s.border && (s.border.includes("dashed") || s.border.includes("dotted"))) {
+        s.border = undefined;
+      }
+    }
+
+    if (moodId === "playful") {
+      // Signature: multicolor shadow (accent + accent2 offset shadows)
+      const ac2 = palette.ac2 || palette.ac || "#888";
+      if (Math.random() < 0.3 && !isSmall) {
+        s.boxShadow = `3px 3px 0 ${acHex}25, -2px -2px 0 ${ac2}20`;
+      }
+      // Signature: stronger rotation — playful tilts more
+      if (s.rotate) {
+        const deg = pick([-4, -3, -2.5, 2.5, 3, 4, 5]);
+        s.rotate = `${deg}deg`;
+      } else if (Math.random() < 0.4) {
+        s.rotate = `${pick([-3, -2, 2, 3])}deg`;
+      }
+      // Signature: higher saturation boost
+      if (Math.random() < 0.4) {
+        s.filter = `saturate(${randRange(1.15, 1.4).toFixed(2)})`;
+      }
+      // Playful gets more hue variation
+      if (!s.hueRotate && Math.random() < 0.3) {
+        s.hueRotate = pick([-25, -15, 15, 25, 35, -35]);
+      }
+    }
+  }
+
   return s;
 }
 
