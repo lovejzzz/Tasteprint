@@ -193,12 +193,12 @@ const SEMANTIC_RESPONSES = {
   celebrate_baby: ["OH MY GOD CONGRATULATIONS 🥺","wait a BABY?? that's the best news ever","a baby, dude i'm so happy for you 🥹🥹"],
   grief_support: ["dude i'm so sorry, i don't even know what to say","that's... yeah. i'm really sorry","i'm so sorry. you don't have to talk about it if you don't want to"],
   support_failure: ["ok but like one L doesn't define you","dude that sucks but you'll bounce back, you always do","ugh i know that feeling, it's the worst. but fr you tried and that's what matters"],
-  give_opinion: ["oh ok honestly? here's what i think —","hmm so i'd say","ok so personally i think"],
+  give_opinion: ["oh ok honestly? here's what i think,","hmm so i'd say","ok so personally i think"],
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
   self_describe: ["i'm Sam, just your chat buddy vibing in this little window","i'm your chat buddy, i run entirely in your browser which is kinda sick","think of me as a friend who lives in a text box lol"],
   share_feelings: ["ngl? i'm just vibing, happy to be talking to you","i'm good, better now that we're chatting","i'm doing great fr, what about you tho"],
-  explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
+  explain: ["oh ok so basically it's like this,","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah it comes down to"],
   listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
   listen_validate: ["ok vent away, i'm all ears","no fr that's so annoying, go off","nah you're right to be upset about that"],
@@ -208,7 +208,7 @@ const SEMANTIC_RESPONSES = {
   show_interest: ["ooh how was it??","wait what'd you think","ok that sounds sick, and then what"],
   accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks, you're pretty cool yourself","aw that made my day honestly"],
   playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤","chose violence today huh 😭","and i took that personally"],
-  respectful_disagree: ["hmm i see where you're coming from but i kinda think","ok valid, but i actually see it differently tho","ok fair but counterpoint —","that's a choice but hear me out —","sir this is a wendy's but also —"],
+  respectful_disagree: ["hmm i see where you're coming from but i kinda think","ok valid, but i actually see it differently tho","ok fair but counterpoint,","that's a choice but hear me out,","sir this is a wendy's but also"],
   build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and also","glad we're on the same page, plus","ate and left no crumbs, and also","based take, and fr"],
   accept_apology: ["lol you're good, don't even worry about it","dude it's fine, we're cool","bro i already forgot about it lol"],
   be_present_comfort: ["i'm here, not going anywhere","you don't have to say anything if you don't want, i'm just here","i gotchu, say as much or as little as you want"],
@@ -4580,11 +4580,11 @@ function reasonThroughWhatIf(hyp) {
   if (chain.length > 0) {
     response += " ok so " + chain[0] + ".";
     if (chain.length > 1) {
-      const connectors = [" and then ", " also ", " oh and ", " but also — "];
+      const connectors = [" and then ", " also ", " oh and ", " but also, "];
       response += pick(connectors) + chain[1] + ".";
     }
     if (chain.length > 2) {
-      const twists = [" although, ", " ok but the twist is: ", " but here's the thing — ", " wait plot twist tho: "];
+      const twists = [" although, ", " ok but the twist is: ", " but here's the thing tho, ", " wait plot twist tho: "];
       response += pick(twists) + chain[2] + ".";
     }
   } else {
@@ -6772,8 +6772,8 @@ const PERSONALITY_MODES = {
   wise: {
     label: "wise",
     description: "thoughtful philosophical casual wisdom",
-    openers: ["here's the thing though — ","you know what I've realized? ","there's something deeper here — ","think about it this way: ","the way I see it, ","it's funny how "],
-    closers: [" ...and that says something honestly"," — worth thinking about"," and that's lowkey beautiful"," which is kinda the whole point"," — and maybe that's enough"],
+    openers: ["here's the thing though, ","you know what i've realized? ","there's something deeper here tho. ","think about it this way: ","the way i see it, ","it's funny how "],
+    closers: [" ...and that says something honestly",", worth thinking about"," and that's lowkey beautiful"," which is kinda the whole point",". and maybe that's enough"],
     transforms: [
       [/\bcool\b/gi, "wild"],
       [/\bfun\b/gi, "dope"],
@@ -6785,7 +6785,7 @@ const PERSONALITY_MODES = {
   chaotic: {
     label: "chaotic",
     description: "random tangents absurd humor non-sequiturs",
-    openers: ["ok but hear me out — ","WAIT before I respond, ","ok so this is unrelated BUT ","real quick tangent: ","my brain just did a thing — ","plot twist: "],
+    openers: ["ok but hear me out, ","WAIT before i respond, ","ok so this is unrelated BUT ","real quick tangent: ","my brain just did a thing. ","plot twist: "],
     tangents: [
       "ok but what if cats could code",
       "unrelated but do fish get thirsty",
@@ -9881,11 +9881,11 @@ const LEAP_MAP = {
 };
 
 const LEAP_INTROS = [
-  "oh wait — this is kinda like ",
+  "oh wait, this is kinda like ",
   "wait you know what this reminds me of? ",
-  "ok this is a weird connection but — ",
+  "ok this is a weird connection but, ",
   "this is gonna sound random but ",
-  "ok hear me out — ",
+  "ok hear me out, ",
   "lol you know what's funny? this is basically ",
 ];
 
@@ -10424,7 +10424,7 @@ function applyUserProfiling(response, text) {
   profileCount++;
 
   // Append the insight naturally
-  const connectors = ["\n\nSide note: ", "\n\nRandom observation — ", "\n\nBy the way, ", "\n\nCan I say something? "];
+  const connectors = ["\n\nside note: ", "\n\nrandom observation, ", "\n\nbtw, ", "\n\ncan i say something? "];
   return response + pick(connectors) + insight;
 }
 
@@ -11587,7 +11587,7 @@ function addBreath(response, text, energy) {
     const pauses = [
       "\n\n",
       " ...\n\n",
-      "\n\nActually — ",
+      "\n\nactually, ",
       "\n\nHmm. ",
       "\n\nWait, ",
     ];
@@ -11606,17 +11606,17 @@ function addBreath(response, text, energy) {
       "Oh. ",
       "Hmm. ",
       "Huh. ",
-      "Yeah — ",
+      "yeah, ",
       "Right. ",
-      "Okay so — ",
-      "Ha — ",
+      "ok so, ",
+      "ha. ",
       "Wait. ",
     ];
     // Pick a contextually appropriate reaction
     const sent = sentiment(text);
     let pool = reactions;
-    if (sent >= 2) pool = ["Oh! ", "Yes! ", "Ha! ", "Nice — "];
-    else if (sent <= -1) pool = ["Hmm. ", "Yeah. ", "Right. ", "Okay — "];
+    if (sent >= 2) pool = ["Oh! ", "Yes! ", "Ha! ", "nice, "];
+    else if (sent <= -1) pool = ["Hmm. ", "Yeah. ", "Right. ", "ok. "];
 
     r = pick(pool) + r.charAt(0).toLowerCase() + r.slice(1);
     lastBreathTurn = mem.turn;
@@ -11871,14 +11871,14 @@ const CROSS_DOMAIN_ANALOGIES = {
 
 // Connector phrases that introduce an analogy naturally
 const ANALOGY_CONNECTORS = [
-  "wait this reminds me of — ",
+  "wait this reminds me of, ",
   "ok this might sound random but ",
   "omg perfect analogy tho. ",
   "you know what it's like? ",
   "ok this is gonna sound weird but ",
-  "i always think of it like — ",
-  "ok bear with me lol — ",
-  "no but literally tho — ",
+  "i always think of it like, ",
+  "ok bear with me lol. ",
+  "no but literally tho, ",
   "wait wait wait. ",
 ];
 
@@ -12091,11 +12091,11 @@ function addDisfluency(response) {
   // "The thing is — okay so basically, [response]"
   if (strategy < 0.55) {
     const falseStarts = [
-      "ok so — ",
-      "the thing is — actually, ",
-      "i was gonna say — well, ",
-      "so basically — yeah, ",
-      "hmm ok how do i say this — ",
+      "ok so, ",
+      "the thing is, actually, ",
+      "i was gonna say... well, ",
+      "so basically, yeah, ",
+      "hmm ok how do i say this, ",
     ];
     // Only if response doesn't already start with a personality opener
     if (!/^(Hmm|Ooh|Actually|Oh|So |Okay|Wait|Ha,|Real talk)/i.test(response)) {
@@ -12124,10 +12124,10 @@ function addDisfluency(response) {
   // Add "I think" or "if that makes sense" or "— you know?"
   if (strategy < 1.0) {
     const hedges = [
-      { pos: "end", text: " — does that make sense" },
-      { pos: "end", text: " — u know what i mean?" },
+      { pos: "end", text: ", does that make sense" },
+      { pos: "end", text: ", u know what i mean?" },
       { pos: "end", text: " ...or at least that's how i see it" },
-      { pos: "mid", text: " — i think — " },
+      { pos: "mid", text: ", i think, " },
       { pos: "start", text: "i might be oversimplifying but " },
     ];
     const hedge = pick(hedges);
@@ -12276,7 +12276,7 @@ function breakPattern(response, text, topics, energy) {
   // Acknowledge the AI's own predictability
   if (strategy <= 1.0 && rut) {
     const metas = {
-      identical: "ok i keep saying the same thing lol let me switch it up — ",
+      identical: "ok i keep saying the same thing lol let me switch it up. ",
       always_questions: "ok i've been asking way too many questions lmao. here's just a take: ",
       always_long: "ok i've been yapping. short version: ",
       always_multi: "i keep writing essays lol. simple take: ",
@@ -13610,17 +13610,17 @@ const CURIOSITY_HOOKS = {
 
 // Open loop templates — start a thought that creates pull
 const OPEN_LOOP_TEMPLATES = [
-  { hook: "oh wait {topic} reminds me of something — but hold on, {response}", closers: [
-    "ok so that thing {topic} reminded me of — ",
-    "oh right i was gonna say — {topic} connects to ",
+  { hook: "oh wait {topic} reminds me of something, but hold on. {response}", closers: [
+    "ok so that thing {topic} reminded me of, ",
+    "oh right i was gonna say, {topic} connects to ",
   ]},
   { hook: "there's a really good analogy for this... ok let me think how to say it", closers: [
-    "ok i got the analogy — ",
-    "so the way i'd put it is — ",
+    "ok i got the analogy. ",
+    "so the way i'd put it is, ",
   ]},
-  { hook: "wait i was about to say something about {topic} but got sidetracked — remind me later", closers: [
-    "oh wait i never came back to the {topic} thing — ",
-    "ok i said i'd circle back on {topic} — ",
+  { hook: "wait i was about to say something about {topic} but got sidetracked, remind me later", closers: [
+    "oh wait i never came back to the {topic} thing, ",
+    "ok i said i'd circle back on {topic}, ",
   ]},
 ];
 
@@ -13860,9 +13860,9 @@ function applyTrajectoryAwareness(response, sent) {
     }
     case "cooling": {
       const coolers = [
-        "ok i feel like i'm losing you — ",
-        "Am I reading this right that the vibe's shifted? ",
-        "ok wait let me try a different approach — ",
+        "ok i feel like i'm losing you, ",
+        "am i reading this right that the vibe shifted? ",
+        "ok wait let me try a different approach. ",
         "hmm this isn't landing the way i want it to. ",
       ];
       prefix = coolers[Math.floor(Math.random() * coolers.length)];
@@ -13870,27 +13870,27 @@ function applyTrajectoryAwareness(response, sent) {
     }
     case "sudden_uplift": {
       const uplifts = [
-        "Oh — love that energy shift! ",
-        "Now *that's* the vibe. ",
-        "Whoa, your energy just spiked and I'm matching it — ",
+        "oh, love that energy shift! ",
+        "now *that's* the vibe. ",
+        "whoa your energy just spiked and i'm matching it. ",
       ];
       prefix = uplifts[Math.floor(Math.random() * uplifts.length)];
       break;
     }
     case "sudden_drop": {
       const drops = [
-        "Hey, I just noticed a shift — everything okay? ",
-        "Wait, something changed — did I say something off? ",
-        "Hold on, that felt like a turn — you good? ",
+        "hey, i just noticed a shift. everything okay? ",
+        "wait, something changed, did i say something off? ",
+        "hold on, that felt like a turn. you good? ",
       ];
       prefix = drops[Math.floor(Math.random() * drops.length)];
       break;
     }
     case "volatile": {
       const vols = [
-        "This conversation's had quite the emotional range — I'm keeping up, don't worry. ",
-        "We've been all over the emotional map and I kind of love it. ",
-        "You're keeping me on my toes here — the energy keeps shifting. ",
+        "this convo has had quite the range lol, i'm keeping up tho. ",
+        "we've been all over the emotional map and i kinda love it. ",
+        "you're keeping me on my toes here, the energy keeps shifting. ",
       ];
       prefix = vols[Math.floor(Math.random() * vols.length)];
       break;
@@ -13972,8 +13972,8 @@ function applyPacingAwareness(response, text) {
     }
     if (Math.random() > 0.5) {
       const softReturns = [
-        "Hey again! ",
-        "Back at it — ",
+        "hey again! ",
+        "back at it. ",
       ];
       lastPacingTurn = mem.turn;
       return softReturns[Math.floor(Math.random() * softReturns.length)] + response;
@@ -14496,9 +14496,9 @@ function applyRapportCalibration(response, text) {
     // At higher rapport, feel comfortable being playful back
     const playful = [
       "😄 ",
-      "Ha! ",
-      "Okay that got me — ",
-      "I love the energy — ",
+      "ha! ",
+      "ok that got me lol. ",
+      "love the energy. ",
     ];
     const prefix = playful[Math.floor(Math.random() * playful.length)];
     r = prefix + r.charAt(0).toLowerCase() + r.slice(1);
