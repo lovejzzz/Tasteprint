@@ -280,6 +280,7 @@ function _analyzeHarmony(shapes) {
   const hasGradient = [];
   const hasBorder = [];
   const fontCats = [];
+  const hasTextTransform = [];
   for (const s of shapes) {
     const t = s.type;
     if (!variantsByType[t]) variantsByType[t] = [];
@@ -300,6 +301,7 @@ function _analyzeHarmony(shapes) {
     if (ds.hueRotate) hueShifts.push(ds.hueRotate);
     hasGradient.push(!!ds.gradientOverlay);
     hasBorder.push(!!(ds.border || ds.borderTop || ds.borderBottom));
+    hasTextTransform.push(!!ds.textTransform);
   }
   const avgFsize = fsizes.length ? fsizes.reduce((a, b) => a + b, 0) / fsizes.length : 1;
   const avgRadius = radii.length ? radii.reduce((a, b) => a + b, 0) / radii.length : 14;
@@ -308,7 +310,8 @@ function _analyzeHarmony(shapes) {
   const avgHueShift = hueShifts.length ? Math.round(hueShifts.reduce((a, b) => a + b, 0) / hueShifts.length) : 0;
   const gradientRate = hasGradient.length ? hasGradient.filter(Boolean).length / hasGradient.length : 0;
   const borderRate = hasBorder.length ? hasBorder.filter(Boolean).length / hasBorder.length : 0;
-  return { variantsByType, fonts, fsizes, avgFsize, radii, avgRadius, shadowTypes, dominantShadow, fontCats, dominantFontCat, avgHueShift, gradientRate, borderRate };
+  const textTransformRate = hasTextTransform.length ? hasTextTransform.filter(Boolean).length / hasTextTransform.length : 0;
+  return { variantsByType, fonts, fsizes, avgFsize, radii, avgRadius, shadowTypes, dominantShadow, fontCats, dominantFontCat, avgHueShift, gradientRate, borderRate, textTransformRate };
 }
 
 function _mode(arr) {
@@ -773,11 +776,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.backdropFilter = `blur(${pick([8, 12, 16, 20])}px)`;
   }
 
-  // --- Gradient overlay (DNA-driven or 25% chance, skip nav/code/small) ---
+  // --- Gradient overlay (DNA-driven or harmony-adaptive chance, skip nav/code/small) ---
   if (!isNav && !isCode && !isSmall) {
     const ac2 = palette.ac2 || palette.ac || "#888";
     const dnaGrad = dna && dna.gradientStyle !== "none";
-    // DNA gradient style: 70% fire rate for cohesive canvas, else 25% random
+    // Harmony-adaptive fallback rate: match canvas gradient density
+    const gradFallback = harmony ? (harmony.gradientRate > 0.6 ? 0.55 : harmony.gradientRate > 0.3 ? 0.30 : 0.12) : 0.25;
+    // DNA gradient style: 70% fire rate for cohesive canvas, else harmony-adaptive
     if (dnaGrad && Math.random() < 0.70) {
       const gs = dna.gradientStyle;
       if (gs === "diagonal") {
@@ -798,7 +803,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           `conic-gradient(from 45deg, ${acHex}04, transparent 30%, ${ac2}05, transparent)`,
         ]);
       }
-    } else if (Math.random() < 0.25) {
+    } else if (Math.random() < gradFallback) {
       if (moodId === "bold") {
         s.gradientOverlay = pick([
           `linear-gradient(135deg, ${acHex}08 0%, transparent 60%)`,
@@ -826,16 +831,18 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
-  // --- Border treatment (DNA-driven or 18% chance, skip nav/code) ---
+  // --- Border treatment (DNA-driven or harmony-adaptive chance, skip nav/code) ---
   if (!isNav && !isCode) {
     const dnaBorder = dna && dna.borderStyle !== "none";
+    // Harmony-adaptive fallback rate: match canvas border density
+    const borderFallback = harmony ? (harmony.borderRate > 0.5 ? 0.45 : harmony.borderRate > 0.2 ? 0.22 : 0.08) : 0.18;
     if (dnaBorder && Math.random() < 0.65) {
       const bs = dna.borderStyle;
       if (bs === "thin") s.border = `1px solid ${acHex}${pick(["12", "15", "18"])}`;
       else if (bs === "accent-top") { s.borderTop = `2px solid ${acHex}${pick(["25", "30", "35"])}`; }
       else if (bs === "accent-bottom") { s.borderBottom = `3px solid ${acHex}${pick(["30", "40", "50"])}`; }
       else if (bs === "dashed") s.border = `2px dashed ${acHex}${pick(["20", "25", "30"])}`;
-    } else if (Math.random() < 0.18) {
+    } else if (Math.random() < borderFallback) {
       if (moodId === "bold") {
         s.border = pick([
           `2px solid ${acHex}30`,
@@ -862,10 +869,14 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
-  // --- Accent hue shift (DNA-driven or 15% random) ---
+  // --- Accent hue shift (DNA > harmony direction > random) ---
   if (dna && dna.hueDirection && !isCode) {
     // DNA: all components shift in the same direction with slight variation
     s.hueRotate = dna.hueDirection + pick([-5, -3, 0, 0, 3, 5]);
+  } else if (!isCode && harmony && harmony.avgHueShift !== 0 && Math.random() < 0.55) {
+    // Harmony: bias toward canvas hue direction with variation
+    const base = harmony.avgHueShift;
+    s.hueRotate = base + pick([-8, -4, 0, 4, 8]);
   } else if (!isCode && Math.random() < 0.15) {
     const shift = pick([-20, -15, -10, 10, 15, 20, 30, -30]);
     s.hueRotate = shift;
@@ -878,8 +889,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
   // --- Typography dimension: textTransform + mixBlendMode for gradient overlays ---
   if (!isNav && !isCode) {
-    // textTransform: mood-aware typography styling
-    if (moodId === "bold" && sizeCat === "large" && Math.random() < 0.35) {
+    // textTransform: harmony-adaptive + mood-aware
+    // If canvas already uses textTransform heavily, match it; if not, use mood defaults
+    const ttRate = harmony ? harmony.textTransformRate : 0;
+    const ttBoost = ttRate > 0.4 ? 0.45 : ttRate > 0.2 ? 0.25 : 0; // harmony boost
+    if (ttBoost > 0 && Math.random() < ttBoost) {
+      s.textTransform = "uppercase"; // match canvas typographic personality
+    } else if (moodId === "bold" && sizeCat === "large" && Math.random() < 0.35) {
       s.textTransform = "uppercase";
     } else if (moodId === "elegant" && Math.random() < 0.25) {
       s.textTransform = pick(["uppercase", "lowercase"]);
@@ -1211,6 +1227,22 @@ export function designScore(shape, palette, otherShapes = []) {
       if (myHue !== 0 && Math.sign(myHue) === Math.sign(avgHue)) score += 0.15; // same direction
       else if (myHue !== 0 && Math.sign(myHue) !== Math.sign(avgHue)) score -= 0.15; // opposing
     }
+
+    // Gradient cohesion — component should match canvas gradient density
+    const myHasGrad = !!ds.gradientOverlay;
+    const otherGrads = otherShapes.filter(s => !!(s.dStyles || {}).gradientOverlay).length;
+    const canvasGradRate = otherShapes.length ? otherGrads / otherShapes.length : 0;
+    if (canvasGradRate > 0.5 && myHasGrad) score += 0.2;        // gradient-heavy canvas, I have one too
+    else if (canvasGradRate > 0.5 && !myHasGrad) score -= 0.15; // gradient-heavy canvas, I'm the odd one out
+    else if (canvasGradRate < 0.2 && myHasGrad) score -= 0.1;   // clean canvas, my gradient sticks out
+
+    // Border cohesion — component should match canvas border density
+    const myHasBorder = !!(ds.border || ds.borderTop || ds.borderBottom);
+    const otherBorders = otherShapes.filter(s => { const d = s.dStyles || {}; return !!(d.border || d.borderTop || d.borderBottom); }).length;
+    const canvasBorderRate = otherShapes.length ? otherBorders / otherShapes.length : 0;
+    if (canvasBorderRate > 0.5 && myHasBorder) score += 0.15;
+    else if (canvasBorderRate > 0.5 && !myHasBorder) score -= 0.1;
+    else if (canvasBorderRate < 0.15 && myHasBorder) score -= 0.1;
   }
 
   return Math.max(1, Math.min(5, Math.round(score)));
