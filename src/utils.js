@@ -1951,13 +1951,16 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         "chromatic-shift", "split-tone", "layered-depth", "accent-frame",
         "soft-bloom", "brutalist-type",
         "holographic-edge", "recessed-inset", "neon-outline", "frosted-matte", "duotone-wash",
+        // Round 46: compound wild cards — combine 3-4 CSS dimensions for dramatic cohesive looks
+        "stained-glass", "film-grain", "vapor-wave", "brutalist-stack", "silk-matte",
       ];
       const MOOD_WEIGHTS = {
-        auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9, 7, 5, 8, 6, 7],
-        bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12, 10, 8, 14, 3, 6],
-        playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4, 12, 4, 14, 3, 8],
-        elegant: [14, 4, 1, 8, 1, 2, 10, 3, 2, 3, 12, 8, 4, 14, 1, 6, 10, 3, 12, 10],
-        minimal: [4, 10, 1, 1, 10, 14, 6, 4, 8, 1, 3, 2, 4, 8, 1, 2, 6, 1, 10, 4],
+        //                                                                                                    stain film vapor brut silk
+        auto:    [7, 6, 5, 5, 5, 5, 4, 4, 9, 8, 8, 8, 8, 9, 9, 7, 5, 8, 6, 7,                              7, 6, 7, 6, 7],
+        bold:    [3, 4, 12, 8, 6, 4, 5, 6, 5, 10, 8, 10, 12, 3, 12, 10, 8, 14, 3, 6,                        4, 3, 12, 14, 3],
+        playful: [6, 5, 8, 10, 10, 3, 6, 8, 4, 12, 10, 8, 6, 8, 4, 12, 4, 14, 3, 8,                         10, 4, 14, 3, 5],
+        elegant: [14, 4, 1, 8, 1, 2, 10, 3, 2, 3, 12, 8, 4, 14, 1, 6, 10, 3, 12, 10,                        8, 6, 1, 1, 14],
+        minimal: [4, 10, 1, 1, 10, 14, 6, 4, 8, 1, 3, 2, 4, 8, 1, 2, 6, 1, 10, 4,                           2, 4, 1, 1, 8],
       };
       const weights = MOOD_WEIGHTS[moodId] || MOOD_WEIGHTS.auto;
       const totalW = weights.reduce((a, b) => a + b, 0);
@@ -2113,6 +2116,77 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.boxShadow = `0 4px 16px ${pick([acHex, gc2])}12`;
         s.border = `1px solid ${pick([acHex, gc2])}10`;
         s.borderRadius = pick([8, 12, 16]);
+      }
+
+      // ── Round 46: Compound wild cards — combine 3-4 CSS dimensions ──
+
+      else if (wildCard === "stained-glass") {
+        // Colored gradient overlay + thick colored border + vignette mask + inner glow
+        const sgColor = pick([acHex, gc1, gc2, gcGlow]);
+        const sgAngle = pick([120, 150, 200, 240, 300]);
+        s.gradientOverlay = `linear-gradient(${sgAngle}deg, ${sgColor}18 0%, ${gc2}10 40%, ${gc1}14 70%, transparent 100%)`;
+        s.border = `${pick([2, 3])}px solid ${sgColor}35`;
+        s.maskImage = `radial-gradient(ellipse 90% 85% at center, black 55%, transparent 100%)`;
+        s.boxShadow = [
+          `inset 0 0 ${pick([12, 18, 24])}px ${sgColor}12`,
+          `0 4px 16px ${shHex}10`,
+          `0 0 ${pick([8, 12])}px ${sgColor}08`,
+        ].join(", ");
+        s.borderRadius = pick([8, 12, 16]);
+        s.filter = `saturate(${randRange(1.05, 1.20).toFixed(2)}) brightness(${randRange(1.02, 1.06).toFixed(2)})`;
+      } else if (wildCard === "film-grain") {
+        // Sepia filter + fine dot texture + low contrast + soft edges — vintage cinema
+        const filmColor = pick([shHex, gc1]);
+        const dotGap = pick([6, 8, 10]);
+        s.filter = `sepia(${randRange(0.08, 0.18).toFixed(2)}) contrast(${randRange(0.92, 0.98).toFixed(2)}) brightness(${randRange(1.02, 1.06).toFixed(2)})`;
+        s.textureOverlay = `radial-gradient(circle 1px at ${Math.round(dotGap/2)}px ${Math.round(dotGap/2)}px, ${filmColor}0A 1px, transparent 1px)`;
+        s.textureSize = `${dotGap}px ${dotGap}px`;
+        s.boxShadow = `0 2px 12px ${shHex}08, inset 0 0 30px ${filmColor}04`;
+        s.borderRadius = pick([4, 8, 12]);
+        s.border = `1px solid ${filmColor}0C`;
+        s.maskImage = `linear-gradient(to bottom, black 85%, transparent 100%)`;
+      } else if (wildCard === "vapor-wave") {
+        // Heavy hue-rotate + saturated gradient + neon glow + retro transform — synthwave aesthetic
+        const vwHue = pick([30, 60, 90, 120, 180, 240, 270, 300]);
+        const vwGlow = pick([gc1, gc2, gcGlow, acHex]);
+        s.hueRotate = vwHue;
+        s.filter = `saturate(${randRange(1.25, 1.50).toFixed(2)}) contrast(${randRange(1.04, 1.10).toFixed(2)})`;
+        s.gradientOverlay = `linear-gradient(${pick([135, 180, 225])}deg, ${vwGlow}1A 0%, ${gc2}12 50%, ${gc1}18 100%)`;
+        s.boxShadow = [
+          `0 0 ${pick([12, 20, 28])}px ${vwGlow}20`,
+          `0 0 ${pick([30, 40, 50])}px ${vwGlow}0C`,
+          `inset 0 0 ${pick([8, 14])}px ${vwGlow}08`,
+        ].join(", ");
+        s.border = `1px solid ${vwGlow}40`;
+        s.borderRadius = pick([4, 8, 999]);
+        s.skewX = pick([-1, -0.5, 0.5, 1]);
+      } else if (wildCard === "brutalist-stack") {
+        // Thick offset shadow + heavy border + bold transform + texture — raw concrete modernism
+        const bsColor = pick([gc1, gcGlow, dc.comp]);
+        const bsOffset = pick([4, 6, 8]);
+        s.boxShadow = [
+          `${bsOffset}px ${bsOffset}px 0 ${bsColor}40`,
+          `${bsOffset * 2}px ${bsOffset * 2}px 0 ${bsColor}20`,
+          `${bsOffset * 3}px ${bsOffset * 3}px 0 ${bsColor}0C`,
+        ].join(", ");
+        s.border = `${pick([3, 4])}px solid ${bsColor}60`;
+        s.borderRadius = pick([0, 2, 4]);
+        s.textTransform = "uppercase";
+        s.letterSpacing = pick(["0.04em", "0.06em", "0.08em"]);
+        s.filter = `contrast(${randRange(1.08, 1.18).toFixed(2)}) grayscale(${randRange(0.0, 0.12).toFixed(2)})`;
+        s.textureOverlay = `repeating-linear-gradient(${pick([45, -45])}deg, ${bsColor}06 0px, ${bsColor}06 2px, transparent 2px, transparent ${pick([8, 12])}px)`;
+        s.rotate = `${pick([-1, -0.5, 0.5, 1])}deg`;
+      } else if (wildCard === "silk-matte") {
+        // Ultra-refined: soft desaturation + silk sheen gradient + fine border + whisper shadow — luxury fabric
+        const smColor = pick([dc.muted, gc1, dc.analog1]);
+        s.filter = `saturate(${randRange(0.75, 0.88).toFixed(2)}) brightness(${randRange(1.04, 1.08).toFixed(2)}) contrast(${randRange(1.01, 1.04).toFixed(2)})`;
+        s.gradientOverlay = `linear-gradient(${pick([130, 150, 170])}deg, ${smColor}06 0%, ${smColor}0C 50%, ${smColor}04 100%)`;
+        s.boxShadow = `0 2px 8px ${shHex}06, 0 0 1px ${smColor}10`;
+        s.border = `1px solid ${smColor}0A`;
+        s.borderRadius = pick([8, 12, 16, 20]);
+        s.textureOverlay = `repeating-linear-gradient(${pick([0, 90])}deg, ${smColor}03 0px, ${smColor}03 1px, transparent 1px, transparent ${pick([24, 32])}px)`;
+        s.letterSpacing = pick(["0.02em", "0.03em"]);
+        s.maskImage = `radial-gradient(ellipse 95% 90% at center, black 60%, transparent 100%)`;
       }
     }
   }
