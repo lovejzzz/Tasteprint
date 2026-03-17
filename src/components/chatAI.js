@@ -170,7 +170,7 @@ const SEMANTIC_RESPONSES = {
   calm_anxiety: ["hey it's gonna be ok, take a breath","i get that, anxiety is the worst. what's worrying you most?","breathe, you've handled hard stuff before"],
   ease_stress: ["you're carrying a lot rn, that's valid","ok one thing at a time, what's the biggest thing?","stress is the worst, have you been able to take any breaks?"],
   match_excitement: ["LETS GOOOO 🔥🔥","ok i'm literally so hyped for you rn","YOOO that's amazing tell me everything"],
-  be_present: ["hey, i'm right here. i hear you","you're not alone in this, i promise","i might be a chatbot but i genuinely care about how you're doing"],
+  be_present: ["hey, i'm right here. i hear you","you're not alone in this, i promise","i'm here for real, whatever you need"],
   accept_gratitude: ["aww of course, always","no need to thank me, that's what friends are for","🥺 you're so sweet, happy i could help"],
   help_clarity: ["ok let's figure this out together, what part is confusing?","no worries, what specifically doesn't make sense?","totally fair, let me try to help break it down"],
   empathize_tired: ["ugh being tired is the worst, you resting enough?","go easy on yourself today, your body's telling you something","that sounds rough, hope you can get some rest soon"],
@@ -869,21 +869,21 @@ const SUBTEXT_RESPONSES = {
     "Hmm, I feel like there's a 'but' coming. What's on your mind?",
   ],
   passiveAggressive: [
-    "Okay, I think I might have missed the mark there. What were you actually looking for?",
-    "I'm picking up that something's off — want to reset? What do you actually need?",
-    "Fair enough. Let me try a different approach. What would be more helpful?",
-    "I feel like we might be talking past each other. Can we start fresh on this?",
+    "ok i might've missed what you meant lol. what were you going for",
+    "wait something's off — wanna just start over on this",
+    "lol fair, let me try that again. what do you actually need",
+    "ok i feel like we're not on the same page rn. reset?",
   ],
   impressed: [
-    "I'll take that as high praise coming from you 😊",
-    "Coming from someone who doesn't throw compliments around easily — thanks! 😄",
-    "Haha, I think that's the closest to a compliment I'm getting — I'll take it! 😊",
-    "See? I have my moments! What else can I surprise you with?",
+    "lol i'll take that 😊",
+    "wait was that a compliment?? i'm saving that",
+    "ok ok i see you noticing 😂",
+    "see?? i have my moments lol",
   ],
   disengaged: [
-    "Hmm, I feel like I might be boring you. What would you actually want to talk about?",
-    "I sense the vibe shifting — should we switch topics? What sounds interesting?",
-    "Fair, I'll stop rambling about that. What's on your mind instead?",
+    "ok i'm losing you aren't i lol. what do you actually wanna talk about",
+    "yeah this isn't it huh. what sounds better",
+    "lol ok i'll stop, what's on your mind instead",
   ],
   genuinelyExcited: [
     "yooo ok i love this energy",
@@ -891,39 +891,39 @@ const SUBTEXT_RESPONSES = {
     "LETS GO ok i'm excited too now",
   ],
   avoidant: [
-    "Totally fair, we don't have to go there. What would you rather talk about?",
-    "Noted — topic changed! What else is on your mind?",
-    "No problem at all. Let's shift gears. What sounds good?",
+    "ok yeah we don't have to go there. what else tho",
+    "say less, moving on. what's up",
+    "all good, different topic. what sounds fun",
   ],
   seekingReassurance: [
-    "Hey, don't be so hard on yourself — everyone starts somewhere! What specifically are you stuck on?",
-    "Trust me, asking questions means you're on the right track. What part is confusing?",
-    "Nah, you're doing better than you think! Let's break it down together.",
-    "The fact that you're trying already puts you ahead. What can I help with?",
+    "hey don't be so hard on yourself, everyone starts somewhere. what are you stuck on",
+    "nah asking questions is literally how you learn. what part is confusing",
+    "you're doing better than you think fr. wanna break it down",
+    "the fact that you're trying already puts you ahead honestly. what can i help with",
   ],
   seekingValidation: [
-    "Are you kidding? I genuinely enjoy our conversations! What made you think otherwise?",
-    "Hey — you're literally making my day more interesting. Don't sell yourself short!",
-    "nah fr I genuinely get excited about good conversation, and you're bringing it 😊",
-    "Absolutely not annoying! I'm here because I want to be. What's up?",
+    "bro stop, you're literally not annoying at all 😊",
+    "nah fr you're good, i like talking to you",
+    "are you kidding lol this is fun, don't worry about it",
+    "nah you're fine, for real. what's up",
   ],
   uncertain: [
-    "Sounds like you're not 100% sure — want to think it through together?",
-    "I hear some uncertainty. What's making you hesitate?",
-    "No need to commit — let's explore the options first.",
+    "you sound kinda unsure — wanna think through it",
+    "what's making you hesitate tho",
+    "you don't have to decide rn, just thinking out loud is fine",
   ],
   politelyBored: [
-    "I feel like 'interesting' is doing a lot of heavy lifting there 😄 What would you ACTUALLY want to talk about?",
-    "That's 'polite interesting' isn't it? 😄 Tell me what would genuinely grab your attention.",
-    "I can feel the enthusiasm radiating through the screen 😄 Seriously though, what topics light you up?",
+    "lol 'interesting' is doing a lot of heavy lifting there 😄 what do you actually wanna talk about",
+    "that's polite-interesting isn't it 😄 what would actually grab you",
+    "i can feel the enthusiasm through the screen 😄 for real tho what sounds fun",
   ],
   sayingOneThingMeaningAnother: [
-    "Your words say yes but something tells me you're not fully feeling it. What's up?",
-    "I'm getting mixed signals here — what do you actually think?",
-    "Hmm, I sense there's more to it than that. Want to be straight with me?",
+    "your words say yes but i'm not buying it lol. what's actually up",
+    "i'm getting mixed signals here — what do you actually think",
+    "hmm there's more to it right. just be real with me",
   ],
   curt: [
-    "Short and sweet! Anything else on your mind or should I pick a topic?",
+    "lol ok. want me to just pick something to talk about",
   ],
 };
 
@@ -1417,9 +1417,9 @@ function respondToAnswer(answer, sent) {
     noun_answer: () => {
       const ans = answer.answer;
       return [
-        `${ans.charAt(0).toUpperCase() + ans.slice(1)}! Good choice. What draws you to that?`,
-        `Oh, ${ans}! That's a great pick. Have you been into that for a while?`,
-        `${ans} — nice! What made you pick that?`,
+        `${ans}! ok yeah i can see that. what draws you to it`,
+        `ooh ${ans}, solid. have you been into that for a while`,
+        `${ans} — nice, what made you pick that`,
       ];
     },
     continuation: [
@@ -3693,10 +3693,10 @@ function resolveFragment(text, lower, parsed, topics) {
   // ── "Right?" / "You know?" / "Don't you think?" — rhetorical agreement-seekers ──
   if (/^(right\??|you know\??|don'?t you think\??|isn'?t it\??|wouldn'?t you say\??|am i right\??|amirite)$/i.test(lower)) {
     return pick([
-      "Absolutely! " + (contextTopic ? `${contextTopic} is definitely like that.` : "That's a solid point.") + " What makes you feel that way?",
-      "100%! You're onto something. " + (contextTopic ? `${contextTopic} really does work that way.` : ""),
-      "I think so too! It's one of those things that just... makes sense once you see it.",
-      "Yeah, that checks out! " + (contextTopic ? `With ${contextTopic}, ` : "") + "most people would agree.",
+      "no fr" + (contextTopic ? `, ${contextTopic} is literally like that` : ", you're right") + ". what made you think of it",
+      "honestly yeah" + (contextTopic ? `, ${contextTopic} really does work that way` : ", you're onto something"),
+      "yeah that tracks honestly, once you see it you can't unsee it",
+      "100%" + (contextTopic ? `, with ${contextTopic} ` : " ") + "most people would agree tbh",
     ]);
   }
 
@@ -3737,28 +3737,28 @@ function resolveFragment(text, lower, parsed, topics) {
   // ── "Seriously?" / "Wait what?" / "No way" — surprise/disbelief ──
   if (/^(seriously|wait what|no way|really|for real|you serious|are you serious|that's crazy|that's wild|you're kidding|shut up|get out)\?*!*$/i.test(lower)) {
     return pick([
-      "Dead serious! " + (contextTopic ? `${contextTopic} is genuinely like that.` : "It's real!") + " I know, right?",
-      "I know it sounds wild, but yeah! " + (contextTopic ? `${contextTopic} is more interesting than it seems.` : ""),
-      "Ha, I had the same reaction! It's one of those things that's surprisingly true.",
-      "100% for real! What part surprises you the most?",
+      "dead serious lol" + (contextTopic ? ` ${contextTopic} is actually like that` : "") + " wild right",
+      "no fr" + (contextTopic ? `, ${contextTopic} is lowkey crazy` : " it's actually real") + " 😂",
+      "lol right?? i had the same reaction",
+      "100% for real, which part got you",
     ]);
   }
 
   // ── "Never mind" / "Forget it" / "Whatever" — topic abandonment ──
   if (/^(never ?mind|forget (?:it|about it)|whatever|doesn'?t matter|nvm|skip|pass)\.?$/i.test(lower)) {
     return pick([
-      "No worries! " + (contextTopic ? `We can circle back to ${contextTopic} later if you want. ` : "") + "What else is on your mind?",
-      "All good! Sometimes topics don't click. What would you rather talk about?",
-      "Okay, moving on! 😊 I'm curious — what ARE you interested in right now?",
+      "lol ok" + (contextTopic ? `, we can come back to ${contextTopic} whenever` : "") + " what else tho",
+      "bet, moving on. what do you wanna talk about",
+      "fair lol, what's on your mind instead",
     ]);
   }
 
   // ── "I know" / "Obviously" / "Duh" — user already knew this ──
   if (/^(i know|i knew that|obviously|duh|no (?:duh|kidding|shit)|yeah i know|tell me something (?:i don'?t know|new))\.?$/i.test(lower)) {
     return pick([
-      "Ha, fair — I'm preaching to the choir! " + (contextTopic ? `What's something about ${contextTopic} that most people DON'T know?` : "What would you like to go deeper on?"),
-      "Sorry for the basics! Let me level up — " + (contextTopic && ASSOC[contextTopic]?.opinions ? pick(ASSOC[contextTopic].opinions) + ". That more your speed?" : "what's the nuance you're thinking about?"),
-      "Okay, you're ahead of me! 😄 What's your hot take then?",
+      "lol ok fair you already know this — " + (contextTopic ? `what's something about ${contextTopic} most people get wrong tho` : "what's the deeper take then"),
+      "ok my bad, skipping the basics — " + (contextTopic && ASSOC[contextTopic]?.opinions ? pick(ASSOC[contextTopic].opinions) + ". better?" : "what part are you actually thinking about"),
+      "ok ok you're ahead of me 😂 give me your hot take then",
     ]);
   }
 
@@ -4816,9 +4816,9 @@ function handleMultiSentence(text) {
     const val = sharing.parsed.preferences[0]?.value;
     if (val) {
       parts.push(pick([
-        `I love that you're into ${val}!`,
-        `${val} — that's great!`,
-        `Cool that you're getting into ${val}!`,
+        `ooh ${val}, nice taste`,
+        `${val} — ok i see you`,
+        `${val}! solid honestly`,
       ]));
     }
   } else if (positive && sentences.length > 2) {
@@ -7607,9 +7607,9 @@ function adaptiveAdjust(response) {
   // If opinions score well (> 1.5), and current response is generic, add an opinion
   if (strategy.scores.opinions > 1.5 && !/I think|honestly|my take/i.test(response)) {
     const opinionBoosters = [
-      " Honestly, I find this stuff fascinating.",
-      " My take? It's one of those things that just clicks once you get into it.",
-      " I genuinely think this is worth diving into.",
+      " honestly this stuff is so interesting to me.",
+      " my take? once you get into it, it just clicks.",
+      " genuinely worth diving into imo.",
     ];
     if (Math.random() > 0.6 && response.length < 150) {
       response += pick(opinionBoosters);
@@ -9318,26 +9318,26 @@ const CHALLENGE_RESPONSES = {
     "That bad? Okay, I'll take your word for it — for now.",
   ],
   certainty: [
-    "Obviously? I dunno, I've been surprised before...",
-    "Is it that clear-cut though? I feel like there might be a wrinkle.",
-    "Hmm, I want to agree, but my contrarian side is twitching a little 😄",
+    "obviously? idk i've been surprised before...",
+    "is it that clear-cut tho? feel like there might be a wrinkle",
+    "hmm i want to agree but my contrarian side is kicking in 😄",
     "ehh idk if it's that obvious honestly",
     "hmm ok but counterpoint —",
   ],
   doom: [
-    "Dead? Or just taking a really long nap? 😄",
-    "Hmm, people said that about vinyl records too, and look at them now.",
-    "I've heard that before about a few things that are doing just fine!",
+    "dead? or just taking a really long nap 😄",
+    "hmm people said that about vinyl records too and look at them now",
+    "idk i've heard that before about a few things that are doing just fine lol",
   ],
   nobody: [
-    "Nobody? I bet there's at least one person out there proving you wrong right now.",
-    "Hmm, nobody at all? That feels like a dare for someone to speak up 😄",
-    "Zero people? The internet is vast — someone out there is definitely doing it.",
+    "nobody? i bet there's at least one person out there proving you wrong rn",
+    "hmm nobody at all? that feels like a dare for someone to speak up 😄",
+    "zero people? the internet is massive, someone is definitely doing it lol",
   ],
   impossible: [
-    "Impossible is a strong word — people said that about a lot of things that exist now!",
-    "Hmm, can't be done? That sounds like a challenge to me 😄",
-    "I respect the skepticism, but never underestimate stubbornness + caffeine.",
+    "impossible is a strong word lol, people said that about a lot of stuff that exists now",
+    "hmm can't be done?? that sounds like a challenge 😄",
+    "idk, never underestimate stubbornness + caffeine",
   ],
 };
 
@@ -10162,11 +10162,11 @@ const CELEBRATION_RESPONSES = {
 
 // Follow-up phrases that reinforce the breakthrough
 const CELEB_REINFORCERS = [
-  " And honestly, figuring that out yourself is way more valuable than me just telling you.",
-  " That's the kind of insight that sticks because you earned it.",
-  " And the cool part? That understanding transfers to so many other things.",
-  " Most people need to be told that directly — you figured it out from context.",
-  " Hold onto that — it's one of those 'once you see it, you can't unsee it' things.",
+  " and honestly figuring that out yourself is way more valuable than me just telling you.",
+  " that's the kind of thing that sticks because you earned it.",
+  " and the cool part? that understanding transfers to so many other things.",
+  " most people need to be told that directly — you figured it out from context.",
+  " hold onto that — once you see it you literally can't unsee it.",
 ];
 
 function detectBreakthrough(text) {
@@ -11099,10 +11099,10 @@ const HOOK_SEEDS = {
     "The best interfaces feel invisible — you don't notice the design at all.",
   ],
   general: [
-    "I think about that more than I probably should.",
-    "There's definitely a rabbit hole there if you want to go down it.",
-    "It's one of those things that sounds simple but gets deep fast.",
-    "I feel like there's a whole conversation in that.",
+    "i think about that more than i probably should lol.",
+    "there's definitely a rabbit hole there if you wanna go down it.",
+    "sounds simple but it gets deep fast honestly.",
+    "there's a whole conversation in that honestly.",
   ],
 };
 
@@ -12088,13 +12088,13 @@ function precisionEcho(response, text, tokens) {
       const tool = content.tools[0];
       specificAck = pick([
         `${tool.charAt(0).toUpperCase() + tool.slice(1)} for that — solid choice.`,
-        `Oh, ${tool}! That's a great pick for what you're doing.`,
+        `ooh ${tool}, solid pick for this`,
       ]);
     } else if (content.actions.length > 0) {
       const a = content.actions[0];
       specificAck = pick([
-        `${a.type === "ongoing" ? "Building" : a.type === "goal" ? "Planning" : "Just did"} ${a.text.slice(0, 25)} — I love that.`,
-        `So you're ${a.type === "goal" ? "looking to" : "in the middle of"} ${a.text.slice(0, 25)} — nice.`,
+        `${a.type === "ongoing" ? "building" : a.type === "goal" ? "planning" : "just did"} ${a.text.slice(0, 25)} — sick.`,
+        `so you're ${a.type === "goal" ? "looking to" : "in the middle of"} ${a.text.slice(0, 25)} — nice.`,
       ]);
     }
 
@@ -15970,9 +15970,9 @@ function applyCadenceMirroring(response, text) {
   // Long-form users: AI can be more expansive, add connecting tissue
   if (style.brevity === "long" && r.length < 80) {
     const expansions = [
-      " I could say more about this if you're interested.",
-      " There's actually a lot of nuance there.",
-      " It's one of those things that goes deeper than it looks.",
+      " i could say more if you want.",
+      " there's actually a lot more to it.",
+      " it actually goes way deeper than it looks tbh.",
     ];
     if (!r.includes("?") && Math.random() > 0.5) {
       r = r.replace(/[.!]\s*$/, ".") + expansions[Math.floor(Math.random() * expansions.length)];
