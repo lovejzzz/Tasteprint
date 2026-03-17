@@ -19985,6 +19985,261 @@ function weaveContext(response, topics, text) {
   return response;
 }
 
+/* ── Round 152: Ultra-Short Responses, Double-Texting & Engagement Length Mirroring ── */
+/*
+ * Three systems that make message length feel human:
+ * 1. Ultra-short: sometimes just "lol" or "😂" — no elaboration needed
+ * 2. Double/triple-text: split high-excitement responses into 2-3 rapid messages
+ * 3. Engagement mirroring: track user message lengths and match their energy
+ * Multi-message delimiter: \n---\n (ChatBubble splits on this)
+ */
+
+let userMsgLengthTracker = [];  // rolling window of user message lengths
+const MULTI_MSG_DELIMITER = "\n---\n";
+
+// ── Ultra-short response detection ──
+// Returns a tiny response for low-effort inputs, or null to continue pipeline
+function tryUltraShortResponse(text, sent) {
+  const lower = text.toLowerCase().trim();
+  const len = lower.length;
+
+  // Only fire for very short inputs (under 12 chars) and only ~60% of the time
+  if (len > 12 || Math.random() > 0.6) return null;
+
+  // Don't ultra-short if user asked a question
+  if (text.includes("?")) return null;
+
+  // Don't ultra-short on first few turns — build rapport first
+  if (mem.turn < 4) return null;
+
+  // Don't ultra-short if user seems emotional/upset
+  if (sent < -0.3) return null;
+
+  // Mapping of low-effort inputs to ultra-short responses
+  const ultraShortMap = {
+    // Laughter → emoji or minimal
+    "lol": ["😂", "💀", "lmaooo", "😭"],
+    "lmao": ["💀", "😂", "STOPPP", "😭😭"],
+    "haha": ["😂", "lol", "😄"],
+    "hahaha": ["LMAO", "💀💀", "stoppp"],
+    "😂": ["fr", "💀", "lol"],
+    "💀": ["LMAO", "😭", "stoppp"],
+
+    // Agreement → minimal echo
+    "same": ["fr", "literally", "^", "this"],
+    "fr": ["^^", "literally", "RIGHT"],
+    "real": ["fr fr", "^^", "literally"],
+    "true": ["^", "fr", "RIGHT"],
+    "facts": ["^^", "no literally", "fr"],
+    "this": ["^", "fr", "literally"],
+
+    // Acknowledgment → minimal
+    "ok": ["bet", "👍", "cool"],
+    "okay": ["bet", "👍", "cool cool"],
+    "k": ["👍", "bet"],
+    "kk": ["👍", "bet"],
+    "cool": ["nice", "👍", "bet"],
+    "nice": ["right", "ikr", "fr"],
+    "bet": ["👍", "yep", "cool"],
+
+    // Vibes → mirror
+    "yeah": ["mhm", "yep", "fr"],
+    "yep": ["mhm", "yeah", "cool"],
+    "yea": ["mhm", "yeah", "fr"],
+    "mhm": ["yeah", "yep", "👍"],
+    "sure": ["bet", "cool", "👍"],
+    "nah": ["fair", "valid", "lol ok"],
+    "nope": ["fair", "lol ok", "valid"],
+    "idk": ["fair", "mood", "same tho"],
+    "hmm": ["right", "yeah", "fr"],
+  };
+
+  const match = ultraShortMap[lower.replace(/[.!,]+$/, "")];
+  if (match) return pick(match);
+
+  // Emoji-only inputs → emoji-only response
+  const emojiOnly = /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]+$/u.test(lower);
+  if (emojiOnly && len <= 8) {
+    const emojiResps = ["😂", "💀", "lol", "fr", "mood", "^^", "same energy"];
+    return pick(emojiResps);
+  }
+
+  return null;
+}
+
+// ── Excitement level detection ──
+// Returns 0-1 score for how excited/surprised the user's message is
+function measureExcitement(text) {
+  let excitement = 0;
+  const lower = text.toLowerCase();
+
+  // Caps words (not just single letters)
+  const capsWords = (text.match(/\b[A-Z]{2,}\b/g) || []).length;
+  excitement += Math.min(capsWords * 0.15, 0.4);
+
+  // Exclamation marks
+  const excl = (text.match(/!/g) || []).length;
+  excitement += Math.min(excl * 0.12, 0.35);
+
+  // Multiple question marks
+  if (/\?\?+/.test(text)) excitement += 0.2;
+
+  // Excitement words
+  const exciteWords = /\b(omg|oh my god|holy|wait what|no way|seriously|are you serious|you're kidding|shut up|get out|WHAT|insane|crazy|incredible|amazing|unbelievable)\b/i;
+  if (exciteWords.test(text)) excitement += 0.3;
+
+  // Good news indicators
+  const goodNews = /\b(got into|accepted|promoted|engaged|pregnant|won|passed|graduated|hired|offer|raise|published)\b/i;
+  if (goodNews.test(text)) excitement += 0.35;
+
+  // Surprise indicators
+  const surprise = /\b(guess what|you won't believe|plot twist|so basically|turns out|apparently)\b/i;
+  if (surprise.test(text)) excitement += 0.25;
+
+  // Hot take / controversial
+  const hotTake = /\b(hot take|unpopular opinion|controversial|fight me|don't @ me|i said what i said)\b/i;
+  if (hotTake.test(text)) excitement += 0.2;
+
+  // Repeated letters (sooo, noooo, yesss)
+  if (/(.)\1{2,}/i.test(text)) excitement += 0.1;
+
+  return Math.min(1, excitement);
+}
+
+// ── Double/triple-text splitting ──
+// Takes a finished response and optionally splits it into 2-3 messages
+// Returns the response with \n---\n delimiters, or unchanged
+function splitIntoMultiMessages(response, text, sent) {
+  // Don't split very short responses
+  if (response.length < 25) return response;
+
+  // Don't split if response already has delimiter (shouldn't happen, but guard)
+  if (response.includes(MULTI_MSG_DELIMITER)) return response;
+
+  const excitement = measureExcitement(text);
+  const lower = text.toLowerCase();
+
+  // ── Guard: don't split for serious/emotional topics ──
+  if (sent < -0.3) return response;
+  if (/\b(died|death|funeral|cancer|diagnosis|breakup|fired|laid off|divorce|miscarriage|suicide|depressed)\b/i.test(text)) return response;
+
+  // ── Guard: only split ~15-20% of messages, scaled by excitement ──
+  // At excitement=0, never split. At excitement=1, split ~60% of the time.
+  // Average excitement ~0.3 → ~18% split rate
+  const splitChance = excitement * 0.6;
+  if (Math.random() > splitChance) return response;
+
+  // ── Guard: minimum excitement threshold ──
+  if (excitement < 0.25) return response;
+
+  // ── Pattern 1: High excitement good news → reaction + "ARE YOU SERIOUS" + actual response ──
+  const goodNews = /\b(got into|accepted|promoted|engaged|pregnant|won|passed|graduated|hired|offer|raise|published)\b/i;
+  if (goodNews.test(text) && excitement >= 0.5) {
+    const reactions = ["WAIT", "STOP", "HOLD ON", "NO", "SHUT UP"];
+    const middles = [
+      "ARE YOU SERIOUS RIGHT NOW",
+      "you're KIDDING",
+      "NO WAY",
+      "EXCUSE ME??",
+      "wait WHAT",
+      "you can't just drop that casually",
+    ];
+    // Keep the actual response but trim it to feel like a follow-up
+    const trimmed = response.replace(/^(oh |wait |omg |wow |dude )/i, "").trim();
+    const core = trimmed.length > 80
+      ? (trimmed.match(/[^.!?]+[.!?]+/g) || [trimmed])[0].trim()
+      : trimmed;
+    return pick(reactions) + MULTI_MSG_DELIMITER + pick(middles) + MULTI_MSG_DELIMITER + (core || "ok you need to tell me literally everything");
+  }
+
+  // ── Pattern 2: Surprise/shock → short reaction + actual response ──
+  if (excitement >= 0.4) {
+    const shortReactions = [
+      "wait WHAT", "omg", "HOLD ON", "ok wait", "no no no",
+      "excuse me??", "i'm sorry WHAT", "bro", "dude", "STOP",
+    ];
+    const trimmed = response.replace(/^(oh |wait |omg |wow |dude |whoa |hold on )/i, "").trim();
+    // 2 messages: reaction + response
+    if (Math.random() > 0.4 || response.length < 60) {
+      return pick(shortReactions) + MULTI_MSG_DELIMITER + trimmed;
+    }
+    // 3 messages: reaction + bridge + response (for longer responses)
+    const bridges = ["ok but seriously", "no but like", "wait wait wait", "ok ok ok"];
+    const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [trimmed];
+    if (sentences.length >= 2) {
+      const first = sentences[0].trim();
+      const rest = sentences.slice(1).join(" ").trim();
+      return pick(shortReactions) + MULTI_MSG_DELIMITER + first + MULTI_MSG_DELIMITER + (rest || pick(bridges));
+    }
+    return pick(shortReactions) + MULTI_MSG_DELIMITER + trimmed;
+  }
+
+  // ── Pattern 3: Hot take / controversial → reaction + pushback ──
+  const hotTake = /\b(hot take|unpopular opinion|controversial|fight me|don't @ me)\b/i;
+  if (hotTake.test(text) && excitement >= 0.25) {
+    const reactions = ["oh here we go", "ok ok", "👀", "lol oh no", "alright alright"];
+    const trimmed = response.replace(/^(oh |ok |hmm |haha )/i, "").trim();
+    return pick(reactions) + MULTI_MSG_DELIMITER + trimmed;
+  }
+
+  return response;
+}
+
+// ── Engagement length mirroring ──
+// Track user message lengths and compute a target length multiplier
+function trackUserMsgLength(text) {
+  userMsgLengthTracker.push(text.length);
+  if (userMsgLengthTracker.length > 8) userMsgLengthTracker.shift();
+}
+
+function getEngagementMultiplier() {
+  if (userMsgLengthTracker.length < 2) return 1.0;
+
+  // Weighted average: recent messages matter more
+  const weights = userMsgLengthTracker.map((_, i) => 0.5 + (i / userMsgLengthTracker.length) * 0.5);
+  const wSum = weights.reduce((a, b) => a + b, 0);
+  const avgLen = userMsgLengthTracker.reduce((sum, len, i) => sum + len * weights[i], 0) / wSum;
+
+  // If user is sending short messages (avg < 15), we should be short too
+  if (avgLen < 10) return 0.5;
+  if (avgLen < 20) return 0.7;
+  if (avgLen < 40) return 0.85;
+  // Normal range
+  if (avgLen < 80) return 1.0;
+  // User is writing paragraphs — match with more substance
+  if (avgLen < 150) return 1.15;
+  return 1.3;
+}
+
+function applyEngagementMirroring(response, text) {
+  const multiplier = getEngagementMultiplier();
+
+  // Don't touch short responses or greetings
+  if (response.length < 15) return response;
+
+  // If multiplier says we should be shorter
+  if (multiplier < 0.9 && response.length > 40) {
+    const sentences = response.match(/[^.!?]+[.!?]+/g) || [response];
+    if (sentences.length > 1) {
+      // Keep fewer sentences based on multiplier
+      const keep = Math.max(1, Math.round(sentences.length * multiplier));
+      const trimmed = sentences.slice(0, keep).join(" ").trim();
+      if (trimmed.length >= 10) return trimmed;
+    }
+    // For single-sentence responses that are still too long, find a natural cut
+    if (multiplier <= 0.6 && response.length > 60) {
+      const cutPoints = [". ", "! ", "? ", " — ", ", "];
+      const targetLen = Math.round(response.length * multiplier);
+      for (const cp of cutPoints) {
+        const idx = response.lastIndexOf(cp, targetLen + 20);
+        if (idx > 15) return response.slice(0, idx + cp.trimEnd().length);
+      }
+    }
+  }
+
+  return response;
+}
+
 /* ── Public API ── */
 
 export async function getAIResponse(input) {
@@ -20051,6 +20306,20 @@ export async function getAIResponse(input) {
     }
   } else if (!encoderLoading && !encoderFailed) {
     initEncoder(); // Kick off model loading in background
+  }
+
+  // ═══ Round 152: Track user message lengths for engagement mirroring ═══
+  trackUserMsgLength(text);
+
+  // ═══ Round 152: Ultra-short response for low-effort inputs ═══
+  const ultraShortSent = sentiment(text);
+  const ultraShort = tryUltraShortResponse(text, ultraShortSent);
+  if (ultraShort) {
+    mem.add("user", text, ["fragment"], [], ultraShortSent);
+    mem.add("ai", ultraShort);
+    // Ultra-short responses have very fast typing (50-200ms)
+    const usTypingMs = 50 + Math.random() * 150;
+    return { text: ultraShort, typingMs: usTypingMs, pause: null };
   }
 
   // ═══ Adaptive strategy: score how user reacted to our last response ═══
@@ -20509,33 +20778,47 @@ export async function getAIResponse(input) {
   // ═══ Final output polish: clean pipeline artifacts, deduplicate, tighten ═══
   response = polishOutput(response);
 
+  // ═══ Round 152: Engagement length mirroring — match user's message length energy ═══
+  response = applyEngagementMirroring(response, text);
+
+  // ═══ Round 152: Double/triple-text splitting for high-excitement moments ═══
+  response = splitIntoMultiMessages(response, text, sent);
+
   // Update discourse state for next turn
   lastDiscourseMove = plan.flavor;
 
   // Track questions the AI asks for answer-linking
-  trackAIQuestion(response);
+  // For multi-messages, track the last segment (the one most likely to have a question)
+  const trackableResponse = response.includes(MULTI_MSG_DELIMITER)
+    ? response.split(MULTI_MSG_DELIMITER).pop()
+    : response;
+  trackAIQuestion(trackableResponse);
 
-  // Record in memory
-  mem.add("ai", response);
+  // Record in memory (store full response without delimiters for memory coherence)
+  const memResponse = response.includes(MULTI_MSG_DELIMITER)
+    ? response.split(MULTI_MSG_DELIMITER).join(" ")
+    : response;
+  mem.add("ai", memResponse);
 
   // Track response shape for pattern-break detection
-  trackResponseShape(response);
+  trackResponseShape(memResponse);
 
   // Track comedy moments for humor callbacks
-  trackComedyMoment(text, response, currentTopics, mem.turn);
+  trackComedyMoment(text, memResponse, currentTopics, mem.turn);
 
   // Track running bits, inside jokes, and nicknames (Round 151)
   trackRunningBits(text, currentTopics, mem.turn);
 
   // Calculate realistic typing speed (adjusted for conversation pace)
-  const rawTypingMs = calcTypingMs(response, sent, parsed);
+  // For multi-messages, base timing on the full content length
+  const rawTypingMs = calcTypingMs(memResponse, sent, parsed);
   const typingMs = adjustTypingForPace(rawTypingMs);
   const pause = calcTypingPause(typingMs);
 
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);

@@ -204,14 +204,43 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       setTyping(true);
 
       const finishAi = async () => {
-        // Graceful exit: fade out typing dots, THEN add AI message
-        await hideTyping();
-        const aiId = idRef.current++;
-        setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId, ts: Date.now() }]);
-        // Show delivered checkmark on user's message
-        setDeliveredId(myId);
-        setTimeout(() => setDeliveredId(null), 2000);
-        busyRef.current = false;
+        // Round 152: Multi-message support — split on \n---\n delimiter
+        const multiParts = aiText.split("\n---\n").filter(Boolean);
+
+        if (multiParts.length > 1) {
+          // Double/triple-text: deliver each part with typing indicator between
+          for (let i = 0; i < multiParts.length; i++) {
+            await hideTyping();
+            const partId = idRef.current++;
+            const partText = multiParts[i].trim();
+            setMessages(prev => [...prev, { from: "ai", text: partText, id: partId, ts: Date.now() }]);
+
+            // Show typing indicator between messages (not after last)
+            if (i < multiParts.length - 1) {
+              // Short pause between rapid messages (300-700ms per part length)
+              const interDelay = Math.min(200 + partText.length * 8, 700);
+              await new Promise(r => setTimeout(r, interDelay));
+              setTyping(true);
+              // Brief typing for next short message
+              const nextLen = multiParts[i + 1].trim().length;
+              const typeTime = Math.min(150 + nextLen * 12, 600);
+              await new Promise(r => setTimeout(r, typeTime));
+            }
+          }
+          // Show delivered checkmark on user's message
+          setDeliveredId(myId);
+          setTimeout(() => setDeliveredId(null), 2000);
+          busyRef.current = false;
+        } else {
+          // Single message: original behavior
+          await hideTyping();
+          const aiId = idRef.current++;
+          setMessages(prev => [...prev, { from: "ai", text: aiText, id: aiId, ts: Date.now() }]);
+          // Show delivered checkmark on user's message
+          setDeliveredId(myId);
+          setTimeout(() => setDeliveredId(null), 2000);
+          busyRef.current = false;
+        }
       };
 
       if (pause && pause.pauseAt > 0 && pause.pauseAt < typingMs) {
