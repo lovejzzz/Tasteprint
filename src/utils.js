@@ -477,7 +477,7 @@ export function generateDesignDNA(palette, mood) {
     shadowFamily = pick(["none", "none", "subtle", "subtle"]);
     borderStyle = Math.random() < 0.4 ? pick(["thin", "accent-top"]) : "none";
     hueDirection = 0; // minimal = no hue shifts
-    gradientStyle = "none"; // minimal = no gradients
+    gradientStyle = Math.random() < 0.15 ? "diagonal" : "none"; // Round 90: minimal gets rare monochrome gradients
   } else if (m === "bold") {
     radiusFamily = pick(["sharp", "sharp", "round", "mixed"]);
     shadowFamily = pick(["dramatic", "brutal", "brutal", "elevated"]);
@@ -990,6 +990,90 @@ const SHADOW_PRESETS = [
 
 const RADIUS_PRESETS = [0, 4, 8, 12, 16, 20, 24, 32, 999];
 
+// ── Round 90: Mood-specific gradient palette generator ──
+// Generates distinctive gradient CSS strings based on mood personality.
+// Each mood has unique gradient flavors: bold = harsh/split, elegant = subtle/metallic,
+// playful = rainbow/radial, minimal = monochrome/flat.
+function _moodGradient(moodId, acHex, gc1, gc2, gcGlow, dc) {
+  const r = Math.random();
+  if (moodId === "bold") {
+    if (r < 0.30) {
+      // Hard color stop — split-block effect, no smooth transition
+      const angle = pick([135, 90, 180, 45]);
+      const c1 = pick([acHex, gc1, dc.comp, dc.vivid]);
+      const c2 = pick([gc2, dc.triad1, dc.split1, gcGlow]);
+      const stop = pick([45, 50, 55]);
+      return `linear-gradient(${angle}deg, ${c1}20 ${stop}%, ${c2}20 ${stop}%)`;
+    } else if (r < 0.55) {
+      // 3-stop with contrasting middle band — accent → dark → accent2
+      const angle = pick([135, 150, 180, 200]);
+      const c1 = pick([acHex, gc1, dc.vivid]);
+      const mid = pick([`${dc.comp}18`, `#00000018`, `${dc.triad2}14`, `#1a1a1a14`]);
+      const c2 = pick([gc2, dc.split2, dc.triad1, gcGlow]);
+      return `linear-gradient(${angle}deg, ${c1}1C 0%, ${mid} 50%, ${c2}1C 100%)`;
+    } else {
+      // Saturated high-contrast diagonal
+      const angle = pick([120, 135, 160, 225]);
+      const c1 = pick([dc.vivid, dc.comp, acHex]);
+      const c2 = pick([dc.triad1, dc.split1, gc1]);
+      return `linear-gradient(${angle}deg, ${c1}16 0%, ${c2}12 100%)`;
+    }
+  } else if (moodId === "elegant") {
+    if (r < 0.35) {
+      // Nearly same color, subtle luminance shift — parchment/silk feel
+      const dir = pick([180, 165, 170]);
+      const base = pick([dc.muted, dc.analog1, acHex]);
+      return `linear-gradient(${dir}deg, ${base}08 0%, ${base}10 100%)`;
+    } else if (r < 0.55) {
+      // Metallic sheen — multiple close stops mimicking brushed metal
+      const dir = pick([180, 165, 135]);
+      const c = pick([dc.muted, dc.analog1, acHex]);
+      return `linear-gradient(${dir}deg, ${c}06 0%, ${c}0E 25%, ${c}04 50%, ${c}0C 75%, ${c}06 100%)`;
+    } else {
+      // Warm tonal drift — analogous colors, very gentle
+      const dir = pick([165, 180, 195]);
+      return `linear-gradient(${dir}deg, ${dc.analog1}08 0%, ${dc.analog2}06 50%, ${dc.muted}08 100%)`;
+    }
+  } else if (moodId === "playful") {
+    if (r < 0.30) {
+      // Rainbow-ish 3+ color gradient — wide hue jumps
+      const angle = pick([45, 90, 135, 180]);
+      const c1 = pick([acHex, dc.vivid, dc.triad1]);
+      const c2 = pick([gc2, dc.triad2, dc.comp]);
+      const c3 = pick([gcGlow, dc.split1, dc.split2, gc1]);
+      return `linear-gradient(${angle}deg, ${c1}14 0%, ${c2}10 50%, ${c3}14 100%)`;
+    } else if (r < 0.55) {
+      // Radial spotlight/balloon from center
+      const cx = pick([40, 50, 60]);
+      const cy = pick([30, 50, 60]);
+      const c1 = pick([dc.vivid, dc.triad1, acHex, gc1]);
+      const c2 = pick([dc.triad2, dc.comp, gc2]);
+      return `radial-gradient(circle at ${cx}% ${cy}%, ${c1}16 0%, ${c2}08 50%, transparent 80%)`;
+    } else {
+      // 4-stop color party with wider hue jumps
+      const angle = pick([45, 90, 135, 225]);
+      return `linear-gradient(${angle}deg, ${dc.vivid}10 0%, ${dc.triad1}0C 33%, ${dc.split2}0E 66%, ${dc.comp}10 100%)`;
+    }
+  } else if (moodId === "minimal") {
+    if (r < 0.40) {
+      // Monochrome — same hue, lightness variation only
+      const dir = pick([180, 90]);
+      const c = pick([acHex, dc.muted, gc1]);
+      return `linear-gradient(${dir}deg, ${c}04 0%, ${c}08 100%)`;
+    } else {
+      // Ultra-subtle 2-stop, strictly vertical or horizontal
+      const dir = pick([180, 90]);
+      const c1 = pick([acHex, dc.muted]);
+      const c2 = pick([dc.analog1, gc1]);
+      return `linear-gradient(${dir}deg, ${c1}04 0%, ${c2}06 100%)`;
+    }
+  } else {
+    // Auto: random from all styles
+    const style = pick(["bold", "elegant", "playful", "minimal"]);
+    return _moodGradient(style, acHex, gc1, gc2, gcGlow, dc);
+  }
+}
+
 function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna, shapeW = 0, shapeH = 0) {
   const s = {};
   const isNav = sizeCat === "nav";
@@ -1495,8 +1579,11 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     // Use derived colors for richer gradients (analogous, complementary, split-comp)
     if (dnaGrad && Math.random() < 0.70) {
       const gs = dna.gradientStyle;
+      // Round 90: 35% chance to use mood-specific gradient palette instead of generic DNA gradient
+      if (Math.random() < 0.35) {
+        s.gradientOverlay = _moodGradient(moodId, acHex, gc1, gc2, gcGlow, dc);
       // Use DNA color scheme (gc1/gc2) for canvas-wide gradient coherence
-      if (gs === "diagonal") {
+      } else if (gs === "diagonal") {
         // Use DNA gradient angle for canvas-wide direction cohesion
         const a = dna.gradientAngle || 135;
         const a2 = (a + pick([-15, -10, 0, 10, 15])) % 360; // slight per-component variation
@@ -1531,7 +1618,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         ]);
       }
     } else if (Math.random() < gradFallback) {
-      if (moodId === "bold") {
+      // Round 90: 30% chance to use mood-specific gradient palette in fallback path
+      if (Math.random() < 0.30) {
+        s.gradientOverlay = _moodGradient(moodId, acHex, gc1, gc2, gcGlow, dc);
+      } else if (moodId === "bold") {
         s.gradientOverlay = pick([
           `linear-gradient(135deg, ${acHex}08 0%, ${dc.comp}06 60%, transparent 100%)`,
           `linear-gradient(to bottom, ${dc.vivid}0A 0%, transparent 40%)`,
@@ -1540,6 +1630,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           // Multi-stop bold: dramatic color sweeps
           `linear-gradient(135deg, ${dc.comp}0C 0%, ${acHex}08 30%, ${dc.vivid}06 65%, transparent 100%)`,
           `linear-gradient(180deg, ${dc.triad1}0A 0%, transparent 25%, ${dc.triad2}08 75%, ${acHex}06 100%)`,
+          // Round 90: Hard stop split-block
+          `linear-gradient(${pick([135, 90])}deg, ${dc.comp}14 50%, ${dc.vivid}14 50%)`,
+          // Round 90: 3-stop with dark middle band
+          `linear-gradient(${pick([135, 180])}deg, ${acHex}14 0%, #00000012 50%, ${dc.triad1}14 100%)`,
         ]);
       } else if (moodId === "elegant") {
         s.gradientOverlay = pick([
@@ -1549,6 +1643,10 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           // Multi-stop elegant: soft tonal shifts
           `linear-gradient(160deg, ${dc.analog1}05 0%, transparent 30%, ${dc.muted}04 70%, transparent 100%)`,
           `radial-gradient(ellipse at 30% 20%, ${dc.analog2}06 0%, ${dc.muted}03 40%, transparent 70%)`,
+          // Round 90: Metallic sheen — brushed metal effect
+          `linear-gradient(${pick([165, 180])}deg, ${dc.muted}05 0%, ${dc.muted}0C 25%, ${dc.muted}03 50%, ${dc.muted}0A 75%, ${dc.muted}05 100%)`,
+          // Round 90: Parchment luminance shift
+          `linear-gradient(180deg, ${dc.analog1}06 0%, ${dc.analog1}0C 100%)`,
         ]);
       } else if (moodId === "playful") {
         s.gradientOverlay = pick([
@@ -1559,8 +1657,18 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
           // Multi-stop playful: vibrant color party
           `linear-gradient(135deg, ${dc.vivid}0C 0%, ${dc.triad1}08 25%, ${dc.triad2}06 55%, ${dc.comp}04 100%)`,
           `conic-gradient(from 120deg, ${dc.vivid}08, ${dc.triad1}06, transparent 40%, ${dc.split1}05, ${dc.triad2}04, transparent)`,
+          // Round 90: Radial spotlight from center
+          `radial-gradient(circle at 50% 50%, ${dc.vivid}12 0%, ${dc.triad1}08 45%, transparent 75%)`,
+          // Round 90: 3-color rainbow sweep
+          `linear-gradient(${pick([45, 90, 135])}deg, ${dc.triad1}10 0%, ${dc.comp}0C 50%, ${dc.split2}10 100%)`,
         ]);
-      } else if (moodId !== "minimal") {
+      } else if (moodId === "minimal") {
+        // Round 90: Minimal now gets occasional monochrome gradients instead of nothing
+        s.gradientOverlay = pick([
+          `linear-gradient(180deg, ${acHex}03 0%, ${acHex}06 100%)`,
+          `linear-gradient(90deg, ${dc.muted}03 0%, ${dc.muted}05 100%)`,
+        ]);
+      } else {
         s.gradientOverlay = pick([
           `linear-gradient(135deg, ${acHex}06 0%, transparent 50%)`,
           `linear-gradient(to bottom right, ${dc.analog1}05 0%, transparent 60%)`,
@@ -3518,56 +3626,79 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   if (!isNav && !isCode && !isSmall) {
     const wbChance = moodId === "bold" ? 0.22 : moodId === "playful" ? 0.20 : moodId === "elegant" ? 0.18 : moodId === "minimal" ? 0.05 : 0.14;
     if (Math.random() < wbChance) {
-      if (moodId === "bold") {
+      // Round 90: 40% chance to use mood-specific gradient palette for wrapper background
+      if (Math.random() < 0.40) {
+        s.background = _moodGradient(moodId, acHex, gc1, gc2, gcGlow, dc);
+      } else if (moodId === "bold") {
         const sub = Math.random();
-        if (sub < 0.35) {
+        if (sub < 0.30) {
           // Saturated solid accent tint
           s.background = pick([`${acHex}18`, `${gc1}15`, `${gcGlow}12`]);
-        } else if (sub < 0.65) {
+        } else if (sub < 0.55) {
           // Diagonal split — two palette colors
           const angle = pick([135, 150, 180, 210]);
           s.background = `linear-gradient(${angle}deg, ${gc1}14 0%, ${gc2}10 50%, ${acHex}14 100%)`;
-        } else {
+        } else if (sub < 0.80) {
           // Dark tinted base — dramatic contrast
           s.background = `linear-gradient(180deg, ${shHex}20 0%, ${acHex}08 100%)`;
+        } else {
+          // Round 90: Hard split-block gradient
+          const angle = pick([90, 135, 180]);
+          s.background = `linear-gradient(${angle}deg, ${dc.comp}18 50%, ${dc.vivid}18 50%)`;
         }
       } else if (moodId === "playful") {
         const sub = Math.random();
-        if (sub < 0.30) {
+        if (sub < 0.25) {
           // Pastel wash — soft candy color
           s.background = pick([`${gc1}12`, `${gc2}10`, `${gcGlow}0E`, `${acHex}10`]);
-        } else if (sub < 0.60) {
+        } else if (sub < 0.50) {
           // Rainbow corner glow — radial from a corner
           const corner = pick(["0% 0%", "100% 0%", "0% 100%", "100% 100%"]);
           s.background = `radial-gradient(circle at ${corner}, ${pick([gc1, gc2, gcGlow])}15 0%, transparent 60%)`;
-        } else {
+        } else if (sub < 0.75) {
           // Confetti gradient — multi-stop playful
           s.background = `linear-gradient(${pick([45, 135, 225])}deg, ${gc1}0C 0%, ${gc2}08 33%, ${gcGlow}0A 66%, ${acHex}0C 100%)`;
+        } else {
+          // Round 90: Radial spotlight from center
+          s.background = `radial-gradient(circle at 50% 50%, ${dc.vivid}14 0%, ${dc.triad1}0A 40%, transparent 75%)`;
         }
       } else if (moodId === "elegant") {
         const sub = Math.random();
-        if (sub < 0.40) {
+        if (sub < 0.30) {
           // Warm/cool tonal base — very subtle directional
           const dir = pick([135, 180, 225]);
           s.background = `linear-gradient(${dir}deg, ${(dc.muted || acHex)}0A 0%, transparent 70%)`;
-        } else if (sub < 0.70) {
+        } else if (sub < 0.55) {
           // Pearl highlight — off-center radial glow
           const ox = pick([30, 40, 60, 70]);
           const oy = pick([20, 30, 40]);
           s.background = `radial-gradient(ellipse at ${ox}% ${oy}%, ${acHex}0C 0%, transparent 55%)`;
-        } else {
+        } else if (sub < 0.75) {
           // Silk wash — ultra-subtle single-color base
           s.background = `${(dc.analog1 || acHex)}08`;
+        } else {
+          // Round 90: Metallic sheen gradient
+          const c = pick([dc.muted, dc.analog1, acHex]);
+          s.background = `linear-gradient(180deg, ${c}06 0%, ${c}0E 25%, ${c}04 50%, ${c}0C 75%, ${c}06 100%)`;
         }
       } else if (moodId === "minimal") {
-        // Barely-there tint — just enough to add warmth/coolness
-        s.background = pick([`${acHex}06`, `${shHex}04`, `${gc1}05`]);
+        const sub = Math.random();
+        if (sub < 0.60) {
+          // Barely-there tint — just enough to add warmth/coolness
+          s.background = pick([`${acHex}06`, `${shHex}04`, `${gc1}05`]);
+        } else {
+          // Round 90: Monochrome gradient — same hue, lightness only
+          const dir = pick([180, 90]);
+          const c = pick([acHex, dc.muted]);
+          s.background = `linear-gradient(${dir}deg, ${c}04 0%, ${c}08 100%)`;
+        }
       } else {
         // Auto: random pick from all moods
         const autoSub = Math.random();
-        if (autoSub < 0.35) s.background = pick([`${acHex}12`, `${gc1}10`]);
-        else if (autoSub < 0.65) s.background = `linear-gradient(${pick([135, 180, 225])}deg, ${gc1}0C 0%, ${acHex}08 100%)`;
-        else s.background = `radial-gradient(circle at ${pick(["30% 30%", "70% 30%", "50% 50%"])}, ${pick([gc1, gcGlow, acHex])}10 0%, transparent 55%)`;
+        if (autoSub < 0.30) s.background = pick([`${acHex}12`, `${gc1}10`]);
+        else if (autoSub < 0.55) s.background = `linear-gradient(${pick([135, 180, 225])}deg, ${gc1}0C 0%, ${acHex}08 100%)`;
+        else if (autoSub < 0.75) s.background = `radial-gradient(circle at ${pick(["30% 30%", "70% 30%", "50% 50%"])}, ${pick([gc1, gcGlow, acHex])}10 0%, transparent 55%)`;
+        else s.background = _moodGradient(moodId, acHex, gc1, gc2, gcGlow, dc);
       }
     }
   }
