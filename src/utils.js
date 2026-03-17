@@ -2787,8 +2787,8 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Line-height creates breathing rhythm; text-decoration adds editorial flair
   if (!isNav && !isCode) {
     const typoRoll = Math.random();
-    const isHeading = /heading|hero|title|h[1-3]/i.test(compType);
-    const isBody = /body|paragraph|text|content/i.test(compType);
+    const isHeading = /heading|hero|title|h[1-3]/i.test(type);
+    const isBody = /body|paragraph|text|content/i.test(type);
 
     // Line-height per mood — affects text rhythm and readability feel
     if (typoRoll < 0.35) {
