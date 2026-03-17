@@ -399,30 +399,52 @@ export function generateDesignDNA(palette, mood) {
   const dark = isDarkPalette(palette);
   const acHex = palette.ac || "#888";
   const ac2 = palette.ac2 || palette.ac || "#888";
+  const m = mood || "auto";
 
-  // Pick a radius family — all components will gravitate toward this
-  const radiusFamily = pick(["sharp", "soft", "round", "pill", "mixed"]);
-  const radiusMap = {
+  const RADIUS_FAMILIES = {
     sharp: { base: pick([0, 2, 4]), range: 4 },
     soft: { base: pick([8, 10, 12]), range: 6 },
     round: { base: pick([16, 20, 24]), range: 8 },
     pill: { base: 999, range: 0 },
-    mixed: { base: pick([8, 12, 16]), range: 20 }, // more variation allowed
+    mixed: { base: pick([8, 12, 16]), range: 20 },
   };
 
-  // Pick a shadow family
-  const shadowFamily = pick(["none", "subtle", "elevated", "dramatic", "brutal", "glow"]);
+  let radiusFamily, shadowFamily, borderStyle, hueDirection, gradientStyle;
 
-  // Pick a border style (or none)
-  const borderStyle = Math.random() < 0.35 ? pick(["thin", "accent-top", "accent-bottom", "dashed"]) : "none";
+  if (m === "minimal") {
+    radiusFamily = pick(["sharp", "soft", "soft"]);
+    shadowFamily = pick(["none", "none", "subtle", "subtle"]);
+    borderStyle = Math.random() < 0.4 ? pick(["thin", "accent-top"]) : "none";
+    hueDirection = 0; // minimal = no hue shifts
+    gradientStyle = "none"; // minimal = no gradients
+  } else if (m === "bold") {
+    radiusFamily = pick(["sharp", "sharp", "round", "mixed"]);
+    shadowFamily = pick(["dramatic", "brutal", "brutal", "elevated"]);
+    borderStyle = Math.random() < 0.5 ? pick(["accent-bottom", "accent-top", "dashed"]) : "none";
+    hueDirection = Math.random() < 0.4 ? pick([-15, -10, 10, 15]) : 0;
+    gradientStyle = Math.random() < 0.45 ? pick(["diagonal", "diagonal", "radial"]) : "none";
+  } else if (m === "elegant") {
+    radiusFamily = pick(["soft", "round", "round"]);
+    shadowFamily = pick(["subtle", "elevated", "elevated", "glow"]);
+    borderStyle = Math.random() < 0.3 ? "thin" : "none";
+    hueDirection = Math.random() < 0.25 ? pick([-10, -5, 5, 10]) : 0;
+    gradientStyle = Math.random() < 0.5 ? pick(["diagonal", "radial", "radial"]) : "none";
+  } else if (m === "playful") {
+    radiusFamily = pick(["round", "pill", "pill", "mixed"]);
+    shadowFamily = pick(["elevated", "glow", "brutal", "dramatic"]);
+    borderStyle = Math.random() < 0.4 ? pick(["dashed", "accent-bottom", "accent-top"]) : "none";
+    hueDirection = Math.random() < 0.5 ? pick([-20, -15, 15, 20, 25]) : 0;
+    gradientStyle = Math.random() < 0.55 ? pick(["diagonal", "conic", "radial"]) : "none";
+  } else {
+    // auto: full random spectrum
+    radiusFamily = pick(["sharp", "soft", "round", "pill", "mixed"]);
+    shadowFamily = pick(["none", "subtle", "elevated", "dramatic", "brutal", "glow"]);
+    borderStyle = Math.random() < 0.35 ? pick(["thin", "accent-top", "accent-bottom", "dashed"]) : "none";
+    hueDirection = Math.random() < 0.3 ? pick([-15, -10, 10, 15, 20]) : 0;
+    gradientStyle = Math.random() < 0.3 ? pick(["diagonal", "radial", "conic"]) : "none";
+  }
 
-  // Shared hue offset (all components shift the same direction)
-  const hueDirection = Math.random() < 0.3 ? pick([-15, -10, 10, 15, 20]) : 0;
-
-  // Gradient personality
-  const gradientStyle = Math.random() < 0.3 ? pick(["diagonal", "radial", "conic"]) : "none";
-
-  return { radiusFamily, radiusMap: radiusMap[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2 };
+  return { radiusFamily, radiusMap: RADIUS_FAMILIES[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2 };
 }
 
 /**
@@ -820,11 +842,23 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (Math.random() < 0.3) {
         s.filter = `saturate(${randRange(0.85, 0.95).toFixed(2)})`;
       }
+      // Minimal-only: subtle brightness lift for airy feel
+      if (Math.random() < 0.25) {
+        s.filter = `brightness(${randRange(1.01, 1.04).toFixed(2)})`;
+      }
+      // Minimal-only: micro letter spacing for clean typography
+      if (Math.random() < 0.3) {
+        s.letterSpacing = pick(["0.01em", "0.015em", "0.02em"]);
+      }
       // No gradients, no rotation, no hue shifts — strip them
       s.gradientOverlay = undefined;
       s.rotate = undefined;
       s.hueRotate = undefined;
       s.scale = undefined;
+      // Minimal: cap shadow intensity — always understated
+      if (s.boxShadow && s.boxShadow !== "none" && !s.boxShadow.includes("1px")) {
+        s.boxShadow = pick(["none", `0 1px 3px ${shHex}08`, `0 2px 8px ${shHex}06`]);
+      }
     }
 
     if (moodId === "bold") {
@@ -840,6 +874,14 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (s.boxShadow === "none") {
         s.boxShadow = `0 4px 14px ${shHex}12`;
       }
+      // Bold-only: contrast bump for punch
+      if (Math.random() < 0.35) {
+        s.filter = `contrast(${randRange(1.04, 1.12).toFixed(2)})`;
+      }
+      // Bold-only: scale up slightly — bold commands space
+      if (Math.random() < 0.2) {
+        s.scale = pick([1.02, 1.03, 1.04, 1.05]);
+      }
     }
 
     if (moodId === "elegant") {
@@ -849,8 +891,16 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         s.boxShadow = s.boxShadow && s.boxShadow !== "none" ? `${s.boxShadow}, ${inset}` : inset;
       }
       // Signature: letterSpacing hint (wide, airy feel)
-      if (Math.random() < 0.35) {
-        s.letterSpacing = pick(["0.02em", "0.03em", "0.04em"]);
+      if (Math.random() < 0.4) {
+        s.letterSpacing = pick(["0.02em", "0.03em", "0.04em", "0.05em"]);
+      }
+      // Elegant-only: gentle radial gradient shimmer
+      if (Math.random() < 0.25 && !s.gradientOverlay) {
+        s.gradientOverlay = `radial-gradient(ellipse at 30% 20%, ${acHex}05 0%, transparent 55%)`;
+      }
+      // Elegant-only: scale down slightly — refined, precise
+      if (Math.random() < 0.15) {
+        s.scale = pick([0.98, 0.99]);
       }
       // Elegant never rotates, never has dotted/dashed borders
       s.rotate = undefined;
@@ -879,6 +929,17 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       // Playful gets more hue variation
       if (!s.hueRotate && Math.random() < 0.3) {
         s.hueRotate = pick([-25, -15, 15, 25, 35, -35]);
+      }
+      // Playful-only: occasional scale bounce personality
+      if (Math.random() < 0.2) {
+        s.scale = pick([1.03, 1.04, 1.05, 1.06]);
+      }
+      // Playful-only: mixed gradient overlays with more color
+      if (Math.random() < 0.2 && !s.gradientOverlay) {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}0E 0%, ${ac2}0E 50%, transparent 100%)`,
+          `conic-gradient(from ${pick([45, 90, 135, 180])}deg, ${acHex}08, ${ac2}08, transparent)`,
+        ]);
       }
     }
 
