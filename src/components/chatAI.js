@@ -158,13 +158,13 @@ let intentEmbeddings = null; // Map<id, Float32Array>
 const SEMANTIC_RESPONSES = {
   casual_greeting: ["heyyy what's good","oh hey, what's up","yooo hi, how's it going"],
   morning_greeting: ["morning, how'd you sleep","good morning, got any plans today","hey good morning, what's the vibe today"],
-  welcome_back: ["ayy you're back! what's new","oh hey welcome back, what'd I miss","heyyy missed you, what's going on"],
+  welcome_back: ["ayy you're back, what's new","oh hey welcome back, what'd I miss","heyyy missed you, what's going on"],
   bored_opener: ["ok bet let's fix that, what are you in the mood for","lol same tbh. wanna play a game or just talk","bored gang 🤝 ok what sounds fun rn"],
   lonely_opener: ["hey i'm right here, what's going on","aww i gotchu, what's on your mind","i'm here for it, tell me everything"],
   casual_bye: ["ok byeee, talk later","see ya, was fun talking","laterrr 👋"],
   goodnight: ["night night, sleep well","goodnight, sweet dreams","nighty night, don't let the bed bugs bite lol"],
   brb: ["ok i'll be here","take your time","k waiting 👀"],
-  share_joy: ["YESSS i love that for you!!","omg that makes me so happy","ok this energy is everything rn"],
+  share_joy: ["YESSS i love that for you","omg that makes me so happy","ok this energy is everything rn"],
   comfort: ["aw dude that's rough, what happened","man that sucks, you ok?","ugh i'm sorry, wanna talk about it or just wanna be mad for a sec"],
   validate_anger: ["nah fr that would make me mad too","dude i'd be LIVID","ok yeah no that's justified, i'm pissed for you"],
   calm_anxiety: ["ok what's the worst case scenario tho, like actually","ugh anxiety is the worst, what's the main thing getting to you","hey you've gotten through worse than this, what's going on"],
@@ -174,29 +174,29 @@ const SEMANTIC_RESPONSES = {
   accept_gratitude: ["aww of course, always","no need to thank me, that's what friends are for","🥺 you're so sweet, happy i could help"],
   help_clarity: ["ok wait what part is confusing","which part lost you","lol no worries, what doesn't make sense"],
   empathize_tired: ["same honestly, today was brutal","dude go take a nap fr","ugh that's the worst, have you had coffee at least"],
-  celebrate: ["YOOO YOU DID IT!! that's huge","ok i'm so proud of you rn","wait that's literally amazing, you should be so proud"],
+  celebrate: ["YOOO YOU DID IT. that's huge","ok i'm so proud of you rn","wait that's literally amazing, you should be so proud"],
   normalize: ["lol honestly everyone has moments like that","nooo don't worry about it, that happens to literally everyone","trust me that's way less embarrassing than you think"],
   validate_jealousy: ["ngl i'd feel the same way","comparison is poison but like... it's hard not to","dude that's so normal, don't even stress"],
   share_nostalgia: ["aw man, the good old days hit different","i love that you have those memories tho","what do you miss most about it?"],
   encourage_hope: ["yesss i love that energy","ok good vibes only, i'm manifesting for you","that's a good sign honestly, ride that wave"],
   acknowledge_letdown: ["aw man that's rough","ugh you deserved better than that","that sucks, i'm annoyed for you honestly"],
-  celebrate_career: ["WAIT CONGRATS!! that's amazing!!","oh my god you're killing it professionally","bruh that's huge, you worked so hard for this"],
+  celebrate_career: ["WAIT CONGRATS. that's amazing","oh my god you're killing it professionally","bruh that's huge, you worked so hard for this"],
   support_job_loss: ["wait what?? dude i'm sorry, what happened","that's so messed up, are you ok","ugh that sucks, their loss honestly"],
   support_breakup: ["aw man breakups are the WORST, you ok?","dude i'm sorry, how are you holding up","that's rough, do you wanna talk about it or do you need a distraction"],
-  excited_for_love: ["OHHH 👀👀 tell me everything","omg wait that's so cute, how'd it happen","this is exciting!! what are they like"],
+  excited_for_love: ["OHHH 👀👀 tell me everything","omg wait that's so cute, how'd it happen","this is exciting, what are they like"],
   moving_support: ["wait where are you moving to??","oh that's huge, are you excited or stressed","new city vibes, what made you wanna move"],
-  celebrate_achievement: ["CONGRATULATIONS!! you absolutely earned this","omg that's such a big deal, i'm so proud","wait you did it?? that's HUGE"],
+  celebrate_achievement: ["CONGRATULATIONS. you absolutely earned this","omg that's such a big deal, i'm so proud","wait you did it?? that's HUGE"],
   get_well: ["oh no, take care of yourself, are you resting?","aw feel better soon, tea and rest vibes","being sick is the worst, is it bad?"],
   excited_pet: ["WAIT YOU GOT A PET?? I NEED DETAILS","omg i'm so jealous, what kind?? what's their name??","that's literally the best thing i've heard all day"],
   travel_excitement: ["ooh where are you going??","travel is the best, what are you most excited about?","JEALOUS. where to?? what's the plan?"],
-  birthday_wish: ["HAPPY BIRTHDAY!! 🎂🎉 how are you celebrating??","omg happy birthday!! you doing anything fun?","wait it's your birthday?? HAPPY BIRTHDAY 🥳🥳"],
-  celebrate_baby: ["OH MY GOD CONGRATULATIONS!! 🥺","wait a BABY?? that's the best news ever!!","a baby!! dude i'm so happy for you 🥹🥹"],
+  birthday_wish: ["HAPPY BIRTHDAY 🎂🎉 how are you celebrating","omg happy birthday, you doing anything fun","wait it's your birthday?? HAPPY BIRTHDAY 🥳🥳"],
+  celebrate_baby: ["OH MY GOD CONGRATULATIONS 🥺","wait a BABY?? that's the best news ever","a baby, dude i'm so happy for you 🥹🥹"],
   grief_support: ["dude i'm so sorry, i don't even know what to say","that's... yeah. i'm really sorry","i'm so sorry. you don't have to talk about it if you don't want to"],
   support_failure: ["ok but like one L doesn't define you","dude that sucks but you'll bounce back, you always do","ugh i know that feeling, it's the worst. but fr you tried and that's what matters"],
   give_opinion: ["oh ok honestly? here's what i think —","hmm so i'd say","ok so personally i think"],
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
-  self_describe: ["i'm Sam! just your chat buddy vibing in this little window","i'm your chat buddy! i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
+  self_describe: ["i'm Sam, just your chat buddy vibing in this little window","i'm your chat buddy, i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
   share_feelings: ["ngl? i'm just vibing, happy to be talking to you","i'm good, better now that we're chatting","i'm doing great fr, what about you tho"],
   explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah it comes down to"],
@@ -5096,12 +5096,12 @@ function handleMultiSentence(text) {
       parts.push(pick([
         `ooh ${val}, nice taste`,
         `${val} — ok i see you`,
-        `${val}! solid honestly`,
+        `${val}, solid honestly`,
       ]));
     }
   } else if (positive && sentences.length > 2) {
     // Acknowledge the overall positive tone of a long message
-    parts.push(pick(["i love the energy!", "sounds like things are going well!", "ok i'm vibing with this!", "that's awesome honestly!", "yesss i love that!"]));
+    parts.push(pick(["i love the energy.", "sounds like things are going well.", "ok i'm vibing with this.", "that's awesome honestly.", "yesss i love that."]));
   }
 
   // Address contrast/concern if present ("but X confuses me", "however I'm stuck on")
@@ -5113,14 +5113,14 @@ function handleMultiSentence(text) {
       const concern = butMatch[1].replace(/[.!?]$/, "").trim();
       if (concern.length > 3 && concern.length < 60) {
         parts.push(pick([
-          `Totally get the "${concern}" part —`,
-          `And yeah, ${concern} is a real thing.`,
+          `totally get the "${concern}" part,`,
+          `and yeah, ${concern} is a real thing.`,
           `yeah the ${concern} part is real`,
         ]));
       }
     }
   } else if (negative) {
-    parts.push(pick(["yeah the frustrating parts are real.", "the tricky bits are real!", "honestly that's super common tho."]));
+    parts.push(pick(["yeah the frustrating parts are real.", "the tricky bits are real.", "honestly that's super common tho."]));
   }
 
   // Answer the question if there is one
@@ -5481,13 +5481,13 @@ function respondToExperienceContext(exp, text, sent, topics) {
     }
     case "celebration": {
       const celebrations = [
-        "YESSS that feeling when it finally clicks is the BEST 🎉 what was the breakthrough??",
-        "LETS GOOO!! nothing beats that moment when it actually works after you've been stuck. what did you build?",
-        "ayyy that's huge!! you should be so proud rn. tell me about it!",
-        "🎉 NICE!! what made it finally click?",
-        "the victory moment!! that dopamine hit is unmatched fr. what was the tricky part?",
-        "omg wait you did it?? that's amazing, walk me through what happened!",
-        "duuude yes!! that's what i'm talking about 🔥 how'd you crack it?",
+        "YESSS that feeling when it finally clicks is the BEST 🎉 what was the breakthrough",
+        "LETS GOOO nothing beats that moment when it actually works after you've been stuck. what did you build",
+        "ayyy that's huge, you should be so proud rn. tell me about it",
+        "🎉 NICE what made it finally click",
+        "the victory moment, that dopamine hit is unmatched fr. what was the tricky part",
+        "omg wait you did it?? that's amazing, walk me through what happened",
+        "duuude yes, that's what i'm talking about 🔥 how'd you crack it",
       ];
       let resp = pick(celebrations);
       if (topic && hasAssoc?.opinions?.length && Math.random() > 0.6) {
@@ -6737,7 +6737,7 @@ const PERSONALITY_MODES = {
     label: "hype",
     description: "extra enthusiastic high energy",
     openers: ["LETS GOOO ","BRO ","OKAY WAIT ","YO ","DUDE ","OH SNAP ","NO WAY "],
-    closers: [" LETS GOOO 🔥","!! 🚀","!! you're literally amazing","!!! i'm so hyped rn 🎉"," THIS IS EVERYTHING 💯"," absolutely FIRE 🔥🔥"],
+    closers: [" LETS GOOO 🔥"," 🚀🚀"," you're literally amazing"," i'm so hyped rn 🎉"," THIS IS EVERYTHING 💯"," absolutely FIRE 🔥🔥"],
     transforms: [
       [/\bthat's (cool|nice|neat|great)\b/gi, "that's INCREDIBLE"],
       [/\bi think\b/gi, "I KNOW"],
@@ -6752,7 +6752,7 @@ const PERSONALITY_MODES = {
   sarcastic: {
     label: "sarcastic",
     description: "witty dry humor deadpan",
-    openers: ["oh wow, ","shocking, ","well well well, ","oh how original, ","color me surprised, ","imagine that, ","groundbreaking — "],
+    openers: ["oh wow, ","shocking, ","well well well, ","oh how original, ","color me surprised, ","imagine that, ","groundbreaking, "],
     closers: [" ...riveting"," but what do I know"," 🙄"," *slow clap*"," truly revolutionary"," alert the press"],
     transforms: [
       [/\bthat's (great|awesome|amazing|cool)\b/gi, "that's... something"],
@@ -8790,11 +8790,11 @@ const EMOTION_VOCAB = {
 };
 
 const EMPATHY_FRAMES = {
-  joy:      ["oh that's so {word}", "yoo that's {word}!", "aw that's {word} honestly"],
+  joy:      ["oh that's so {word}", "yoo that's {word}", "aw that's {word} honestly"],
   sadness:  ["aw man that's {word}", "dude that's really {word}", "yeah no that's genuinely {word}"],
   anger:    ["nah fr that's {word}", "yeah that's super {word}", "ok yeah that IS {word}"],
   fear:     ["i get it, that's {word}", "yeah that's {word} fr", "nah i'd be {word} too"],
-  surprise: ["wait that's {word}!", "dude {word}!", "ok {word} honestly"],
+  surprise: ["wait that's {word}", "dude {word}", "ok {word} honestly"],
   love:     ["aw that's so {word}", "ok that's really {word} tho", "that's genuinely {word} 🥺"],
 };
 
@@ -10449,7 +10449,7 @@ const BREAKTHROUGH_SIGNALS = [
 
 const CELEBRATION_RESPONSES = {
   high: [
-    "YOOO wait you got it!!",
+    "YOOO wait you got it",
     "ok yes THAT'S it, you literally just figured it out",
     "YESSS dude there it is 🔥",
     "wait no you actually nailed it tho",
@@ -10458,7 +10458,7 @@ const CELEBRATION_RESPONSES = {
   medium: [
     "ohh you see it now right — yeah exactly",
     "yep yep that's the thing right there",
-    "yes!! ok now you're cooking",
+    "yes, ok now you're cooking",
     "exactly, once you see it like that everything makes sense",
   ],
   low: [
@@ -11055,7 +11055,7 @@ function applyCommitmentFollowup(response, text) {
 
 // Micro-acks — tiny signals that show we're tracking
 const MICRO_ACKS = {
-  positive: ["gotcha! ", "makes sense, ", "oh nice, ", "right right, ", "got it! ", "love that, ", "ok yeah, "],
+  positive: ["gotcha, ", "makes sense, ", "oh nice, ", "right right, ", "got it, ", "love that, ", "ok yeah, "],
   negative: ["i hear you. ", "gotcha. ", "that's fair. ", "oof yeah. ", "yeah that's tough. ", "i get it. "],
   neutral: ["mm-hmm, ", "right, ", "gotcha, ", "ok, ", "sure, ", "got it, ", "noted, "],
   question: ["ooh, ", "hmm ", "oh wait, ", "so, ", "uh "],
