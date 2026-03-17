@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    Tasteprint SLM — Small Language Model (client-side, zero dependencies)
-   Round 148: Personality selector — chill/hype/sarcastic/wise/chaotic modes
+   Round 153: Selective attention — interest scoring, go-back callbacks, multi-point reactions
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Sentence Encoder — Semantic Understanding Brain ──
@@ -20185,6 +20185,372 @@ function splitIntoMultiMessages(response, text, sent) {
   return response;
 }
 
+/* ── Round 153: Selective Attention — Interest Scoring, Go-Back Callbacks, Multi-Point Reactions ── */
+/*
+ * Three systems that make the bot focus like a real friend:
+ * 1. Interest scorer: rank parts of a multi-topic message by surprise/emotion/novelty/question
+ * 2. Go-back callbacks: save interesting unresolved threads, circle back ~8% of the time
+ * 3. Multi-point combiner: "ok first of all [X], second [Y]" when 2+ topics are interesting
+ */
+
+// ── State for selective attention ──
+let goBackTopics = [];       // { text, topic, interestScore, turn, resolved } — recent interesting threads
+let lastGoBackTurn = 0;      // cooldown for go-back callbacks
+let lastSelectiveAttentionResult = null;  // cached result from analyzeInterest for current turn
+
+// ── Interest categories and their base weights ──
+const INTEREST_WEIGHTS = {
+  question: 3.0,       // questions always get priority
+  emotional: 2.8,      // strong emotion demands attention
+  surprise: 2.5,       // unexpected info is inherently interesting
+  lifeEvent: 2.3,      // major life events are high-signal
+  novelty: 2.0,        // new topics we haven't discussed
+  opinion: 1.5,        // sharing a stance is engaging
+  casual: 0.8,         // routine small talk
+  filler: 0.3,         // "yeah", "idk", "anyway"
+};
+
+// Score how "interesting" a sentence fragment is
+function scoreInterest(sentence, allTopics) {
+  const lower = sentence.toLowerCase().trim();
+  if (!lower || lower.length < 3) return { score: 0, type: "filler", text: sentence };
+
+  let score = 0;
+  let type = "casual";
+
+  // ── Questions always get priority ──
+  if (sentence.includes("?") || /^(what|who|where|when|why|how|do you|have you|can you|should|would|is it|are you|did you)\b/i.test(lower)) {
+    score += INTEREST_WEIGHTS.question;
+    type = "question";
+  }
+
+  // ── Emotional weight ──
+  const emoPatterns = /\b(feel|feeling|felt|scared|terrified|love|hate|miss|afraid|worried|anxious|stressed|depressed|happy|excited|devastated|heartbroken|furious|grateful|lonely|overwhelmed|hurt|crying|cried|sobbing|panicking|freaking out|losing it|can't stop)\b/i;
+  if (emoPatterns.test(lower)) {
+    score += INTEREST_WEIGHTS.emotional;
+    type = score > INTEREST_WEIGHTS.question ? type : "emotional";
+  }
+
+  // ── Surprise / unexpected info ──
+  const surprisePatterns = /\b(actually|turns out|plot twist|guess what|you won't believe|so basically|long story short|i just found out|i never told|secret|confession|admit|tbh|ngl|not gonna lie|adopted|pregnant|engaged|eloped|quit|got fired|dropped out|ran away)\b/i;
+  if (surprisePatterns.test(lower)) {
+    score += INTEREST_WEIGHTS.surprise;
+    if (type === "casual") type = "surprise";
+  }
+
+  // ── Life events ──
+  const lifeEventPatterns = /\b(new job|got hired|got fired|broke up|started dating|moving to|graduated|got accepted|got rejected|having a baby|got married|divorced|adopted|passed away|diagnosed|surgery|accident)\b/i;
+  if (lifeEventPatterns.test(lower)) {
+    score += INTEREST_WEIGHTS.lifeEvent;
+    if (type === "casual") type = "lifeEvent";
+  }
+
+  // ── Novelty: topics we haven't discussed before ──
+  const sentTokens = tokenize(sentence);
+  const sentTopics = extractTopics(sentTokens);
+  const novelTopics = sentTopics.filter(t => !mem.topics[t] || mem.topics[t] <= 1);
+  if (novelTopics.length > 0) {
+    score += INTEREST_WEIGHTS.novelty * (novelTopics.length / Math.max(1, sentTopics.length));
+    if (type === "casual") type = "novelty";
+  }
+
+  // ── Opinion sharing ──
+  if (/\b(i think|imo|in my opinion|honestly|i believe|i feel like|to me|personally)\b/i.test(lower)) {
+    score += INTEREST_WEIGHTS.opinion;
+    if (type === "casual") type = "opinion";
+  }
+
+  // ── Filler detection (downweight) ──
+  const fillerPatterns = /^(yeah|yep|yup|ok|okay|sure|cool|nice|right|mhm|hmm|idk|whatever|anyway|so|like|lol|haha|true|same|fair|bet|word|alright|i guess|not much|nothing|nm|nah|nope|fine)[\s.,!]*$/i;
+  if (fillerPatterns.test(lower)) {
+    score = INTEREST_WEIGHTS.filler;
+    type = "filler";
+  }
+
+  // ── "oh and" / "also" / "btw" markers — these often contain the interesting part ──
+  if (/^(oh and|also|btw|by the way|oh also|and also|plus|oh wait)\b/i.test(lower)) {
+    score += 0.5; // bonus — people bury the lede after "oh and"
+  }
+
+  // ── "lol" / "haha" minimizers — the person is downplaying something interesting ──
+  if (/\b(lol|lmao|haha|😂|💀)\s*$/i.test(lower) && lower.length > 15) {
+    score += 0.4; // they're deflecting, which means it matters
+  }
+
+  return { score, type, text: sentence, topics: extractTopics(tokenize(sentence)) };
+}
+
+// Analyze a full message: split into parts, score each, rank by interest
+function analyzeInterest(text) {
+  // Split by sentence boundaries, commas with conjunctions, or "oh and" / "also" / "btw" markers
+  let parts = [];
+
+  // First try sentence splitting
+  const sentences = text
+    .split(/(?<=[.!?])\s+|(?:,\s*(?:and|but|oh|also|plus|btw)\s)/i)
+    .map(s => s.trim())
+    .filter(s => s.length > 2);
+
+  if (sentences.length >= 2) {
+    parts = sentences;
+  } else {
+    // Try splitting on "oh and", "also", "btw" etc.
+    const altParts = text
+      .split(/\b(?:oh and|also|btw|by the way|oh also|and also|plus)\b/i)
+      .map(s => s.trim())
+      .filter(s => s.length > 3);
+    parts = altParts.length >= 2 ? altParts : [text];
+  }
+
+  const allTopics = extractTopics(tokenize(text));
+  const scored = parts.map(p => scoreInterest(p, allTopics));
+  scored.sort((a, b) => b.score - a.score);
+
+  return {
+    parts: scored,
+    hasMultipleInteresting: scored.filter(s => s.score >= 1.5).length >= 2,
+    topPart: scored[0] || null,
+    secondPart: scored[1] || null,
+    isMultiTopic: scored.length >= 2 && scored[0].type !== "filler" && scored[1]?.type !== "filler",
+    allTopics,
+  };
+}
+
+// ── Go-back tracker: save interesting threads for potential callback ──
+function trackInterestingThread(text, analysis) {
+  if (!analysis || !analysis.parts) return;
+
+  // Save parts that scored high but weren't the top (i.e., we "ignored" them)
+  for (let i = 1; i < analysis.parts.length; i++) {
+    const part = analysis.parts[i];
+    if (part.score >= 1.5 && part.type !== "filler") {
+      goBackTopics.push({
+        text: part.text,
+        topic: part.topics[0] || "",
+        type: part.type,
+        interestScore: part.score,
+        turn: mem.turn,
+        resolved: false,
+      });
+    }
+  }
+
+  // Also save the main topic if it has high novelty/surprise and might not get fully explored
+  if (analysis.topPart && analysis.topPart.score >= 2.0 && analysis.topPart.type === "surprise") {
+    goBackTopics.push({
+      text: analysis.topPart.text,
+      topic: analysis.topPart.topics[0] || "",
+      type: analysis.topPart.type,
+      interestScore: analysis.topPart.score,
+      turn: mem.turn,
+      resolved: false,
+    });
+  }
+
+  // Keep only recent (last 6) and unresolved
+  goBackTopics = goBackTopics.filter(t => !t.resolved && mem.turn - t.turn <= 8).slice(-6);
+}
+
+// Mark a topic as resolved if the current message addresses it
+function resolveGoBackTopics(text) {
+  const lower = text.toLowerCase();
+  const currentTopics = extractTopics(tokenize(text));
+  for (const entry of goBackTopics) {
+    // Resolved if user brings the topic back themselves, or if we discussed it
+    if (entry.topic && currentTopics.includes(entry.topic)) {
+      entry.resolved = true;
+    }
+    // Also resolve if significant text overlap
+    const entryWords = entry.text.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    const matchCount = entryWords.filter(w => lower.includes(w)).length;
+    if (matchCount >= 2) entry.resolved = true;
+  }
+}
+
+// Try generating a "wait go back" callback (~8% of responses)
+function tryGoBackCallback(response, text, sent) {
+  // ── Guards ──
+  if (mem.turn < 5) return response;
+  if (mem.turn - lastGoBackTurn < 5) return response; // cooldown: at least 5 turns apart
+  if (Math.random() > 0.08) return response;          // ~8% fire rate
+
+  // Don't go back during serious/emotional conversations
+  if (sent < -0.4) return response;
+  if (/\b(died|death|funeral|cancer|diagnosis|breakup|suicide|depressed|crying|panic)\b/i.test(text)) return response;
+
+  // Don't go back if user just asked a question — answer first
+  if (text.includes("?")) return response;
+
+  // Find the best unresolved go-back candidate
+  const candidates = goBackTopics
+    .filter(t => !t.resolved && mem.turn - t.turn >= 2 && mem.turn - t.turn <= 7)
+    .sort((a, b) => b.interestScore - a.interestScore);
+
+  if (candidates.length === 0) return response;
+
+  const best = candidates[0];
+  best.resolved = true;
+  lastGoBackTurn = mem.turn;
+
+  // Extract a short reference to what they said
+  const shortRef = best.text.length > 50 ? best.text.slice(0, 47) + "..." : best.text;
+
+  // Build the go-back prefix
+  const goBackPrefixes = [
+    `wait hold on, you said "${shortRef}"??`,
+    `ok but i'm still stuck on the ${best.topic || shortRef} thing`,
+    `can we go back to the ${best.topic || shortRef} part for a sec`,
+    `wait wait wait — ${shortRef}?? we're not just gonna skip past that`,
+    `ok i know we moved on but — ${shortRef}???`,
+    `sorry but my brain is still on "${shortRef}"`,
+    `not to circle back but — ${best.topic || shortRef}???`,
+  ];
+
+  const prefix = pick(goBackPrefixes);
+
+  // If the current response is substantial, replace it. If short, prepend.
+  if (response.length > 60) {
+    return prefix;  // the go-back IS the response
+  }
+  return prefix + " " + response;
+}
+
+// ── Multi-point reaction combiner ──
+// When there are 2+ interesting things, combine reactions naturally
+function tryMultiPointReaction(analysis, text, sent) {
+  if (!analysis.hasMultipleInteresting) return null;
+
+  // Only fire ~25% of the time when conditions are met
+  if (Math.random() > 0.25) return null;
+
+  // Don't combine during emotional conversations
+  if (sent < -0.3) return null;
+
+  const top = analysis.topPart;
+  const second = analysis.secondPart;
+
+  if (!top || !second) return null;
+  if (top.type === "filler" || second.type === "filler") return null;
+
+  // Generate mini-reactions for each point
+  const reaction1 = generatePointReaction(top);
+  const reaction2 = generatePointReaction(second);
+
+  if (!reaction1 || !reaction2) return null;
+
+  // Combine with natural connectors
+  const combiners = [
+    `ok first of all, ${reaction1}. second, ${reaction2}`,
+    `two things: ${reaction1}. and ${reaction2}`,
+    `the ${top.topics[0] || "first"} part — ${reaction1}. but also ${reaction2}`,
+    `${reaction1} — but can we also talk about how ${reaction2}`,
+    `wait ok so ${reaction1}. AND ${reaction2}??`,
+    `${reaction1}. also — ${reaction2}`,
+  ];
+
+  return pick(combiners);
+}
+
+// Generate a short reaction to a single scored point
+function generatePointReaction(point) {
+  if (!point || point.score < 1.0) return null;
+
+  const topicRef = point.topics[0] || "";
+  const shortText = point.text.length > 40 ? point.text.slice(0, 37) + "..." : point.text;
+
+  switch (point.type) {
+    case "question":
+      return pick([
+        "great question honestly",
+        `the ${topicRef || "that"} question is interesting`,
+        "i actually have thoughts on that",
+      ]);
+    case "emotional":
+      return pick([
+        "i hear you on that",
+        "that sounds really intense",
+        "i feel that honestly",
+        "that part hit different",
+      ]);
+    case "surprise":
+      return pick([
+        `"${shortText}" — WHAT`,
+        "you can't just drop that casually",
+        "excuse me?? how are you saying that so calmly",
+        "hold on that's huge",
+      ]);
+    case "lifeEvent":
+      return pick([
+        "that's literally a whole thing",
+        "ok that's major",
+        "that's a big deal actually",
+        `the ${topicRef || "that"} part is huge`,
+      ]);
+    case "novelty":
+      return pick([
+        `wait you're into ${topicRef || "that"}?`,
+        `ooh ${topicRef || "that"} is new territory`,
+        "i didn't know that about you",
+        `tell me more about the ${topicRef || "that"} thing`,
+      ]);
+    case "opinion":
+      return pick([
+        "interesting take honestly",
+        "i kinda see where you're coming from",
+        "ok that's a stance",
+        `the ${topicRef || "that"} opinion — noted`,
+      ]);
+    default:
+      return pick([
+        "that's interesting",
+        "noted",
+        `the ${topicRef || "that"} bit caught me`,
+      ]);
+  }
+}
+
+// ── Selective attention: influence which part of the message gets responded to ──
+// Called before generateResponse to potentially rewrite the input to focus on the most interesting part
+function applySelectiveAttention(text, sent) {
+  const analysis = analyzeInterest(text);
+  lastSelectiveAttentionResult = analysis;
+
+  // Track interesting threads for potential go-back
+  trackInterestingThread(text, analysis);
+
+  // Resolve any go-back topics that this message addresses
+  resolveGoBackTopics(text);
+
+  // If only one part, or message is short, no selective attention needed
+  if (analysis.parts.length < 2) return { text, modified: false, analysis };
+
+  // If the top part is a question, always prioritize it (guard)
+  if (analysis.topPart.type === "question") return { text, modified: false, analysis };
+
+  // If there's a big gap between top and second interest (>1.5 points), focus on top
+  if (analysis.topPart && analysis.secondPart) {
+    const gap = analysis.topPart.score - analysis.secondPart.score;
+
+    // Large gap: focus on the interesting part, ignore the rest
+    if (gap >= 1.5 && analysis.topPart.score >= 2.0) {
+      // Don't discard questions even if they're the "boring" part
+      const hasIgnoredQuestion = analysis.parts.slice(1).some(p => p.type === "question");
+      if (hasIgnoredQuestion) return { text, modified: false, analysis };
+
+      // Don't discard emotional content
+      const hasIgnoredEmotion = analysis.parts.slice(1).some(p => p.type === "emotional");
+      if (hasIgnoredEmotion) return { text, modified: false, analysis };
+
+      // ~50% chance to actually focus (don't always ignore parts)
+      if (Math.random() > 0.5) return { text, modified: false, analysis };
+
+      return { text: analysis.topPart.text, modified: true, analysis };
+    }
+  }
+
+  return { text, modified: false, analysis };
+}
+
 // ── Engagement length mirroring ──
 // Track user message lengths and compute a target length multiplier
 function trackUserMsgLength(text) {
@@ -20322,6 +20688,22 @@ export async function getAIResponse(input) {
     return { text: ultraShort, typingMs: usTypingMs, pause: null };
   }
 
+  // ═══ Round 153: Selective attention — analyze interest before response generation ═══
+  const selectiveResult = applySelectiveAttention(text, ultraShortSent);
+  // If selective attention found a multi-point reaction, use it directly
+  if (selectiveResult.analysis && selectiveResult.analysis.hasMultipleInteresting) {
+    const multiReaction = tryMultiPointReaction(selectiveResult.analysis, text, ultraShortSent);
+    if (multiReaction) {
+      const mpSent = sentiment(text);
+      const mpParsed = parseSentence(text);
+      mem.add("user", text, [], selectiveResult.analysis.allTopics, mpSent);
+      mem.add("ai", multiReaction);
+      trackAIQuestion(multiReaction);
+      const typingMs = calcTypingMs(multiReaction, mpSent, mpParsed);
+      return { text: multiReaction, typingMs, pause: calcTypingPause(typingMs) };
+    }
+  }
+
   // ═══ Adaptive strategy: score how user reacted to our last response ═══
   scoreLastStrategy(text);
 
@@ -20378,8 +20760,11 @@ export async function getAIResponse(input) {
     }
   }
 
-  // Generate core response
-  let response = generateResponse(text);
+  // ═══ Round 153: Use selective attention to focus on the most interesting part ═══
+  const effectiveInput = selectiveResult.modified ? selectiveResult.text : text;
+
+  // Generate core response (potentially focused on the most interesting part)
+  let response = generateResponse(effectiveInput);
 
   // ═══ Conversation repair: ambiguity handling ═══
   const intents = classify(text);
@@ -20429,6 +20814,9 @@ export async function getAIResponse(input) {
 
   // Try proactive callbacks
   response = tryProactiveCallback(response, currentTopics);
+
+  // ═══ Round 153: "Wait go back" callbacks — circle back to interesting unresolved threads ═══
+  response = tryGoBackCallback(response, text, sent);
 
   // ═══ Semantic memory: infer connections between current topic and stored facts ═══
   const { keywords: semKW } = extractKW(text);
@@ -20818,7 +21206,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);
