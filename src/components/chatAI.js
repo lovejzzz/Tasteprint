@@ -14633,32 +14633,35 @@ let lastRedirectTurn = 0;
 const REDIRECT_OPENERS = {
   // "that reminds me" family — organic topic association
   associative: [
-    "that reminds me of something — ",
-    "wait speaking of that — ",
+    "that reminds me tho, ",
+    "wait speaking of that, ",
     "yo actually that made me think of something. ",
-    "oh wait this is kinda related — ",
+    "oh wait this is kinda related, ",
     "hmm ok that actually connects to something. ",
+    "ooh ok so on that note, ",
   ],
   // "completely unrelated" family — deliberate topic change
   unrelated: [
-    "ok but can we talk about something for a sec? ",
+    "ok but can we talk about something for a sec. ",
     "omg ok completely unrelated but ",
     "lowkey this is random but ",
-    "ok pivot — ",
-    "wait ok totally different thing — ",
-    "not to change the subject but also to completely change the subject — ",
+    "ok pivot, ",
+    "wait ok totally different thing, ",
+    "not to change the subject but also to completely change the subject, ",
+    "ok sorry this is so random but ",
   ],
   // "I've been meaning to ask" family — personal curiosity
   curiosity: [
-    "I've been meaning to ask you — ",
-    "ok wait random question — ",
-    "this has nothing to do with anything but — ",
-    "yo ok I just thought of something — ",
-    "oh also btw — ",
+    "i've been meaning to ask you, ",
+    "ok wait random question, ",
+    "this has nothing to do with anything but ",
+    "yo ok i just thought of something, ",
+    "oh also btw, ",
+    "wait ok i need to know, ",
   ],
 };
 
-// Redirect targets — things a friend might naturally pivot to
+// Generic redirect targets — fallback when no topic-specific pivot exists
 const REDIRECT_TARGETS = [
   "what's been the best part of your week so far",
   "have you watched anything good lately",
@@ -14677,6 +14680,30 @@ const REDIRECT_TARGETS = [
   "if you could learn one random thing instantly what would it be",
   "what's been taking up most of your headspace lately",
 ];
+
+// Topic-aware pivots — related-but-different directions keyed by topic stem
+// When we've been on a topic for a while, pivot to something adjacent, not random
+const TOPIC_PIVOTS = {
+  food: ["have you tried cooking anything new lately", "what's your go-to lazy meal", "ok but what's the most overrated food", "what's a food you hated as a kid but love now"],
+  music: ["have you been to any concerts lately", "what song has been on repeat for you", "ok but what genre do you secretly love", "who's an artist you think is underrated"],
+  movie: ["what's the last movie that actually surprised you", "are you more of a theater or couch person", "ok but what movie do you quote the most", "what's a movie everyone loves that you don't get"],
+  tv: ["are you watching anything right now", "what show do you think is actually underrated", "what's a show you've rewatched the most", "do you binge or do you pace yourself"],
+  work: ["how's the work-life balance thing going", "what's the most interesting thing about your job rn", "do you like your coworkers", "if you could switch careers for a year what would you try"],
+  school: ["what class are you most into right now", "do you actually study or do you just wing it", "what's the most useful thing you've learned so far", "are you a front-row or back-row person"],
+  travel: ["where's somewhere you've always wanted to go", "what's the best trip you've ever taken", "are you a plan-everything or wing-it traveler", "what's the weirdest food you've eaten abroad"],
+  fitness: ["what's your workout situation like rn", "are you a morning or night workout person", "what's a fitness trend you think is actually bs", "do you do it for health or for vibes"],
+  gaming: ["what have you been playing lately", "what's a game you could replay forever", "are you competitive or casual", "what's the best game you've played this year"],
+  tech: ["what's a piece of tech you can't live without", "do you think AI is cool or scary", "what app do you use way too much", "what's a tech hill you'd die on"],
+  relationship: ["what's the best relationship advice you've ever gotten", "do you believe in love languages", "what's a green flag people don't talk about enough", "what's your take on situationships"],
+  health: ["how's your sleep been honestly", "do you drink enough water or are you dehydrated rn", "what's a health thing you know you should do but don't", "are you a vitamins person"],
+  money: ["what's the best purchase you've made recently", "are you a saver or a spender", "what's something you think is worth splurging on", "what's the most useless thing you've ever bought"],
+  social: ["are you more of an introvert or extrovert", "what's your ideal weekend look like", "do you have a big friend group or a small one", "what's the best way someone has made you feel included"],
+  pet: ["do you have any pets", "what's the best pet you've ever had", "are you a dog person or cat person or neither", "what's the most ridiculous thing a pet has done around you"],
+  hobby: ["what hobby have you picked up recently", "what's something you used to be really into", "do you have a hobby that surprises people", "what would you do all day if money wasn't a thing"],
+  weather: ["are you a summer person or winter person", "what's your ideal temperature", "does weather actually affect your mood", "what's the best weather for just doing nothing"],
+  book: ["what's the last book that actually stuck with you", "do you read physical or digital", "what genre do you gravitate toward", "are you a one-book-at-a-time person or multiple"],
+  sport: ["do you play anything or just watch", "what sport is actually the hardest", "who's your goat in any sport", "are you a bandwagon fan or ride-or-die"],
+};
 
 function updateTopicStreak(topics) {
   const turn = mem.turn;
@@ -14718,15 +14745,28 @@ function applyNaturalRedirect(response, text, topics, sent) {
 
   lastRedirectTurn = turn;
 
-  // Choose redirect style based on randomness
-  const style = Math.random();
+  // Try topic-aware pivot first — feels more organic than random
+  const currentTopic = topics[0] || "";
+  const topicKey = stem(currentTopic).toLowerCase();
+  let target = null;
   let openerPool;
-  if (style < 0.40) openerPool = REDIRECT_OPENERS.associative;
-  else if (style < 0.75) openerPool = REDIRECT_OPENERS.unrelated;
-  else openerPool = REDIRECT_OPENERS.curiosity;
+
+  // Check if we have a related pivot for the current topic
+  const pivotKey = Object.keys(TOPIC_PIVOTS).find(k => topicKey.includes(k) || k.includes(topicKey));
+  if (pivotKey && Math.random() < 0.70) {
+    // 70% use topic-aware pivot with associative opener (feels natural)
+    target = pick(TOPIC_PIVOTS[pivotKey]);
+    openerPool = REDIRECT_OPENERS.associative;
+  } else {
+    // Fall back to generic redirect
+    const style = Math.random();
+    if (style < 0.40) openerPool = REDIRECT_OPENERS.associative;
+    else if (style < 0.75) openerPool = REDIRECT_OPENERS.unrelated;
+    else openerPool = REDIRECT_OPENERS.curiosity;
+    target = pick(REDIRECT_TARGETS);
+  }
 
   const opener = pick(openerPool);
-  const target = pick(REDIRECT_TARGETS);
 
   // Append the redirect as a natural add-on
   return response + " " + opener + target + "?";
