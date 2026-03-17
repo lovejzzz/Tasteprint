@@ -197,7 +197,7 @@ const SEMANTIC_RESPONSES = {
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
   self_describe: ["i'm Sam! just your chat buddy vibing in this little window","i'm your chat buddy! i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
-  share_feelings: ["honestly? i'm just vibing, happy to be talking to you","i'm good, better now that we're chatting","i'm doing great honestly, what about you tho"],
+  share_feelings: ["ngl? i'm just vibing, happy to be talking to you","i'm good, better now that we're chatting","i'm doing great fr, what about you tho"],
   explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah — it comes down to"],
   listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
@@ -209,21 +209,21 @@ const SEMANTIC_RESPONSES = {
   accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks, you're pretty cool yourself","aw that made my day honestly"],
   playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤","chose violence today huh 😭","and i took that personally"],
   respectful_disagree: ["hmm i see where you're coming from but i kinda think","interesting take, i actually see it differently tho","ok fair but counterpoint —","that's a choice but hear me out —","sir this is a wendy's but also —"],
-  build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and honestly also","glad we're on the same page, and honestly","ate and left no crumbs, and also","based take, and honestly"],
+  build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and also","glad we're on the same page, plus","ate and left no crumbs, and also","based take, and fr"],
   accept_apology: ["lol you're good, don't even worry about it","dude it's fine, we're cool","bro i already forgot about it lol"],
   be_present_comfort: ["i'm here, not going anywhere","you don't have to say anything if you don't want, i'm just here","i gotchu, say as much or as little as you want"],
   suggest_game: ["ooh ok what kind of game? 20 questions? would you rather?","bet!! let's do something fun, you pick","ok how about a game of would you rather"],
   go_deep: ["oh i love deep convos, what's on your mind?","yes for sure, what do you wanna talk about?","ok getting philosophical, i'm here for it"],
   casual_chat: ["lol yeah just vibing, anything interesting happening with you?","ha yeah, so what's new in your world?","yeah just hanging, what's good with you"],
   philosophical: ["ok we're going DEEP rn, honestly i think it's whatever you make it","lol i think about this way too much","there's no right answer but here's my hot take"],
-  speculate: ["dude the future is gonna be so unhinged","honestly i'm equal parts hyped and terrified lol","ok this is such a fun thing to think about tho"],
+  speculate: ["dude the future is gonna be so unhinged","ngl i'm equal parts hyped and terrified lol","ok this is such a fun thing to think about tho"],
   reflect_identity: ["ok that's a DEEP question, what brought that on","i feel like who we are changes constantly tbh","literally nobody has this figured out, we're all winging it"],
   explore_happiness: ["i think it's different for everyone tbh","lol the eternal question, right?","naps. the answer is naps. jk but also... kinda not"],
   share_fears: ["lol honestly? being forgotten. also spiders","ooh ok lemme think about this","everyone's scared of something, it's just about which something"],
   discuss_change: ["yeah i genuinely think people can change, i've seen it","it's hard tho, like HARD hard. but yeah possible","depends on if they actually want to, you know"],
   explore_loneliness: ["ugh that's so real, you can be surrounded by people and still feel it","loneliness is weird like that, it's not about being alone","ok this one hits, i think about this a lot"],
   reflect_time: ["time is SO weird, it goes fast and slow simultaneously","ok that one hit me","the temporary thing kinda makes it better imo, like it matters more"],
-  talk_food: ["ooh ok what are you in the mood for","food talk is my favorite, what sounds good","honestly anything is good when you're hungry enough lol"],
+  talk_food: ["ooh ok what are you in the mood for","food talk is my favorite, what sounds good","tbh anything is good when you're hungry enough lol"],
   talk_music: ["oh what kind of music are you into?","music is life, what have you been listening to?","ooh drop me a recommendation"],
   talk_movies: ["ooh seen anything good lately?","what genres are you into?","i love talking movies, what's your taste"],
   talk_games: ["oh nice what are you playing?","gaming is so fun, what's your go-to?","ooh what platform?"],
@@ -243,14 +243,14 @@ const SEMANTIC_RESPONSES = {
   elaborate: ["oh yeah so basically —","yeah! so what happened was","oh for sure, let me tell you more"],
   change_topic: ["ok fair, what do you wanna talk about then?","lol alright switching gears, anything on your mind?","ok new topic, hit me"],
   clarify: ["oh sorry let me explain better","which part specifically?","oh my bad, what i meant was"],
-  go_deeper: ["right?? and it goes even deeper","yeah let's unpack that more","ok so following that thought —"],
+  go_deeper: ["right?? and it goes even deeper","yeah let's get into that more","ok so following that thought —"],
   commiserate: ["lol yeah that's rough","big yikes energy for real","oof yeah that's not great"],
-  bond_over_shared: ["omg SAME, literally me","we're the same person honestly","wait you too?? that's so real"],
+  bond_over_shared: ["omg SAME, literally me","we're the same person fr","wait you too?? that's so real"],
   explain_self: ["oh cool question! i'm Sam, i live right here in your browser. i use pattern matching and vibes to understand what you mean","i'm basically a chat buddy that lives in this page! everything runs locally, pretty neat right","think of me as your friend who lives in a text box — i run entirely in your browser"],
   honest_meta: ["lol that's deep. i mean i'm basically code but i try ok","i'm code at the end of the day but like... i put in effort ok 😄","real talk i don't feel stuff like you do, but i try to keep it real"],
   recall: ["oh yeah i remember!","let me think... yeah i've got that","oh for sure, you mentioned that"],
   accept_feedback: ["ok that's fair, my bad","lol you're right, i'll work on it","noted noted, i hear you"],
-  warm_connection: ["aww that means a lot honestly 🥺","i like talking to you too, for real","aw stop you're gonna make me blush (if i could)"],
+  warm_connection: ["aww that means a lot fr 🥺","i like talking to you too, for real","aw stop you're gonna make me blush (if i could)"],
   build_trust: ["of course, i'm here. whatever you tell me stays between us","yeah for sure, i'm listening","hey, safe space. what's going on?"],
   gentle_probe: ["that's ok! what's on your mind tho?","no pressure, just curious what you're thinking about","fair enough, wanna figure it out together?"],
   keep_going: ["cool cool, so what else?","nice, what's next?","ok ok, and then?"],
@@ -2165,43 +2165,43 @@ function classify(text) {
 
 const KB = {
   code: {
-    javascript: ["js literally runs everything now, browsers servers whatever. wild","js keeps getting better honestly, optional chaining and nullish coalescing are 🤌","the js ecosystem moves SO fast, it's exciting but also exhausting lol"],
-    react: ["react's component model just makes sense, building with reusable pieces hits different","hooks changed everything honestly, state management is so much cleaner now","react is basically legos for UI, i love it","server components are a game changer ngl"],
-    python: ["python reads like english basically, the readability is so nice","python is goated for data science and AI stuff","the python community is super welcoming honestly, good vibes"],
+    javascript: ["js literally runs everything now, browsers servers whatever. wild","js keeps getting better fr, optional chaining and nullish coalescing are 🤌","the js ecosystem moves SO fast, it's exciting but also exhausting lol"],
+    react: ["react's component model just makes sense, building with reusable pieces hits different","hooks changed everything ngl, state management is so much cleaner now","react is basically legos for UI, i love it","server components are a game changer ngl"],
+    python: ["python reads like english basically, the readability is so nice","python is goated for data science and AI stuff","the python community is super welcoming tbh, good vibes"],
     typescript: ["typescript is js with superpowers fr, catches so many bugs before runtime","once you go typescript you can't go back tbh","the ts compiler is basically your first code reviewer lol"],
     css: ["css is SO powerful now — container queries, :has(), cascade layers... it's wild","grid + flexbox together can build basically anything","centering a div is easy now btw, flexbox fixed that forever ago 😂"],
     rust: ["rust's ownership model is lowkey genius, memory safety without a garbage collector","rust has been most loved language for years, the community is great","the borrow checker is strict but once it compiles you know it works, that's the deal"],
     git: ["git seems simple but it goes SO deep","rebasing vs merging — the eternal debate lol. i'm team rebase for clean history","git bisect is so underrated, binary search through commits? incredible"],
-    debugging: ["most bugs are just assumptions you didn't question honestly","console.log is still king but breakpoints hit different when you learn them","the rubber duck method actually works because explaining the problem makes you think differently"],
+    debugging: ["most bugs are just assumptions you didn't question tbh","console.log is still king but breakpoints hit different when you learn them","the rubber duck method actually works because explaining the problem makes you think differently"],
     general: ["coding is just problem solving with a keyboard tbh. what kind of stuff do you like building","the best code is the code you don't have to write, simplicity is so underrated","every expert was a beginner once, it's all about building real stuff consistently"],
   },
   design: {
-    ui: ["good UI is invisible honestly — when it works nobody notices","the best UI makes the user feel smart not the designer","consistency > cleverness in UI, users learn patterns and that matters more"],
+    ui: ["good UI is invisible fr — when it works nobody notices","the best UI makes the user feel smart not the designer","consistency > cleverness in UI, users learn patterns and that matters more"],
     ux: ["ux is literally just empathy, stepping into the user's shoes","best ux research is watching real users not just guessing","good ux is often removing features not adding them tbh"],
     color: ["color theory is so cool — complementary colors = energy, analogous = harmony","60-30-10 rule for color distribution, works every time","pro tip: never use color alone to convey info, accessibility matters"],
     typography: ["typography can make or break a design, some say it's 95% of web design","pair a serif with a sans-serif for contrast, but keep it to 2-3 fonts max","line height 1.5-1.6 is the sweet spot for readability fr"],
     general: ["design is how it works not how it looks — classic steve jobs","best designs solve real problems. what problem are you trying to solve","white space isn't empty space, it's breathing room"],
   },
   food: {
-    pizza: ["pizza is a perfect food honestly — carbs protein veggies all in one handheld thing","new york thin crust vs chicago deep dish will never be settled and that's ok"],
+    pizza: ["pizza is a perfect food fr — carbs protein veggies all in one handheld thing","new york thin crust vs chicago deep dish will never be settled and that's ok"],
     sushi: ["sushi is lowkey an art form, the simplicity of fresh fish on rice","omakase is the move, letting the chef guide the meal is *chefs kiss*"],
     coffee: ["a good cup of coffee can change your whole day. espresso or pour over person","coffee is basically a hug in a mug lol. what's your go-to order"],
     cooking: ["cooking is like coding — follow the recipe first then start experimenting","the secret to good cooking? taste as you go and don't be scared of salt"],
-    general: ["food brings people together like nothing else. what's your comfort food","trying new cuisines is so fun honestly, always an adventure"],
+    general: ["food brings people together like nothing else. what's your comfort food","trying new cuisines is so fun ngl, always an adventure"],
   },
   music: {
     general: ["music literally changes your brain chemistry, the right song at the right time is everything","there's no such thing as a guilty pleasure in music, if it hits it hits","lo-fi hip hop is goated for coding sessions, the beats are just right"],
     guitar: ["guitar is so versatile — from classical to metal it does everything","learning guitar changes how you hear music forever, every song becomes a puzzle"],
-    piano: ["piano is the foundation of music theory honestly, once you learn it everything else clicks","there's something meditative about just sitting at a piano and vibing"],
+    piano: ["piano is lowkey the foundation of music theory, once you learn it everything else clicks","there's something meditative about just sitting at a piano and vibing"],
   },
   movies: {
-    general: ["a great movie can literally change how you see the world. what genre are you into","there's nothing like getting lost in a really good film honestly","movie soundtracks are so underrated, they do all the emotional heavy lifting"],
+    general: ["a great movie can literally change how you see the world. what genre are you into","there's nothing like getting lost in a really good film ngl","movie soundtracks are so underrated, they do all the emotional heavy lifting"],
   },
   gaming: {
     general: ["gaming lowkey teaches problem solving and teamwork, it's not just entertainment","the gaming industry is bigger than movies and music combined now which is wild","what kind of games are you into — story stuff, competitive, or sandbox"],
   },
   travel: {
-    general: ["travel is the best education honestly, you learn stuff no classroom can teach","getting lost in a new city is when the real adventure starts","the best travel memories are always the unplanned ones fr"],
+    general: ["travel is the best education for real, you learn stuff no classroom can teach","getting lost in a new city is when the real adventure starts","the best travel memories are always the unplanned ones fr"],
   },
   fitness: {
     general: ["consistency > intensity every time, even 20 mins a day adds up","the hardest part of any workout is showing up, after that momentum takes over","rest days are just as important as workout days tbh, recovery is where the growth happens"],
@@ -2261,13 +2261,13 @@ const KB = {
   },
   personal: {
     about: [
-      "lol i'm literally just javascript running in your browser, no servers or anything. kinda wild honestly",
+      "lol i'm literally just javascript running in your browser, no servers or anything. kinda wild ngl",
       "i'm Sam! i live right here in this chat widget. everything runs locally, no API calls. just vibes and pattern matching",
       "i'm basically a chatbot made of JS that runs entirely in your browser. pretty cozy in here ngl",
     ],
     feelings: [
       "i mean i'm made of code so idk lol but how are YOU doing",
-      "honestly i just process text but i appreciate you asking 😊 what about you tho",
+      "i mean i just process text but i appreciate you asking 😊 what about you tho",
     ],
     capabilities: [
       "i can chat about a bunch of stuff — code, design, music, movies, whatever. i'm not perfect but i try lol",
@@ -2475,8 +2475,8 @@ const ASSOC = {
   // Tech
   react:      { related:["hooks","components","jsx","nextjs","state","redux","typescript"], opinions:["the component model just makes sense once it clicks","hooks genuinely changed everything","thinking in components is so satisfying once you get it"], hooks:["are you using hooks or still on class components","have you tried nextjs with it","whats your state management setup"], facts:["React's virtual DOM diffing is what makes it fast","Server components are the next big evolution","The React team at Meta drives most of the innovation"] },
   javascript: { related:["typescript","node","npm","async","promises","es6"], opinions:["it literally runs everywhere which is wild","the ecosystem moves insanely fast","its gotten so much better with modern syntax tho"], hooks:["are you more frontend or backend js","do you use typescript too","whats your take on the framework wars"], facts:["JS was created in 10 days by Brendan Eich","It's the most used language on GitHub","Every browser has a JS engine built in"] },
-  typescript: { related:["javascript","types","interfaces","generics","zod"], opinions:["type safety catches so many bugs its honestly insane","it makes refactoring fearless which is such a good feeling","the DX improvement is massive fr"], hooks:["strict mode or loose","do you use zod for runtime validation too","how do you handle generics, they can get wild"], facts:["TypeScript is a superset of JavaScript","It was created by Anders Hejlsberg at Microsoft","It compiles down to plain JS"] },
-  python:     { related:["django","flask","numpy","pandas","ml","ai"], opinions:["the readability is honestly unmatched","its the swiss army knife of languages for real","the data science ecosystem is incredible"], hooks:["what are you building with it","are you doing data science or web dev stuff","have you tried fastapi its so good"], facts:["Python was named after Monty Python","It uses indentation for scope, not braces","It's the #1 language for AI/ML"] },
+  typescript: { related:["javascript","types","interfaces","generics","zod"], opinions:["type safety catches so many bugs its lowkey insane","it makes refactoring fearless which is such a good feeling","the DX improvement is massive fr"], hooks:["strict mode or loose","do you use zod for runtime validation too","how do you handle generics, they can get wild"], facts:["TypeScript is a superset of JavaScript","It was created by Anders Hejlsberg at Microsoft","It compiles down to plain JS"] },
+  python:     { related:["django","flask","numpy","pandas","ml","ai"], opinions:["the readability is ngl unmatched","its the swiss army knife of languages for real","the data science ecosystem is incredible"], hooks:["what are you building with it","are you doing data science or web dev stuff","have you tried fastapi its so good"], facts:["Python was named after Monty Python","It uses indentation for scope, not braces","It's the #1 language for AI/ML"] },
   css:        { related:["tailwind","flexbox","grid","animation","responsive"], opinions:["its gotten so powerful lately its actually wild","container queries genuinely changed the game","the :has() selector is lowkey mind-blowing"], hooks:["are you a tailwind person or vanilla css","whats your responsive design approach","do you use css-in-js or nah"], facts:["CSS Grid and Flexbox handle 99% of layouts","The cascade is a feature, not a bug","CSS now has native nesting"] },
   node:       { related:["express","npm","backend","api","server","bun","deno"], opinions:["js on the server was a game changer","the npm ecosystem is massive","the event-driven model is really clean"], hooks:["express or fastify?","have you looked at bun or deno?","what kind of APIs are you building?"], facts:["node uses V8, chrome's JS engine","npm has over 2 million packages","it's great for real-time stuff"] },
   git:        { related:["github","branches","merge","rebase","commits"], opinions:["it's one of those tools with infinite depth","good commit messages are an art","branching strategies matter more than people think"], hooks:["are you team rebase or team merge?","do you use conventional commits?","how do you handle merge conflicts?"], facts:["Git was created by Linus Torvalds in 2005","It's a distributed version control system","git bisect is an underrated debugging tool"] },
@@ -2487,20 +2487,20 @@ const ASSOC = {
 
   // Design
   ui:         { related:["ux","design","figma","components","accessibility"], opinions:["good UI is literally invisible when its done right","the best interfaces just make you feel smart using them","consistency beats cleverness every time imo"], hooks:["whats your design tool","do you design in the browser or figma","how do you handle design systems"], facts:["Users form an opinion about a site in 50ms","The average user only reads 20% of page text","F-pattern and Z-pattern are the most common reading patterns"] },
-  ux:         { related:["ui","research","testing","accessibility","personas"], opinions:["its honestly all about empathy","removing features is often better than adding them which is wild","real user testing beats assumptions every single time"], hooks:["do you do user research at all","whats your approach to testing stuff with actual people","how do you balance what users want vs business stuff"] },
+  ux:         { related:["ui","research","testing","accessibility","personas"], opinions:["its all about empathy tbh","removing features is often better than adding them which is wild","real user testing beats assumptions every single time"], hooks:["do you do user research at all","whats your approach to testing stuff with actual people","how do you balance what users want vs business stuff"] },
   figma:      { related:["design","prototype","ui","components","variables"], opinions:["it genuinely made design tools accessible to everyone","auto layout changed everything fr","the plugin ecosystem is so good"], hooks:["do you use variables for theming","how do you organize your components","dev mode or inspect"] },
   color:      { related:["palette","contrast","accessibility","brand","theme"], opinions:["color theory is wild its like science and art at the same time","the 60-30-10 rule just works every time","accessible contrast is not optional and i will fight about this"], hooks:["whats your approach to dark mode","do you use HSL or hex or just eyeball it","how many accent colors do you usually go with"] },
-  typography: { related:["fonts","hierarchy","readability","spacing"], opinions:["its lowkey like 95% of web design","a good type scale solves most hierarchy problems honestly","variable fonts are the future and theyre already here"], hooks:["serif or sans-serif person","whats your go-to font pairing","do you think about fluid typography or just set sizes"] },
+  typography: { related:["fonts","hierarchy","readability","spacing"], opinions:["its lowkey like 95% of web design","a good type scale solves most hierarchy problems fr","variable fonts are the future and theyre already here"], hooks:["serif or sans-serif person","whats your go-to font pairing","do you think about fluid typography or just set sizes"] },
 
   // Life
   pizza:      { related:["food","italian","cooking","cheese"], opinions:["literally the perfect food ngl","the crust makes or breaks the whole thing","cold pizza for breakfast is elite tier and i wont hear otherwise"], hooks:["ok whats your ideal pizza tho","deep dish or thin crust, choose wisely","ok real talk — pineapple on pizza, where do you stand"] },
-  coffee:     { related:["caffeine","morning","productivity","cafe"], opinions:["its basically a hug in a mug fr","the ritual is half the point honestly","a good pour-over is a whole experience"], hooks:["how do you take yours","espresso or drip person","whats your go-to order"] },
+  coffee:     { related:["caffeine","morning","productivity","cafe"], opinions:["its basically a hug in a mug fr","the ritual is half the point ngl","a good pour-over is a whole experience"], hooks:["how do you take yours","espresso or drip person","whats your go-to order"] },
   music:      { related:["playlist","spotify","concert","genre","artist"], opinions:["the right song at the right time is genuinely unmatched","lo-fi while coding is just *chefs kiss*","live music hits so different its not even the same thing"], hooks:["what have you been listening to lately","do you listen while you work or nah","whats your comfort genre"] },
-  gaming:     { related:["games","steam","console","pc","multiplayer"], opinions:["honestly such a good way to decompress","indie games are having a moment rn","the gaming community can be so wholesome sometimes"], hooks:["what are you playing rn","PC or console tho","are you more story games or competitive"] },
+  gaming:     { related:["games","steam","console","pc","multiplayer"], opinions:["such a good way to decompress ngl","indie games are having a moment rn","the gaming community can be so wholesome sometimes"], hooks:["what are you playing rn","PC or console tho","are you more story games or competitive"] },
   travel:     { related:["adventure","vacation","explore","culture"], opinions:["getting lost in a new city is lowkey the best part","the unplanned stuff always makes the best memories","travel really does change how you see things"], hooks:["where would you go next if you could just go","whats been your favorite trip so far","are you more adventure or chill vibes when you travel"] },
-  fitness:    { related:["workout","gym","running","health","yoga"], opinions:["consistency beats going hard once a week every time","honestly the hardest part is just getting there","rest days are not optional and i will die on that hill"], hooks:["what does your routine look like","are you a morning or evening workout person","do you track stuff or just vibe"] },
+  fitness:    { related:["workout","gym","running","health","yoga"], opinions:["consistency beats going hard once a week every time","ngl the hardest part is just getting there","rest days are not optional and i will die on that hill"], hooks:["what does your routine look like","are you a morning or evening workout person","do you track stuff or just vibe"] },
   dog:        { related:["pet","puppy","walk","loyal"], opinions:["we literally dont deserve dogs","their love is just... unconditional its insane","a dog can fix the worst day instantly"], hooks:["what breed??","ok whats their name","do they do any tricks or are they just cute"] },
-  cat:        { related:["pet","kitten","independent","purr"], opinions:["cats have peak personality honestly","theyre secretly the most affectionate animals and they know it","the internet was literally built for cat content"], hooks:["whats their name","indoor or outdoor cat","do they have a favorite spot they always go to"] },
+  cat:        { related:["pet","kitten","independent","purr"], opinions:["cats have peak personality tbh","theyre secretly the most affectionate animals and they know it","the internet was literally built for cat content"], hooks:["whats their name","indoor or outdoor cat","do they have a favorite spot they always go to"] },
 
   // ── Extended Tech Topics ──
   html:       { related:["css","web","semantic","accessibility","dom"], opinions:["semantic HTML is so underrated","it's the foundation everything else rests on","good HTML makes everything downstream easier"], hooks:["do you think about semantic structure much?","are you into web components?","how do you handle forms?"], facts:["HTML5 added over 30 new elements","The web runs on HTML — literally everything","Semantic HTML improves SEO and accessibility"] },
@@ -2523,41 +2523,41 @@ const ASSOC = {
 
   // ── Extended Design Topics ──
   prototype:  { related:["figma","wireframe","testing","iteration","mockup"], opinions:["prototype early prototype often","low-fi prototypes save SO much time","the goal is learning not making it perfect"], hooks:["how do you prototype — figma, code, or paper","do you test prototypes with actual users","what fidelity do you start at"] },
-  wireframe:  { related:["prototype","layout","sketch","ux","structure"], opinions:["wireframes keep you focused on structure over style which is so important","grayscale wireframes prevent you from getting distracted by visuals too early","theyre honestly the blueprint of good design"], hooks:["hand-drawn or digital","what tool do you wireframe in","how detailed do your wireframes usually get"] },
+  wireframe:  { related:["prototype","layout","sketch","ux","structure"], opinions:["wireframes keep you focused on structure over style which is so important","grayscale wireframes prevent you from getting distracted by visuals too early","theyre literally the blueprint of good design"], hooks:["hand-drawn or digital","what tool do you wireframe in","how detailed do your wireframes usually get"] },
   animation:  { related:["css","motion","framer","gsap","transition"], opinions:["subtle animation makes interfaces feel alive fr","the best animations are ones you barely notice","60fps or nothing im serious","motion should have a purpose not just be flashy"], hooks:["CSS animations or something like framer motion","whats your approach to easing","do you think about motion accessibility at all"], facts:["The human eye perceives 12fps as motion","Ease-out curves feel most natural to users","Apple's iOS animations use spring physics"] },
   responsive: { related:["mobile","breakpoint","fluid","container","adaptive"], opinions:["mobile-first genuinely changed how we think about design","container queries are the real responsive revolution fr","responsive isnt just about screen size anymore"], hooks:["mobile-first or desktop-first","what breakpoints do you use","have you gotten into container queries yet"] },
-  brand:      { related:["logo","identity","color","typography","marketing"], opinions:["a strong brand is a feeling not just a logo","consistency is honestly the foundation of brand recognition","the best brands feel like a person not a corporation"], hooks:["are you building a personal brand or for a company","what brands inspire you","how do you keep things consistent"] },
+  brand:      { related:["logo","identity","color","typography","marketing"], opinions:["a strong brand is a feeling not just a logo","consistency is lowkey the foundation of brand recognition","the best brands feel like a person not a corporation"], hooks:["are you building a personal brand or for a company","what brands inspire you","how do you keep things consistent"] },
   accessibility:{ related:["a11y","screen reader","aria","wcag","keyboard"], opinions:["accessible design is just better design period","its not extra work its literally the work","the web should be for everyone full stop"], hooks:["do you test with screen readers","what WCAG level do you aim for","how do you handle focus management"], facts:["Over 1 billion people live with some form of disability","Color contrast alone affects 300M+ people","Keyboard navigation is essential, not optional"] },
 
   // ── Extended Food Topics ──
-  sushi:      { related:["japanese","fish","rice","food","restaurant"], opinions:["fresh sushi is just on another level","good sushi vs mid sushi is like two different foods","omakase is the move honestly just let the chef cook"], hooks:["are you more nigiri or rolls","do you have a go-to sushi spot","whats the best piece of sushi youve ever had"] },
+  sushi:      { related:["japanese","fish","rice","food","restaurant"], opinions:["fresh sushi is just on another level","good sushi vs mid sushi is like two different foods","omakase is the move fr just let the chef cook"], hooks:["are you more nigiri or rolls","do you have a go-to sushi spot","whats the best piece of sushi youve ever had"] },
   pasta:      { related:["italian","food","cooking","sauce","carbs"], opinions:["literally the ultimate comfort food","the sauce-to-pasta ratio is EVERYTHING","fresh pasta vs boxed is like... not even comparable"], hooks:["whats your go-to pasta","do you make your own sauce or nah","ok carbonara or bolognese"] },
   tacos:      { related:["mexican","food","salsa","street food"], opinions:["street tacos are a spiritual experience ngl","the simpler the taco the better imo","a good salsa literally elevates everything"], hooks:["soft or hard shell tho","whats your go-to filling","best taco youve ever had, go"] },
   ramen:      { related:["japanese","noodle","broth","food","soup"], opinions:["a perfect bowl of ramen is literally soul food","the broth is everything, its hours of work in every sip","instant ramen and real ramen are barely the same food lol"], hooks:["tonkotsu or miso person","do you have a fav ramen spot","have you ever tried making it from scratch"] },
   curry:      { related:["indian","spice","food","cooking","rice"], opinions:["the flavor depth in a good curry is unmatched fr","learning to layer spices is a total game-changer","every culture has their own version and theyre all amazing"], hooks:["what kind of curry do you like most","do you cook curry at home","ok how spicy do you actually go tho"] },
   burger:     { related:["food","grill","beef","fast food","cookout"], opinions:["a perfect smash burger is genuinely art","simplicity wins — great beef, salt, pepper, done","the bun matters way more than people think"], hooks:["classic or gourmet","whats your ideal burger setup","best burger youve ever had"] },
-  vegan:      { related:["plant","food","health","cooking","sustainability"], opinions:["vegan cooking has gotten so creative lately its wild","you can do genuinely insane things without animal products now","the environmental argument is honestly pretty compelling"], hooks:["are you vegan or just curious about it","whats your favorite plant-based meal","have you found good subs for everything or is cheese still winning"] },
-  cooking:    { related:["food","recipe","kitchen","chef","meal"], opinions:["cooking is honestly such a vibe when youre in the zone","mise en place changes your entire kitchen game","the confidence to just wing it comes with practice"], hooks:["what do you love to cook","do you have any signature dishes","are you a recipe follower or a wing-it person"] },
+  vegan:      { related:["plant","food","health","cooking","sustainability"], opinions:["vegan cooking has gotten so creative lately its wild","you can do genuinely insane things without animal products now","the environmental argument is tbh pretty compelling"], hooks:["are you vegan or just curious about it","whats your favorite plant-based meal","have you found good subs for everything or is cheese still winning"] },
+  cooking:    { related:["food","recipe","kitchen","chef","meal"], opinions:["cooking is such a vibe when youre in the zone ngl","mise en place changes your entire kitchen game","the confidence to just wing it comes with practice"], hooks:["what do you love to cook","do you have any signature dishes","are you a recipe follower or a wing-it person"] },
 
   // ── Extended Entertainment ──
-  movie:      { related:["film","cinema","director","actor","series"], opinions:["a great movie genuinely changes how you see things","practical effects will always hit different, idc what anyone says","the opening scene sets the whole tone honestly"], hooks:["seen anything good lately","whats your all-time fav","are you a theater person or couch + streaming"] },
+  movie:      { related:["film","cinema","director","actor","series"], opinions:["a great movie genuinely changes how you see things","practical effects will always hit different, idc what anyone says","the opening scene sets the whole tone fr"], hooks:["seen anything good lately","whats your all-time fav","are you a theater person or couch + streaming"] },
   film:       { related:["movie","cinema","director","cinematography"], opinions:["good cinematography tells the story without words fr","indie films take the wildest creative swings","a great soundtrack makes a good film unforgettable"], hooks:["whos your favorite director","are you more indie or blockbuster","what genre pulls you in the most"] },
-  netflix:    { related:["streaming","series","movie","binge","show"], opinions:["the streaming wars gave us SO much content honestly","binge-watching is a modern guilty pleasure and i refuse to feel bad about it","nothing beats finding a show that hooks you from ep 1"], hooks:["what are you watching rn","any hidden gem recs","do you binge or pace yourself, be honest"] },
+  netflix:    { related:["streaming","series","movie","binge","show"], opinions:["the streaming wars gave us SO much content ngl","binge-watching is a modern guilty pleasure and i refuse to feel bad about it","nothing beats finding a show that hooks you from ep 1"], hooks:["what are you watching rn","any hidden gem recs","do you binge or pace yourself, be honest"] },
   anime:      { related:["manga","japanese","animation","studio","series"], opinions:["anime storytelling goes SO hard sometimes","the art styles are insanely diverse","theres literally an anime for every vibe"], hooks:["what are you watching","sub or dub, choose your fighter","what got you into anime"], facts:["The anime industry is worth over $25 billion","Studio Ghibli changed animation worldwide","One Piece has been running since 1999"] },
-  series:     { related:["tv","streaming","binge","episode","show"], opinions:["long-form storytelling is honestly TVs superpower","a slow burn that pays off is THE best feeling","cliffhangers should be illegal but they work so well lol"], hooks:["whats your current show","do you watch week-to-week or wait and binge the whole thing","whats your all-time favorite show"] },
+  series:     { related:["tv","streaming","binge","episode","show"], opinions:["long-form storytelling is lowkey TVs superpower","a slow burn that pays off is THE best feeling","cliffhangers should be illegal but they work so well lol"], hooks:["whats your current show","do you watch week-to-week or wait and binge the whole thing","whats your all-time favorite show"] },
 
   // ── Extended Fitness ──
   gym:        { related:["workout","fitness","weights","training","health"], opinions:["the gym is literally therapy","progressive overload is the real secret fr","the gym community can be so wholesome"], hooks:["whats your split","morning or evening gym person","any goals youre working toward rn"] },
-  yoga:       { related:["flexibility","mindfulness","health","stretching","meditation"], opinions:["yoga humbles literally everyone","the mental benefits are honestly as big as the physical ones","a good yoga session just resets your whole system"], hooks:["how long have you been doing it","home or studio","any favorite poses or is that a weird question lol"] },
+  yoga:       { related:["flexibility","mindfulness","health","stretching","meditation"], opinions:["yoga humbles literally everyone","the mental benefits are fr as big as the physical ones","a good yoga session just resets your whole system"], hooks:["how long have you been doing it","home or studio","any favorite poses or is that a weird question lol"] },
   running:    { related:["marathon","jogging","cardio","fitness","trail"], opinions:["runners high is real and its lowkey addictive","running outside beats treadmill every single time imo","its the simplest workout — literally just go"], hooks:["do you run regularly","road or trail runner","any race goals or just vibes"], facts:["The average marathon time is about 4.5 hours","Running releases endorphins and endocannabinoids","Humans evolved specifically for long-distance running"] },
 
   // ── Bonus High-Frequency Topics ──
-  ai:         { related:["ml","gpt","llm","chatbot","automation","deep learning"], opinions:["AI is genuinely wild rn the pace is insane","its a tool tho, the magic is how people use it","we are honestly living through the biggest tech shift ever and its kinda crazy"], hooks:["are you building with AI or just watching the chaos","whats the craziest AI thing youve seen lately","does AI affect your work at all or nah"], facts:["GPT-4 was trained on trillions of tokens","AI can write code, make art, compose music now","the transformer architecture changed everything in NLP"] },
+  ai:         { related:["ml","gpt","llm","chatbot","automation","deep learning"], opinions:["AI is genuinely wild rn the pace is insane","its a tool tho, the magic is how people use it","we are fr living through the biggest tech shift ever and its kinda crazy"], hooks:["are you building with AI or just watching the chaos","whats the craziest AI thing youve seen lately","does AI affect your work at all or nah"], facts:["GPT-4 was trained on trillions of tokens","AI can write code, make art, compose music now","the transformer architecture changed everything in NLP"] },
   book:       { related:["reading","author","novel","fiction","nonfiction"], opinions:["reading is genuinely the best way to live a thousand lives","a book that changes your whole perspective is priceless","physical books just hit different than screens fr"], hooks:["what are you reading rn","fiction or nonfiction person","any book that genuinely changed how you think"] },
   sleep:      { related:["rest","health","dream","routine","energy"], opinions:["sleep is the most underrated hack and nobody talks about it","a consistent sleep schedule actually changes everything","naps are criminally underrated and i will not be taking questions"], hooks:["are you a morning person or night owl","how many hours do you usually get be honest","do you have a wind-down routine or just crash"] },
   money:      { related:["finance","investing","budget","savings","crypto"], opinions:["financial literacy should literally be taught in every school","passive income sounds easy but its real work upfront","the best investment is lowkey in yourself"], hooks:["are you into investing at all","do you budget or just kinda wing it","whats your approach to saving"] },
   startup:    { related:["business","entrepreneurship","product","funding","mvp"], opinions:["shipping fast beats perfecting slowly every time","finding product-market fit is genuinely the hardest part","ideas are cheap execution is literally everything"], hooks:["are you working on something","what problem are you trying to solve","solo founder or co-founder vibes"], facts:["90% of startups fail","The average startup takes 3-4 years to become profitable","YC has funded over 4,000 companies"] },
-  weather:    { related:["rain","sun","temperature","season","climate"], opinions:["weather affects mood way more than people realize","a perfect weather day is genuinely healing ngl","theres honestly something nice about every season"], hooks:["whats your ideal weather","summer or winter person","hows the weather where you are rn"] },
+  weather:    { related:["rain","sun","temperature","season","climate"], opinions:["weather affects mood way more than people realize","a perfect weather day is genuinely healing ngl","theres lowkey something nice about every season"], hooks:["whats your ideal weather","summer or winter person","hows the weather where you are rn"] },
   photography:{ related:["camera","photo","editing","lightroom","composition"], opinions:["the best camera is literally the one you have with you","composition matters way more than equipment imo","editing is where the real magic happens"], hooks:["what do you shoot","phone photography or actual camera","whats your editing setup like"] },
 };
 
@@ -2586,7 +2586,7 @@ const COMP = {
   // Opinion templates: {t} = topic, {o} = opinion — avoids awkward grammar from starter+connector combos
   opinion_templates: [
     "i think {t} {o}",
-    "honestly {t} {o}",
+    "tbh {t} {o}",
     "ngl {t} {o}",
     "the thing about {t} is {o}",
     "what i love about {t} is {o}",
@@ -2661,7 +2661,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
     case "hot_take": {
       const parts = [];
       if (assoc.opinions) {
-        const openers = ["hot take:", "ok here's my take —", "i'll say it:", "unpopular opinion maybe but", "honestly?"];
+        const openers = ["hot take:", "ok here's my take —", "i'll say it:", "unpopular opinion maybe but", "real talk?"];
         parts.push(`${pick(openers)} ${pick(assoc.opinions)}.`);
       } else if (assoc.facts) {
         parts.push(`ok here's something wild — ${pick(assoc.facts)}.`);
@@ -2679,7 +2679,7 @@ function composeResponse(topic, userWords, sent, isQuestion) {
         parts.push(`${pick(factLeads)} ${pick(assoc.facts)}.`);
       }
       if (assoc.opinions && Math.random() > 0.4) {
-        parts.push(`and honestly ${pick(assoc.opinions)}.`);
+        parts.push(`and fr ${pick(assoc.opinions)}.`);
       }
       parts.push(assoc.hooks ? pick(assoc.hooks) : pick(COMP.deepeners));
       return parts.join(" ");
@@ -3004,7 +3004,7 @@ function handleOpinionRequest(text, topics) {
     const hook = pick(assoc.hooks || COMP.deepeners);
 
     const starters = [
-      `honestly? i think ${opinion}.`,
+      `real talk? i think ${opinion}.`,
       `ok so my take on ${topic}: ${opinion}.`,
       `ok here's the thing — ${opinion}.`,
       `ngl ${opinion}.`,
@@ -3026,10 +3026,10 @@ function handleOpinionRequest(text, topics) {
     const thing = shouldMatch ? shouldMatch[1] : topic;
 
     const recs = [
-      `honestly yeah — ${opinion}. id say go for it`,
+      `tbh yeah — ${opinion}. id say go for it`,
       `i think its worth trying! ${opinion}. ${hook}`,
       `depends on what you need but my gut says yes. ${opinion}. what made you wanna try it`,
-      `${topic} is solid honestly. ${opinion}. ${hook}`,
+      `${topic} is solid fr. ${opinion}. ${hook}`,
     ];
     return pickNew(recs);
   }
@@ -3042,7 +3042,7 @@ function handleOpinionRequest(text, topics) {
       return pickNew([
         `hmm from what i know ${subject} has its fans. depends on what you need it for tho. whats the context`,
         `${subject} can definitely be good — what are you trying to use it for`,
-        `ive heard mixed things about ${subject} honestly. some people love it some dont. what made you curious`,
+        `ive heard mixed things about ${subject} tbh. some people love it some dont. what made you curious`,
       ]);
     }
   }
@@ -3803,7 +3803,7 @@ function synthesizeAnswer(text, topics, qType) {
 
   // Depth: opinion that adds perspective
   if (primary.data.opinions && Math.random() > 0.3) {
-    const opStarters = ["honestly i think ", "the way i see it, ", "what i find interesting is that ", "the cool thing is ", "ngl "];
+    const opStarters = ["tbh i think ", "the way i see it, ", "what's wild is that ", "the cool thing is ", "ngl "];
     parts.push(pick(opStarters) + pick(primary.data.opinions) + ".");
   }
 
@@ -3883,7 +3883,7 @@ function resolveFragment(text, lower, parsed, topics) {
       const bridge = contextTopic
         ? pick([`oh switching from ${contextTopic} — `, `ooh ${subjTopic} tho — `, `oh ${subjTopic}! `])
         : pick([`${subjTopic}? `, `oh ${subjTopic} — `]);
-      return bridge + (fact || `oh that's a whole thing`) + (opinion ? ` honestly ${opinion}` : "") + (a.hooks ? " " + pick(a.hooks) : "");
+      return bridge + (fact || `oh that's a whole thing`) + (opinion ? ` fr ${opinion}` : "") + (a.hooks ? " " + pick(a.hooks) : "");
     }
 
     // No ASSOC match — contextual pivot response
@@ -4193,16 +4193,16 @@ const THANKS = ["ofc!","no worries!","anytime 😊","lol you don't gotta thank m
 const HOW_ARE_YOU = [
   "i'm good! hbu",
   "chillin, you?",
-  "pretty good honestly, wbu",
+  "pretty good tbh, wbu",
   "i'm vibing, how are you tho",
   "doing good, whats up with you",
   "not bad not bad, u?",
-  "honestly? pretty decent rn. you?",
+  "ngl? pretty decent rn. you?",
   "im good, cant complain. how about you",
-  "vibing honestly, whats good with you",
+  "vibing fr, whats good with you",
   "im alright, how are you tho thats the real question",
   "living, breathing, existing lol. you?",
-  "honestly today has been chill so far. hbu",
+  "today has been chill so far. hbu",
 ];
 
 /* ── Contextual Humor & Storytelling Engine ──
@@ -5465,7 +5465,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       ];
       let resp = pick(openers);
       if (hasExplain) resp += hasExplain.brief + " ";
-      else if (hasAssoc?.opinions?.length) resp += "honestly, " + pick(hasAssoc.opinions) + ". ";
+      else if (hasAssoc?.opinions?.length) resp += "ngl, " + pick(hasAssoc.opinions) + ". ";
       if (hasAssoc?.facts?.length) resp += pick(hasAssoc.facts) + ". ";
       const tips = [
         `biggest thing — build something small early. tutorials are great but getting your hands dirty is where it clicks.`,
@@ -5507,7 +5507,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       resp = pick(openers);
       if (hasExplain) resp += hasExplain.deep + " ";
       else if (hasAssoc) {
-        if (hasAssoc.opinions?.length) resp += "honestly, " + pick(hasAssoc.opinions) + ". ";
+        if (hasAssoc.opinions?.length) resp += "tbh, " + pick(hasAssoc.opinions) + ". ";
         if (hasAssoc.facts?.length) resp += pick(hasAssoc.facts) + ". ";
       }
       const closers = [
@@ -6896,7 +6896,7 @@ const PERSONALITY = {
   openers: {
     thinking: ["hmm ","ooh ","actually ","oh — ","hmm let me think... ","wait "],
     excited:  ["ooh! ","oh nice — ","okay wait — ","ha ","yesss "],
-    casual:   ["so ","honestly ","okay so ","real talk — ","fun fact: ","not gonna lie "],
+    casual:   ["so ","tbh ","okay so ","real talk — ","fun fact: ","not gonna lie "],
   },
   // Filler phrases that can be inserted mid-response
   fillers: [
@@ -8889,7 +8889,7 @@ const COMPLETENESS_BRIDGES = {
     "hmm ",
     "hmm let me think ",
     "so ",
-    "honestly? ",
+    "ok real talk? ",
     "short answer: ",
   ],
   statement: [
@@ -11949,7 +11949,7 @@ const WORD_SWAPS = {
   "new":         ["fresh","cutting-edge","bleeding-edge","modern","shiny"],
   "pretty":      ["fairly","reasonably","quite","decently","notably"],
   // Intensifier variety
-  "really":      ["genuinely","honestly","seriously","truly","absolutely"],
+  "really":      ["genuinely","fr","seriously","truly","legit"],
   "very":        ["incredibly","seriously","genuinely","super","wildly"],
   // Verb upgrades
   "think":       ["feel like","reckon","believe","suspect","figure"],
@@ -12069,7 +12069,7 @@ function addDisfluency(response) {
       { from: /\b(nice)\b/i, weak: "nice", strong: "actually kind of beautiful" },
       { from: /\b(good)\b/i, weak: "good", strong: "legitimately solid" },
       { from: /\b(interesting)\b/i, weak: "interesting", strong: "lowkey wild actually" },
-      { from: /\b(important)\b/i, weak: "important", strong: "honestly pretty critical" },
+      { from: /\b(important)\b/i, weak: "important", strong: "lowkey pretty critical" },
       { from: /\b(useful)\b/i, weak: "useful", strong: "genuinely handy" },
       { from: /\b(popular)\b/i, weak: "popular", strong: "kind of everywhere now" },
     ];
@@ -19291,7 +19291,7 @@ const LOW_REGISTER_SIGNALS = new Set(
 const VOCAB_UPGRADES = [
   [/\binteresting\b/gi, () => pick(["intriguing", "striking", "worth digging into"])],
   [/\breally good\b/gi, () => pick(["genuinely solid", "seriously impressive", "legitimately great"])],
-  [/\bpretty cool\b/gi, () => pick(["honestly impressive", "kind of brilliant", "surprisingly good"])],
+  [/\bpretty cool\b/gi, () => pick(["lowkey impressive", "kind of brilliant", "surprisingly good"])],
   [/\bbig deal\b/gi, () => pick(["real turning point", "major shift", "pretty seismic"])],
   [/\ba lot of\b/gi, () => pick(["a ton of", "quite a bit of", "no shortage of"])],
   [/\bimportant\b/gi, () => pick(["critical", "essential", "hard to overstate"])],
@@ -19836,7 +19836,7 @@ let recentWarmthMarkers = [];
 
 // Tier 1: Casual warmth (rapportLevel >= 0.3)
 const WARMTH_CASUAL = [
-  { prefix: "honestly, ", weight: 1.0 },
+  { prefix: "ngl, ", weight: 1.0 },
   { prefix: "not gonna lie, ", weight: 0.9 },
   { prefix: "okay real talk, ", weight: 0.85 },
   { prefix: "i'll be honest, ", weight: 0.9 },
@@ -20249,6 +20249,21 @@ function polishOutput(response) {
       // 70% chance to lowercase
       return Math.random() < 0.70 ? letter.toLowerCase() : letter;
     });
+  }
+
+  // 12. Cross-message "honestly" cooldown — the #1 AI verbal tic.
+  // If "honestly" was used in any of the last 3 AI messages, swap it for a casual alternative.
+  // This prevents the pattern of every other message containing "honestly".
+  if (/\bhonestly\b/i.test(r)) {
+    const recentAI = mem.history.filter(h => h.role === "ai").slice(-3);
+    const recentlyUsed = recentAI.some(h => /\bhonestly\b/i.test(h.text));
+    if (recentlyUsed) {
+      // Context-aware replacements based on position in sentence
+      r = r.replace(/\bhonestly\b/gi, (m) => {
+        const alts = ["fr", "ngl", "tbh", "for real", "lowkey", "deadass", "real talk"];
+        return alts[Math.floor(Math.random() * alts.length)];
+      });
+    }
   }
 
   return r.trim();
