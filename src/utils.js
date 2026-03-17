@@ -671,6 +671,141 @@ export function generateDesignDNA(palette, mood) {
 }
 
 /**
+ * Smart prop adjustment — takes component type + randomized props and makes values
+ * more realistic/coherent. Fixes the "pure random = unrealistic" problem (Round 83).
+ */
+function smartifyProps(type, props) {
+  /* ── Pricing cards: featured → higher price range, realistic plan names ── */
+  if (type === "pricing-card") {
+    if (props.featured) {
+      props.period = props.period || 0; // featured usually monthly
+    }
+  }
+  /* ── Progress bars: weighted toward 40-80%, never 0/100/single-digit ── */
+  if (type === "progress" || type === "slider") {
+    if (props.pct !== undefined) {
+      // Weighted distribution: 60% chance 40-80, 20% chance 15-39, 20% chance 81-95
+      const r = Math.random();
+      if (r < 0.6) props.pct = 40 + Math.floor(Math.random() * 41);       // 40-80
+      else if (r < 0.8) props.pct = 15 + Math.floor(Math.random() * 25);  // 15-39
+      else props.pct = 81 + Math.floor(Math.random() * 15);               // 81-95
+    }
+    if (props.indeterminate && props.pct !== undefined) {
+      props.indeterminate = false; // don't show indeterminate with a real percentage
+    }
+  }
+  /* ── Star ratings: weight toward 3.5-5.0, rarely below 3 ── */
+  if (props.stars !== undefined) {
+    const r = Math.random();
+    if (r < 0.45) props.stars = 5;        // 45% — 5 stars
+    else if (r < 0.75) props.stars = 4;   // 30% — 4 stars
+    else if (r < 0.90) props.stars = 3;   // 15% — 3 stars
+    else props.stars = 2;                 // 10% — 2 stars (rare)
+  }
+  /* ── Testimonials: sentiment coherence with star rating ── */
+  if (type === "testimonial") {
+    if (props.verified === undefined) props.verified = Math.random() > 0.25 ? 1 : 0; // 75% verified
+  }
+  /* ── Product cards: realistic ratings ── */
+  if (type === "product-card") {
+    if (props.rating !== undefined) {
+      const r = Math.random();
+      if (r < 0.40) props.rating = 5;
+      else if (r < 0.75) props.rating = 4;
+      else props.rating = 3;
+    }
+  }
+  /* ── Stat cards: trend realism ── */
+  if (type === "stat-card") {
+    if (props.trend !== undefined) {
+      // 50% up, 30% down, 20% flat — up trends are more visually engaging
+      const r = Math.random();
+      props.trend = r < 0.50 ? 0 : r < 0.80 ? 1 : 2;
+    }
+    // sparkline usually on (more visually interesting)
+    if (props.sparkline !== undefined) {
+      props.sparkline = Math.random() < 0.75; // 75% on
+    }
+  }
+  /* ── Dash panel: realistic bar heights (not too uniform, not too wild) ── */
+  if (type === "dash-panel") {
+    if (Array.isArray(props.bars)) {
+      // Generate bars with natural-looking variation: base ± jitter
+      const base = 35 + Math.floor(Math.random() * 30); // 35-64 center
+      props.bars = props.bars.map(() => {
+        const jitter = -20 + Math.floor(Math.random() * 41); // ±20
+        return Math.max(15, Math.min(95, base + jitter));
+      });
+    }
+    if (props.ring !== undefined) {
+      props.ring = 45 + Math.floor(Math.random() * 40); // 45-84 (realistic completion)
+    }
+  }
+  /* ── Toggle/switch: 60% chance on (more visually interesting) ── */
+  if (type === "toggle") {
+    if (props.on !== undefined) {
+      props.on = Math.random() < 0.60;
+    }
+  }
+  /* ── Avatar row: always keep active at valid index ── */
+  if (type === "avatar-row") {
+    if (props.active !== undefined) {
+      props.active = Math.floor(Math.random() * 3); // 0-2 (safe range)
+    }
+  }
+  /* ── Profile card: keep online & verified mostly true (interesting states) ── */
+  if (type === "profile-card") {
+    if (props.online !== undefined) props.online = Math.random() < 0.70;
+    if (props.verified !== undefined) props.verified = Math.random() < 0.80;
+  }
+  /* ── Chart: ensure highlight is within bar count, prefer middle bars ── */
+  if (type === "chart") {
+    if (Array.isArray(props.bars)) {
+      // Realistic chart data: upward or wavy trend
+      const trend = Math.random() < 0.5;
+      props.bars = props.bars.map((_, i) => {
+        const base = trend ? 30 + i * 8 : 50;
+        const jitter = -15 + Math.floor(Math.random() * 31);
+        return Math.max(15, Math.min(95, base + jitter));
+      });
+    }
+    if (props.highlight !== undefined && Array.isArray(props.bars)) {
+      // Highlight the tallest bar (most natural)
+      const maxIdx = props.bars.reduce((best, v, i, arr) => v > arr[best] ? i : best, 0);
+      props.highlight = Math.random() < 0.6 ? maxIdx : Math.floor(Math.random() * props.bars.length);
+    }
+  }
+  /* ── Modal: always on (otherwise invisible) ── */
+  if (type === "modal") {
+    if (props.on !== undefined) props.on = true;
+  }
+  /* ── Tooltip: mostly on ── */
+  if (type === "tooltip") {
+    if (props.on !== undefined) props.on = Math.random() < 0.85;
+  }
+  /* ── Media player: realistic playback position ── */
+  if (type === "media-player") {
+    if (props.pct !== undefined) {
+      props.pct = 10 + Math.floor(Math.random() * 75); // 10-84, not at start or end
+    }
+    if (props.playing !== undefined) props.playing = Math.random() < 0.65;
+  }
+  /* ── Cart item: qty weighted toward 1 ── */
+  if (type === "cart-item") {
+    if (props.qty !== undefined) {
+      const r = Math.random();
+      props.qty = r < 0.55 ? 1 : r < 0.80 ? 2 : r < 0.95 ? 3 : 4;
+    }
+  }
+  /* ── Notification: first usually unread ── */
+  if (type === "notification" && Array.isArray(props.read)) {
+    // At least one unread (otherwise boring)
+    if (props.read.every(r => r)) props.read[0] = false;
+  }
+  return props;
+}
+
+/**
  * Smart designer randomization.
  * Returns { variant, font, fsize, props, dStyles } for a given component type + palette.
  * @param {string} mood - Design mood: "auto"|"minimal"|"bold"|"elegant"|"playful"
@@ -798,16 +933,8 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
         else                                  props[k] = dv.map(() => Math.random() > 0.5);
       }
     }
-    // Smart correlations
-    if (type === "pricing-card" && props.featured) {
-      props.period = props.period || 0; // featured usually monthly
-    }
-    if (type === "product-card" && props.rating !== undefined) {
-      props.rating = 3 + Math.floor(Math.random() * 3); // 3-5 for products
-    }
-    if (type === "progress" && props.pct !== undefined && props.indeterminate) {
-      props.indeterminate = false; // don't show indeterminate with a real percentage
-    }
+    // Smart prop adjustment (Round 83) — realistic values & coherent correlations
+    smartifyProps(type, props);
     // Apply mood-specific prop tweaks
     if (moodCfg && moodCfg.propTweak) moodCfg.propTweak(props);
   }
