@@ -2895,6 +2895,146 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Round 62: Multi-stop gradient mesh — complex 4-6 stop gradients ──
+  // Replaces simple 2-color gradients with rich, multi-dimensional gradient meshes:
+  // conic gradients with irregular stop distributions, radials with off-center focal points,
+  // layered multi-stop linear sweeps, and mesh-like stacked radial spots.
+  // Only upgrades existing gradientOverlay (enhances, doesn't create from nothing).
+  // Also fires independently for components without gradients at a lower rate.
+  if (!isNav && !isCode && !isSmall) {
+    const meshChance = s.gradientOverlay
+      ? (moodId === "playful" ? 0.28 : moodId === "bold" ? 0.25 : moodId === "elegant" ? 0.22 : moodId === "minimal" ? 0.06 : 0.18)
+      : (moodId === "playful" ? 0.14 : moodId === "bold" ? 0.12 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.03 : 0.08);
+
+    if (Math.random() < meshChance) {
+      // Collect palette colors for multi-stop use
+      const meshColors = [acHex, gc1, gc2, gcGlow, dc.analog1, dc.analog2, dc.vivid, dc.comp, dc.muted].filter(Boolean);
+      const mc = (i) => meshColors[i % meshColors.length]; // safe cyclic access
+
+      if (moodId === "bold") {
+        const meshStyle = Math.random();
+        if (meshStyle < 0.30) {
+          // Dramatic angular sweep — 5-stop linear with hard color breaks
+          const angle = pick([45, 90, 135, 180, 225, 270, 315]);
+          const stops = [
+            `${mc(0)}14 0%`,
+            `${mc(4)}0C ${pick([18, 22, 28])}%`,
+            `transparent ${pick([40, 45, 50])}%`,
+            `${mc(2)}0A ${pick([65, 70, 75])}%`,
+            `${mc(5)}10 100%`,
+          ];
+          s.gradientOverlay = `linear-gradient(${angle}deg, ${stops.join(", ")})`;
+        } else if (meshStyle < 0.55) {
+          // Off-center radial burst — focal point pulled to a corner
+          const ox = pick([15, 20, 75, 80, 85]);
+          const oy = pick([15, 20, 75, 80, 85]);
+          const stops = [
+            `${mc(0)}18 0%`,
+            `${mc(3)}0C ${pick([15, 20])}%`,
+            `${mc(4)}08 ${pick([35, 40])}%`,
+            `transparent ${pick([55, 65])}%`,
+            `${mc(2)}06 100%`,
+          ];
+          s.gradientOverlay = `radial-gradient(ellipse at ${ox}% ${oy}%, ${stops.join(", ")})`;
+        } else if (meshStyle < 0.80) {
+          // Conic sector blaze — heavy coverage on one arc, fading elsewhere
+          const fromAngle = pick([0, 45, 90, 135, 180, 270]);
+          const cx = pick([30, 40, 50, 60, 70]);
+          const cy = pick([30, 40, 50, 60, 70]);
+          s.gradientOverlay = `conic-gradient(from ${fromAngle}deg at ${cx}% ${cy}%, ${mc(0)}12 0deg, ${mc(3)}0E ${pick([60, 90])}deg, transparent ${pick([140, 160])}deg, ${mc(2)}08 ${pick([230, 260])}deg, ${mc(5)}0A 360deg)`;
+        } else {
+          // Mesh spots — stacked off-center radials for multi-point light
+          const r1 = `radial-gradient(circle at ${pick([20, 25])}% ${pick([20, 30])}%, ${mc(0)}14 0%, transparent ${pick([35, 45])}%)`;
+          const r2 = `radial-gradient(circle at ${pick([75, 80])}% ${pick([70, 80])}%, ${mc(2)}10 0%, transparent ${pick([35, 45])}%)`;
+          const r3 = `radial-gradient(circle at ${pick([50, 55])}% ${pick([10, 15])}%, ${mc(4)}0C 0%, transparent ${pick([30, 40])}%)`;
+          s.gradientOverlay = r1;
+          s.gradientOverlay2 = r2;
+          // Store third mesh spot in cssVars for renderer to pick up
+          s.gradientOverlay3 = r3;
+        }
+      } else if (moodId === "playful") {
+        const meshStyle = Math.random();
+        if (meshStyle < 0.25) {
+          // Rainbow sweep — 6-stop conic with irregular spacing for uneven color wheel
+          const fromAngle = pick([0, 30, 60, 120, 210, 300]);
+          const cx = pick([35, 45, 55, 65]);
+          const cy = pick([35, 45, 55, 65]);
+          s.gradientOverlay = `conic-gradient(from ${fromAngle}deg at ${cx}% ${cy}%, ${mc(0)}10 0deg, ${mc(6)}0E ${pick([40, 55])}deg, ${mc(2)}0C ${pick([110, 130])}deg, ${mc(4)}0A ${pick([190, 210])}deg, ${mc(5)}0C ${pick([280, 300])}deg, ${mc(0)}10 360deg)`;
+        } else if (meshStyle < 0.50) {
+          // Confetti mesh — 4 scattered radial color spots at random positions
+          const spots = [];
+          for (let i = 0; i < 4; i++) {
+            const sx = pick([10, 20, 30, 40, 50, 60, 70, 80, 90]);
+            const sy = pick([10, 20, 30, 40, 50, 60, 70, 80, 90]);
+            const size = pick([25, 30, 35, 40]);
+            spots.push(`radial-gradient(circle at ${sx}% ${sy}%, ${mc(i)}0E 0%, transparent ${size}%)`);
+          }
+          s.gradientOverlay = spots[0];
+          s.gradientOverlay2 = spots[1];
+          s.gradientOverlay3 = `${spots[2]}, ${spots[3]}`;
+        } else if (meshStyle < 0.75) {
+          // Zigzag multi-stop — linear with alternating color-transparent-color pattern
+          const angle = pick([45, 90, 135, 225, 315]);
+          s.gradientOverlay = `linear-gradient(${angle}deg, ${mc(6)}0E 0%, transparent ${pick([12, 15])}%, ${mc(2)}0C ${pick([25, 30])}%, transparent ${pick([42, 48])}%, ${mc(4)}0A ${pick([58, 65])}%, transparent ${pick([78, 82])}%, ${mc(0)}0C 100%)`;
+        } else {
+          // Off-center elliptical bloom — stretched radial from edge
+          const ox = pick([0, 10, 90, 100]);
+          const oy = pick([0, 10, 90, 100]);
+          s.gradientOverlay = `radial-gradient(ellipse 120% 100% at ${ox}% ${oy}%, ${mc(6)}12 0%, ${mc(2)}0A ${pick([20, 30])}%, ${mc(4)}08 ${pick([45, 55])}%, transparent ${pick([70, 80])}%)`;
+        }
+      } else if (moodId === "elegant") {
+        const meshStyle = Math.random();
+        if (meshStyle < 0.30) {
+          // Silk ribbon — 5-stop linear with gentle tonal progression
+          const angle = pick([130, 145, 160, 175, 200]);
+          s.gradientOverlay = `linear-gradient(${angle}deg, ${mc(8)}06 0%, ${mc(4)}08 ${pick([20, 28])}%, transparent ${pick([45, 50])}%, ${mc(5)}05 ${pick([72, 78])}%, ${mc(8)}06 100%)`;
+        } else if (meshStyle < 0.55) {
+          // Pearl glow — off-center radial with luminous mid-stop
+          const ox = pick([30, 35, 40, 60, 65, 70]);
+          const oy = pick([25, 30, 35, 65, 70, 75]);
+          s.gradientOverlay = `radial-gradient(ellipse 80% 70% at ${ox}% ${oy}%, ${mc(8)}0A 0%, ${mc(4)}06 ${pick([25, 35])}%, transparent ${pick([55, 65])}%)`;
+        } else if (meshStyle < 0.80) {
+          // Subtle conic wash — gentle hue rotation with fine stops
+          const fromAngle = pick([90, 135, 180, 225]);
+          s.gradientOverlay = `conic-gradient(from ${fromAngle}deg at 50% 50%, ${mc(8)}06 0deg, transparent ${pick([80, 100])}deg, ${mc(4)}05 ${pick([160, 180])}deg, transparent ${pick([260, 280])}deg, ${mc(8)}06 360deg)`;
+        } else {
+          // Dual-point luminance — two soft radial highlights
+          const r1 = `radial-gradient(ellipse 60% 50% at ${pick([25, 30])}% ${pick([25, 35])}%, ${mc(8)}08 0%, transparent ${pick([40, 50])}%)`;
+          const r2 = `radial-gradient(ellipse 60% 50% at ${pick([70, 75])}% ${pick([65, 75])}%, ${mc(4)}06 0%, transparent ${pick([40, 50])}%)`;
+          s.gradientOverlay = r1;
+          s.gradientOverlay2 = r2;
+        }
+      } else if (moodId === "minimal") {
+        // Minimal: ultra-subtle 3-stop linear fade — barely perceptible tonal shift
+        const angle = pick([135, 160, 180, 200]);
+        s.gradientOverlay = `linear-gradient(${angle}deg, ${mc(8)}04 0%, transparent ${pick([40, 50])}%, ${mc(4)}03 100%)`;
+      } else {
+        // Auto: random mesh recipe from any mood's repertoire
+        const autoMesh = Math.random();
+        if (autoMesh < 0.25) {
+          // Multi-stop sweep
+          const angle = pick([45, 90, 135, 180, 225, 315]);
+          s.gradientOverlay = `linear-gradient(${angle}deg, ${mc(0)}0C 0%, ${mc(4)}08 ${pick([22, 30])}%, transparent ${pick([45, 55])}%, ${mc(2)}06 ${pick([70, 78])}%, ${mc(5)}08 100%)`;
+        } else if (autoMesh < 0.50) {
+          // Off-center radial
+          const ox = pick([20, 30, 70, 80]);
+          const oy = pick([20, 30, 70, 80]);
+          s.gradientOverlay = `radial-gradient(ellipse at ${ox}% ${oy}%, ${mc(0)}0E 0%, ${mc(3)}08 ${pick([25, 35])}%, transparent ${pick([55, 70])}%)`;
+        } else if (autoMesh < 0.75) {
+          // Conic wheel
+          const fromAngle = pick([0, 45, 90, 180, 270]);
+          s.gradientOverlay = `conic-gradient(from ${fromAngle}deg at 50% 50%, ${mc(0)}08, ${mc(2)}06, transparent, ${mc(4)}05, ${mc(6)}06, transparent)`;
+        } else {
+          // Mesh spots
+          const r1 = `radial-gradient(circle at ${pick([25, 30])}% ${pick([25, 35])}%, ${mc(0)}0C 0%, transparent ${pick([35, 45])}%)`;
+          const r2 = `radial-gradient(circle at ${pick([70, 80])}% ${pick([65, 75])}%, ${mc(2)}0A 0%, transparent ${pick([35, 45])}%)`;
+          s.gradientOverlay = r1;
+          s.gradientOverlay2 = r2;
+        }
+      }
+    }
+  }
+
   return s;
 }
 
