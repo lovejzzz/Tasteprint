@@ -391,11 +391,47 @@ export function getCuratedPreset(type, cycleIndex) {
 }
 
 /**
- * Smart designer randomization.
- * Returns { variant, font, fsize, props } for a given component type + palette.
- * @param {string} mood - Design mood: "auto"|"minimal"|"bold"|"elegant"|"playful"
+ * Generate a Design DNA — a shared style genome for an entire canvas randomization.
+ * Call once per "randomize all" operation, then pass to each designerRandomize call.
+ * Ensures all components share a cohesive aesthetic instead of each rolling independently.
  */
-export function designerRandomize(type, palette, defaults, mood = "auto", otherShapes = []) {
+export function generateDesignDNA(palette, mood) {
+  const dark = isDarkPalette(palette);
+  const acHex = palette.ac || "#888";
+  const ac2 = palette.ac2 || palette.ac || "#888";
+
+  // Pick a radius family — all components will gravitate toward this
+  const radiusFamily = pick(["sharp", "soft", "round", "pill", "mixed"]);
+  const radiusMap = {
+    sharp: { base: pick([0, 2, 4]), range: 4 },
+    soft: { base: pick([8, 10, 12]), range: 6 },
+    round: { base: pick([16, 20, 24]), range: 8 },
+    pill: { base: 999, range: 0 },
+    mixed: { base: pick([8, 12, 16]), range: 20 }, // more variation allowed
+  };
+
+  // Pick a shadow family
+  const shadowFamily = pick(["none", "subtle", "elevated", "dramatic", "brutal", "glow"]);
+
+  // Pick a border style (or none)
+  const borderStyle = Math.random() < 0.35 ? pick(["thin", "accent-top", "accent-bottom", "dashed"]) : "none";
+
+  // Shared hue offset (all components shift the same direction)
+  const hueDirection = Math.random() < 0.3 ? pick([-15, -10, 10, 15, 20]) : 0;
+
+  // Gradient personality
+  const gradientStyle = Math.random() < 0.3 ? pick(["diagonal", "radial", "conic"]) : "none";
+
+  return { radiusFamily, radiusMap: radiusMap[radiusFamily], shadowFamily, borderStyle, hueDirection, gradientStyle, dark, acHex, ac2 };
+}
+
+/**
+ * Smart designer randomization.
+ * Returns { variant, font, fsize, props, dStyles } for a given component type + palette.
+ * @param {string} mood - Design mood: "auto"|"minimal"|"bold"|"elegant"|"playful"
+ * @param {object} dna - Optional Design DNA from generateDesignDNA for cohesive canvas
+ */
+export function designerRandomize(type, palette, defaults, mood = "auto", otherShapes = [], dna = null) {
   const varCount = (VARIANTS[type] || []).length || 1;
   const dark = isDarkPalette(palette);
   const tags = getVariantTags(type, varCount);
@@ -521,8 +557,8 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
     if (moodCfg && moodCfg.propTweak) moodCfg.propTweak(props);
   }
 
-  /* ── 5. Design style overrides — novel CSS treatments (harmony-aware) ── */
-  const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony);
+  /* ── 5. Design style overrides — novel CSS treatments (harmony + DNA aware) ── */
+  const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna);
 
   return { variant, font, fsize, props, dStyles };
 }
@@ -544,7 +580,7 @@ const SHADOW_PRESETS = [
 
 const RADIUS_PRESETS = [0, 4, 8, 12, 16, 20, 24, 32, 999];
 
-function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony) {
+function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna) {
   const s = {};
   const isNav = sizeCat === "nav";
   const isCode = sizeCat === "code";
@@ -560,9 +596,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
-  // --- Border radius (harmony-aware) ---
-  // If canvas has an established radius feel, lean toward it 60% of the time
-  if (harmony && harmony.radii.length >= 2 && Math.random() < 0.6) {
+  // --- Border radius (DNA > harmony > mood) ---
+  // DNA takes priority for cohesive canvas-wide randomization
+  if (dna && Math.random() < 0.8) {
+    const { base, range } = dna.radiusMap;
+    if (base === 999) s.borderRadius = 999;
+    else s.borderRadius = Math.max(0, base + Math.floor(Math.random() * range * 2) - range);
+  } else if (harmony && harmony.radii.length >= 2 && Math.random() < 0.6) {
     const avg = harmony.avgRadius;
     // Stay within ±8 of canvas average for cohesion
     const lo = Math.max(0, Math.round(avg - 8));
@@ -592,11 +632,20 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   // Nav components stay reasonable
   if (isNav) s.borderRadius = pick([0, 4, 8, 12]);
 
-  // --- Box shadow (harmony-aware) ---
+  // --- Box shadow (DNA > harmony > mood) ---
   const acHex = palette.ac || "#888";
   const shHex = dark ? "#000" : palette.tx || "#333";
-  // Lean toward canvas dominant shadow style if one exists
-  if (harmony && harmony.shadowTypes.length >= 2 && Math.random() < 0.55) {
+  // DNA takes priority for cohesive canvas
+  if (dna && Math.random() < 0.75) {
+    const sf = dna.shadowFamily;
+    if (sf === "none") s.boxShadow = "none";
+    else if (sf === "subtle") s.boxShadow = pick([SHADOW_PRESETS[1], SHADOW_PRESETS[2]]);
+    else if (sf === "elevated") s.boxShadow = pick([SHADOW_PRESETS[3], SHADOW_PRESETS[6], SHADOW_PRESETS[10]]);
+    else if (sf === "dramatic") s.boxShadow = pick([SHADOW_PRESETS[7], SHADOW_PRESETS[3]]);
+    else if (sf === "brutal") s.boxShadow = pick([SHADOW_PRESETS[4], SHADOW_PRESETS[8]]);
+    else if (sf === "glow") s.boxShadow = pick([SHADOW_PRESETS[9], `0 0 20px ${acHex}18`]);
+    else s.boxShadow = pick(SHADOW_PRESETS);
+  } else if (harmony && harmony.shadowTypes.length >= 2 && Math.random() < 0.55) {
     const dom = harmony.dominantShadow;
     if (dom === "none") s.boxShadow = pick(["none", "none", SHADOW_PRESETS[1]]);
     else if (dom === "brutal") s.boxShadow = pick([SHADOW_PRESETS[4], SHADOW_PRESETS[8]]);
@@ -712,8 +761,11 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
-  // --- Accent hue shift (15% chance — each component gets a unique color twist) ---
-  if (!isCode && Math.random() < 0.15) {
+  // --- Accent hue shift (DNA-driven or 15% random) ---
+  if (dna && dna.hueDirection && !isCode) {
+    // DNA: all components shift in the same direction with slight variation
+    s.hueRotate = dna.hueDirection + pick([-5, -3, 0, 0, 3, 5]);
+  } else if (!isCode && Math.random() < 0.15) {
     const shift = pick([-20, -15, -10, 10, 15, 20, 30, -30]);
     s.hueRotate = shift;
   }

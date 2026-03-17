@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
 import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT, HAS_PROPS, VARIANTS, DEFAULT_PROPS } from "./constants";
-import { load, uid, maxV, varName, snap, validateImport, designerRandomize, getCuratedPreset, designScore, DESIGN_MOODS } from "./utils";
+import { load, uid, maxV, varName, snap, validateImport, designerRandomize, getCuratedPreset, designScore, generateDesignDNA, DESIGN_MOODS } from "./utils";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TpContext } from "./contexts/TpContext";
 import Header from "./components/Header";
@@ -218,6 +218,7 @@ export default function App() {
 
     const targetSet = new Set(targets);
     const otherShapes = shapes.filter(s => !targetSet.has(s.id));
+    const dna = targets.length > 1 ? generateDesignDNA(p, designMood) : null;
 
     // Randomize all targets — each one considers the others + canvas for harmony
     const newPrefV = { ...prefV };
@@ -230,11 +231,11 @@ export default function App() {
         if (!targetSet.has(s.id)) continue;
         const defaults = DEFAULT_PROPS[s.type];
         if (singlePreset && targets.length === 1) {
-          const rnd = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized);
+          const rnd = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna);
           updated[i] = { ...s, variant: singlePreset.variant, font: singlePreset.font, fsize: singlePreset.fsize, props: { ...(s.props || {}), ...rnd.props }, dStyles: rnd.dStyles };
           newPrefV[s.type] = singlePreset.variant;
         } else {
-          const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized);
+          const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna);
           updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
           newPrefV[s.type] = result.variant;
         }
@@ -249,6 +250,7 @@ export default function App() {
     if (shapes.length === 0) return;
     rndUndo.current = { ids: shapes.map(s => s.id), prevShapes: shapes.map(s => ({ ...s })), prevPrefV: { ...prefV } };
     setHasRndUndo(true);
+    const dna = generateDesignDNA(p, designMood);
     const newPrefV = { ...prefV };
     setShapes(prev => {
       const updated = [...prev];
@@ -256,7 +258,7 @@ export default function App() {
       for (let i = 0; i < updated.length; i++) {
         const s = updated[i];
         const defaults = DEFAULT_PROPS[s.type];
-        const result = designerRandomize(s.type, p, defaults, designMood, already);
+        const result = designerRandomize(s.type, p, defaults, designMood, already, dna);
         updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
         newPrefV[s.type] = result.variant;
         already.push(updated[i]);
