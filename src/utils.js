@@ -2108,6 +2108,32 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
+    // ── Texture blend modes: mix texture patterns with underlying content for richer surfaces ──
+    // backgroundBlendMode affects how texture layers interact with each other;
+    // textureMixBlend affects how the texture div composites over the component beneath it
+    if (s.textureOverlay) {
+      const tbRoll = Math.random();
+      if (moodId === "bold" && tbRoll < 0.25) {
+        // Bold: high-contrast blending — textures cut through
+        s.textureMixBlend = pick(["multiply", "overlay", "hard-light"]);
+      } else if (moodId === "playful" && tbRoll < 0.22) {
+        // Playful: luminous/colorful blending — textures glow
+        s.textureMixBlend = pick(["screen", "color-dodge", "overlay", "soft-light"]);
+      } else if (moodId === "elegant" && tbRoll < 0.18) {
+        // Elegant: subtle sophisticated blending — silk-like sheen
+        s.textureMixBlend = pick(["soft-light", "luminosity", "color"]);
+      } else if (moodId === "minimal" && tbRoll < 0.08) {
+        // Minimal: barely-there tonal interaction
+        s.textureMixBlend = pick(["soft-light", "luminosity"]);
+      } else if (moodId === "auto" && tbRoll < 0.15) {
+        s.textureMixBlend = pick(["multiply", "screen", "overlay", "soft-light", "color-dodge"]);
+      }
+      // Compound textures get background-blend-mode for inter-layer blending
+      if (s.textureOverlay.includes(",") && Math.random() < 0.30) {
+        s.textureBlendMode = pick(["multiply", "screen", "overlay", "difference", "exclusion"]);
+      }
+    }
+
     /* ── WILD CARDS — creative surprise combos with DNA colors + mood-weighted selection ── */
     // Auto: 50%, Bold: 12%, Playful: 18%, Elegant: 10%, Minimal: 6%
     const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.06 : 0;
