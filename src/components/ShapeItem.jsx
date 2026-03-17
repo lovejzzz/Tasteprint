@@ -87,7 +87,15 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
           </button>
           <button aria-label="Randomize design"
-            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); randomize(s.id); }}
+            onPointerDown={e => {
+              e.stopPropagation(); e.preventDefault();
+              // Dice roll animation: spin + bounce
+              const btn = e.currentTarget;
+              btn.style.transition = "transform .4s cubic-bezier(.2,.8,.2,1.4)";
+              btn.style.transform = "scale(1.2) rotate(360deg)";
+              setTimeout(() => { btn.style.transition = "transform .2s cubic-bezier(.4,1,.6,1)"; btn.style.transform = "scale(1)"; }, 400);
+              randomize(s.id);
+            }}
             onMouseEnter={e => { e.currentTarget.style.background = p.ac + "28"; e.currentTarget.style.transform = "scale(1.12) rotate(15deg)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = p.su; e.currentTarget.style.transform = "scale(1)"; }}
             style={{ ...pb, fontSize: 13, transition: "background .15s ease, transform .2s cubic-bezier(.4,1,.6,1)" }}>
