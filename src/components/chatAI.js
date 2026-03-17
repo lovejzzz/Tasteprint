@@ -21193,6 +21193,35 @@ function tryStandaloneReaction(text, sent) {
   return null;
 }
 
+// Round 228: Extended reaction range — friends also react to LONGER messages
+// with short responses. When someone tells a whole story (50-200 chars), sometimes
+// the best response is "bruh" or "that's insane" not a full paragraph analysis.
+// Lower fire rate than short reactions (~10%) to keep it special.
+function tryLongInputReaction(text, sent) {
+  const lower = text.toLowerCase().trim();
+  const len = lower.length;
+  if (len < 50 || len > 200) return null;
+  if (Math.random() > 0.10) return null;
+  if (mem.turn < 4) return null;
+  if (text.includes("?")) return null; // they asked something, answer it
+  if (sent < -0.5) return null; // they're upset, don't dismiss with "bruh"
+
+  // Story reactions — when someone shares an anecdote or experience
+  if (/\b(so i|and then|this (guy|girl|person|dude)|i was like|they were like)\b/i.test(lower)) {
+    return pick(["STOPPP 😭", "no way", "bruh", "that's insane", "im screaming", "LMAO wait", "no bc why is that so real", "ok that's actually hilarious"]);
+  }
+  // Complaint/vent reactions
+  if (/\b(so annoying|hate when|can't believe|makes no sense|pisses me off)\b/i.test(lower)) {
+    return pick(["fr that's so annoying", "nah that's valid", "literally why", "no bc same", "the way i understand this"]);
+  }
+  // Accomplishment reactions
+  if (/\b(finally|i did it|figured out|got accepted|passed|made it)\b/i.test(lower)) {
+    return pick(["LETS GO", "W", "no way congrats", "ok go off", "you're literally that person"]);
+  }
+  // Generic long-input reaction
+  return pick(["bruh", "wait what", "no literally", "that's wild", "im—", "ok hold on"]);
+}
+
 // ── Excitement level detection ──
 // Returns 0-1 score for how excited/surprised the user's message is
 function measureExcitement(text) {
@@ -21844,6 +21873,17 @@ export async function getAIResponse(input) {
     if (_questionHistory.length > 20) _questionHistory.shift();
     const srTypingMs = 80 + Math.random() * 200;
     return { text: standaloneReaction, typingMs: srTypingMs, pause: null };
+  }
+
+  // ═══ Round 228: Long-input pure reactions — sometimes "bruh" is the right response ═══
+  const longReaction = tryLongInputReaction(text, ultraShortSent);
+  if (longReaction) {
+    mem.add("user", text, currentTopics || [], [], ultraShortSent);
+    mem.add("ai", longReaction);
+    _questionHistory.push(longReaction.includes("?"));
+    if (_questionHistory.length > 20) _questionHistory.shift();
+    const lrTypingMs = 100 + Math.random() * 250;
+    return { text: longReaction, typingMs: lrTypingMs, pause: null };
   }
 
   // ═══ Round 153: Selective attention — analyze interest before response generation ═══
