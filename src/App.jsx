@@ -245,6 +245,27 @@ export default function App() {
     setPrefV(newPrefV);
   }, [shapes, p, designMood, prefV, selAll]);
 
+  const randomizeAll = useCallback(() => {
+    if (shapes.length === 0) return;
+    rndUndo.current = { ids: shapes.map(s => s.id), prevShapes: shapes.map(s => ({ ...s })), prevPrefV: { ...prefV } };
+    setHasRndUndo(true);
+    const newPrefV = { ...prefV };
+    setShapes(prev => {
+      const updated = [...prev];
+      const already = [];
+      for (let i = 0; i < updated.length; i++) {
+        const s = updated[i];
+        const defaults = DEFAULT_PROPS[s.type];
+        const result = designerRandomize(s.type, p, defaults, designMood, already);
+        updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props } };
+        newPrefV[s.type] = result.variant;
+        already.push(updated[i]);
+      }
+      return updated;
+    });
+    setPrefV(newPrefV);
+  }, [shapes, p, designMood, prefV]);
+
   const undoRandomize = useCallback(() => {
     if (!rndUndo.current) return;
     const { ids, prevShapes, prevPrefV } = rndUndo.current;
@@ -592,7 +613,7 @@ export default function App() {
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: p.bg, fontFamily: "'DM Sans',system-ui,sans-serif", color: p.tx, transition: "background .4s,color .4s" }}>
       <link href={FONT_URL} rel="stylesheet" />
 
-      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} mobile={mobile} />
+      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} mobile={mobile} randomizeAll={randomizeAll} hasRndUndo={hasRndUndo} undoRandomize={undoRandomize} />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: mobile ? "column" : "row" }}>
         {!mobile && <LibrarySidebar expCat={expCat} setExpCat={setExpCat} catItems={catItems} prefV={prefV} p={p} pDrag={pDrag} setPDrag={setPDrag} dRef={dRef} reorderLib={reorderLib} lastReorder={lastReorder} />}

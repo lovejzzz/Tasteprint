@@ -24,7 +24,7 @@ function reflowForDevice(deviceKey, shapes, setShapes, setDevice, setCam) {
   setCam({ x: 0, y: 0, z: 1 });
 }
 
-export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile }) {
+export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, hasRndUndo, undoRandomize }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredBtn, setHoveredBtn] = useState(null);
 
@@ -115,6 +115,8 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
             style={btn("m-undo", { padding: "5px 8px", fontSize: 13 })}>↩</button>
           <button onClick={redo} aria-label="Redo" {...btnHandlers("m-redo")}
             style={btn("m-redo", { padding: "5px 8px", fontSize: 13 })}>↪</button>
+          {shapes.length > 0 && <button onClick={randomizeAll} aria-label="Randomize all" {...btnHandlers("m-rndAll")}
+            style={btn("m-rndAll", { padding: "5px 8px", fontSize: 12 })}>🎲</button>}
           <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" {...btnHandlers("m-menu")}
             style={btn("m-menu", { padding: "5px 10px", fontSize: 16, background: menuOpen ? p.su : hoveredBtn === "m-menu" ? p.su : "none" })}>
             ☰
@@ -214,6 +216,25 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
           {...btnHandlers("undo")} style={btn("undo")}>Undo</button>
         <button onClick={redo} title="Redo (⌘⇧Z)" aria-label="Redo"
           {...btnHandlers("redo")} style={btn("redo")}>Redo</button>
+        {shapes.length > 0 && <>
+          <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px", flexShrink: 0 }} />
+          <button onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
+            {...btnHandlers("rndAll")} style={btn("rndAll", { display: "flex", alignItems: "center", gap: 4 })}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="3" />
+              <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
+            All
+          </button>
+          {hasRndUndo && <button onClick={undoRandomize} title="Undo last randomize" aria-label="Undo randomize"
+            {...btnHandlers("rndUndo")} style={btn("rndUndo", { fontSize: 11 })}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+          </button>}
+        </>}
       </div>
     </header>
   );
