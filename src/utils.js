@@ -815,7 +815,35 @@ export function designerRandomize(type, palette, defaults, mood = "auto", otherS
   /* ── 5. Design style overrides — novel CSS treatments (harmony + DNA aware) ── */
   const dStyles = _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harmony, dna);
 
-  return { variant, font, fsize, props, dStyles };
+  /* ── 6. Quality gate — auto-reroll low-scoring results (Round 70) ── */
+  // Use designScore to self-evaluate. If score < 3 (below "decent"), reroll
+  // the entire randomization up to 2 times. This ensures the dice button
+  // consistently produces at least acceptable results without user frustration.
+  const candidate = { variant, font, fsize, props, dStyles };
+  const testShape = { type, ...candidate };
+  const score = designScore(testShape, palette, otherShapes);
+  if (score < 3 && !candidate._rerollCount) {
+    // Reroll with a flag to prevent infinite recursion
+    const reroll = designerRandomize(type, palette, defaults, mood, otherShapes, dna);
+    reroll._rerollCount = (candidate._rerollCount || 0) + 1;
+    if (reroll._rerollCount < 2) {
+      const rerollShape = { type, ...reroll };
+      const rerollScore = designScore(rerollShape, palette, otherShapes);
+      if (rerollScore > score) {
+        delete reroll._rerollCount;
+        return reroll;
+      }
+    }
+    delete reroll._rerollCount;
+    // Even if reroll didn't improve, use best of the two
+    const rerollShape = { type, ...reroll };
+    const rerollScore = designScore(rerollShape, palette, otherShapes);
+    delete candidate._rerollCount;
+    return rerollScore >= score ? reroll : candidate;
+  }
+  delete candidate._rerollCount;
+
+  return candidate;
 }
 
 /* ── Design Style Generator — produces CSS overrides beyond predefined variants ── */
