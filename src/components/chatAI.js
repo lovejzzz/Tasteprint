@@ -4995,26 +4995,26 @@ function injectHumor(response, topics) {
 function getStoryFragment(topics) {
   const topicStories = {
     code: [
-      "It's like that classic debugging story — you spend 6 hours hunting a bug only to find it was a missing semicolon. Every. Single. Time.",
-      "Reminds me of the first time I heard about 'rubber duck debugging' — apparently talking to a rubber duck helps you solve coding problems. Engineers are a special breed 🦆",
-      "It's similar to how the best code is the code you delete. Simplicity is harder than complexity.",
-      "That's like the old programmer's dilemma: 'I can automate this in 5 hours, or do it manually in 20 minutes.' We always choose automation 😄",
+      "lol that's literally the debugging experience, you spend 6 hours hunting a bug and it's a missing semicolon. every time",
+      "ok but rubber duck debugging is real, you literally explain code to a rubber duck and it helps you find bugs. engineers are unhinged 🦆",
+      "ngl the best code is the code you delete. simplicity is harder than complexity",
+      "lol that's the programmer thing, 'i can automate this in 5 hours or do it manually in 20 minutes' and we always choose automation 😄",
     ],
     design: [
-      "It's like that classic design principle — if you have to explain how a door works, the door is badly designed.",
-      "Reminds me of the 'less is more' philosophy. The hardest part of design isn't adding things — it's knowing what to take away.",
-      "That's like when Steve Jobs made his team redesign the calculator app 100 times. Obsession with detail pays off.",
+      "ok but thats literally the thing, if you have to explain how a door works the door is badly designed",
+      "ngl the hardest part of design isn't adding things, it's knowing what to take away",
+      "lol that's like when steve jobs made his team redesign the calculator app 100 times. obsession pays off",
     ],
     food: [
-      "It's like how Gordon Ramsay says the best dishes are the simplest ones done perfectly.",
-      "Reminds me of how every culture has their own version of 'bread + stuff inside.' We're all the same at the core 🌍",
+      "ok but gordon ramsay is right, the best dishes are the simplest ones done perfectly",
+      "ngl every culture has their own version of bread + stuff inside. we're all the same 🌍",
     ],
     general: [
-      "It's like when you're building something and the simplest solution turns out to be the best.",
-      "Reminds me of how the best conversations happen when you least expect them.",
-      "It's similar to how the best ideas come when you step away from the screen.",
-      "That reminds me of the 'overnight success' myth — most took 10 years of quiet work first.",
-      "It's like that old saying: the best time to plant a tree was 20 years ago. The second best time is now.",
+      "ngl the simplest solution is usually the best one",
+      "ok but the best conversations literally happen when you least expect them",
+      "fr the best ideas come when you step away from the screen",
+      "lol that 'overnight success' thing, most of them took like 10 years of quiet work first",
+      "ok that old saying is real tho, the best time to plant a tree was 20 years ago. second best time is now",
     ],
   };
 
