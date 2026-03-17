@@ -884,6 +884,46 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
     s.boxShadow = s.boxShadow.replace(/\{s\}/g, shadowColor).replace(/\{a\}/g, acHex);
   }
+  // Creative multi-layer shadow stacking (~25%): combine base shadow with accent/glow layers
+  // Creates hand-designed feel: elevation + color accent + ambient glow
+  if (s.boxShadow && s.boxShadow !== "none" && !isSmall && Math.random() < 0.25) {
+    const stackLayers = [];
+    if (moodId === "bold" || moodId === "auto") {
+      // Bold stacks: base + colored accent offset + subtle ambient
+      stackLayers.push(
+        pick([
+          `${pick([-3, -2, 2, 3])}px ${pick([3, 4, 5])}px 0 ${gc1}18`,
+          `0 ${pick([2, 3])}px ${pick([8, 12])}px ${gcGlow}12`,
+          `inset 0 -2px ${pick([6, 10])}px ${gc1}08`,
+        ])
+      );
+    } else if (moodId === "elegant") {
+      // Elegant stacks: base + soft inner glow + ambient tint
+      stackLayers.push(
+        pick([
+          `inset 0 0 ${pick([12, 18, 24])}px ${dc.muted}06`,
+          `0 0 ${pick([20, 30])}px ${gc1}08`,
+          `0 ${pick([1, 2])}px ${pick([4, 6])}px ${dc.analog1}0A`,
+        ])
+      );
+    } else if (moodId === "playful") {
+      // Playful stacks: base + color offset + vibrant glow
+      stackLayers.push(
+        pick([
+          `${pick([2, 3, 4])}px ${pick([2, 3, 4])}px 0 ${gc1}20`,
+          `${pick([-2, -3])}px ${pick([-2, -3])}px 0 ${gc2}18`,
+          `0 0 ${pick([15, 25])}px ${gcGlow}15`,
+        ])
+      );
+    } else if (moodId === "minimal") {
+      // Minimal stacks: base + barely-there accent line
+      stackLayers.push(`0 1px 0 ${acHex}08`);
+    }
+    if (stackLayers.length > 0) {
+      s.boxShadow = s.boxShadow + ", " + stackLayers.join(", ");
+    }
+  }
+
   // Nav/code skip shadows
   if (isNav || isCode) s.boxShadow = "none";
 
