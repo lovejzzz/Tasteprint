@@ -8730,6 +8730,129 @@ function applyThoughtCompletion(response, text) {
   return completionText + response;
 }
 
+/* ── User Profiling & Insight Sharing (Round 122) ──
+ * Dynamically builds a personality profile of the user based on their
+ * message patterns: thinking style, values, communication tendencies.
+ * Occasionally shares a surprisingly accurate observation like:
+ * "You strike me as someone who thinks in systems, not just pieces."
+ * These feel magical because the AI seems to *understand* the person.
+ */
+let lastProfileTurn = 0;
+let profileCount = 0;
+const PROFILE_COOLDOWN = 12;
+const MAX_PROFILES_SESSION = 2;
+
+// Trait dimensions — each has signal patterns and insight phrases
+const USER_TRAITS = {
+  systems_thinker: {
+    signals: /\b(how (?:does|do|is) .*(?:work|connect|fit|relate)|architect|infrastructure|pattern|scale|system|pipeline|workflow|end.to.end|big picture|holistic|integrat|orchestrat)\b/i,
+    weight: 0,
+    insights: [
+      "You think in systems, not isolated pieces — that's a rare skill.",
+      "I notice you always zoom out to see how things connect. That's a systems-thinking brain.",
+      "You naturally map relationships between things. That's how architects think.",
+    ]
+  },
+  detail_oriented: {
+    signals: /\b(specific|exactly|precise|detail|step.by.step|edge case|corner case|what about|what if .* fails|error handl|validate|check|verify|subtle|nuance)\b/i,
+    weight: 0,
+    insights: [
+      "You've got an eye for the details most people skip. That's what separates good from great.",
+      "I notice you think about edge cases before they bite — that's a superpower.",
+      "You're detail-oriented in a way that's actually thorough, not just perfectionist.",
+    ]
+  },
+  creative_explorer: {
+    signals: /\b(what if|imagine|wouldn't it be cool|crazy idea|experiment|play with|try (?:something|this)|remix|mashup|wild|unconventional|outside the box|different approach|twist)\b/i,
+    weight: 0,
+    insights: [
+      "You're a creative explorer — you'd rather try a weird idea than play it safe. I respect that.",
+      "I notice you naturally gravitate toward 'what if' thinking. That's how interesting things get built.",
+      "You've got this restless creative energy — always looking for the less obvious path.",
+    ]
+  },
+  pragmatist: {
+    signals: /\b(practical|real.?world|actually work|in practice|production|ship|deadline|mvp|good enough|pragmatic|simplest|fastest way|just works|bottom line|efficient)\b/i,
+    weight: 0,
+    insights: [
+      "You're a pragmatist at heart — you'd rather ship something real than polish something theoretical.",
+      "I can tell you value things that actually work over things that look clever. Smart call.",
+      "You think in terms of 'does this ship?' — that's the builder mindset.",
+    ]
+  },
+  curious_learner: {
+    signals: /\b(how|why|explain|learn|understand|curious|interesting|fascin|deep.?dive|rabbit hole|tell me more|explore|dig into|research|study|reading about)\b/i,
+    weight: 0,
+    insights: [
+      "You're genuinely curious — not just surface-level, but in a 'I want to really get this' way.",
+      "I love how you keep pulling at threads. That curiosity is what makes learning stick.",
+      "You ask the kind of questions that go deeper than most people bother to.",
+    ]
+  },
+  empathetic_communicator: {
+    signals: /\b(feel|people|user[s ]|experience|inclusive|accessible|everyone|team|collaborat|help|support|care|matter|perspective|understand (?:their|how they))\b/i,
+    weight: 0,
+    insights: [
+      "You naturally think about how things affect people, not just whether they work technically.",
+      "I notice you center the human experience in everything you think about. That's rare in tech.",
+      "You've got this empathetic lens — you're always considering how others will feel about something.",
+    ]
+  },
+  decisive_leader: {
+    signals: /\b(let's go with|I('ll| will) just|decision|choose|pick|commit|move forward|let's do|ship it|pull the trigger|go for it|done deal|settled|that's the plan|I('m| am) going)\b/i,
+    weight: 0,
+    insights: [
+      "You're decisive — you weigh options then commit without second-guessing. I like that.",
+      "I notice you don't agonize over decisions. You pick a direction and go. That's leadership energy.",
+      "You've got a bias toward action. Better to course-correct than to never start.",
+    ]
+  },
+};
+
+function updateUserProfile(text) {
+  for (const [trait, data] of Object.entries(USER_TRAITS)) {
+    if (data.signals.test(text)) {
+      data.weight = Math.min(data.weight + 1, 10);
+    }
+  }
+}
+
+function getTopTraits(n = 2) {
+  return Object.entries(USER_TRAITS)
+    .filter(([, d]) => d.weight >= 3) // need at least 3 signals to be confident
+    .sort((a, b) => b[1].weight - a[1].weight)
+    .slice(0, n)
+    .map(([trait, data]) => ({ trait, weight: data.weight, insights: data.insights }));
+}
+
+function applyUserProfiling(response, text) {
+  const turn = mem.turn;
+  // Need enough conversation to form a profile
+  if (turn < 10) return response;
+  if (turn - lastProfileTurn < PROFILE_COOLDOWN) return response;
+  if (profileCount >= MAX_PROFILES_SESSION) return response;
+  if (response.length > 320 || response.length < 20) return response;
+
+  // Update profile with current message
+  updateUserProfile(text);
+
+  const topTraits = getTopTraits(1);
+  if (topTraits.length === 0) return response;
+
+  // 18% fire rate — rare enough to feel special
+  if (Math.random() > 0.18) return response;
+
+  const trait = topTraits[0];
+  const insight = pick(trait.insights);
+
+  lastProfileTurn = turn;
+  profileCount++;
+
+  // Append the insight naturally
+  const connectors = ["\n\nSide note: ", "\n\nRandom observation — ", "\n\nBy the way, ", "\n\nCan I say something? "];
+  return response + pick(connectors) + insight;
+}
+
 let reciprocityHistory = []; // "ask" or "tell" per turn
 let lastReciprocityNudgeTurn = 0;
 
@@ -18004,6 +18127,10 @@ export function getAIResponse(input) {
   // ═══ Thought completion: finish the user's trailing-off sentences ═══
   response = applyThoughtCompletion(response, text);
 
+  // ═══ User profiling: build & occasionally share personality insights ═══
+  updateUserProfile(text);
+  response = applyUserProfiling(response, text);
+
   // ═══ Conversational reciprocity: balance ask/tell rhythm ═══
   response = applyReciprocityBalance(response, text);
   trackReciprocity(response);
@@ -18034,6 +18161,6 @@ export function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; }
+export function resetMemory() { mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); }
 
 export { classify as classifyIntents, extractKW as extractKeywords, extractTopics, sentiment as analyzeSentiment };
