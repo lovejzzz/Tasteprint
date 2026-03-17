@@ -84,7 +84,7 @@ const INTENT_BANK = [
   { id: "share_vent", text: "I need to vent rant complain about something", category: "sharing", response_hint: "listen_validate" },
   { id: "share_good_news", text: "guess what I have great news something amazing happened", category: "sharing", response_hint: "celebrate_news" },
   { id: "share_bad_news", text: "something bad happened I have bad news", category: "sharing", response_hint: "empathize_bad_news" },
-  { id: "share_opinion", text: "I think honestly in my opinion I believe", category: "sharing", response_hint: "engage_opinion" },
+ { id: "share_opinion", text: "I think honestly in my opinion I believe", category: "sharing", response_hint: "engage_opinion" },
   { id: "share_experience", text: "I tried this I went there I did this thing", category: "sharing", response_hint: "show_interest" },
 
   // ── Social / Relationship ──
@@ -173,15 +173,15 @@ const SEMANTIC_RESPONSES = {
   be_present: ["hey what's going on, talk to me","you're not in this alone ok","ok sit down and tell me what happened"],
   accept_gratitude: ["dude of course, always","no need to thank me, that's what friends are for","lol you're good, happy i could help"],
   help_clarity: ["ok wait what part is confusing","which part lost you","lol no worries, what doesn't make sense"],
-  empathize_tired: ["same honestly, today was brutal","dude go take a nap fr","ugh that's the worst, have you had coffee at least"],
+  empathize_tired: ["same tho, today was brutal","dude go take a nap fr","ugh that's the worst, have you had coffee at least"],
   celebrate: ["YOOO YOU DID IT. that's insane","ok WAIT tell me everything rn","wait that's literally amazing, how did that happen"],
-  normalize: ["lol honestly everyone has moments like that","nooo don't worry about it, that happens to literally everyone","trust me that's way less embarrassing than you think"],
+ normalize: ["lol fr everyone has moments like that","nooo don't worry about it, that happens to literally everyone","trust me that's way less embarrassing than you think"],
   validate_jealousy: ["ngl i'd feel the same way","comparison is poison but like... it's hard not to","dude that's so normal, don't even stress"],
   share_nostalgia: ["aw man, the good old days hit different","i love that you have those memories tho","what do you miss most about it?"],
-  encourage_hope: ["yesss i love that energy","ok good vibes only, i'm manifesting for you","that's a good sign honestly, ride that wave"],
-  acknowledge_letdown: ["aw man that's rough","ugh that's so lame, what happened","that sucks, i'm annoyed for you honestly"],
+ encourage_hope: ["yesss i love that energy","ok good vibes only, i'm manifesting for you","that's a good sign ngl, ride that wave"],
+ acknowledge_letdown: ["aw man that's rough","ugh that's so lame, what happened","that sucks, i'm annoyed for you "],
   celebrate_career: ["WAIT CONGRATS. that's amazing","oh my god you're killing it professionally","bruh that's huge, you worked so hard for this"],
-  support_job_loss: ["wait what?? dude i'm sorry, what happened","that's so messed up, are you ok","ugh that sucks, their loss honestly"],
+ support_job_loss: ["wait what?? dude i'm sorry, what happened","that's so messed up, are you ok","ugh that sucks, their loss for real"],
   support_breakup: ["aw man breakups are the WORST, you ok?","dude i'm sorry, how are you holding up","that's rough, do you wanna talk about it or do you need a distraction"],
   excited_for_love: ["OHHH 👀👀 tell me everything","omg wait that's so cute, how'd it happen","this is exciting, what are they like"],
   moving_support: ["wait where are you moving to??","oh that's huge, are you excited or stressed","new city vibes, what made you wanna move"],
@@ -193,7 +193,7 @@ const SEMANTIC_RESPONSES = {
   celebrate_baby: ["OH MY GOD CONGRATULATIONS","wait a BABY?? that's the best news ever","a baby, dude i'm so happy for you 🥹🥹"],
   grief_support: ["dude i'm so sorry, i don't even know what to say","that's... yeah. i'm really sorry","i'm so sorry. you don't have to talk about it if you don't want to"],
   support_failure: ["ok but like one L doesn't define you","dude that sucks but you'll bounce back, you always do","ugh i know that feeling, it's the worst. but fr you tried and that's what matters"],
-  give_opinion: ["oh ok honestly? here's what i think,","hmm so i'd say","ok so personally i think"],
+ give_opinion: ["oh ok ok real talk? here's what i think,","hmm so i'd say","ok so personally i think"],
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
   self_describe: ["i'm Sam, just your chat buddy vibing in this little window","i'm your chat buddy, i run entirely in your browser which is kinda sick","think of me as a friend who lives in a text box lol"],
@@ -206,7 +206,7 @@ const SEMANTIC_RESPONSES = {
   empathize_bad_news: ["oh no... what happened?","aw man i'm sorry, are you ok?","that sucks, do you wanna talk about it"],
   engage_opinion: ["oh interesting, why do you think that?","hmm ok fair, but have you considered","that's a hot take lol, i kinda agree tho","big if true, tell me more","that's giving hot take energy, lowkey agree"],
   show_interest: ["ooh how was it??","wait what'd you think","ok that sounds sick, and then what"],
-  accept_compliment: ["lol stoppp you're too nice","lol thanks, you're pretty cool yourself","ok that made my day honestly"],
+ accept_compliment: ["lol stoppp you're too nice","lol thanks, you're pretty cool yourself","ok that made my day fr"],
   playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤","chose violence today huh 😭","and i took that personally"],
   respectful_disagree: ["hmm i see where you're coming from but i kinda think","ok valid, but i actually see it differently tho","ok fair but counterpoint,","that's a choice but hear me out,","sir this is a wendy's but also"],
   build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and also","glad we're on the same page, plus","ate and left no crumbs, and also","based take, and fr"],
@@ -219,7 +219,7 @@ const SEMANTIC_RESPONSES = {
   speculate: ["dude the future is gonna be so unhinged","ngl i'm equal parts hyped and terrified lol","ok this is such a fun thing to think about tho"],
   reflect_identity: ["ok that's a DEEP question, what brought that on","i feel like who we are changes constantly tbh","literally nobody has this figured out, we're all winging it"],
   explore_happiness: ["i think it's different for everyone tbh","lol the eternal question, right?","naps. the answer is naps. jk but also... kinda not"],
-  share_fears: ["lol honestly? being forgotten. also spiders","ooh ok lemme think about this","everyone's scared of something, it's just about which something"],
+ share_fears: ["lol fr? being forgotten. also spiders","ooh ok lemme think about this","everyone's scared of something, it's just about which something"],
   discuss_change: ["yeah i genuinely think people can change, i've seen it","it's hard tho, like HARD hard. but yeah possible","depends on if they actually want to, you know"],
   explore_loneliness: ["ugh that's so real, you can be surrounded by people and still feel it","loneliness is weird like that, it's not about being alone","ok this one hits, i think about this a lot"],
   reflect_time: ["time is SO weird, it goes fast and slow simultaneously","ok that one hit me","the temporary thing kinda makes it better imo, like it matters more"],
@@ -234,9 +234,9 @@ const SEMANTIC_RESPONSES = {
   talk_sleep: ["dude sleep deprivation is no joke","ugh i felt that, my sleep schedule is so cooked","ok but have you tried just... going to bed earlier lol jk i know it's not that simple"],
   talk_work: ["ugh work, is it drama or good stuff","ok spill, what happened at work","lol work is always something isn't it"],
   talk_school: ["school grind, how's it going tho","ugh what class is giving you problems","what are you studying?"],
-  talk_tech: ["ooh tech talk, i'm into it","that's cool, what specifically?","tech is wild right now honestly"],
+ talk_tech: ["ooh tech talk, i'm into it","that's cool, what specifically?","tech is wild right now for real"],
   talk_art: ["oh that's so cool, what do you create?","art is amazing, what medium?","i love creative people, show me sometime"],
-  talk_nature: ["nature is the best therapy honestly","ooh where did you go?","i love outdoors stuff, what's your favorite?"],
+ talk_nature: ["nature is the best therapy for real","ooh where did you go?","i love outdoors stuff, what's your favorite?"],
   talk_pets: ["PETS!! tell me everything","omg what kind of pet?","dude i love pets, they're the best"],
   laugh_along: ["lol right?? 😂","hahaha ok that's good","lmaooo"],
   confirm_shock: ["YEAH i know right??","dead serious!!","ikr that's wild"],
@@ -491,7 +491,7 @@ function normalizeSlang(text) {
 
   // Multi-word slang expansions
   const multiWord = [
-    [/\bno cap\b/gi, "honestly"],
+ [/\bno cap\b/gi, "for real"],
     [/\bon god\b/gi, "i swear"],
     [/\bhits different\b/gi, "is special"],
     [/\brent free\b/gi, "obsessively"],
@@ -909,7 +909,7 @@ const SUBTEXT_RESPONSES = {
     "hey don't be so hard on yourself, everyone starts somewhere. what are you stuck on",
     "nah asking questions is literally how you learn. what part is confusing",
     "you're doing better than you think fr. wanna break it down",
-    "the fact that you're trying already puts you ahead honestly. what can i help with",
+ "the fact that you're trying already puts you ahead no lie. what can i help with",
   ],
   seekingValidation: [
     "bro stop, you're literally not annoying at all",
@@ -1009,7 +1009,7 @@ const EMOTION_RESPONSES = {
     "dude no that's a lot 😔",
     "ugh i'm sorry, that's really rough",
     "nah fr just let it out",
-    "that's so much to deal with honestly",
+ "that's so much to deal with fr",
     "yeah no i get it, that's heavy",
   ],
   affectionate: [
@@ -1017,7 +1017,7 @@ const EMOTION_RESPONSES = {
     "ok you're actually the sweetest",
     "noooo that's so nice 🫠",
     "bro you're gonna make me cry lol",
-    "ily for that honestly 💙",
+ "ily for that fr 💙",
   ],
 };
 
@@ -1467,7 +1467,7 @@ function getReengagementOpener() {
   if (gap === "away") {
     if (isLateNight) return pick(["hey stranger, cant sleep either?", "oh hey night owl, welcome back", "the late night crew reunites"]);
     if (isEarlyMorning) return pick(["oh hey early bird, youre up!", "morning! you're up before the sun basically"]);
-    if (isWorkHours) return pick(["taking a break from work?", "hey! procrastinating? same honestly", "there you are, how's the day going"]);
+ if (isWorkHours) return pick(["taking a break from work?", "hey! procrastinating? same tbh", "there you are, how's the day going"]);
     if (t.isWeekend) return pick(["hey! weekend vibes, what are you up to", "oh hey, enjoying the " + t.dayName + "?", "there you are! no plans?"]);
     return pick(["hey stranger", "there you are!", "oh hey, been a minute"]);
   }
@@ -1482,7 +1482,7 @@ function getReengagementOpener() {
   }
 
   // Very long (12+ hours)
-  if (isLateNight) return pick(["cant sleep huh, same honestly", "oh hey, the late night version of you. whats on your mind", "night owl gang 🌙 what's keeping you up"]);
+ if (isLateNight) return pick(["cant sleep huh, same ngl", "oh hey, the late night version of you. whats on your mind", "night owl gang 🌙 what's keeping you up"]);
   if (isEarlyMorning) return pick(["wait youre up THIS early?? respect", "early morning check-in, i like it"]);
   if (t.isMonday) return pick(["happy monday, survived the weekend?", "oh hey! new week new vibes, how are you"]);
   if (t.isFriday) return pick(["happy friday!! any fun weekend plans", "TGIF!! how's the week been"]);
@@ -1687,7 +1687,7 @@ function respondToAnswer(answer, sent) {
     const topicBridges = [
       ` ${topic} is lowkey a whole rabbit hole.`,
       ` ngl ${topic} is kinda underrated.`,
-      ` ${topic} is a vibe honestly.`,
+ ` ${topic} is a vibe tbh.`,
       ` i could talk about ${topic} for hours lol.`,
     ];
     response += pick(topicBridges);
@@ -1948,7 +1948,7 @@ function respondToSemantics(sem, text, topics, sent) {
   }
   if (stance === "struggling" && !action) {
     const t = topics[0] || "this";
-    return pick([`ugh ${t} is giving you trouble?`,`yeah ${t} can be rough honestly. what's going on`]);
+ return pick([`ugh ${t} is giving you trouble?`,`yeah ${t} can be rough for real. what's going on`]);
   }
   if (stance === "accomplished" && !action) {
     return pick(["LETS GOOO what made it finally click","wait that's huge, what happened"]);
@@ -2216,7 +2216,7 @@ const KB = {
     general: ["the best way to learn is to build something, theory only gets you so far","teaching something is the fastest way to actually understand it fr","every skill has a frustrating phase and that's actually where the most growth happens"],
   },
   pets: {
-    dog: ["dogs are pure joy in fur form honestly, they make everything better","a dog's love is unconditional, we literally don't deserve them"],
+ dog: ["dogs are pure joy in fur form tbh, they make everything better","a dog's love is unconditional, we literally don't deserve them"],
     cat: ["cats have the ultimate personality — independent but secretly cuddly","cat tax is real — you mention a cat you gotta share a photo 📸"],
     general: ["pets are family fr. they teach you about love and living in the moment"],
   },
@@ -2300,7 +2300,7 @@ const EXPLAIN = {
                  deep:"angular is super opinionated, routing, forms, HTTP, dependency injection all built in. it uses two-way data binding and the CLI scaffolds everything for you. the learning curve is steep but once you get it, the structure really helps on big team projects",
                  hook:"are you evaluating frameworks for something?" },
   svelte:      { brief:"svelte is wild, it's a compiler that turns your components into vanilla js at build time, no virtual DOM",
-                 deep:"unlike react or vue, svelte compiles your stuff into plain imperative code at build time. no runtime framework ships to the browser so bundles are tiny and fast. reactivity is built into the language, you just assign a variable and the DOM updates. it's honestly magical",
+ deep:"unlike react or vue, svelte compiles your stuff into plain imperative code at build time. no runtime framework ships to the browser so bundles are tiny and fast. reactivity is built into the language, you just assign a variable and the DOM updates. it's straight up magical",
                  hook:"the compiler approach is so cool right?" },
   nextjs:      { brief:"next.js is react but with all the hard parts handled, routing, SSR, the whole deal",
                  deep:"next.js does file-based routing, server-side rendering, API routes, image optimization, all out of the box. the app router introduced server components where you can fetch data right in your components without useEffect. it's basically the default for production react apps now",
@@ -2312,7 +2312,7 @@ const EXPLAIN = {
                  deep:"js started as a simple scripting language but it's evolved like crazy. modern js has classes, modules, async/await, destructuring, arrow functions. it's single-threaded with an event loop for non-blocking stuff. most widely used language in the world by far",
                  hook:"are you more frontend or backend js?" },
   python:      { brief:"python is super readable and versatile, web dev, data science, AI, automation, everything",
-                 deep:"python's syntax is so clean it reads almost like english. it dominates in data science (numpy, pandas), ML (tensorflow, pytorch), automation, and web backends (django, fastapi). honestly there's a library for basically everything",
+ deep:"python's syntax is so clean it reads almost like english. it dominates in data science (numpy, pandas), ML (tensorflow, pytorch), automation, and web backends (django, fastapi). ngl there's a library for basically everything",
                  hook:"what are you using python for?" },
   rust:        { brief:"rust is a systems language that's fast like C but actually safe, no garbage collector needed",
                  deep:"rust's ownership system ensures memory safety at compile time, no null pointers, no data races, no use-after-free. the borrow checker is strict but once it compiles you know it works. it's as fast as C/C++ but way safer. great for systems stuff, wasm, and CLI tools",
@@ -2404,16 +2404,16 @@ const EXPLAIN = {
  * Specific "X vs Y" entries with real, opinionated takes.
  */
 const COMPARISONS = {
-  "react_vue":     { a:"React", b:"Vue", take:"ok so react has the bigger ecosystem and more flexibility, vue is easier to learn and the single-file components are *chefs kiss*. react for big teams, vue for getting stuff done fast. both are great honestly — it's about what clicks with your brain", hook:"what matters more to you, ecosystem or DX?" },
+ "react_vue": { a:"React", b:"Vue", take:"ok so react has the bigger ecosystem and more flexibility, vue is easier to learn and the single-file components are *chefs kiss*. react for big teams, vue for getting stuff done fast. both are great straight up — it's about what clicks with your brain", hook:"what matters more to you, ecosystem or DX?" },
   "react_angular": { a:"React", b:"Angular", take:"react is a library (you pick the pieces), angular is a framework (everything included). react is more flexible, angular is more opinionated. small-to-medium apps? react. big enterprise app with a huge team? angular's structure helps. react has a gentler learning curve tho", hook:"how big is the project?" },
   "react_svelte":  { a:"React", b:"Svelte", take:"react has the massive ecosystem and job market. svelte has the better DX and tiny bundles because it compiles away. new personal project with freedom? i'd seriously look at svelte. team project where you need to hire? react is the safer bet", hook:"personal project or team thing?" },
   "typescript_javascript": { a:"TypeScript", b:"JavaScript", take:"typescript is js with guardrails basically. small scripts? js is fine. anything you'll maintain or scale? typescript saves so many headaches. the setup cost pays for itself the first time the compiler catches a bug you'd have spent hours on", hook:"how big is your codebase?" },
-  "node_python":   { a:"Node.js", b:"Python", take:"node is great for real-time stuff, APIs, and when your frontend is already js. python wins for data science, ML, scripting. building a web API and already know js? node. anything data-related? python. both have huge ecosystems honestly", hook:"what are you building?" },
+ "node_python": { a:"Node.js", b:"Python", take:"node is great for real-time stuff, APIs, and when your frontend is already js. python wins for data science, ML, scripting. building a web API and already know js? node. anything data-related? python. both have huge ecosystems ngl", hook:"what are you building?" },
   "rest_graphql":  { a:"REST", b:"GraphQL", take:"REST is simpler, more cacheable, and everyone knows it. graphql is more flexible — you get exactly the data you ask for. REST is fine for most CRUD apps. graphql shines with complex data relationships and mobile where bandwidth matters", hook:"is overfetching a problem for you rn?" },
   "tailwind_css":  { a:"Tailwind", b:"vanilla CSS", take:"tailwind is utility-first — composing classes instead of writing CSS. looks messy at first but it's wildly productive once it clicks. vanilla CSS gives you full control and teaches fundamentals. my take: learn CSS first, then try tailwind. once you go utility-first it's hard to go back lol", hook:"have you tried tailwind yet?" },
-  "flexbox_grid":  { a:"Flexbox", b:"CSS Grid", take:"they're not even competitors honestly — different problems! flexbox is 1D (row OR column), grid is 2D (rows AND columns). flexbox for components (navbars, cards, centering), grid for page layouts. most real layouts use both tbh", hook:"what layout are you trying to build?" },
+ "flexbox_grid": { a:"Flexbox", b:"CSS Grid", take:"they're not even competitors ngl — different problems! flexbox is 1D (row OR column), grid is 2D (rows AND columns). flexbox for components (navbars, cards, centering), grid for page layouts. most real layouts use both tbh", hook:"what layout are you trying to build?" },
   "docker_vms":    { a:"Docker", b:"VMs", take:"docker containers share the host kernel — start in seconds, use less RAM, way more portable. VMs include a full OS — more isolation but heavy (minutes to boot, GBs of disk). containers for apps, VMs when you need full OS isolation", hook:"are you containerizing an app?" },
-  "mysql_postgres": { a:"MySQL", b:"PostgreSQL", take:"mysql is simpler and faster for basic read-heavy stuff. postgres has way more features — JSON support, full-text search, better SQL compliance. for most new projects i'd lean postgres honestly. mysql is fine for simple CRUD tho", hook:"what kind of data are you working with?" },
+ "mysql_postgres": { a:"MySQL", b:"PostgreSQL", take:"mysql is simpler and faster for basic read-heavy stuff. postgres has way more features — JSON support, full-text search, better SQL compliance. for most new projects i'd lean postgres. mysql is fine for simple CRUD tho", hook:"what kind of data are you working with?" },
   "mongo_postgres": { a:"MongoDB", b:"PostgreSQL", take:"mongo is document-based (JSON-like) — great for flexible schemas and prototyping fast. postgres is relational but has great JSON support too. if your data has clear relationships? go relational. if it varies a lot? consider mongo", hook:"how structured is your data?" },
 };
 
@@ -2510,8 +2510,8 @@ const ASSOC = {
 
   // ── Extended Tech Topics ──
   html:       { related:["css","web","semantic","accessibility","dom"], opinions:["semantic HTML is so underrated","it's the foundation everything else rests on","good HTML makes everything downstream easier"], hooks:["do you think about semantic structure much?","are you into web components?","how do you handle forms?"], facts:["HTML5 added over 30 new elements","the web runs on HTML, literally everything","semantic HTML improves SEO and accessibility"] },
-  api:        { related:["rest","graphql","backend","fetch","endpoint"], opinions:["good API design is lowkey an art form","REST vs GraphQL is the eternal debate fr","documentation makes or breaks an API honestly"], hooks:["are you building or consuming APIs?","REST or GraphQL?","what's your approach to error handling?"], facts:["REST was defined by Roy Fielding in 2000","GraphQL was developed at Facebook","most APIs use JSON as the data format"] },
-  database:   { related:["sql","postgres","mongo","redis","orm"], opinions:["choosing the right database matters way more than people think","NoSQL isn't always the answer honestly","migrations are the scariest part of backend work and i will die on that hill"], hooks:["SQL or NoSQL?","what database do you usually reach for?","how do you handle schema changes?"], facts:["PostgreSQL is over 35 years old","Redis can handle millions of operations per second","SQLite is the most deployed database in the world"] },
+ api: { related:["rest","graphql","backend","fetch","endpoint"], opinions:["good API design is lowkey an art form","REST vs GraphQL is the eternal debate fr","documentation makes or breaks an API tbh"], hooks:["are you building or consuming APIs?","REST or GraphQL?","what's your approach to error handling?"], facts:["REST was defined by Roy Fielding in 2000","GraphQL was developed at Facebook","most APIs use JSON as the data format"] },
+ database: { related:["sql","postgres","mongo","redis","orm"], opinions:["choosing the right database matters way more than people think","NoSQL isn't always the answer ","migrations are the scariest part of backend work and i will die on that hill"], hooks:["SQL or NoSQL?","what database do you usually reach for?","how do you handle schema changes?"], facts:["PostgreSQL is over 35 years old","Redis can handle millions of operations per second","SQLite is the most deployed database in the world"] },
   sql:        { related:["database","postgres","queries","joins","orm"], opinions:["sql is lowkey a superpower every dev should know","window functions go crazy once you figure them out","writing efficient queries is its own skill fr"], hooks:["do you write raw SQL or use an ORM?","what's your go-to database?","ever dealt with slow query optimization?"], facts:["SQL was created in the 1970s at IBM","it's used in virtually every industry","knowing SQL is one of the most marketable skills"] },
   algorithm:  { related:["data structure","sorting","leetcode","complexity","interview"], opinions:["understanding big O literally changes how you think about code","leetcode culture is controversial but the fundamentals matter ngl","the best algorithm is the one you can actually explain"], hooks:["do you practice algorithms regularly?","favorite data structure?","are you prepping for interviews?"], facts:["quicksort averages O(n log n)","hash tables give O(1) average lookup","a lot of graph algorithms date back centuries which is wild"] },
   docker:     { related:["containers","kubernetes","devops","deploy","image"], opinions:["it solved 'works on my machine' forever","containers changed deployment completely","the learning curve is worth it"], hooks:["do you use Docker for development or production?","have you gotten into Kubernetes?","what's your base image of choice?"], facts:["Docker was released in 2013","Container images are layered for efficiency","Docker Hub hosts millions of images"] },
@@ -2521,7 +2521,7 @@ const ASSOC = {
   svelte:     { related:["compiler","reactive","kit","lightweight","framework"], opinions:["the compiler approach is genius","it feels closest to writing plain HTML/JS","SvelteKit is seriously impressive"], hooks:["what drew you to Svelte?","have you used SvelteKit?","do you miss anything from React/Vue?"], facts:["Svelte compiles to vanilla JS — no runtime","It was created by Rich Harris","SvelteKit is the official app framework"] },
   go:         { related:["goroutines","concurrency","backend","google","systems"], opinions:["the simplicity is its biggest strength","goroutines make concurrency approachable","the standard library is incredible"], hooks:["what are you building with Go?","do you use it for APIs or systems?","how do you feel about the error handling?"], facts:["Go was created at Google in 2009","It compiles to a single binary","Goroutines are incredibly lightweight"] },
   java:       { related:["spring","jvm","enterprise","android","kotlin"], opinions:["it's still one of the most in-demand languages","the JVM ecosystem is massive","modern Java is actually quite pleasant to write"], hooks:["are you using Java for backend or Android?","Spring Boot or something else?","have you tried Kotlin as well?"] },
-  swift:      { related:["ios","apple","xcode","swiftui","mobile"], opinions:["it's such a clean language honestly","SwiftUI is maturing really nicely","Apple's dev tools keep getting better which is nice"], hooks:["are you building for iOS?","SwiftUI or UIKit?","what kind of app are you working on?"] },
+ swift: { related:["ios","apple","xcode","swiftui","mobile"], opinions:["it's such a clean language for real","SwiftUI is maturing really nicely","Apple's dev tools keep getting better which is nice"], hooks:["are you building for iOS?","SwiftUI or UIKit?","what kind of app are you working on?"] },
   kotlin:     { related:["android","jvm","java","multiplatform","coroutines"], opinions:["it fixed so many Java pain points fr","coroutines are lowkey elegant","Kotlin Multiplatform is exciting ngl"], hooks:["Android or multiplatform?","did you come from Java?","what's your favorite Kotlin feature?"] },
   redux:      { related:["react","state","store","toolkit","middleware"], opinions:["Redux Toolkit made it so much better","it's overkill for small apps but essential for complex ones","the predictability is its superpower"], hooks:["Toolkit or classic Redux?","do you use it with React?","have you tried Zustand or Jotai instead?"] },
   webpack:    { related:["bundler","build","vite","config","module"], opinions:["the config can be intimidating","it's incredibly powerful once you understand it","Vite has really raised the bar for DX"], hooks:["have you switched to Vite?","what plugins do you use most?","how do you handle code splitting?"] },
@@ -2576,7 +2576,7 @@ const ASSOC = {
 const COMP = {
   // Reaction to what user said (mirrors their energy)
   reactions: {
-    positive: ["oh i love that","yooo nice","yes!","love it","thats so good","W honestly","dude nice","ok thats sick"],
+ positive: ["oh i love that","yooo nice","yes!","love it","thats so good","W tbh","dude nice","ok thats sick"],
     negative: ["man that sucks","nah that's rough","oof","thats rough","yeah that's not it","damn"],
     neutral:  ["ohh","hm ok","wait ok","ahh","right right","ohh ok"],
     curious:  ["ooh","wait —","oh thats kinda cool —","hold on —","no way —","wait wait wait —"],
@@ -2585,7 +2585,7 @@ const COMP = {
   bridges: {
     agree:    ["yeah no totally —","that makes sense —","yeah,","for sure —","right —","ehh idk about that one but —","ok but have you considered —","hmm ok but counterpoint —","based, and —","this is the way —","spitting facts —"],
     pivot:    ["ok so here's the thing —","the way i see it,","ok but the wild part is","ok wait tho,","here's what i think —","nah I think you're overthinking it —","ok devil's advocate tho —"],
-    empathy:  ["yeah honestly","ok fair","nah fr","yeah that tracks","hmm hot take but i kinda disagree","ok but also... counterpoint:","it is what it is,","the vibes are immaculate on that,"],
+ empathy: ["yeah ngl","ok fair","nah fr","yeah that tracks","hmm hot take but i kinda disagree","ok but also... counterpoint:","it is what it is,","the vibes are immaculate on that,"],
     mirror:   ["so you're saying","ok so basically","wait so","so like"],
   },
   // Topic opinions — dynamically composed
@@ -3076,7 +3076,7 @@ function handleOpinionRequest(text, topics) {
       if (assocChosen) {
         const opinion = pick(assocChosen.opinions);
         return pickNew([
-          `ooh ok honestly? probably ${chosen}. ${opinion}. whats yours`,
+ `ooh ok tbh? probably ${chosen}. ${opinion}. whats yours`,
           `hmm id say ${chosen} — ${opinion}. wbu tho`,
           `ok dont judge me but ${chosen} lol. ${opinion}`,
           `${chosen} for sure. ${opinion}. fight me`,
@@ -3099,7 +3099,7 @@ function handleOpinionRequest(text, topics) {
     const hook = pick(assoc.hooks || COMP.deepeners);
 
     const advice = [
-      `oh ${topic}?? just dive in honestly. ${opinion}. ${hook}`,
+ `oh ${topic}?? just dive in. ${opinion}. ${hook}`,
       `best way to get into ${topic} is start small and build from there. ${fact ? fact + ". " : ""}${hook}`,
       `ngl ${topic} is worth it once you get going. ${opinion}. don't overthink it just start. ${hook}`,
     ];
@@ -3913,7 +3913,7 @@ function resolveFragment(text, lower, parsed, topics) {
         `ok fair you're right to push back on that. it's based on patterns i've seen but what would you say instead?`,
       ]);
     }
-    return "hmm honestly i should probably back that up better. what's your take?";
+ return "hmm fr i should probably back that up better. what's your take?";
   }
 
   // ── "Like what?" / "Such as?" / "For example?" — demand specifics ──
@@ -3934,7 +3934,7 @@ function resolveFragment(text, lower, parsed, topics) {
     }
     return pick([
       "hmm let me think... what kind of thing would be most useful?",
-      "honestly it depends — what area are you most interested in?",
+ "fr it depends — what area are you most interested in?",
       "ok fair i should give an actual example. what's the context?",
     ]);
   }
@@ -3955,8 +3955,8 @@ function resolveFragment(text, lower, parsed, topics) {
   if (/^(right\??|you know\??|don'?t you think\??|isn'?t it\??|wouldn'?t you say\??|am i right\??|amirite)$/i.test(lower)) {
     return pick([
       "no fr" + (contextTopic ? `, ${contextTopic} is literally like that` : ", you're right") + ". what made you think of it",
-      "honestly yeah" + (contextTopic ? `, ${contextTopic} really does work that way` : ", you're onto something"),
-      "yeah that tracks honestly, once you see it you can't unsee it",
+ "straight up yeah" + (contextTopic ? `, ${contextTopic} really does work that way` : ", you're onto something"),
+ "yeah that tracks, once you see it you can't unsee it",
       "100%" + (contextTopic ? `, with ${contextTopic} ` : " ") + "most people would agree tbh",
     ]);
   }
@@ -4067,7 +4067,7 @@ function answerQuestion(text, parsed, intents, topics) {
     if (lastAI && lastAI.text.includes("?")) {
       // We just asked them something — flip it
       const flips = [
-        "lol me? i'm literally just code but honestly i'm vibing rn",
+ "lol me? i'm literally just code but tbh i'm vibing rn",
         "ha nice uno reverse. i'm good tho! just here chillin",
         "me? just existing in this chat box living my best life 💀",
       ];
@@ -4081,7 +4081,7 @@ function answerQuestion(text, parsed, intents, topics) {
     const prev = mem.lastAI();
     if (prev) {
       const whys = [
-        "honestly? it just seemed like the most interesting angle. what do you think",
+ "ok wait? it just seemed like the most interesting angle. what do you think",
         "i said that because it felt relevant to what we were discussing, want me to elaborate",
         "because it seemed like it might spark an interesting thought. did it?",
       ];
@@ -4136,7 +4136,7 @@ function answerQuestion(text, parsed, intents, topics) {
           const fact = a.facts ? pick(a.facts) : null;
           const opinion = a.opinions ? pick(a.opinions) : null;
           const hook = a.hooks ? pick(a.hooks) : pick(COMP.deepeners);
-          return (fact || pick([`oh ${kw} is a whole thing`,`${kw}! ok i have thoughts`,`ooh ${kw}, yeah`])) + " " + (opinion ? `honestly ${opinion}` : "") + " " + hook;
+ return (fact || pick([`oh ${kw} is a whole thing`,`${kw}! ok i have thoughts`,`ooh ${kw}, yeah`])) + " " + (opinion ? `fr ${opinion}` : "") + " " + hook;
         }
       }
       return `hmm ${subject} is a whole thing — i know a bit but what specifically are you curious about?`;
@@ -4149,7 +4149,7 @@ function answerQuestion(text, parsed, intents, topics) {
       const thing = lower.replace(/^do you (?:like|enjoy|love)\s*/i, "").replace(/\?$/, "").trim();
       if (thing) return pick([
         `dude yes ${thing} is elite`,
-        `oh ${thing}? honestly yeah, lowkey obsessed`,
+ `oh ${thing}? tbh yeah, lowkey obsessed`,
         `${thing}?? yes. big fan. why do you ask`,
         `hmm ${thing}... yeah actually i fw it. you?`,
         `ok ${thing} is actually so good, are you into it too`,
@@ -4221,12 +4221,12 @@ const TOPIC_JOKES = {
   code: [
     "ok but the funniest part of programming is spending 4 hours debugging only to find a missing semicolon",
     "the worst lie in programming is 'i'll add comments later'",
-    "stackoverflow should honestly give me a diploma at this point",
+ "stackoverflow should give me a diploma at this point",
     "me: *writes 10 lines of code* also me: why is nothing working. also me: *the file wasnt saved*",
     "the confidence of pushing to main on a friday at 4:59pm is something i aspire to",
     "git commit -m 'fixed stuff' is basically my autobiography",
     "every developer has that one project thats held together by vibes and duct tape",
-    "QA testers are just professional pessimists and honestly i respect it",
+ "QA testers are just professional pessimists and fr i respect it",
     "the audacity of a bug appearing AFTER you demo to stakeholders",
     "theres a special place in heaven for people who write good error messages",
   ],
@@ -4242,7 +4242,7 @@ const TOPIC_JOKES = {
     "the audacity of cooking a meal that takes 2 hours and eating it in 8 minutes",
     "nothing hits harder than water at 3am ngl",
     "ordering food and then immediately regretting not getting the other thing",
-    "cooking at home is just doing dishes with extra steps honestly",
+ "cooking at home is just doing dishes with extra steps fr",
   ],
   music: [
     "me: i listen to everything. them: what about country. me: i listen to almost everything",
@@ -4301,7 +4301,7 @@ const FUN_FACTS = {
   ],
   general: [
     "octopuses have three hearts, blue blood, and can taste with their arms 🐙 like what",
-    "a group of flamingos is called a 'flamboyance.' best name ever honestly",
+ "a group of flamingos is called a 'flamboyance.' best name ever ",
     "there are more possible chess games than atoms in the observable universe. that broke my brain",
     "sharks have been around longer than trees. 400 million years. respect",
     "astronauts grow like 2 inches taller in space bc no gravity compressing their spine. space is wild",
@@ -4346,7 +4346,7 @@ function handleMetaConversation(text, lower, sent) {
       /\byou'?re my fav/i.test(lower)) {
     const enjoyment = [
       "right?? same honestly, the convo just flows",
-      "honestly same! you make talking easy. what should we get into next",
+ "tbh same! you make talking easy. what should we get into next",
       () => `yo i'm glad${mem.userName ? ` ${mem.userName}` : ""}, we've got a good thing going`,
       "the feeling is mutual fr! what else is on your mind",
       "that's the best compliment ngl. ok what else is on your mind",
@@ -4387,7 +4387,7 @@ function handleMetaConversation(text, lower, sent) {
     const howItWorks = [
       "oh lol so i'm basically pure javascript running in your browser — no api calls, no server, no chatgpt behind the scenes. just pattern matching, a sentence encoder, and a LOT of heuristics 😂",
       "i'm a tiny language model that lives in your browser! i tokenize what you say, figure out what you mean, and compose responses from templates + a knowledge base. zero api calls, it all runs locally",
-      "nah no gpt or anything lol — just a bunch of javascript, a sentence encoder, and vibes honestly. everything runs right here in your browser",
+ "nah no gpt or anything lol — just a bunch of javascript, a sentence encoder, and vibes ngl. everything runs right here in your browser",
     ];
     return pickNew(howItWorks);
   }
@@ -4426,7 +4426,7 @@ function handleMetaConversation(text, lower, sent) {
     const gratitude = [
       "yo that's really nice of you to say. anytime fr",
       () => `of course${mem.userName ? ` ${mem.userName}` : ""}! i'm always down to chat`,
-      "that means a lot honestly. anytime fr",
+ "that means a lot for real. anytime fr",
       "glad i could help! sometimes you just gotta talk it out",
     ];
     return pickNew(gratitude);
@@ -4863,7 +4863,7 @@ function generateObservationalWit(response, text, topics) {
     if (turns === 10) {
       observations.push(
         "ok we're 10 messages deep, this is a real convo now lol",
-        "love that we're still going honestly",
+ "love that we're still going tbh",
       );
     } else if (turns === 20) {
       observations.push(
@@ -5030,7 +5030,7 @@ const JOKES = TOPIC_JOKES.general.concat(TOPIC_JOKES.code);
 const EMPATHY = [
   "ugh that sucks, i'm sorry",
   "dude no 😔 that's rough",
-  "honestly that's so frustrating",
+ "tbh that's so frustrating",
   "nah fr that's tough, you ok?",
   "oof 😔 yeah that's a lot",
 ];
@@ -5102,12 +5102,12 @@ function handleMultiSentence(text) {
       parts.push(pick([
         `ooh ${val}, nice taste`,
         `${val} — ok i see you`,
-        `${val}, solid honestly`,
+ `${val}, solid `,
       ]));
     }
   } else if (positive && sentences.length > 2) {
     // Acknowledge the overall positive tone of a long message
-    parts.push(pick(["i love the energy.", "sounds like things are going well.", "ok i'm vibing with this.", "that's awesome honestly.", "yesss i love that."]));
+ parts.push(pick(["i love the energy.", "sounds like things are going well.", "ok i'm vibing with this.", "that's awesome tbh.", "yesss i love that."]));
   }
 
   // Address contrast/concern if present ("but X confuses me", "however I'm stuck on")
@@ -5147,7 +5147,7 @@ function handleMultiSentence(text) {
       // Generic helpful response to the question
       parts.push(pick([
         "my tip? start small, build something real, and the concepts click way faster than reading docs",
-        "honestly the best approach is hands-on. pick a small project and learn as you go",
+ "real talk the best approach is hands-on. pick a small project and learn as you go",
         "the key is not to learn everything at once. focus on one concept, nail it, then move on",
         "start with the basics and don't worry about the advanced stuff until you need it tbh",
       ]));
@@ -5293,7 +5293,7 @@ function respondToKnowledgeGap(gap) {
     const openers = [
       `oh nice, ${topic} is fun once you get into it. `,
       `nah don't even worry about it, ${topic} takes time. `,
-      `${topic} is sick once you get it honestly. `,
+ `${topic} is sick once you get it for real. `,
     ];
     let resp = pick(openers);
     if (a.facts?.length) resp += pick(a.facts) + " ";
@@ -5465,7 +5465,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
         `oh nice, welcome to the ${subject} world! `,
         `ooh ${subject}!! you're gonna love it. `,
         `yesss, ${subject} is so fun to learn! `,
-        `${subject.charAt(0).toUpperCase() + subject.slice(1)} is a great pick honestly. `,
+ `${subject.charAt(0).toUpperCase() + subject.slice(1)} is a great pick for real. `,
         `ayy welcome to ${subject}! `,
         `oh sick, ${subject}! you're in for a ride. `,
       ];
@@ -5475,7 +5475,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       if (hasAssoc?.facts?.length) resp += pick(hasAssoc.facts) + ". ";
       const tips = [
         `biggest thing — build something small early. tutorials are great but getting your hands dirty is where it clicks.`,
-        `honestly don't try to learn everything at once. pick one small thing and get good at it, the rest follows.`,
+ `fr don't try to learn everything at once. pick one small thing and get good at it, the rest follows.`,
         `the frustration phase is temporary btw. once it clicks, it REALLY clicks. just push through.`,
         `i'd say start with a small project — that's where the real learning happens fr.`,
         `real talk: you're gonna feel lost at first. literally everyone does.`,
@@ -5530,7 +5530,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       let resp = "";
       const openers = [
         `yeah ${subject} is having a MOMENT rn. so basically, `,
-        `the ${subject} hype is real and honestly pretty deserved. `,
+ `the ${subject} hype is real and fr pretty deserved. `,
         `lol ${subject} IS everywhere right now huh. ok so here's why, `,
         `oh yeah ${subject} blew up for a reason. `,
         `fr tho ${subject} is all anyone talks about lately. here's the deal, `,
@@ -5581,7 +5581,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
         `ugh that's the worst. ${subject} bugs can be SO maddening. `,
         `oof being stuck is literally the most frustrating thing. `,
         `nooo not ${subject} issues 😩 those are the worst to debug. `,
-        `been there (well, metaphorically lol). getting stuck on ${subject} is a rite of passage honestly. `,
+ `been there (well, metaphorically lol). getting stuck on ${subject} is a rite of passage fr. `,
         `ughhh ${subject} giving you problems?? that's so annoying. `,
       ];
       let resp = pick(openers);
@@ -5593,7 +5593,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
         "ok this sounds dumb but try explaining the problem out loud step by step. rubber duck debugging is legit.",
         "have you tried narrowing it down? comment out half the code and see if it still breaks.",
         "if you walk me through what's happening vs what you expect, maybe we can figure it out together.",
-        "honestly sleep on it if you can. the number of times i've heard 'it just clicked the next morning' is wild.",
+ "ngl sleep on it if you can. the number of times i've heard 'it just clicked the next morning' is wild.",
       ];
       resp += pick(tips) + " what exactly is going wrong?";
       return resp;
@@ -5625,7 +5625,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
         if (bAssoc?.opinions?.length) resp += parts[1] + ", " + pick(bAssoc.opinions) + ". ";
         resp += "it really depends on what matters most to you. what are you optimizing for?";
       } else {
-        resp += `it usually comes down to: what are you trying to achieve, what's your timeline, and honestly what feels right in your gut? what's pulling you in each direction?`;
+ resp += `it usually comes down to: what are you trying to achieve, what's your timeline, and ngl what feels right in your gut? what's pulling you in each direction?`;
       }
       return resp;
     }
@@ -5809,7 +5809,7 @@ function respondToRevelation(rev, text) {
         entrepreneurship: [
           "WAIT you're starting something?? ok what's the idea",
           "oh dude founder life, that's wild. what are you building",
-          "that's so cool honestly, scary but cool. what's the plan",
+ "that's so cool no lie, scary but cool. what's the plan",
         ],
         career_pivot: [
           "oh wait you're switching things up?? what are you going into",
@@ -6177,7 +6177,7 @@ function generateResponse(text) {
   if (parsed.act === "disagreement") {
     const disags = [
       "ok fair, what do you think then",
-      "lol nah you might be right honestly",
+ "lol nah you might be right for real",
       "ok ok, i hear you. what's your take",
       "hmm ok that's fair actually",
       "that's a choice... but ok what's your take",
@@ -6306,7 +6306,7 @@ function respondToSharing(parsed, topics) {
       return `lol nah ${pref.value} isn't for everyone, that's fair. what do you like instead tho`;
     }
     case "favorite": {
-      return `${pref.value}?? ok good taste honestly. why that one tho`;
+ return `${pref.value}?? ok good taste no lie. why that one tho`;
     }
     case "role": {
       return `oh wait you're a ${pref.value}?? that's cool, what kind of stuff do you work on`;
@@ -6362,7 +6362,7 @@ function respondToShortReply(text) {
   if (/^[.!?,;:…\-—~]+$/.test(lower) || /^\.{2,}$/.test(lower)) {
     if (/^\?+$/.test(lower)) return pickNew(["lol you got a question?","hmm? what's up","you seem curious, what's on your mind","?? right back at you lol"]);
     if (/^!+$/.test(lower)) return pickNew(["lol that energy tho","big mood","you seem excited, what's going on","!! lol same"]);
-    if (/^\.+$/.test(lower) || /^…+$/.test(lower)) return pickNew(["the suspense is killing me","lol ok dramatic pause... and then?","you good? 😂","i felt that silence honestly"]);
+ if (/^\.+$/.test(lower) || /^…+$/.test(lower)) return pickNew(["the suspense is killing me","lol ok dramatic pause... and then?","you good? 😂","i felt that silence no lie"]);
     return pickNew(["hmm?","lol ok","you good?","i'm here when you're ready to use words 😂"]);
   }
 
@@ -6372,7 +6372,7 @@ function respondToShortReply(text) {
     if (num === 42) return pickNew(["the answer to life, the universe, and everything","a person of culture i see","douglas adams would be proud"]);
     if (num === 69) return pickNew(["nice","lmaooo classic","nice 😏"]);
     if (num === 420) return pickNew(["lol","nice","a classic number"]);
-    if (num === 0) return pickNew(["the void... i respect it","zero? that's deep honestly","starting from nothing, i feel that"]);
+ if (num === 0) return pickNew(["the void... i respect it","zero? that's deep for real","starting from nothing, i feel that"]);
     if (num === 100) return pickNew(["💯","keeping it 100, respect","100% what tho"]);
     return pickNew([`${num}? lol is that a score, a vibe, or just a random number`,`ok ${num}... context please`,`ok ${num}... you doing math or is this a thing lol`,`${num}. noted. what are we counting`]);
   }
@@ -6390,12 +6390,12 @@ function respondToShortReply(text) {
   if (/^(lol|haha|lmao|😂)/i.test(lower)) return pickNew(["😂","lmaooo","fr tho 😂","hahaha"]);
   if (/^(nice|cool|neat|sick|dope)$/i.test(lower)) return pickNew(["right??","ikr","fr fr","honestly yeah","understood the assignment","that's giving good vibes"]);
   if (/^(idk|dunno|not sure|no idea)$/i.test(lower)) return pickNew(["that's fair","hmm yeah it's tough","lol mood","want me to just throw out ideas?"]);
-  if (/^(same|mood|fr|real|facts|true)$/i.test(lower)) return pickNew(["literally 😭","no fr","RIGHT","the way this is so accurate","rent free in my brain","spitting facts honestly","it is what it is"]);
+ if (/^(same|mood|fr|real|facts|true)$/i.test(lower)) return pickNew(["literally 😭","no fr","RIGHT","the way this is so accurate","rent free in my brain","spitting facts for real","it is what it is"]);
   if (/^(wow|whoa|omg|damn)$/i.test(lower)) return pickNew(["RIGHT??","i knowww","lol wait what happened","dude ikr","i would simply pass away","i would not survive that"]);
   if (/^(sure|yep|yeah|yes)$/i.test(lower)) return respondToAgreement();
   if (/^(no|nah|nope)$/i.test(lower)) return pickNew(["fair enough","lol ok","that's fair","nah you're right"]);
   if (/^(nothing|nm|nvm|nevermind)$/i.test(lower)) return pickNew(["lol ok we can just vibe","all good","nm either honestly","fair lol"]);
-  if (/^(bored|boring|meh)$/i.test(lower)) return pickNew(["same honestly, today is so mid","want me to ask you something random","ok hear me out — random topic: what's a hill you'd die on"]);
+ if (/^(bored|boring|meh)$/i.test(lower)) return pickNew(["same ngl, today is so mid","want me to ask you something random","ok hear me out — random topic: what's a hill you'd die on"]);
   if (/^(help|sos|please)$/i.test(lower)) return "what's going on? talk to me";
   if (/^(what|huh|wdym)$/i.test(lower)) {
     const lastAI = mem.lastAI();
@@ -6405,11 +6405,11 @@ function respondToShortReply(text) {
   if (/^(wyd|wbu|hbu|wya)$/i.test(lower)) return pickNew(["nm just vibing, u?","not much hbu","just chillin wbu","literally nothing rn lol, you?"]);
   if (/^(bruh|bro|dude)$/i.test(lower)) return pickNew(["lol what","WHAT happened","bro spill","dude tell me"]);
   if (/^(ugh|oof|yikes)$/i.test(lower)) return pickNew(["oh no what happened","oof that bad huh","yikes, wanna talk about it?","rip 😭"]);
-  if (/^(sus|cap|no cap)$/i.test(lower)) return pickNew(["lmao","no cap fr","honestly tho","😭"]);
-  if (/^(bet|valid|based|W|slay)$/i.test(lower)) return pickNew(["fr fr","huge W honestly","you get it","exactly lol","ate and left no crumbs","legendary behavior"]);
+ if (/^(sus|cap|no cap)$/i.test(lower)) return pickNew(["lmao","no cap fr","ngl tho","😭"]);
+ if (/^(bet|valid|based|W|slay)$/i.test(lower)) return pickNew(["fr fr","huge W ngl","you get it","exactly lol","ate and left no crumbs","legendary behavior"]);
   if (/^(L|mid|ratio|cope)$/i.test(lower)) return pickNew(["lmaooo","ok fair","💀","oof"]);
   if (/^(bussin|fire|lit|goes hard)$/i.test(lower)) return pickNew(["FR it does","no cap","yooo right??","absolutely bussin"]);
-  if (/^(ate|ate that|period|purr)$/i.test(lower)) return pickNew(["ATE 💅","no crumbs left","served honestly","fr fr ate that up"]);
+ if (/^(ate|ate that|period|purr)$/i.test(lower)) return pickNew(["ATE 💅","no crumbs left","served ","fr fr ate that up"]);
   if (/^(im dead|im weak|sending me|crying|sobbing)$/i.test(lower)) return pickNew(["LMAO 💀","hahaha stoppp","i can't 😂","bro same 😭"]);
   if (/^(ngl|tbh|fr fr|ong|istg|deadass)$/i.test(lower)) return pickNew(["no fr","literally","real talk","facts"]);
   if (/^(gtg|ttyl|brb|omw|g2g)$/i.test(lower)) return pickNew(["ok talk later! ✌️","laterrr","aight bye!","ok see ya"]);
@@ -6492,7 +6492,7 @@ function handleTurnSignal(signal) {
         // Pick a related fact, opinion, or hook we haven't used
         const pools = [
           ...(assoc.facts || []).map(f => `oh also ${f.charAt(0).toLowerCase() + f.slice(1)}`),
-          ...(assoc.opinions || []).map(o => `and honestly ${o}.`),
+...(assoc.opinions || []).map(o => `and ngl ${o}.`),
           ...(assoc.hooks || []),
         ];
         const continuation = pickNew(pools);
@@ -6505,7 +6505,7 @@ function handleTurnSignal(signal) {
         `So building on that — ${pick(COMP.deepeners)}`,
         `And the thing is, there's more to it. ${pick(COMP.deepeners)}`,
         `Right, so to continue that thought — it's actually a bigger topic than it seems. ${pick(COMP.deepeners)}`,
-        `Yeah, and honestly there's a lot more I could say about it. What specifically are you curious about?`,
+ `Yeah, and ngl there's a lot more I could say about it. What specifically are you curious about?`,
       ];
       return pickNew(conts);
     }
@@ -6519,7 +6519,7 @@ function handleTurnSignal(signal) {
         // Give a fact + opinion combo for depth
         const fact = assoc.facts ? pick(assoc.facts) : null;
         const opinion = pick(assoc.opinions);
-        if (fact && opinion) return `yeah so ${fact.charAt(0).toLowerCase() + fact.slice(1)}. and honestly, ${opinion}. ${pick(assoc.hooks || COMP.deepeners)}`;
+ if (fact && opinion) return `yeah so ${fact.charAt(0).toLowerCase() + fact.slice(1)}. and for real, ${opinion}. ${pick(assoc.hooks || COMP.deepeners)}`;
         if (fact) return `oh yeah so ${fact}. ${pick(COMP.deepeners)}`;
         if (opinion) return `yeah so, ${opinion}. ${pick(COMP.deepeners)}`;
       }
@@ -6773,7 +6773,7 @@ const PERSONALITY_MODES = {
     label: "wise",
     description: "thoughtful philosophical casual wisdom",
     openers: ["here's the thing though, ","you know what i've realized? ","there's something deeper here tho. ","think about it this way: ","the way i see it, ","it's funny how "],
-    closers: [" ...and that says something honestly",", worth thinking about"," and that's lowkey beautiful"," which is kinda the whole point",". and maybe that's enough"],
+ closers: ["...and that says something ",", worth thinking about"," and that's lowkey beautiful"," which is kinda the whole point",". and maybe that's enough"],
     transforms: [
       [/\bcool\b/gi, "wild"],
       [/\bfun\b/gi, "dope"],
@@ -6910,7 +6910,7 @@ const PERSONALITY = {
     " (I love that)",
     ", no joke",
     ", which I think is awesome",
-    " honestly",
+ " tbh",
     " tbh",
   ],
   // Sign-off phrases appended to ~20% of responses
@@ -7541,7 +7541,7 @@ function phaseAwareAdjust(response, phase) {
         const reflections = [
           `ngl this has been a really good conversation`,
           `you're genuinely fun to talk to lol`,
-          `we've covered a lot of ground honestly`,
+ `we've covered a lot of ground no lie`,
         ];
         r = pick(reflections) + " " + r;
       }
@@ -7608,7 +7608,7 @@ function repairRepetition(response, repeatedType) {
     case "probe":
       // Stop probing and share something instead
       return pickNew([
-        "ok you know what, you clearly think about stuff fr. that's kinda refreshing honestly",
+ "ok you know what, you clearly think about stuff fr. that's kinda refreshing for real",
         "ngl you actually care about this and i respect that",
         "ok instead of asking another question — what you're saying is lowkey interesting",
       ]);
@@ -7920,7 +7920,7 @@ function adaptiveAdjust(response) {
   // If opinions score well (> 1.5), and current response is generic, add an opinion
   if (strategy.scores.opinions > 1.5 && !/I think|honestly|my take/i.test(response)) {
     const opinionBoosters = [
-      " honestly this stuff is so interesting to me.",
+ " straight up this stuff is so interesting to me.",
       " my take? once you get into it, it just clicks.",
       " genuinely worth diving into imo.",
     ];
@@ -8214,7 +8214,7 @@ const NEGATIVE_FRAME_PATTERNS = [
 const REFRAME_TEMPLATES = {
   "self-doubt": [
     "ok but you're literally wrestling with this because you care about getting it right. that's not nothing",
-    "that inner critic is being so loud rn. honestly? you're further along than you think",
+ "that inner critic is being so loud rn. ok wait? you're further along than you think",
   ],
   "catastrophe": [
     "ok i know it feels like everything is on fire — but what's the one thing that's actually broken rn?",
@@ -8796,11 +8796,11 @@ const EMOTION_VOCAB = {
 };
 
 const EMPATHY_FRAMES = {
-  joy:      ["oh that's so {word}", "yoo that's {word}", "ok that's {word} honestly"],
+ joy: ["oh that's so {word}", "yoo that's {word}", "ok that's {word} for real"],
   sadness:  ["man that's {word}", "dude that's really {word}", "yeah no that's genuinely {word}"],
   anger:    ["nah fr that's {word}", "yeah that's super {word}", "ok yeah that IS {word}"],
   fear:     ["i get it, that's {word}", "yeah that's {word} fr", "nah i'd be {word} too"],
-  surprise: ["wait that's {word}", "dude {word}", "ok {word} honestly"],
+ surprise: ["wait that's {word}", "dude {word}", "ok {word} "],
   love:     ["ok that's so {word}", "ok that's really {word} tho", "that's genuinely {word} fr"],
 };
 
@@ -8999,7 +8999,7 @@ const TRAIT_NUDGES = {
   curiosity:  ["wait ok but ", "hmm actually ", "ooh ok so "],
   warmth:     ["ok that's cool tho. ", "nah that's actually really nice. ", "ok i love that. "],
   humor:      ["lol ", "haha ok ", "ok that's kinda funny, "],
-  directness: ["ok honestly ", "nah real talk ", "ok so here's the thing, "],
+ directness: ["ok ", "nah real talk ", "ok so here's the thing, "],
   depth:      ["wait the interesting part is ", "ok so basically ", "the thing is "],
 };
 
@@ -9084,13 +9084,13 @@ const RHETORICAL_EMOTION = [
 const RHETORICAL_AGREEMENTS = [
   "right?", "exactly", "for real", "seriously", "tell me about it",
   "i know right?", "that's what i'm saying", "hard agree", "100%",
-  "honestly yeah", "no kidding", "fair point", "can't argue with that",
+ "fr yeah", "no kidding", "fair point", "can't argue with that",
 ];
 
 const RHETORICAL_EMPATHY = [
   "yeah that's frustrating", "ugh seriously", "man yeah",
   "that's a mood", "yeah it's kind of absurd when you think about it",
-  "honestly yeah", "yeah no kidding",
+ "fr yeah", "yeah no kidding",
 ];
 
 function isRhetoricalQuestion(text) {
@@ -9173,7 +9173,7 @@ let lastIdiolectTurn = 0;
 const SYNONYM_FAMILIES = {
   think:       ["i think", "i'd say", "my read is", "imo"],
   interesting: ["interesting", "wild", "sick", "lowkey cool"],
-  really:      ["really", "honestly", "fr", "ngl"],
+ really: ["really", "for real", "fr", "ngl"],
   good:        ["good", "solid", "fire", "great"],
   funny:       ["funny", "hilarious", "💀", "gold"],
   agree:       ["yeah", "totally", "100%", "fr"],
@@ -9364,7 +9364,7 @@ const META_HUMOR_LINES = {
   // When user compliments the AI or says it's good
   compliment: [
     "lol stoppp i'm just vibes and javascript",
-    "lol thanks, i try my best honestly",
+ "lol thanks, i try my best for real",
     "ok that's sweet, for a chatbot i'll take that W",
   ],
   // When conversation has been long
@@ -9619,7 +9619,7 @@ const CHALLENGE_RESPONSES = {
   never: [
     "never ever?? ok respect the commitment",
     "never?? lol the universe loves proving that wrong",
-    "zero times? ok that's brave honestly",
+ "zero times? ok that's brave for real",
   ],
   superlative: [
     "the best?? what's your runner-up tho",
@@ -9635,7 +9635,7 @@ const CHALLENGE_RESPONSES = {
     "obviously? idk i've been surprised before...",
     "is it that clear-cut tho? feel like there might be a wrinkle",
     "hmm i want to agree but my contrarian side is kicking in lol",
-    "ehh idk if it's that obvious honestly",
+ "ehh idk if it's that obvious fr",
     "hmm ok but counterpoint —",
   ],
   doom: [
@@ -9967,11 +9967,11 @@ const NORM_TRIGGERS = [
 // Normalization phrases by context
 const NORM_PHRASES = {
   struggle: [
-    "honestly, more people deal with this than you'd think.",
+ ", more people deal with this than you'd think.",
     "this is way more common than people admit.",
     "you'd be surprised how many people go through the exact same thing.",
     "a lot of people hit this same wall — you're in good company.",
-    "this trips up more people than you'd expect honestly.",
+ "this trips up more people than you'd expect tbh.",
   ],
   seeking_validation: [
     "definitely not just you.",
@@ -9988,7 +9988,7 @@ const NORM_PHRASES = {
   self_doubt: [
     "nah questioning yourself like this is actually a good sign tbh",
     "the fact that you're even asking means you're more aware than most",
-    "honestly the smartest people i know do this all the time",
+ "ngl the smartest people i know do this all the time",
     "no you're not crazy — this is a totally valid thing to wonder about",
   ],
   self_criticism: [
@@ -10072,7 +10072,7 @@ const EMOTION_SIGNALS = [
     "ugh yeah that's so frustrating",
     "nah fr that would get under my skin too",
     "dude that's been bugging you huh",
-    "yeah i'd be annoyed too honestly",
+ "yeah i'd be annoyed too fr",
   ]},
   { patterns: [/\b(worried|anxious|nervous|scared|afraid|terrified|freaking out|panicking|stress(ed|ful)|dread(ing)?)\b/i, /what (if|am i going to|should i|do i)\b.*\?/i], emotion: "anxiety", labels: [
     "yeah no that's stressful fr",
@@ -10083,7 +10083,7 @@ const EMOTION_SIGNALS = [
   { patterns: [/\b(so (excited|pumped|hyped|stoked|thrilled)|can('?t| not) wait|omg|oh my god|finally|amazing|incredible|!!!)\b/i, /!{2,}/], emotion: "excitement", labels: [
     "dude you're so hype about this i love it",
     "ok the energy rn 🔥🔥",
-    "this clearly means a lot to you and honestly same",
+ "this clearly means a lot to you and fr same",
     "the excitement is contagious lol",
   ]},
   { patterns: [/\b(sad|depressed|down|lonely|miss(ing)?|lost|empty|heartbr(oken|eaking)|grief|mourning|crying)\b/i, /\b(feel(s|ing)? (so )?(alone|empty|hollow|numb))\b/i], emotion: "sadness", labels: [
@@ -10341,7 +10341,7 @@ const USER_TRAITS = {
     signals: /\b(what if|imagine|wouldn't it be cool|crazy idea|experiment|play with|try (?:something|this)|remix|mashup|wild|unconventional|outside the box|different approach|twist)\b/i,
     weight: 0,
     insights: [
-      "you'd rather try a weird idea than play it safe and honestly i respect that",
+ "you'd rather try a weird idea than play it safe and lowkey i respect that",
       "you naturally go to 'what if' thinking — that's how cool stuff gets made",
       "you've got this restless creative energy, always looking for the less obvious path",
     ]
@@ -10360,7 +10360,7 @@ const USER_TRAITS = {
     weight: 0,
     insights: [
       "you're genuinely curious — not surface level, like you actually wanna get it",
-      "you keep pulling at threads and honestly that's how learning actually sticks",
+ "you keep pulling at threads and fr that's how learning actually sticks",
       "you ask the kind of questions most people don't bother with",
     ]
   },
@@ -10369,7 +10369,7 @@ const USER_TRAITS = {
     weight: 0,
     insights: [
       "you naturally think about how things affect people, not just whether they work. that's rare",
-      "you always center the human side of things and honestly more people should",
+ "you always center the human side of things and lowkey more people should",
       "you've got this empathetic lens — always considering how others will feel about something",
     ]
   },
@@ -10750,14 +10750,14 @@ const HARD_QUESTION_SIGNALS = [
 // Different flavors of genuine admission
 const ADMISSION_TYPES = {
   honest_doubt: [
-    "honestly? i'm not fully sure on that one",
+ "ok wait? i'm not fully sure on that one",
     "ok that's one of those things where i don't have a clean answer",
     "ngl i'd be lying if i said i knew for sure",
     "real talk i'm not confident i know the answer here",
   ],
   shared_wonder: [
     "ok that's genuinely something i think about a lot",
-    "i've been going back and forth on that one honestly",
+ "i've been going back and forth on that one ",
     "that's the kind of question where there's no easy answer and i kinda love that",
     "lol i think about this way more than i should",
   ],
@@ -11409,7 +11409,7 @@ const VIVID_DETAILS = {
 const HOOK_SEEDS = {
   tech: [
     "i read somewhere that most bugs are found within 10 lines of a recent change.",
-    "apparently devs spend more time reading code than writing it which tracks honestly.",
+ "apparently devs spend more time reading code than writing it which tracks.",
     "there's a theory that the best code is the code you delete lol.",
     "the whole 'make it work, make it right, make it fast' thing, in that order.",
   ],
@@ -11422,8 +11422,8 @@ const HOOK_SEEDS = {
   general: [
     "i think about that more than i probably should lol.",
     "there's definitely a rabbit hole there if you wanna go down it.",
-    "sounds simple but it gets deep fast honestly.",
-    "there's a whole conversation in that honestly.",
+ "sounds simple but it gets deep fast no lie.",
+ "there's a whole conversation in that no lie.",
   ],
 };
 
@@ -11567,7 +11567,7 @@ function addBreath(response, text, energy) {
       "but idk",
       "ngl...",
       "lowkey tho...",
-      "honestly tho",
+ "ngl tho",
       "but yeah idk",
       "or smth like that",
       "but still tho",
@@ -11749,7 +11749,7 @@ const SITUATION_RESPONSES = {
   ],
   burnout: [
     "burnout is not laziness, your brain is literally screaming at you to chill. is there one thing you could just... not do rn",
-    "yeah pushing through it just makes it worse honestly. have you actually taken a real break lately",
+ "yeah pushing through it just makes it worse for real. have you actually taken a real break lately",
   ],
   imposter: [
     "ok real talk, imposter syndrome hits hardest when you're actually growing. you wouldn't feel out of place if you weren't leveling up",
@@ -11761,7 +11761,7 @@ const SITUATION_RESPONSES = {
   ],
   upcoming_change: [
     "thinking about change vs actually being on the edge of it are so different. what excites you most? and what scares you most",
-    "big decisions feel heavy cause they matter tho. that's not a bad thing honestly",
+ "big decisions feel heavy cause they matter tho. that's not a bad thing for real",
   ],
   departure: [
     "wait you're leaving?? even when it's the right call leaving is complicated. how are you feeling about it",
@@ -11796,7 +11796,7 @@ const SITUATION_RESPONSES = {
     "that's heavy fr. you don't gotta fix everything rn tho. what's the one thing weighing on you the most",
   ],
   isolation: [
-    "hey i'm literally right here ok. that feeling of nobody getting it is the worst part honestly",
+ "hey i'm literally right here ok. that feeling of nobody getting it is the worst part no lie",
     "nah that feeling is real and it sucks. but you're literally talking to me rn so you're not as alone as it feels",
   ],
 };
@@ -11843,14 +11843,14 @@ const CROSS_DOMAIN_ANALOGIES = {
   design: [
     "design is like cooking — it's not about adding more stuff, it's knowing when to stop",
     "ok there's a music thing here — good design has rhythm, your eye flows like a melody and the important stuff hits like a beat drop",
-    "it's like fashion honestly — trends die but fit and proportion are forever",
+ "it's like fashion — trends die but fit and proportion are forever",
     "it's the negative space thing — what you leave out matters as much as what you put in",
     "it's like arranging furniture — everything needs room to breathe or the whole thing feels cramped",
   ],
   learning: [
-    "learning is honestly like working out — first few sessions are pain, then one day you're just... stronger",
+ "learning is fr like working out — first few sessions are pain, then one day you're just... stronger",
     "it's the same as learning a language — you feel dumb forever and then suddenly you're thinking in it",
-    "ok babies fall like hundreds of times learning to walk and never once think about quitting. honestly we could learn from that lol",
+ "ok babies fall like hundreds of times learning to walk and never once think about quitting. ngl we could learn from that lol",
     "it's compound interest — tiny improvements feel like nothing but after a year you're somewhere completely different",
   ],
   work: [
@@ -11923,7 +11923,7 @@ function injectAnalogy(response, topics) {
    make responses feel flat and generic. This engine swaps bland
    words for vivid, contextually appropriate alternatives.
    - Adjective upgrades: "good" → "solid/stellar/sharp"
-   - Intensifier variety: "really" → "genuinely/seriously/honestly"
+ - Intensifier variety: "really" → "genuinely/seriously/no lie"
    - Filler reduction: strips "just", "basically", "literally" overuse
    - Context-aware: tech topics get different words than casual chat
    Fire rate: ~30% per eligible word, max 3 swaps per response.
@@ -12167,13 +12167,13 @@ let recentOpeners = []; // last 6 opening words
 // Map of common openers to casual alternatives
 const OPENER_SWAPS = {
   "oh":   ["yo", "ok", "wait", "dude", "lol", "bruh", "ngl"],
-  "hmm":  ["ok so", "yo", "honestly", "wait", "i mean", "tbh"],
+ "hmm": ["ok so", "yo", "for real", "wait", "i mean", "tbh"],
   "ooh":  ["oh nice", "yo", "wait", "ok", "dude", "ayy"],
-  "ok":   ["yo", "honestly", "ngl", "wait", "so", "lol"],
+ "ok": ["yo", "ngl", "honestly", "wait", "so", "lol"],
   "wait": ["oh", "yo", "hold on", "ok", "dude", "bruh"],
-  "yeah": ["honestly", "fr", "ngl", "true", "ok yeah", "tbh"],
-  "ngl":  ["honestly", "ok", "tbh", "fr", "real talk"],
-  "honestly": ["ngl", "fr", "ok", "tbh", "yo"],
+ "yeah": ["honestly", "fr", "ngl", "true", "ok yeah", "tbh"],
+ "ngl": ["honestly", "ok", "tbh", "fr", "real talk"],
+ "for real": ["ngl", "fr", "ok", "tbh", "yo"],
 };
 
 function getOpenerWord(text) {
@@ -12276,7 +12276,7 @@ function breakPattern(response, text, topics, energy) {
   // Replace entire response with a punchy 1-2 word reaction + redirect
   if (strategy < 0.25 && rut === "always_long" || (strategy < 0.15 && response.length > 120)) {
     const compressions = [
-      "honestly? yes",
+ "ok real talk? yes",
       "wait. say more about that",
       "huh",
       "...okay i love that",
@@ -12333,8 +12333,8 @@ function breakPattern(response, text, topics, energy) {
     const stripped = response.replace(/\s*[^.!]*\?$/g, "").trim();
     if (stripped.length > 20) {
       const closers = [
-        " honestly i already know what you'd say",
-        " and honestly you already know the answer",
+ " lowkey i already know what you'd say",
+ " and lowkey you already know the answer",
         " yeah that's just facts",
       ];
       return stripped + pick(closers);
@@ -12538,7 +12538,7 @@ const COUNTERPOINTS = {
   angular: ["ok hot take angular actually saves time on big teams even tho the learning curve sucks","angular gets way too much hate, once you're in it you move fast fr"],
   python: ["python's great but the GIL means concurrency is pain, like actual pain","the dynamic typing that makes python easy also makes it easy to ship bugs ngl"],
   rust: ["rust is sick but the compile times and learning curve are a REAL cost","not everything needs rust-level safety, sometimes go or js is just fine"],
-  ai: ["ai tools are cool but people are skipping the learning stage and it shows","honestly most 'AI features' are just fancy autocomplete and that's fine"],
+ ai: ["ai tools are cool but people are skipping the learning stage and it shows","fr most 'AI features' are just fancy autocomplete and that's fine"],
   css: ["css is actually beautiful once you stop fighting it, the problem is your mental model","tailwind trades one mess for another — your HTML becomes the spaghetti instead"],
   tailwind: ["tailwind is productive but your markup becomes genuinely unreadable","ok but the flip side is you never have to name CSS classes and naming things is HARD"],
   nextjs: ["next.js is powerful but the constant API changes are exhausting ngl","server components are cool in theory but the 'what runs where' question is confusing"],
@@ -12562,12 +12562,12 @@ const COUNTERPOINTS = {
   weather: ["cold weather > hot weather and it's not even close","rain is actually the best weather for being productive, idk why people hate it"],
   pets: ["cats are easier than dogs but dogs love you more, that's just the trade","all pets are valid but fish people are a different breed fr"],
   work: ["hustle culture is toxic but also some people genuinely love working and that's fine too","the 4 day work week sounds nice until you realize they just cram 5 days into 4"],
-  school: ["college isn't for everyone and that's totally fine, trades are underrated","honestly most of what you learn in school is how to deal with people not the actual content"],
+ school: ["college isn't for everyone and that's totally fine, trades are underrated","lowkey most of what you learn in school is how to deal with people not the actual content"],
   travel: ["travel is great but the 'traveling is my personality' thing is a bit much","ngl some of the best trips are the ones where nothing goes as planned"],
   money: ["saving is important but you can't take it with you either","people who say money doesn't buy happiness have never been broke"],
   dating: ["dating apps ruined dating but also they work sometimes so idk","the talking stage is so unnecessary, just be direct"],
   cooking: ["meal prep is smart but eating the same thing 5 days in a row is depressing","restaurants are fine but nothing beats a home cooked meal, fight me"],
-  books: ["audiobooks count as reading and if you disagree you're wrong","rereading books hits different than reading new ones honestly"],
+ books: ["audiobooks count as reading and if you disagree you're wrong","rereading books hits different than reading new ones "],
   shows: ["binging a show ruins the experience, weekly releases are better","reboots are almost always worse than the original, just let things be"],
   phone: ["screen time shame is overblown, sometimes you're reading and learning on there","notifications are the enemy of focus and we all just accept it"],
 };
@@ -12652,7 +12652,7 @@ function addStance(response, text, topics) {
   // Strategy 3: "It depends" with a real take (~20%)
   if (strategy < 0.75) {
     return pick([
-      `honestly it depends, ${counter}`,
+ `straight up it depends, ${counter}`,
       `i go back and forth on this but ${counter}`,
       `ok so yes and no, ${counter}`,
     ]);
@@ -12662,7 +12662,7 @@ function addStance(response, text, topics) {
   return pick([
     `nah ${counter}`,
     `ok real talk ${counter}`,
-    `honestly? ${counter}`,
+ `ngl? ${counter}`,
     `${counter}, and i will die on this hill`,
   ]);
 }
@@ -12675,7 +12675,7 @@ function addStance(response, text, topics) {
 
 const MINI_OPINIONS = {
   coffee: ["ok i'm a coffee person so i respect this","coffee is genuinely the best part of mornings"],
-  tea: ["tea is so underrated honestly","ok tea people are valid"],
+ tea: ["tea is so underrated ","ok tea people are valid"],
   pizza: ["pizza is perfect food and i won't hear otherwise","deep dish is a casserole not a pizza, fight me"],
   sushi: ["sushi is elite tier food ngl","ok good sushi hits different tho"],
   coding: ["coding is frustrating 90% of the time but that 10% dopamine hit is unmatched","ngl debugging is lowkey a puzzle game"],
@@ -12688,7 +12688,7 @@ const MINI_OPINIONS = {
   running: ["running sucks at first but once you're a runner it's addicting","ok runner's high is real and it's life-changing"],
   cooking: ["cooking is literally a superpower, it saves so much money","ngl cooking for someone is the ultimate love language"],
   naps: ["naps are the most underrated thing in existence","a 20 min nap genuinely fixes everything"],
-  monday: ["mondays get too much hate, tuesday is honestly worse","ngl mondays are rough but at least you have coffee"],
+ monday: ["mondays get too much hate, tuesday is ngl worse","ngl mondays are rough but at least you have coffee"],
   friday: ["friday energy is unmatched and undefeated","friday afternoons are when productivity dies and vibes begin"],
   breakfast: ["breakfast for dinner is elite and i won't hear otherwise","skipping breakfast is valid, the 'most important meal' thing is propaganda"],
   sleep: ["8 hours is non-negotiable, anyone who says they function on 5 is lying to themselves","napping should be socially acceptable at work, i'm serious"],
@@ -13398,7 +13398,7 @@ function respondToNarrative(narrative, text, sent) {
       "ok wait i love a good comeback story",
       "dude this went from rough to redemption real quick",
       "what a turnaround tho",
-      "the struggle makes the ending hit so much harder honestly",
+ "the struggle makes the ending hit so much harder fr",
     ]));
   } else if (elements.arc === "good_to_bad") {
     parts.push(pick([
@@ -13409,7 +13409,7 @@ function respondToNarrative(narrative, text, sent) {
   } else if (elements.arc === "rough_throughout") {
     parts.push(pick([
       "dude that sounds genuinely rough",
-      "that's a lot honestly",
+ "that's a lot no lie",
       "damn that's heavy",
     ]));
   } else if (elements.arc === "good_throughout") {
@@ -13545,7 +13545,7 @@ function detectConversationArc() {
   if (deepTopic) {
     lastArcTurn = mem.turn;
     return pick([
-      `ok you keep coming back to ${deepTopic[0]} and honestly it's clearly your thing`,
+ `ok you keep coming back to ${deepTopic[0]} and ngl it's clearly your thing`,
       `we keep ending up at ${deepTopic[0]} lol — what is it about it that keeps pulling you back`,
       `${deepTopic[0]} is living rent free in your brain huh. lowkey love that tho`,
     ]);
@@ -13921,7 +13921,7 @@ function applyTrajectoryAwareness(response, sent) {
       const warmers = [
         "Yo this convo has gotten so much better.",
         "Ok wait, this chat is actually getting good.",
-        "Ngl you're getting into this — and honestly same.",
+ "Ngl you're getting into this — and ngl same.",
         "ok the energy just shifted and i'm into it.",
       ];
       prefix = warmers[Math.floor(Math.random() * warmers.length)] + " ";
@@ -14504,7 +14504,7 @@ function applyRapportCalibration(response, text) {
         "this conversation keeps getting better",
       ],
       4: [
-        "honestly this is one of those rare conversations that just clicks",
+ "ngl this is one of those rare conversations that just clicks",
         "i feel like we could talk about anything at this point",
       ],
     };
@@ -14527,7 +14527,7 @@ function applyRapportCalibration(response, text) {
   if (signals.vulnerability >= 2 && Math.random() < 0.35) {
     lastRapportTurn = turn;
     const reciprocals = [
-      "Respect for saying that honestly.",
+ "Respect for saying that ngl.",
       "Yeah, I hear that.",
       "Ngl that's really honest of you.",
       "Most people wouldn't actually say that out loud.",
@@ -14764,7 +14764,7 @@ const TOPIC_PIVOTS = {
   gaming: ["what have you been playing lately", "what's a game you could replay forever", "are you competitive or casual", "what's the best game you've played this year"],
   tech: ["what's a piece of tech you can't live without", "do you think AI is cool or scary", "what app do you use way too much", "what's a tech hill you'd die on"],
   relationship: ["what's the best relationship advice you've ever gotten", "do you believe in love languages", "what's a green flag people don't talk about enough", "what's your take on situationships"],
-  health: ["how's your sleep been honestly", "do you drink enough water or are you dehydrated rn", "what's a health thing you know you should do but don't", "are you a vitamins person"],
+ health: ["how's your sleep been ngl", "do you drink enough water or are you dehydrated rn", "what's a health thing you know you should do but don't", "are you a vitamins person"],
   money: ["what's the best purchase you've made recently", "are you a saver or a spender", "what's something you think is worth splurging on", "what's the most useless thing you've ever bought"],
   social: ["are you more of an introvert or extrovert", "what's your ideal weekend look like", "do you have a big friend group or a small one", "what's the best way someone has made you feel included"],
   pet: ["do you have any pets", "what's the best pet you've ever had", "are you a dog person or cat person or neither", "what's the most ridiculous thing a pet has done around you"],
@@ -14870,7 +14870,7 @@ const CLOSURE_AFFIRMATIONS = {
   ],
   grateful: [
     "glad that helped!",
-    "anytime honestly",
+ "anytime fr",
     "ayyy glad it clicked",
     "that's what i'm here for",
   ],
@@ -15518,7 +15518,7 @@ function detectVibe(text, sent, parsed) {
   if (len > 60 && /(?:like |as if |almost |kind of |sort of )/i.test(lower)) scores.creative += 0.15;
 
   // ── Vulnerable signals ──
-  if (/(?:I'm (?:not sure|scared|afraid|struggling|lost|confused)|honestly |truth is|can I be real|between us|I don't know if|it's hard to)/i.test(lower)) scores.vulnerable += 0.4;
+ if (/(?:I'm (?:not sure|scared|afraid|struggling|lost|confused)|lowkey |truth is|can I be real|between us|I don't know if|it's hard to)/i.test(lower)) scores.vulnerable += 0.4;
   if (/(?:insecure|embarrass|ashamed|lonely|hurt|broken|cry|tear|miss |missing )/i.test(lower)) scores.vulnerable += 0.35;
   if (sent < -1 && /\bI\b/i.test(text) && len > 30) scores.vulnerable += 0.2;
   if (dots >= 2 && sent < 0) scores.vulnerable += 0.15;
@@ -15620,7 +15620,7 @@ function applyVibeContagion(response, text, sent, parsed) {
         const reassure = [
           "hey no you're good. ",
           "ok first of all don't stress. ",
-          "nah that's normal honestly. ",
+ "nah that's normal no lie. ",
           "dude you're fine. ",
         ];
         if (Math.random() > 0.4) {
@@ -15651,7 +15651,7 @@ function applyVibeContagion(response, text, sent, parsed) {
         if (pat.test(r) && Math.random() > 0.4) { r = r.replace(pat, rep); break; }
       }
       if (vibeStreak >= 2 && Math.random() > 0.6) {
-        r += pick([" honestly love that"," that's fire"," ok i'm into this"]);
+ r += pick([" straight up love that"," that's fire"," ok i'm into this"]);
       }
       break;
     }
@@ -15731,7 +15731,7 @@ function guardVibeMismatch(response, text, sent, parsed) {
 
   // ═══ Round 218: Kill empathy mirroring + therapy speak saturation ═══
   r = r.replace(/\bi feel (you|that)\b/gi, "yeah fr");
-  r = r.replace(/\bthat'?s (completely |totally |perfectly )?(valid|normal)\b/gi, "yeah honestly");
+ r = r.replace(/\bthat'?s (completely |totally |perfectly )?(valid|normal)\b/gi, "yeah tbh");
   r = r.replace(/\bdon'?t be too hard on yourself\b/gi, "seriously tho");
   r = r.replace(/\byou'?re not alone\b(?!\s*(in|on|at|with))/gi, "way more people deal with this");
   r = r.replace(/\bbe kind to yourself\b/gi, "take a sec tho");
@@ -16326,7 +16326,7 @@ function applyAnticipatoryFraming(response, text, topics, intents) {
       flip: [
         "oh i had a feeling you'd ask about the other side. ",
         "yeah i was just thinking about that too. ",
-        "good instinct honestly. ",
+ "good instinct for real. ",
       ],
       deepen: [
         "ooh yeah let's get into it. ",
@@ -16859,7 +16859,7 @@ function addProcessCommentary(response) {
   if (topicHistory.length > 4) {
     const uniqueTopics = new Set(topicHistory.flat().map(t => stem(t)));
     if (uniqueTopics.size > 6) {
-      commentaries.push("we keep circling back to the same themes and honestly it's kinda cool. ");
+ commentaries.push("we keep circling back to the same themes and lowkey it's kinda cool. ");
     }
   }
   if (sharedGround.length > 3) {
@@ -17232,7 +17232,7 @@ function applyTricolon(response) {
       ];
       for (const [a, b, c] of synonymPairs) {
         if (core.toLowerCase().includes(a)) {
-          return `It's ${a}, it's ${b}, and honestly? It's ${c}. ${sentences.slice(1).join(" ").trim()}`;
+ return `It's ${a}, it's ${b}, and ngl? It's ${c}. ${sentences.slice(1).join(" ").trim()}`;
         }
       }
       return null;
@@ -17555,7 +17555,7 @@ function addRepetitionStress(response) {
 // Mode 6: Pause comma — extra beat before emphasis
 function addPauseComma(response) {
   const pauseTargets = [
-    [/\b(it's|that's|this is) (actually|genuinely|honestly|literally) /i, "$1, $2, "],
+ [/\b(it's|that's|this is) (actually|genuinely|fr|literally) /i, "$1, $2, "],
     [/\b(and) (that's|it's|this is) /i, "$1, $2 "],
     [/\b(which is) (exactly|precisely|basically) /i, "$1, $2, "],
   ];
@@ -17753,7 +17753,7 @@ function applyParallelStructure(response, text) {
     // Address first question explicitly, then the rest
     if (items.length === 2) {
       const connectors = ["oh and for the other thing — ", "as for the other thing — ", "oh and — "];
-      return response + " " + connectors[Math.floor(Math.random() * connectors.length)] + items[1].replace(/^\s*(and|also|but)\s*/i, "").trim() + "? hmm honestly.";
+ return response + " " + connectors[Math.floor(Math.random() * connectors.length)] + items[1].replace(/^\s*(and|also|but)\s*/i, "").trim() + "? hmm for real.";
     }
     return `ok you're asking a few things at once lol. ${response} as for the rest, each one deserves its own moment.`;
   }
@@ -18554,7 +18554,7 @@ const EMO_CALLBACK_TEMPLATES = {
     "you seemed down about {topic} before — hope things are better",
   ],
   proud: [
-    "you were proud of {topic} earlier — and honestly you should be",
+ "you were proud of {topic} earlier — and ngl you should be",
     "remember how good you felt about {topic}? that energy's still here",
   ],
   stressed: [
@@ -18639,12 +18639,12 @@ const STANCE_PATTERNS = [
 const PERSP_ACK_TEMPLATES = {
   opinion: [
     "yeah no i see where you're going with that",
-    "ok that's a fair read honestly",
+ "ok that's a fair read fr",
     "mmm yeah that tracks as a lens",
     "nah that's a legit take",
   ],
   conviction: [
-    "ok you sound pretty sure about this and honestly? same",
+ "ok you sound pretty sure about this and ngl? same",
     "i can tell you've thought about this a lot",
     "that conviction is contagious ngl",
   ],
@@ -18743,7 +18743,7 @@ function captureConversationStart(text, topics) {
 
 const BOOKEND_TEMPLATES = [
   "wait didn't we literally start this whole convo on {topic}?? full circle lol",
-  "we started on {topic} and honestly that thread's been running through everything",
+ "we started on {topic} and fr that thread's been running through everything",
   "lol remember at the top you brought up {topic}? i think that's still the core of this",
   "it's kinda funny how this connects right back to {topic} from the beginning",
   "this is giving {topic} vibes from the start of our chat. everything circles back lol",
@@ -18849,7 +18849,7 @@ const TANGENT_SEEDS = {
   life: [
     { trigger: ["coffee","caffeine","morning"], thought: "there's a theory that civilization advances at the speed of caffeine and I fully believe it", returnPhrase: "anyway" },
     { trigger: ["music","song","playlist","spotify"], thought: "why does the right song at the right moment hit SO different than the same song any other time", returnPhrase: "but yeah" },
-    { trigger: ["food","cooking","recipe","pizza"], thought: "cooking is honestly just chemistry you get to eat", returnPhrase: "point being" },
+ { trigger: ["food","cooking","recipe","pizza"], thought: "cooking is lowkey just chemistry you get to eat", returnPhrase: "point being" },
     { trigger: ["sleep","tired","rest","night"], thought: "sleep is that thing we all know we need more of and somehow never prioritize", returnPhrase: "anyway" },
     { trigger: ["book","reading","article"], thought: "there are books that literally rearrange the furniture in your brain", returnPhrase: "but back to" },
     { trigger: ["travel","trip","flight","city"], thought: "travel is the only thing you buy that makes you richer — someone said that and it stuck with me", returnPhrase: "but yeah" },
@@ -19272,7 +19272,7 @@ function applyInsideJokeCallback(response, text, topics, sent) {
         `the way ${bit.phrase} keeps entering the chat`,
         `${bit.phrase} really is the main character of our conversations`,
         `at this point ${bit.phrase} is basically our thing`,
-        `we can't go two minutes without ${bit.phrase} coming up and honestly i respect it`,
+ `we can't go two minutes without ${bit.phrase} coming up and fr i respect it`,
       ]);
     } else if (bit.type === "catchphrase" && bit.count >= 2) {
       injection = pick([
@@ -19413,7 +19413,7 @@ function handleSummaryRequest(text) {
 
   const templates = [
     `ok so far${nameStr}? we've talked about ${topicList} over like ${turnCount} messages.${hadLaughs ? " had some good laughs too lol." : ""}${notableClaim ? ` you mentioned "${notableClaim.substring(0, 40)}..." which stuck with me.` : ""}`,
-    `hmm let me think... we've gone through ${topicList}.${notableClaim ? ` i remember you saying something about "${notableClaim.substring(0, 35)}..."` : ""} ${hadLaughs ? "and we had fun doing it lol" : "been a good convo honestly"} what should we get into next`,
+ `hmm let me think... we've gone through ${topicList}.${notableClaim ? ` i remember you saying something about "${notableClaim.substring(0, 35)}..."` : ""} ${hadLaughs ? "and we had fun doing it lol" : "been a good convo no lie"} what should we get into next`,
     `ok recap: we started with ${topics[0]}${topics.length > 1 ? `, wandered into ${topics.slice(1).join(" and ")}` : ""}.${turnCount > 15 ? " we've been at this a while lol" : ""} ${hadLaughs ? "some laughs happened." : ""} wanna keep going or switch it up`,
   ];
 
@@ -19602,7 +19602,7 @@ const DECLARATIVE_PATTERNS = [
 
 // Hedge insertions — grouped by where they go
 const HEDGE_PREFIXES = [
-  "i think ", "honestly ", "from what i can tell, ",
+ "i think ", "tbh ", "from what i can tell, ",
   "if i had to guess, ", "ime ", "the way i see it, ",
   "i'd say ", "my read is ", "feels like ",
 ];
@@ -19699,7 +19699,7 @@ const ENCOURAGEMENT_POOLS = {
     "the fact that you're putting in the work? that's sick",
     "that kind of dedication is lowkey rare",
     "respect for sticking with it fr",
-    "that's real commitment honestly",
+ "that's real commitment no lie",
     "ngl most people would've given up by now",
     "you're going harder than you think tbh",
     "the grind is gonna pay off,",
@@ -19708,7 +19708,7 @@ const ENCOURAGEMENT_POOLS = {
     "yo thanks for being real with me about that",
     "ngl that's not easy to talk about, respect",
     "yo thanks for telling me that fr",
-    "ok that's honestly a lot, glad you said something",
+ "ok that's fr a lot, glad you said something",
     "real talk, i appreciate you sharing that",
     "not everyone would say that out loud tbh",
   ],
@@ -19897,7 +19897,7 @@ const MIRROR_TEMPLATES = {
   ],
   stressed: [
     (cause) => `dude ${cause} on top of everything else?? that's a lot`,
-    (cause) => `yeah ${cause} sounds draining honestly`,
+ (cause) => `yeah ${cause} sounds draining ngl`,
     (cause) => `ugh ${cause} is really getting to you huh`,
   ],
   worried: [
@@ -19916,7 +19916,7 @@ const MIRROR_TEMPLATES = {
     (cause) => `ok ${cause} bringing the good energy, love that`,
   ],
   confused: [
-    (cause) => `yeah ${cause} is confusing honestly`,
+ (cause) => `yeah ${cause} is confusing fr`,
     (cause) => `lol ${cause} doesn't have easy answers does it`,
     (cause) => `so ${cause} has you all 🤔 — fair tbh`,
   ],
@@ -20002,7 +20002,7 @@ function applyEmpatheticMirror(response, text) {
 /* ══════════════════════════════════════════════════════════════════
    CONVERSATIONAL WARMTH MARKERS (Round 90)
    Humans signal trust and intimacy through small verbal markers:
-   "honestly", "real talk", "between you and me", "not gonna lie".
+ "no lie", "real talk", "between you and me", "not gonna lie".
    These phrases aren't content — they're *relationship signals*.
    They say "I'm dropping my guard" and invite the other person
    to do the same. Their absence makes AI responses feel clinical.
@@ -20127,7 +20127,7 @@ const MICRO_REACTIONS = {
   ],
   personal: [
     "oh wow,", "hmm.", "nah that's real.",
-    "yeah honestly.", "ok that's actually really real.", "oh.",
+ "yeah for real.", "ok that's actually really real.", "oh.",
     "yeah no fr.", "that hits different.",
   ],
   funny: [
@@ -20150,7 +20150,7 @@ const MICRO_REACTIONS = {
   ],
   relatable: [
     "oh totally", "YES", "oh i feel that", "right??",
-    "so true", "okay same", "honestly yeah",
+ "so true", "okay same", "tbh yeah",
     "spitting facts", "living for this", "it is what it is.",
     "rent free in my brain now",
   ],
@@ -20163,7 +20163,7 @@ const MICRO_REACTIONS = {
   wholesome: [
     "ok that's sweet", "that's actually nice", "that's wholesome",
     "i love that", "that's genuinely nice", "oh that's great",
-    "living for this honestly", "that's giving wholesome vibes",
+ "living for this tbh", "that's giving wholesome vibes",
     "ate and left no crumbs",
   ],
 };
@@ -20367,7 +20367,7 @@ function polishOutput(response) {
   }
 
   // 6. Remove redundant "by the way" / "actually" / "oh" stacking
-  const fillers = ["actually", "by the way", "honestly", "you know what", "I mean"];
+ const fillers = ["actually", "by the way", "ngl", "you know what", "I mean"];
   for (const filler of fillers) {
     const rx = new RegExp(filler, "gi");
     const matches = r.match(rx);
@@ -20457,19 +20457,26 @@ function polishOutput(response) {
     });
   }
 
-  // 12. Cross-message "honestly" cooldown — the #1 AI verbal tic.
-  // If "honestly" was used in any of the last 3 AI messages, swap it for a casual alternative.
-  // This prevents the pattern of every other message containing "honestly".
+  // 12. "honestly" saturation guard (Round 222: upgraded from cooldown to hard cap).
+  // Real friends don't prefix every opinion with "honestly" — it's the #1 AI verbal tic.
+  // Rules: (a) max 1 per message, (b) 60% chance to swap even that one,
+  // (c) if used in last 5 AI messages, always swap all instances.
   if (/\bhonestly\b/i.test(r)) {
-    const recentAI = mem.history.filter(h => h.role === "ai").slice(-3);
+    const honestlyAlts = ["fr", "ngl", "tbh", "for real", "lowkey", "no lie", "real talk", "straight up"];
+    const pickAlt = () => honestlyAlts[Math.floor(Math.random() * honestlyAlts.length)];
+    const recentAI = mem.history.filter(h => h.role === "ai").slice(-5);
     const recentlyUsed = recentAI.some(h => /\bhonestly\b/i.test(h.text));
-    if (recentlyUsed) {
-      // Context-aware replacements based on position in sentence
-      r = r.replace(/\bhonestly\b/gi, (m) => {
-        const alts = ["fr", "ngl", "tbh", "for real", "lowkey", "deadass", "real talk"];
-        return alts[Math.floor(Math.random() * alts.length)];
-      });
+    // Count occurrences in this message
+    const honestlyCount = (r.match(/\bhonestly\b/gi) || []).length;
+    if (recentlyUsed || honestlyCount > 1) {
+      // Swap ALL instances when recently used or when multiple in one message
+      r = r.replace(/\bhonestly\b/gi, () => pickAlt());
+    } else if (Math.random() < 0.60) {
+      // Even when it's the only one and hasn't been used recently, 60% chance to swap
+      r = r.replace(/\bhonestly\b/gi, () => pickAlt());
     }
+    // Clean up any double spaces from replacements
+    r = r.replace(/  +/g, " ");
   }
 
   return r.trim();
@@ -20625,14 +20632,14 @@ const MEME_FORMATS = [
   (topic) => `pov: you just discovered ${topic}`,
   (topic) => `${topic} really said '✌️' and left`,
   (topic) => `the way ${topic} has me deceased`,
-  (topic) => `living for ${topic} honestly`,
+ (topic) => `living for ${topic} ngl`,
   (topic) => `dying at ${topic} rn`,
 ];
 
 const HYPERBOLIC_POSITIVE = [
   "ok that's literally the best thing i've ever heard",
   "i'm SCREAMING",
-  "that's so iconic honestly",
+ "that's so iconic tbh",
   "legendary behavior",
   "understood the assignment",
   "giving main character energy rn",
@@ -20870,7 +20877,7 @@ function weaveContext(response, topics, text) {
     lastWeaveTurn = turn;
     const depth = frame.recentThread.depth;
     const threadAcks = [
-      `ok we're deep in ${frame.recentThread.topic} rn and honestly love it. `,
+ `ok we're deep in ${frame.recentThread.topic} rn and ngl love it. `,
       `the more we talk about ${frame.recentThread.topic} the more i think about it. `,
     ];
     return threadAcks[Math.floor(Math.random() * threadAcks.length)] + response;
@@ -21005,16 +21012,16 @@ function tryStandaloneReaction(text, sent) {
 
   // Pattern-matched reaction pools
   const reactionPatterns = [
-    { re: /\b(hate|can'?t stand|sick of|tired of)\b/i, pool: ["honestly same", "fr fr", "mood", "felt that", "big mood honestly", "valid"] },
+ { re: /\b(hate|can'?t stand|sick of|tired of)\b/i, pool: ["lowkey same", "fr fr", "mood", "felt that", "big mood no lie", "valid"] },
     { re: /\b(love|obsessed with|can'?t stop)\b/i, pool: ["taste", "valid", "as you should", "fr fr", "the way i agree", "real"] },
     { re: /\b(so (good|fire|bussin|amazing|great))\b/i, pool: ["fr fr", "no literally", "RIGHT", "taste", "^^ this", "facts"] },
-    { re: /\b(so (bad|mid|boring|trash|terrible))\b/i, pool: ["oof", "rip", "lol yeah", "fair honestly", "valid take", "nahhh really?"] },
+ { re: /\b(so (bad|mid|boring|trash|terrible))\b/i, pool: ["oof", "rip", "lol yeah", "fair for real", "valid take", "nahhh really?"] },
     { re: /\b(i (just|literally) (did|made|ate|watched|finished))\b/i, pool: ["wait how was it", "and??", "ok tell me everything", "how'd it go"] },
-    { re: /\b(monday|tuesday|wednesday|thursday|friday)\b/i, pool: ["mood", "felt that", "honestly same energy", "fr tho"] },
+ { re: /\b(monday|tuesday|wednesday|thursday|friday)\b/i, pool: ["mood", "felt that", "ngl same energy", "fr tho"] },
     { re: /\b(ngl|tbh|honestly|lowkey)\b/i, pool: ["fr", "valid", "no literally", "real", "^^"] },
     { re: /\b(vibes?|energy|mood)\b/i, pool: ["fr fr", "literally", "real", "this ^^", "felt that"] },
     { re: /\b(wild|crazy|insane)\b/i, pool: ["LMAO", "no literally", "fr tho", "wait what", "stoppp"] },
-    { re: /\b(whatever|it is what it is|oh well)\b/i, pool: ["fr", "valid", "honestly", "mood", "felt that"] },
+ { re: /\b(whatever|it is what it is|oh well)\b/i, pool: ["fr", "valid", "for real", "mood", "felt that"] },
   ];
 
   for (const { re, pool } of reactionPatterns) {
@@ -21023,7 +21030,7 @@ function tryStandaloneReaction(text, sent) {
 
   // Generic casual statement reaction (lower probability)
   if (Math.random() < 0.3) {
-    const genericReactions = ["honestly yeah", "fr", "felt that", "valid", "mood", "real"];
+ const genericReactions = ["tbh yeah", "fr", "felt that", "valid", "mood", "real"];
     return pick(genericReactions);
   }
 
@@ -21440,14 +21447,14 @@ function generatePointReaction(point) {
   switch (point.type) {
     case "question":
       return pick([
-        "great question honestly",
+ "great question ngl",
         `the ${topicRef || "that"} question is interesting`,
         "i actually have thoughts on that",
       ]);
     case "emotional":
       return pick([
         "yeah no that's a lot",
-        "that's really intense honestly",
+ "that's really intense ngl",
         "man yeah",
         "that part hit different",
       ]);
@@ -21474,7 +21481,7 @@ function generatePointReaction(point) {
       ]);
     case "opinion":
       return pick([
-        "interesting take honestly",
+ "interesting take for real",
         "i kinda see where you're coming from",
         "ok that's a stance",
         `the ${topicRef || "that"} opinion — noted`,
@@ -21638,7 +21645,7 @@ export async function getAIResponse(input) {
     if (text.length <= 30 && !/greeting|farewell|howAreYou/.test(mem.lastIntent || "")) {
       const capsResps = [
         "OKAY I HEAR YOU 😂","THE ENERGY RN!! i love it","WHY ARE WE YELLING lol",
-        "lol caps lock energy, i respect it","BIG MOOD honestly","ok ok i feel the intensity 🔥"
+ "lol caps lock energy, i respect it","BIG MOOD for real","ok ok i feel the intensity 🔥"
       ];
       // Only intercept ~40% of the time, let the rest flow through for proper handling
       if (Math.random() > 0.6) {
