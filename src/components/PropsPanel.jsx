@@ -339,6 +339,15 @@ export default function PropsPanel({ type, props, onProp, p }) {
     </React.Fragment>);
   }
 
+  /* Size (heading) */
+  if ("size" in defaults) {
+    const sz = G("size");
+    const szLabels = ["H1", "H2", "H3"];
+    controls.push(<React.Fragment key="size"><span style={label}>Size</span>
+      {szLabels.map((l, i) => <button key={i} style={{ ...btn(sz === i), fontSize: 9, minWidth: 24, height: 20 }} onMouseDown={stop} onClick={() => onProp("size", i)}>{l}</button>)}
+    </React.Fragment>);
+  }
+
   /* Quantity (cart-item) */
   if ("qty" in defaults) {
     const qty = G("qty");

@@ -189,21 +189,22 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
   /* ---- HEADING ---- */
   if(type==="heading"){
     const hdAl=P("align");const hdAlign=["flex-start","center","flex-end"][hdAl]||"flex-start";const hdText=["left","center","right"][hdAl]||"left";const hdClick=e=>{e.stopPropagation();cProp?.("align",(hdAl+1)%3)};
+    const hdSz=P("size");const hdSzClick=e=>{e.stopPropagation();cProp?.("size",(hdSz+1)%3)};const hdFs=[22,18,14][hdSz]||22;const hdSub=[12,11,10][hdSz]||12;const hdWt=[700,600,500][hdSz]||700;
     /* v0 Clean — title + count + subtitle, staggered fade-in */
     if(v===0)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:hdAlign,textAlign:hdText,gap:5,cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={hdClick}>
       <div style={{display:"flex",alignItems:"baseline",gap:8,animation:"tp-fadein .3s ease-out"}}>
-        <T k="title" s={{fontSize:f(22),fontWeight:700,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1}}>Dashboard</T>
+        <T k="title" s={{fontSize:f(hdFs),fontWeight:hdWt,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1,transition:"font-size .2s"}} onDoubleClick={hdSzClick}>Dashboard</T>
         <span style={{fontSize:f(11),color:p.mu,opacity:.45,fontWeight:400,animation:"tp-fadein .4s ease-out .15s both"}}>(24)</span>
       </div>
-      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .1s both"}}>Track your key metrics and team activity</T>
+      <T k="sub" s={{fontSize:f(hdSub),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .1s both"}}>Track your key metrics and team activity</T>
     </div>;
     /* v1 Accent bar — animated left bar + title + description */
     if(v===1)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:hdAlign,textAlign:hdText,gap:6,cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={hdClick}>
       <div style={{display:"flex",alignItems:"stretch",gap:10}}>
         <div style={{width:3,borderRadius:2,background:`linear-gradient(180deg,${p.ac},${p.ac2||p.ac})`,transformOrigin:"bottom",animation:"tp-grow .4s cubic-bezier(.34,1.56,.64,1)",minHeight:26}}/>
         <div style={{display:"flex",flexDirection:"column",gap:3}}>
-          <T k="title" s={{fontSize:f(20),fontWeight:700,color:p.tx,lineHeight:1.15}}>Dashboard</T>
-          <T k="desc" s={{fontSize:f(11),color:p.mu,lineHeight:1.4,opacity:.7}}>Monitor performance across all channels</T>
+          <T k="title" s={{fontSize:f(hdFs-2),fontWeight:hdWt,color:p.tx,lineHeight:1.15,transition:"font-size .2s"}} onDoubleClick={hdSzClick}>Dashboard</T>
+          <T k="desc" s={{fontSize:f(hdSub-1),color:p.mu,lineHeight:1.4,opacity:.7}}>Monitor performance across all channels</T>
         </div>
       </div>
     </div>;
@@ -211,7 +212,7 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     if(v===2)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:hdAlign,textAlign:hdText,gap:4,cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={hdClick}>
       <T k="over" s={{fontSize:f(9),fontWeight:700,color:p.ac,textTransform:"uppercase",letterSpacing:"0.12em",animation:"tp-fadein .3s ease-out"}}>Section</T>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <T k="title" s={{fontSize:f(20),fontWeight:600,color:p.tx,letterSpacing:"-0.01em"}}>Dashboard</T>
+        <T k="title" s={{fontSize:f(hdFs-2),fontWeight:hdWt-100,color:p.tx,letterSpacing:"-0.01em",transition:"font-size .2s"}} onDoubleClick={hdSzClick}>Dashboard</T>
         <T k="link" s={{fontSize:f(11),color:p.ac,fontWeight:500,opacity:.8}}>View all →</T>
       </div>
       <div style={{height:1,background:`linear-gradient(90deg,${p.bd},transparent)`,marginTop:2,transformOrigin:"left",animation:"tp-underline-grow .5s ease-out"}}/>
@@ -219,19 +220,19 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
     /* v3 Gradient — gradient text title + animated underline accent */
     if(v===3)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:hdAlign,textAlign:hdText,gap:6,cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={hdClick}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <T k="title" s={{fontSize:f(22),fontWeight:800,letterSpacing:"-0.03em",lineHeight:1.1,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Dashboard</T>
+        <T k="title" s={{fontSize:f(hdFs),fontWeight:hdWt+100,letterSpacing:"-0.03em",lineHeight:1.1,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",transition:"font-size .2s"}} onDoubleClick={hdSzClick}>Dashboard</T>
       </div>
       <div style={{height:3,borderRadius:2,background:`linear-gradient(90deg,${p.ac},${p.ac2||p.ac},transparent)`,width:"40%",transformOrigin:"left",animation:"tp-underline-grow .5s cubic-bezier(.34,1.56,.64,1) .15s both"}}/>
-      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .2s both"}}>Track your key metrics and team activity</T>
+      <T k="sub" s={{fontSize:f(hdSub),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .2s both"}}>Track your key metrics and team activity</T>
     </div>;
     /* v4 Badge — title with accent badge/label + count chip */
     if(v===4)return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:hdAlign,textAlign:hdText,gap:6,cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={hdClick}>
       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-        <T k="title" s={{fontSize:f(20),fontWeight:700,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1}}>Dashboard</T>
+        <T k="title" s={{fontSize:f(hdFs-2),fontWeight:hdWt,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1,transition:"font-size .2s"}} onDoubleClick={hdSzClick}>Dashboard</T>
         <span style={{fontSize:f(10),fontWeight:600,color:p.ac,background:p.ac+"14",padding:"2px 8px",borderRadius:999,whiteSpace:"nowrap",animation:"tp-badge-pop .4s cubic-bezier(.34,1.56,.64,1) .2s both"}}>New</span>
         <span style={{fontSize:f(10),fontWeight:500,color:p.mu,background:p.su,padding:"2px 7px",borderRadius:999,whiteSpace:"nowrap",animation:"tp-badge-pop .4s cubic-bezier(.34,1.56,.64,1) .3s both"}}>24 items</span>
       </div>
-      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .15s both"}}>Track your key metrics and team activity</T>
+      <T k="sub" s={{fontSize:f(hdSub),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .15s both"}}>Track your key metrics and team activity</T>
       <div style={{height:1,background:p.bd,opacity:.5}}/>
     </div>;
     /* v5 Brutal — neubrutalist heading: thick border block, hard shadow, uppercase overline, bold title */
@@ -241,18 +242,18 @@ function C({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=1})
           <div style={{width:8,height:8,background:p.ac,borderRadius:1,border:`1.5px solid ${p.tx}`}}/>
           <T k="over" s={{fontSize:f(9),fontWeight:800,color:p.ac,textTransform:"uppercase",letterSpacing:"0.14em"}}>Section</T>
         </div>
-        <T k="title" s={{fontSize:f(22),fontWeight:900,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1,textTransform:"uppercase"}}>Dashboard</T>
-        <T k="sub" s={{fontSize:f(11),color:p.mu,lineHeight:1.4,marginTop:4,fontWeight:500}}>Track your key metrics and team activity</T>
+        <T k="title" s={{fontSize:f(hdFs),fontWeight:900,color:p.tx,letterSpacing:"-0.02em",lineHeight:1.1,textTransform:"uppercase",transition:"font-size .2s"}} onDoubleClick={hdSzClick}>Dashboard</T>
+        <T k="sub" s={{fontSize:f(hdSub-1),color:p.mu,lineHeight:1.4,marginTop:4,fontWeight:500}}>Track your key metrics and team activity</T>
       </div>
     </div>;
     /* v6 Gradient — animated aurora gradient accent strip + gradient-glow title + floating dot */
     return <div style={{...b,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:hdAlign,textAlign:hdText,gap:6,cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={hdClick}>
       <div style={{height:3,borderRadius:99,background:`linear-gradient(90deg,${p.ac},${p.ac2||p.ac},${p.ac})`,backgroundSize:"200% 100%",animation:"tp-shimmer 3s ease infinite",boxShadow:`0 0 12px ${p.ac}30`,width:"60%"}}/>
       <div style={{display:"flex",alignItems:"center",gap:10,marginTop:2}}>
-        <T k="title" s={{fontSize:f(22),fontWeight:800,letterSpacing:"-0.03em",lineHeight:1.1,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",filter:`drop-shadow(0 0 8px ${p.ac}25)`}}>Dashboard</T>
+        <T k="title" s={{fontSize:f(hdFs),fontWeight:hdWt+100,letterSpacing:"-0.03em",lineHeight:1.1,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",filter:`drop-shadow(0 0 8px ${p.ac}25)`,transition:"font-size .2s"}} onDoubleClick={hdSzClick}>Dashboard</T>
         <div style={{width:6,height:6,borderRadius:99,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,boxShadow:`0 0 8px ${p.ac}60`,animation:"tp-pulse 2s ease-in-out infinite"}}/>
       </div>
-      <T k="sub" s={{fontSize:f(12),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .2s both"}}>Track your key metrics and team activity</T>
+      <T k="sub" s={{fontSize:f(hdSub),color:p.mu,lineHeight:1.4,animation:"tp-fadein .4s ease-out .2s both"}}>Track your key metrics and team activity</T>
     </div>;
   }
 

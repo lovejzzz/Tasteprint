@@ -225,7 +225,7 @@ export const DEFAULT_PROPS = {
   select:        { active: 0 },
   search:        { results: 3 },
   tooltip:       { on: true },
-  heading:       { align: 0 },
+  heading:       { align: 0, size: 0 },
   "image-placeholder": { shape: 0 },
 };
 
