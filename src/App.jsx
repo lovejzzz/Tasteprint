@@ -384,6 +384,9 @@ export default function App() {
       return { ...pv, [tgt.type]: safeVariant };
     });
     setStyleSource(null);
+    // Clear stale candidates for target since its style was replaced
+    setCandidates(c => { const n = { ...c }; delete n[targetId]; return n; });
+    setCandidateIdx(ci => { const n = { ...ci }; delete n[targetId]; return n; });
   }, [shapes]);
 
   const delShape = useCallback(() => {
