@@ -1126,19 +1126,73 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   if (variant === tags.glass && Math.random() < 0.6) {
     s.backdropFilter = `blur(${pick([8, 12, 16, 20])}px)`;
   } else if (!isNav && !isCode && !isSmall) {
-    // Mood-driven backdrop effects: subtle frosted/bright effects beyond glass
-    if (moodId === "elegant" && Math.random() < 0.18) {
+    // Advanced material system — distinct surface feels beyond simple blur
+    const matRoll = Math.random();
+
+    if (moodId === "elegant" && matRoll < 0.22) {
+      // Elegant materials: frosted crystal, smoky glass, silk veil
+      const mat = Math.random();
+      if (mat < 0.35) {
+        // Frosted crystal — heavy blur + desaturation + subtle brightness lift
+        const blr = pick([10, 14, 18]);
+        s.backdropFilter = `blur(${blr}px) saturate(0.75) brightness(1.06)`;
+        s.opacity = randRange(0.92, 0.97).toFixed(2);
+        if (!s.border) s.border = `1px solid ${acHex}12`;
+        if (!s.boxShadow) s.boxShadow = `inset 0 1px 0 ${acHex}08, 0 4px 20px ${shHex}06`;
+      } else if (mat < 0.65) {
+        // Smoky glass — medium blur + warmth + lower opacity
+        s.backdropFilter = `blur(${pick([6, 8, 10])}px) saturate(0.85) brightness(0.97)`;
+        s.opacity = randRange(0.88, 0.94).toFixed(2);
+        if (!s.gradientOverlay) s.gradientOverlay = `linear-gradient(180deg, ${acHex}06 0%, ${shHex}08 100%)`;
+      } else {
+        // Silk veil — light blur + high brightness + ethereal feel
+        s.backdropFilter = `blur(${pick([3, 5, 7])}px) brightness(1.10) saturate(0.9)`;
+        s.opacity = randRange(0.94, 0.98).toFixed(2);
+        if (!s.border) s.border = `1px solid ${acHex}0A`;
+      }
+    } else if (moodId === "bold" && matRoll < 0.18) {
+      // Bold materials: tinted shield, dark acrylic, contrast glass
+      const mat = Math.random();
+      if (mat < 0.40) {
+        // Tinted shield — blur + heavy saturation + contrast boost
+        s.backdropFilter = `blur(${pick([6, 8, 12])}px) saturate(1.4) contrast(1.08)`;
+        if (!s.gradientOverlay) s.gradientOverlay = `linear-gradient(${pick([135, 180, 225])}deg, ${gcGlow}10 0%, transparent 100%)`;
+      } else if (mat < 0.70) {
+        // Dark acrylic — heavy blur + desaturation + darkening
+        s.backdropFilter = `blur(${pick([12, 16, 20])}px) brightness(0.88) saturate(0.7)`;
+        s.opacity = randRange(0.90, 0.96).toFixed(2);
+        if (!s.boxShadow) s.boxShadow = `inset 0 0 20px ${shHex}0A`;
+      } else {
+        // Contrast glass — sharp contrast + slight blur
+        s.backdropFilter = `blur(${pick([3, 4, 6])}px) contrast(1.15) saturate(1.1)`;
+      }
+    } else if (moodId === "playful" && matRoll < 0.20) {
+      // Playful materials: candy glass, rainbow blur, bubbly surface
+      const mat = Math.random();
+      if (mat < 0.40) {
+        // Candy glass — warm blur + oversaturated + bright
+        s.backdropFilter = `blur(${pick([6, 8, 10])}px) saturate(1.5) brightness(1.08)`;
+        if (!s.border) s.border = `2px solid ${gc1}25`;
+      } else if (mat < 0.70) {
+        // Rainbow blur — heavy blur + hue rotation hint via overlay
+        s.backdropFilter = `blur(${pick([8, 12, 16])}px) saturate(1.3)`;
+        if (!s.gradientOverlay) s.gradientOverlay = `linear-gradient(${pick([45, 135])}deg, ${gc1}0C, ${gc2}0C, ${gcGlow}0C)`;
+        s.opacity = randRange(0.93, 0.97).toFixed(2);
+      } else {
+        // Bubbly — light blur + brightness pop + inner glow
+        s.backdropFilter = `blur(${pick([4, 6])}px) brightness(1.12) saturate(1.2)`;
+        if (!s.boxShadow) s.boxShadow = `inset 0 0 12px ${gcGlow}08, 0 2px 8px ${shHex}06`;
+      }
+    } else if (moodId === "minimal" && matRoll < 0.08) {
+      // Minimal: whisper frost — barely-there blur
+      s.backdropFilter = `blur(${pick([2, 3, 4])}px) brightness(1.02)`;
+    } else if (moodId === "auto" && matRoll < 0.10) {
+      // Auto: pick from subtle end of any mood
       s.backdropFilter = pick([
-        `blur(${pick([4, 6, 8])}px) brightness(1.05)`,
-        `blur(${pick([3, 5])}px) saturate(0.9)`,
+        `blur(${pick([4, 6, 8])}px) saturate(${randRange(0.8, 1.2).toFixed(2)})`,
+        `blur(${pick([3, 5])}px) brightness(${randRange(1.02, 1.08).toFixed(2)})`,
+        `blur(${pick([6, 10])}px) saturate(0.85) brightness(1.05)`,
       ]);
-    } else if (moodId === "playful" && Math.random() < 0.12) {
-      s.backdropFilter = pick([
-        `blur(${pick([4, 6])}px) saturate(1.2)`,
-        `blur(${pick([3, 5])}px) brightness(1.08)`,
-      ]);
-    } else if (moodId === "bold" && Math.random() < 0.10) {
-      s.backdropFilter = `blur(${pick([3, 4, 6])}px) contrast(1.05)`;
     }
   }
 
