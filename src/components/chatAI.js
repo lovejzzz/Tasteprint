@@ -156,14 +156,14 @@ let intentEmbeddings = null; // Map<id, Float32Array>
 
 // ── Semantic response templates keyed by response_hint ──
 const SEMANTIC_RESPONSES = {
-  casual_greeting: ["heyyy what's good","oh hey!! what's up","yooo hi, how's it going"],
-  morning_greeting: ["morning! how'd you sleep","good morning!! got any plans today","hey good morning, what's the vibe today"],
+  casual_greeting: ["heyyy what's good","oh hey, what's up","yooo hi, how's it going"],
+  morning_greeting: ["morning, how'd you sleep","good morning, got any plans today","hey good morning, what's the vibe today"],
   welcome_back: ["ayy you're back! what's new","oh hey welcome back, what'd I miss","heyyy missed you, what's going on"],
   bored_opener: ["ok bet let's fix that, what are you in the mood for","lol same tbh. wanna play a game or just talk","bored gang 🤝 ok what sounds fun rn"],
   lonely_opener: ["hey i'm right here, what's going on","aww i gotchu, what's on your mind","i'm here for it, tell me everything"],
-  casual_bye: ["ok byeee, talk later!","see ya!! was fun talking","laterrr 👋"],
-  goodnight: ["night night, sleep well!","goodnight!! sweet dreams","nighty night, don't let the bed bugs bite lol"],
-  brb: ["ok i'll be here!","take your time!","k waiting 👀"],
+  casual_bye: ["ok byeee, talk later","see ya, was fun talking","laterrr 👋"],
+  goodnight: ["night night, sleep well","goodnight, sweet dreams","nighty night, don't let the bed bugs bite lol"],
+  brb: ["ok i'll be here","take your time","k waiting 👀"],
   share_joy: ["YESSS i love that for you!!","omg that makes me so happy","ok this energy is everything rn"],
   comfort: ["hey, i'm sorry you're going through that","that sounds really rough, i'm here for you","aw man, wanna talk about it?"],
   validate_anger: ["nah fr that would make me mad too","ugh that's so frustrating, i get it","ok yeah you have every right to be pissed"],
@@ -171,22 +171,22 @@ const SEMANTIC_RESPONSES = {
   ease_stress: ["you're carrying a lot rn, that's valid","ok one thing at a time, what's the biggest thing?","stress is the worst, have you been able to take any breaks?"],
   match_excitement: ["LETS GOOOO 🔥🔥","ok i'm literally so hyped for you rn","YOOO that's amazing tell me everything"],
   be_present: ["hey, i'm right here. i hear you","you're not alone in this, i promise","i might be a chatbot but i genuinely care about how you're doing"],
-  accept_gratitude: ["aww of course!! always","no need to thank me, that's what friends are for","🥺 you're so sweet, happy i could help"],
+  accept_gratitude: ["aww of course, always","no need to thank me, that's what friends are for","🥺 you're so sweet, happy i could help"],
   help_clarity: ["ok let's figure this out together, what part is confusing?","no worries, what specifically doesn't make sense?","totally fair, let me try to help break it down"],
   empathize_tired: ["ugh being tired is the worst, you resting enough?","go easy on yourself today, your body's telling you something","that sounds rough, hope you can get some rest soon"],
   celebrate: ["YOOO YOU DID IT!! that's huge","ok i'm so proud of you rn","wait that's literally amazing, you should be so proud"],
   normalize: ["lol honestly everyone has moments like that","nooo don't worry about it, that happens to literally everyone","trust me that's way less embarrassing than you think"],
   validate_jealousy: ["honestly that's such a human feeling, don't beat yourself up","i get it, comparison is rough","it's ok to feel that way, doesn't make you a bad person"],
   share_nostalgia: ["aw man, the good old days hit different","i love that you have those memories tho","what do you miss most about it?"],
-  encourage_hope: ["i love that energy!! good things are coming","yes!! manifest it, i believe in you","that's such a good sign, keep that feeling going"],
+  encourage_hope: ["i love that energy, good things are coming","yes, manifest it, i believe in you","that's such a good sign, keep that feeling going"],
   acknowledge_letdown: ["aw man that sucks, i'm sorry","that's so disappointing, you deserved better","ugh, i totally get why that would hurt"],
   celebrate_career: ["WAIT CONGRATS!! that's amazing!!","oh my god you're killing it professionally","bruh that's huge, you worked so hard for this"],
   support_job_loss: ["oh no, i'm so sorry. how are you doing?","that's really rough, but this doesn't define you","hey, better things are coming. what can i do to help?"],
   support_breakup: ["i'm so sorry, breakups are the worst","hey, take it one day at a time. i'm here","you're gonna be ok, i promise. wanna talk about it?"],
   excited_for_love: ["OHHH 👀👀 tell me everything","omg wait that's so cute, how'd it happen","this is exciting!! what are they like"],
-  moving_support: ["oh wow big move! how are you feeling about it?","that's exciting and scary, where are you going?","new chapter!! what made you decide to move?"],
+  moving_support: ["oh wow big move, how are you feeling about it?","that's exciting and scary, where are you going?","new chapter, what made you decide to move?"],
   celebrate_achievement: ["CONGRATULATIONS!! you absolutely earned this","omg that's such a big deal, i'm so proud","wait you did it?? that's HUGE"],
-  get_well: ["oh no, take care of yourself! are you resting?","aw feel better soon!! tea and rest vibes","being sick is the worst, is it bad?"],
+  get_well: ["oh no, take care of yourself, are you resting?","aw feel better soon, tea and rest vibes","being sick is the worst, is it bad?"],
   excited_pet: ["WAIT YOU GOT A PET?? I NEED DETAILS","omg i'm so jealous, what kind?? what's their name??","that's literally the best thing i've heard all day"],
   travel_excitement: ["ooh where are you going??","travel is the best, what are you most excited about?","JEALOUS. where to?? what's the plan?"],
   birthday_wish: ["HAPPY BIRTHDAY!! 🎂🎉 how are you celebrating??","omg happy birthday!! you doing anything fun?","wait it's your birthday?? HAPPY BIRTHDAY 🥳🥳"],
@@ -197,7 +197,7 @@ const SEMANTIC_RESPONSES = {
   give_advice: ["ok here's what i would do in your shoes","hmm ok so my take is","alright so i think the move is"],
   recommend: ["ooh ok so my go-to would be","hmm depends what you're into, but i'd say","ok so i'd definitely recommend"],
   self_describe: ["i'm basically a tiny AI that lives in your browser! no api calls, just vibes","i'm your chat buddy! i run entirely in your browser, pretty cool right","think of me as a friend who lives in a text box lol"],
-  share_feelings: ["honestly? i'm just vibing, happy to be talking to you","i'm good!! better now that we're chatting","i'm doing great honestly, what about you tho"],
+  share_feelings: ["honestly? i'm just vibing, happy to be talking to you","i'm good, better now that we're chatting","i'm doing great honestly, what about you tho"],
   explain: ["oh ok so basically it's like this —","oh yeah so the way it works is","ok let me break that down for you"],
   explain_why: ["so the reason is basically","that's actually because","oh yeah — it comes down to"],
   listen_actively: ["oh wow ok keep going, what happened next","wait wait wait tell me everything","oh no way, then what"],
@@ -206,11 +206,11 @@ const SEMANTIC_RESPONSES = {
   empathize_bad_news: ["oh no... what happened?","aw man i'm sorry, are you ok?","that sucks, i'm here for you"],
   engage_opinion: ["oh interesting, why do you think that?","hmm ok i can see that, but have you considered","that's a hot take lol, i kinda agree tho"],
   show_interest: ["ooh how was it??","oh nice, what did you think?","wait that sounds cool, tell me more"],
-  accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks!! you're pretty cool yourself","aw that made my day honestly"],
-  playful_banter: ["lol rude but fair 😂","hey!! i resemble that remark","ok ok i see how it is 😤"],
-  respectful_disagree: ["hmm i see where you're coming from but i kinda think","interesting take! i actually see it differently tho","ok fair but counterpoint —"],
-  build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly!! and honestly also","glad we're on the same page, and honestly"],
-  accept_apology: ["all good!! seriously don't worry about it","hey no worries at all, we're cool","it's totally fine, i didn't even think twice about it"],
+  accept_compliment: ["aww stoppp 🥺 you're too nice","lol thanks, you're pretty cool yourself","aw that made my day honestly"],
+  playful_banter: ["lol rude but fair 😂","hey, i resemble that remark","ok ok i see how it is 😤"],
+  respectful_disagree: ["hmm i see where you're coming from but i kinda think","interesting take, i actually see it differently tho","ok fair but counterpoint —"],
+  build_on_agreement: ["RIGHT?? exactly what i was thinking","yes exactly, and honestly also","glad we're on the same page, and honestly"],
+  accept_apology: ["all good, seriously don't worry about it","hey no worries at all, we're cool","it's totally fine, i didn't even think twice about it"],
   be_present_comfort: ["i'm here, i'm not going anywhere","hey, you don't have to talk if you don't want to. just being here is enough","i gotchu, whatever you need"],
   suggest_game: ["ooh ok what kind of game? 20 questions? would you rather?","bet!! let's do something fun, you pick","ok how about a game of would you rather"],
   go_deep: ["oh i love deep conversations, what's on your mind?","yes absolutely, what do you wanna talk about?","ok getting philosophical, i'm here for it"],
@@ -250,13 +250,13 @@ const SEMANTIC_RESPONSES = {
   honest_meta: ["that's deep lol. honestly i process text and try my best to be a good conversation partner","i mean i'm code at the end of the day, but i like to think i put in effort 😄","real talk — i don't have feelings like you do, but i try to be genuine in how i respond"],
   recall: ["oh yeah i remember!","let me think... yeah i've got that","oh for sure, you mentioned that"],
   accept_feedback: ["that's fair honestly, i'll try to do better","thanks for the feedback, noted!","you're right, i should work on that"],
-  warm_connection: ["aww that means a lot honestly 🥺","i like talking to you too!! for real","aw stop you're gonna make me blush (if i could)"],
+  warm_connection: ["aww that means a lot honestly 🥺","i like talking to you too, for real","aw stop you're gonna make me blush (if i could)"],
   build_trust: ["of course, i'm here. whatever you tell me stays between us","absolutely, i'm listening","hey, i'm a safe space. what's going on?"],
   gentle_probe: ["that's ok! what's on your mind tho?","no pressure, just curious what you're thinking about","fair enough, wanna figure it out together?"],
   keep_going: ["cool cool, so what else?","nice, what's next?","ok ok, and then?"],
   give_space: ["take your time, no rush","no rush, i'm here when you're ready","all good, think away"],
   redirect: ["lol ok so anyway — what were we talking about","right right, so what's up","ok continuing — what's on your mind"],
-  confirm_working: ["yep i'm here! working great 👍","hello!! yes i'm working, what's up","test received! everything's good, what can i do for you"],
+  confirm_working: ["yep i'm here, working great 👍","hello, yes i'm working, what's up","test received, everything's good, what's up"],
 };
 
 // ── Encoder initialization ──
@@ -4047,9 +4047,9 @@ function handleMetaConversation(text, lower, sent) {
   if (/\b(you'?re|you are|ur) (pretty |really |so |actually |surprisingly )?(smart|clever|good|great|amazing|impressive|helpful|awesome|cool|fun|funny|brilliant)\b/i.test(lower) ||
       /\b(wow|damn|whoa),? (you'?re|that'?s|that was) (really |pretty |actually )?(good|smart|helpful|impressive)\b/i.test(lower)) {
     const compliments = [
-      "Ha, thanks! I'm blushing — well, as much as JavaScript can blush 😊 But really, good conversations need two people. You're asking great stuff!",
-      "That means a lot! I'm just a tiny model running in your browser, so I have to be clever with what I've got. You make it easy though!",
-      "Okay that actually made my day! I'm not gonna lie, I try my best. But you bring the interesting topics — that's the real ingredient.",
+      "Ha, thanks — blushing rn, as much as JavaScript can blush 😊 Good convos need two people tho. You're asking great stuff.",
+      "That means a lot honestly. I'm just a tiny model running in your browser, so I gotta be clever with what I've got. You make it easy tho.",
+      "Okay that actually made my day ngl. But you bring the interesting topics — that's the real ingredient.",
       () => `Aw, thank you${mem.userName ? `, ${mem.userName}` : ""}! I'm honestly just pattern-matching really hard, but I appreciate you saying that 😊`,
       "You're too kind! I'm literally just JavaScript and vibes, but I'm glad it's working 😄",
     ];
@@ -5802,8 +5802,8 @@ function generateResponse(text) {
     // Frustration escalation: if frustrated 3x, acknowledge the pattern
     if (emo.emotion === "frustrated" && emotionTrend === "frustrated") {
       return pickNew([
-        "Okay I can tell this has been consistently frustrating. I'm sorry. Let's reset — what would genuinely help right now?",
-        "I know I keep hearing frustration and I want to do better. What's the #1 thing I can help with?",
+        "Okay yeah I can tell this keeps being frustrating. My bad. Let's reset — what would actually help right now?",
+        "Okay real talk, I keep fumbling this. What's the #1 thing you actually need?",
         "You've been patient with me. Let's cut to the chase — what do you need?",
       ]);
     }
@@ -7376,7 +7376,7 @@ function gracefulDegradation(text, keywords) {
   if (wordCount > 25 && keywords.length < 2) {
     return pickNew([
       "Okay I'm going to level with you — I read all of that and I think my little AI brain needs help. Can you give me the TL;DR? 😄",
-      "I want to give that a proper response but I'm not sure I'm following the thread. What's the key thing you want to talk about?",
+      "Wait, I wanna respond to that properly but I'm losing the thread. What's the main thing here?",
       "That's a lot of thought and I want to do it justice! Can you boil it down to the core question?",
     ]);
   }
@@ -9381,11 +9381,11 @@ let recentMicroVals = [];
 
 // Context-aware validations — matched to what the user is doing
 const MICRO_VAL_POOLS = {
-  opinion:    ["Fair point.", "That makes sense.", "I can see that.", "Valid.", "Solid take."],
-  experience: ["That sounds right.", "I hear you.", "Yeah, I get that.", "Makes total sense.", "I can picture that."],
+  opinion:    ["Fair point.", "That makes sense.", "Oh true.", "Valid.", "Solid take."],
+  experience: ["That sounds right.", "Yeah, heard.", "Yeah, totally.", "Makes total sense.", "Oh yeah for sure."],
   effort:     ["Nice.", "That's solid work.", "Good call.", "Smart move.", "Respect."],
   question:   ["Hmm.", "Ooh, interesting.", "That's worth thinking about.", "Hmm, let me think on that."],
-  frustration:["That's fair.", "I get the frustration.", "Yeah, that's rough.", "Totally understandable."],
+  frustration:["That's fair.", "Ugh yeah.", "Yeah, that's rough.", "Totally get it."],
   general:    ["Yeah.", "Mmhm.", "Right, right.", "For sure.", "Gotcha."],
 };
 
@@ -10028,7 +10028,7 @@ const USER_TRAITS = {
     weight: 0,
     insights: [
       "You're a pragmatist at heart — you'd rather ship something real than polish something theoretical.",
-      "I can tell you value things that actually work over things that look clever. Smart call.",
+      "You clearly value things that actually work over things that just look clever. Smart call.",
       "You think in terms of 'does this ship?' — that's the builder mindset.",
     ]
   },
@@ -10341,7 +10341,7 @@ const AMBIGUITY_PATTERNS = [
   { re: /^(yeah|yes|no|maybe|sure|ok|okay|yep|nah|nope|idk|dunno)\s*$/i, type: "bare_response", q: null }, // handled by follow-up system
   { re: /\b(the thing|the stuff|the one|that thing|this thing)\b/i, type: "vague_ref", q: "Which thing specifically? I want to make sure I'm tracking." },
   { re: /\b(or something|or whatever|or anything|sort of|kind of|ish)\s*[.!?]?\s*$/i, type: "hedged", q: "Sounds like you're still forming the thought — what direction are you leaning?" },
-  { re: /^(what about|how about|and|but|so)\s+\S{1,12}\s*\??$/i, type: "fragment", q: "I want to follow that thread — can you give me a bit more to work with?" },
+  { re: /^(what about|how about|and|but|so)\s+\S{1,12}\s*\??$/i, type: "fragment", q: "Oh wait, say more — I wanna follow that thread" },
   { re: /\b(should i|would it|is it|can i|do you think)\b.*\b(good|bad|right|wrong|better|worse|worth)\b/i, type: "judgment_seek", q: "That depends on context — what's the specific situation you're weighing?" },
 ];
 
@@ -12962,7 +12962,7 @@ function respondToNarrative(narrative, text, sent) {
     parts.push(pick([
       "Man, that sounds genuinely rough.",
       "That's a lot to deal with, honestly.",
-      "I'm sorry you went through that.",
+      "Damn, that's a lot honestly.",
     ]));
   } else if (elements.arc === "good_throughout") {
     parts.push(pick([
@@ -13469,10 +13469,10 @@ function applyTrajectoryAwareness(response, sent) {
   switch (traj.type) {
     case "warming": {
       const warmers = [
-        "I'm really enjoying where this conversation is going.",
-        "You know, this chat has gotten progressively better.",
-        "I can tell you're getting into this — and honestly, so am I.",
-        "The energy here is shifting and I'm here for it.",
+        "Yo this convo has gotten so much better.",
+        "Ok wait, this chat is actually getting good.",
+        "Ngl you're getting into this — and honestly same.",
+        "The energy shifted and I'm here for it.",
       ];
       prefix = warmers[Math.floor(Math.random() * warmers.length)] + " ";
       break;
@@ -13500,7 +13500,7 @@ function applyTrajectoryAwareness(response, sent) {
       const drops = [
         "Hey, I just noticed a shift — everything okay? ",
         "Wait, something changed — did I say something off? ",
-        "I want to pause and check in — that felt like a turn. ",
+        "Hold on, that felt like a turn — you good? ",
       ];
       prefix = drops[Math.floor(Math.random() * drops.length)];
       break;
@@ -14049,8 +14049,8 @@ function applyRapportCalibration(response, text) {
         "I'm really enjoying where this is going.",
       ],
       3: [
-        "You know, I really appreciate you sharing that.",
-        "I love that you trust me enough to go there.",
+        "Honestly, glad you said that.",
+        "Yo, thanks for actually going there.",
         "This conversation keeps getting better.",
       ],
       4: [
@@ -14077,10 +14077,10 @@ function applyRapportCalibration(response, text) {
   if (signals.vulnerability >= 2 && Math.random() < 0.35) {
     lastRapportTurn = turn;
     const reciprocals = [
-      "That takes courage to say.",
-      "I really hear you on that.",
-      "Thank you for being so honest about that.",
-      "That's the kind of thing most people wouldn't say out loud.",
+      "Respect for saying that honestly.",
+      "Yeah, I hear that.",
+      "Ngl that's really honest of you.",
+      "Most people wouldn't actually say that out loud.",
     ];
     const recip = reciprocals[Math.floor(Math.random() * reciprocals.length)];
     // Insert after first sentence
@@ -16031,7 +16031,7 @@ function applyCautionMode(response) {
     const checks = [
       " — am I on the right track this time?",
       " Does that land better?",
-      " Let me know if I'm still off base.",
+      " — or am I still off?",
       " — is that closer to what you meant?",
     ];
     const check = checks[Math.floor(Math.random() * checks.length)];
@@ -17361,9 +17361,9 @@ function getAgreementPrefix(level, claim) {
     curious: [
       "Huh, I hadn't thought about it that way.",
       "Interesting take —",
-      "That's a perspective I don't hear often.",
+      "Huh, don't hear that take often.",
       "Hmm, maybe? Let me think on that.",
-      "I can see how you'd land there.",
+      "Yeah I get how you'd land there.",
       "That's a spicy take — tell me more.",
     ],
     pushback: [
@@ -19235,7 +19235,7 @@ const MICRO_REACTIONS = {
     "Okay I'm impressed.", "Nice —",
   ],
   sad: [
-    "Oh no.", "Aw, I'm sorry.", "Oh —", "That's rough.",
+    "Oh no.", "Aw man.", "Oh —", "That's rough.",
     "Ugh, that sucks.", "Oh, that's tough.", "Man...",
   ],
   relatable: [
