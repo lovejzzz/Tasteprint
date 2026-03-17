@@ -3096,6 +3096,114 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Round 64: Mood signature enforcement ──
+  // Guarantee each mood has at least ONE distinctive visual hallmark.
+  // Without this, moods only differ by probability weights — clicking through
+  // moods feels samey. This step inspects what effects survived all the random
+  // rolls and adds a signature element if none exists.
+  if (!isNav && !isCode) {
+    if (moodId === "bold") {
+      // Bold MUST have at least one "hard" element: sharp corner, thick border,
+      // hard shadow offset, angular clip, or aggressive scale
+      const hasHard = (s.borderRadius !== undefined && s.borderRadius <= 6) ||
+        (s.border && parseInt(s.border) >= 3) ||
+        (s.boxShadow && /\d+px \d+px 0/.test(s.boxShadow)) ||
+        s.clipPath || (s.scale && s.scale >= 1.04) ||
+        (s.skewX && Math.abs(s.skewX) >= 1.5);
+      if (!hasHard && !isSmall) {
+        const fix = Math.random();
+        if (fix < 0.30) {
+          // Hard offset shadow in accent color
+          s.boxShadow = (s.boxShadow && s.boxShadow !== "none")
+            ? s.boxShadow + `, ${pick([3, 4, 5])}px ${pick([3, 4, 5])}px 0 ${acHex}30`
+            : `${pick([3, 4, 5])}px ${pick([3, 4, 5])}px 0 ${acHex}30`;
+        } else if (fix < 0.55) {
+          // Thick accent left bar
+          s.borderLeft = `${pick([3, 4, 5])}px solid ${acHex}${pick(["50", "60", "70"])}`;
+        } else if (fix < 0.80) {
+          // Aggressive scale bump
+          s.scale = pick([1.04, 1.05, 1.06]);
+        } else {
+          // Sharp corners override
+          s.borderRadius = pick([0, 2, 4]);
+        }
+      }
+    } else if (moodId === "playful") {
+      // Playful MUST have at least one "soft/fun" element: round corners,
+      // rotation, colorful shadow, dotted/dashed border, or bounce animation
+      const hasFun = (s.borderRadius !== undefined && s.borderRadius >= 20) ||
+        s.rotate || s.animation ||
+        (s.border && /dashed|dotted/.test(s.border)) ||
+        (s.boxShadow && /[2-9]px.*#[a-f0-9]{6}[2-4]0/i.test(s.boxShadow));
+      if (!hasFun && !isSmall) {
+        const fix = Math.random();
+        if (fix < 0.30) {
+          // Fun rotation
+          s.rotate = `${pick([-3, -2, -1.5, 1.5, 2, 3])}deg`;
+        } else if (fix < 0.55) {
+          // Very round corners
+          s.borderRadius = pick([20, 24, 28, 32]);
+        } else if (fix < 0.75) {
+          // Colorful offset shadow
+          const c = pick([gc1, gc2, gcGlow, acHex]);
+          s.boxShadow = (s.boxShadow && s.boxShadow !== "none")
+            ? s.boxShadow + `, ${pick([-3, 3])}px ${pick([2, 3])}px 0 ${c}25`
+            : `${pick([-3, 3])}px ${pick([2, 3])}px 0 ${c}25`;
+        } else {
+          // Dotted accent border
+          s.border = `2px dotted ${pick([gc1, gc2, gcGlow])}35`;
+        }
+      }
+    } else if (moodId === "elegant") {
+      // Elegant MUST have at least one "refined" element: transparency/glass,
+      // thin border, subtle glow, or gradient overlay
+      const hasRefined = s.backdropFilter || s.gradientOverlay ||
+        (s.border && parseInt(s.border) <= 1.5) ||
+        (s.boxShadow && /0 0 \d+px/.test(s.boxShadow)) ||
+        s.textDecoration || s.background;
+      if (!hasRefined && !isSmall) {
+        const fix = Math.random();
+        if (fix < 0.35) {
+          // Subtle ambient glow
+          s.boxShadow = (s.boxShadow && s.boxShadow !== "none")
+            ? s.boxShadow + `, 0 0 ${pick([16, 20, 24])}px ${(dc.muted || acHex)}08`
+            : `0 0 ${pick([16, 20, 24])}px ${(dc.muted || acHex)}08`;
+        } else if (fix < 0.60) {
+          // Thin refined border
+          s.border = `1px solid ${(dc.analog1 || acHex)}18`;
+        } else if (fix < 0.85) {
+          // Subtle gradient veil
+          const dir = pick([135, 160, 180, 200]);
+          s.gradientOverlay = `linear-gradient(${dir}deg, ${acHex}06 0%, transparent 50%, ${(gc1)}04 100%)`;
+        } else {
+          // Gentle backdrop blur
+          s.backdropFilter = `blur(${pick([4, 6, 8])}px) saturate(${pick([1.1, 1.15, 1.2])})`;
+        }
+      }
+    } else if (moodId === "minimal") {
+      // Minimal enforces RESTRAINT — strip excess when too many effects compete.
+      // Count active effects and remove excess if > 3 non-essential effects.
+      let effectCount = 0;
+      if (s.gradientOverlay) effectCount++;
+      if (s.textureOverlay) effectCount++;
+      if (s.clipPath) effectCount++;
+      if (s.animation) effectCount++;
+      if (s.outline && s.outline !== "none") effectCount++;
+      if (s.rotate) effectCount++;
+      if (s.textDecoration) effectCount++;
+      if (s.textStroke) effectCount++;
+      if (effectCount > 3) {
+        // Strip down to essentials — keep shadow + border + borderRadius, remove decoration
+        if (s.textureOverlay && effectCount > 3) { s.textureOverlay = undefined; effectCount--; }
+        if (s.clipPath && effectCount > 3) { s.clipPath = undefined; effectCount--; }
+        if (s.animation && effectCount > 3) { s.animation = undefined; effectCount--; }
+        if (s.rotate && effectCount > 3) { s.rotate = undefined; effectCount--; }
+        if (s.textStroke && effectCount > 3) { s.textStroke = undefined; effectCount--; }
+        if (s.outline && effectCount > 3) { s.outline = "none"; effectCount--; }
+      }
+    }
+  }
+
   return s;
 }
 
