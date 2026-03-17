@@ -158,6 +158,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           filter: isDrg ? `drop-shadow(0 8px 20px ${p.ac}15)` : [ds.filter, ds.hueRotate && `hue-rotate(${ds.hueRotate}deg)`].filter(Boolean).join(" ") || "none",
           outline: isSel ? `2px solid ${p.ac}${isPrimary ? "88" : "44"}` : (ds.outline || "none"),
           outlineOffset: isSel ? 4 : (ds.outlineOffset ? parseInt(ds.outlineOffset) : 4),
+          background: ds.background || undefined,
           borderRadius: ds.borderRadius ?? 14,
           boxShadow: ds.boxShadow && ds.boxShadow !== "none" ? ds.boxShadow : undefined,
           backdropFilter: ds.backdropFilter,

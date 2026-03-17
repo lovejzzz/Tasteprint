@@ -3035,6 +3035,67 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // ── Round 63: Wrapper background treatments ──
+  // Give the outer wrapper a background color/gradient that shows through the inner
+  // component's semi-transparent bg (enabled by the inner adaptation fix).
+  // Creates real depth: wrapper bg → inner component (semi-transparent) → overlay layers on top.
+  if (!isNav && !isCode && !isSmall) {
+    const wbChance = moodId === "bold" ? 0.22 : moodId === "playful" ? 0.20 : moodId === "elegant" ? 0.18 : moodId === "minimal" ? 0.05 : 0.14;
+    if (Math.random() < wbChance) {
+      if (moodId === "bold") {
+        const sub = Math.random();
+        if (sub < 0.35) {
+          // Saturated solid accent tint
+          s.background = pick([`${acHex}18`, `${gc1}15`, `${gcGlow}12`]);
+        } else if (sub < 0.65) {
+          // Diagonal split — two palette colors
+          const angle = pick([135, 150, 180, 210]);
+          s.background = `linear-gradient(${angle}deg, ${gc1}14 0%, ${gc2}10 50%, ${acHex}14 100%)`;
+        } else {
+          // Dark tinted base — dramatic contrast
+          s.background = `linear-gradient(180deg, ${shHex}20 0%, ${acHex}08 100%)`;
+        }
+      } else if (moodId === "playful") {
+        const sub = Math.random();
+        if (sub < 0.30) {
+          // Pastel wash — soft candy color
+          s.background = pick([`${gc1}12`, `${gc2}10`, `${gcGlow}0E`, `${acHex}10`]);
+        } else if (sub < 0.60) {
+          // Rainbow corner glow — radial from a corner
+          const corner = pick(["0% 0%", "100% 0%", "0% 100%", "100% 100%"]);
+          s.background = `radial-gradient(circle at ${corner}, ${pick([gc1, gc2, gcGlow])}15 0%, transparent 60%)`;
+        } else {
+          // Confetti gradient — multi-stop playful
+          s.background = `linear-gradient(${pick([45, 135, 225])}deg, ${gc1}0C 0%, ${gc2}08 33%, ${gcGlow}0A 66%, ${acHex}0C 100%)`;
+        }
+      } else if (moodId === "elegant") {
+        const sub = Math.random();
+        if (sub < 0.40) {
+          // Warm/cool tonal base — very subtle directional
+          const dir = pick([135, 180, 225]);
+          s.background = `linear-gradient(${dir}deg, ${(dc.muted || acHex)}0A 0%, transparent 70%)`;
+        } else if (sub < 0.70) {
+          // Pearl highlight — off-center radial glow
+          const ox = pick([30, 40, 60, 70]);
+          const oy = pick([20, 30, 40]);
+          s.background = `radial-gradient(ellipse at ${ox}% ${oy}%, ${acHex}0C 0%, transparent 55%)`;
+        } else {
+          // Silk wash — ultra-subtle single-color base
+          s.background = `${(dc.analog1 || acHex)}08`;
+        }
+      } else if (moodId === "minimal") {
+        // Barely-there tint — just enough to add warmth/coolness
+        s.background = pick([`${acHex}06`, `${shHex}04`, `${gc1}05`]);
+      } else {
+        // Auto: random pick from all moods
+        const autoSub = Math.random();
+        if (autoSub < 0.35) s.background = pick([`${acHex}12`, `${gc1}10`]);
+        else if (autoSub < 0.65) s.background = `linear-gradient(${pick([135, 180, 225])}deg, ${gc1}0C 0%, ${acHex}08 100%)`;
+        else s.background = `radial-gradient(circle at ${pick(["30% 30%", "70% 30%", "50% 50%"])}, ${pick([gc1, gcGlow, acHex])}10 0%, transparent 55%)`;
+      }
+    }
+  }
+
   return s;
 }
 

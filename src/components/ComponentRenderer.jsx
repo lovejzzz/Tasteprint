@@ -2243,11 +2243,11 @@ function C({dStyles, ...rest}) {
   if (ds.border) { overrides.border = "none"; overrides.borderLeft = undefined; overrides.borderRight = undefined; overrides.borderTop = undefined; overrides.borderBottom = undefined; }
   // Suppress inner boxShadow when outer wrapper has designer shadow
   if (ds.boxShadow && ds.boxShadow !== "none") overrides.boxShadow = "none";
-  // Make inner background semi-transparent when outer has gradient/texture overlays
-  if (ds.gradientOverlay || ds.textureOverlay) {
+  // Make inner background semi-transparent when outer has overlays or wrapper background
+  if (ds.gradientOverlay || ds.textureOverlay || ds.background) {
     const orig = el.props.style?.background;
     if (orig && typeof orig === "string" && orig.startsWith("#")) {
-      overrides.background = orig.slice(0, 7) + "88";
+      overrides.background = orig.slice(0, 7) + (ds.background ? "77" : "88");
     }
   }
   if (Object.keys(overrides).length === 0) return el;
