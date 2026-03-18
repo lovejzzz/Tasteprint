@@ -387,13 +387,16 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
-  /* Trend direction (stat-card) */
+  /* Trend direction (stat-card) — color-coded buttons */
   if ("trend" in defaults) {
     const trend = G("trend");
-    const trendIcons = ["▲", "▼", "→"];
-    const trendLabels = ["Up", "Down", "Flat"];
+    const trendData = [
+      { ic: "▲", label: "Up", color: "#4CAF50" },
+      { ic: "▼", label: "Down", color: "#EF4444" },
+      { ic: "→", label: "Flat", color: p.mu },
+    ];
     controls.push(<React.Fragment key="trend"><span style={label}>Trend</span>
-      {trendIcons.map((ic, i) => <button key={i} style={{ ...btn(trend === i), fontSize: 10, minWidth: 24, height: 20 }} onMouseDown={stop} onClick={() => onProp("trend", i)} title={trendLabels[i]}>{ic}</button>)}
+      {trendData.map((t, i) => <button key={i} style={{ ...btn(trend === i), fontSize: 10, minWidth: 24, height: 20, color: trend === i ? t.color : p.mu, borderColor: trend === i ? t.color + "60" : p.bd, background: trend === i ? t.color + "15" : "transparent" }} onMouseDown={stop} onClick={() => onProp("trend", i)} title={t.label}>{t.ic}</button>)}
     </React.Fragment>);
   }
 
