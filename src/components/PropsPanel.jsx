@@ -778,6 +778,14 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Completed toggle (list-item) */
+  if ("completed" in defaults) {
+    const on = G("completed");
+    controls.push(<React.Fragment key="completed"><span style={label}>{on ? "Done" : "To Do"}</span>
+      <Sw on={on} color="#4CAF50" stop={stop} onClick={() => onProp("completed", !on)} />
+    </React.Fragment>);
+  }
+
   if (controls.length === 0) return null;
 
   return <div style={sty} onMouseDown={stop}>{controls}</div>;
