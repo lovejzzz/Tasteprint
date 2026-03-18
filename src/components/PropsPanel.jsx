@@ -1514,6 +1514,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Disabled toggle (checkbox) */
+  if ("disabled" in defaults && type === "checkbox") {
+    const on = G("disabled");
+    controls.push(<React.Fragment key="ck-dis"><span style={label}>{on ? "Disabled" : "Enabled"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("disabled", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (list-item) */
+  if ("showIcon" in defaults && type === "list-item") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="li-icon"><span style={label}>{on ? "Icon" : "No Icon"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (card-sm) */
+  if ("showDescription" in defaults && type === "card-sm") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="cs-desc"><span style={label}>{on ? "Description" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Ticks toggle (slider) */
+  if ("showTicks" in defaults && type === "slider") {
+    const on = G("showTicks");
+    controls.push(<React.Fragment key="sl-ticks"><span style={label}>{on ? "Ticks" : "No Ticks"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTicks", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Label toggle (sub-toggle) */
+  if ("showLabel" in defaults && type === "sub-toggle") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="st-lbl"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
