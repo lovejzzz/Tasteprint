@@ -492,7 +492,15 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
-  /* Collapsed toggle (breadcrumb) */
+  /* Compact toggle (kanban) */
+  if ("compact" in defaults) {
+    const on = G("compact");
+    controls.push(<React.Fragment key="compact"><span style={label}>{on ? "Compact" : "Full"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("compact", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Collapsed toggle (breadcrumb, sidebar) */
   if ("collapsed" in defaults) {
     const on = G("collapsed");
     controls.push(<React.Fragment key="collapsed"><span style={label}>{on ? "Collapsed" : "Expanded"}</span>
