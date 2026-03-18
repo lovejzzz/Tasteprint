@@ -554,6 +554,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show label toggle (progress) */
+  if ("showLabel" in defaults) {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="showLabel"><span style={label}>{on ? "Label" : "No Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show action toggle (alert) */
+  if ("showAction" in defaults) {
+    const on = G("showAction");
+    controls.push(<React.Fragment key="showAction"><span style={label}>{on ? "Action" : "No Action"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAction", !on)} />
+    </React.Fragment>);
+  }
+
   /* Centered toggle (hero) */
   if ("centered" in defaults) {
     const on = G("centered");
