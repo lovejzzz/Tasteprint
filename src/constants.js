@@ -185,7 +185,7 @@ export const DEFAULT_PROPS = {
   dropdown:      { active: 0 },
   "cmd-palette": { active: 0 },
   progress:      { pct: 68, indeterminate: false },
-  slider:        { pct: 65 },
+  slider:        { pct: 65, disabled: false },
   "media-player":{ pct: 42, playing: true, liked: false, shuffle: false },
   testimonial:   { stars: 4, verified: 1 },
   rating:        { stars: 4 },
