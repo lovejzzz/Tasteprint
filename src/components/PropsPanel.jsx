@@ -1634,6 +1634,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Count toggle (badge) */
+  if ("showCount" in defaults && type === "badge") {
+    const on = G("showCount");
+    controls.push(<React.Fragment key="bg-count"><span style={label}>{on ? "Count" : "No Count"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCount", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Count toggle (kanban) */
+  if ("showCount" in defaults && type === "kanban") {
+    const on = G("showCount");
+    controls.push(<React.Fragment key="kb-count"><span style={label}>{on ? "Count" : "No Count"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCount", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (accordion) */
+  if ("showDescription" in defaults && type === "accordion") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="ac-desc"><span style={label}>{on ? "Description" : "No Description"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Badge toggle (notification) */
+  if ("showBadge" in defaults && type === "notification") {
+    const on = G("showBadge");
+    controls.push(<React.Fragment key="n-badge"><span style={label}>{on ? "Badge" : "No Badge"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBadge", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Page Numbers toggle (pagination) */
+  if ("showPageNumbers" in defaults && type === "pagination") {
+    const on = G("showPageNumbers");
+    controls.push(<React.Fragment key="pg-nums"><span style={label}>{on ? "Numbers" : "No Numbers"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPageNumbers", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
