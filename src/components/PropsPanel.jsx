@@ -866,6 +866,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Assignees toggle (kanban) */
+  if ("showAssignees" in defaults) {
+    const on = G("showAssignees");
+    controls.push(<React.Fragment key="showAssignees"><span style={label}>{on ? "Assignees" : "No Assignees"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAssignees", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Hints toggle (cmd-palette) */
+  if ("showHints" in defaults) {
+    const on = G("showHints");
+    controls.push(<React.Fragment key="showHints"><span style={label}>{on ? "Hints" : "No Hints"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHints", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Labels toggle (bento-grid) */
+  if ("showLabels" in defaults) {
+    const on = G("showLabels");
+    controls.push(<React.Fragment key="showLabels"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabels", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Connector toggle (timeline) */
+  if ("showConnector" in defaults) {
+    const on = G("showConnector");
+    controls.push(<React.Fragment key="showConnector"><span style={label}>{on ? "Connector" : "No Connector"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showConnector", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Avatar toggle (skeleton) */
+  if ("showAvatar" in defaults) {
+    const on = G("showAvatar");
+    controls.push(<React.Fragment key="showAvatar"><span style={label}>{on ? "Avatar" : "No Avatar"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAvatar", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
