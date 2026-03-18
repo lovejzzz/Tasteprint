@@ -1370,6 +1370,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Axis Labels toggle (chart) */
+  if ("showAxisLabels" in defaults && type === "chart") {
+    const on = G("showAxisLabels");
+    controls.push(<React.Fragment key="showAxis-ch"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAxisLabels", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Avatar toggle (profile-card) */
+  if ("showAvatar" in defaults && type === "profile-card") {
+    const on = G("showAvatar");
+    controls.push(<React.Fragment key="showAvatar-pc"><span style={label}>{on ? "Avatar" : "No Avatar"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAvatar", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Tags toggle (kanban) */
+  if ("showTags" in defaults && type === "kanban") {
+    const on = G("showTags");
+    controls.push(<React.Fragment key="showTags-kb"><span style={label}>{on ? "Tags" : "No Tags"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTags", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Brand toggle (footer) */
+  if ("showBrand" in defaults && type === "footer") {
+    const on = G("showBrand");
+    controls.push(<React.Fragment key="showBrand-ft"><span style={label}>{on ? "Brand" : "No Brand"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBrand", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Score toggle (rating) */
+  if ("showScore" in defaults && type === "rating") {
+    const on = G("showScore");
+    controls.push(<React.Fragment key="showScore-rt"><span style={label}>{on ? "Score" : "No Score"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showScore", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
