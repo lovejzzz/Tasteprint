@@ -323,6 +323,14 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Error toggle (input) */
+  if ("error" in defaults) {
+    const on = G("error");
+    controls.push(<React.Fragment key="error"><span style={label}>{on ? "Error" : "Valid"}</span>
+      <Sw on={on} color="#EF4444" stop={stop} onClick={() => onProp("error", !on)} />
+    </React.Fragment>);
+  }
+
   /* Results count (search) */
   if ("results" in defaults) {
     const res = G("results");
@@ -346,6 +354,16 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     const on = G("copied");
     controls.push(<React.Fragment key="copied"><span style={label}>{on ? "Copied!" : "Copy"}</span>
       <button style={{ ...btn(on), fontSize: 10, width: 24, height: 20, color: on ? "#4CAF50" : p.mu, borderColor: on ? "#4CAF5060" : p.bd, background: on ? "#4CAF5015" : "transparent" }} onMouseDown={stop} onClick={() => { onProp("copied", true); setTimeout(() => onProp("copied", false), 2000); }}>{on ? "✓" : "⎘"}</button>
+    </React.Fragment>);
+  }
+
+  /* Count (badge) */
+  if ("count" in defaults) {
+    const ct = G("count");
+    controls.push(<React.Fragment key="count"><span style={label}>Count</span>
+      <button style={btn(false)} onMouseDown={stop} onClick={() => onProp("count", Math.max(0, ct - 1))}>−</button>
+      <span style={{ fontSize: 11, fontWeight: 500, color: p.tx, minWidth: 14, textAlign: "center" }}>{ct}</span>
+      <button style={btn(false)} onMouseDown={stop} onClick={() => onProp("count", Math.min(99, ct + 1))}>+</button>
     </React.Fragment>);
   }
 
