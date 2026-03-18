@@ -946,6 +946,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Badge toggle (sub-toggle) */
+  if ("showBadge" in defaults && type === "sub-toggle") {
+    const on = G("showBadge");
+    controls.push(<React.Fragment key="showBadgeST"><span style={label}>{on ? "Badge" : "No Badge"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBadge", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Header toggle (code-block) */
+  if ("showHeader" in defaults && type === "code-block") {
+    const on = G("showHeader");
+    controls.push(<React.Fragment key="showHeaderCB"><span style={label}>{on ? "Header" : "No Header"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHeader", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Caption toggle (image-placeholder) */
+  if ("showCaption" in defaults) {
+    const on = G("showCaption");
+    controls.push(<React.Fragment key="showCaption"><span style={label}>{on ? "Caption" : "No Caption"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCaption", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Items toggle (order-summary) */
+  if ("showItems" in defaults) {
+    const on = G("showItems");
+    controls.push(<React.Fragment key="showItems"><span style={label}>{on ? "Items" : "No Items"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showItems", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Controls toggle (cart-item) */
+  if ("showControls" in defaults) {
+    const on = G("showControls");
+    controls.push(<React.Fragment key="showControls"><span style={label}>{on ? "Controls" : "No Controls"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showControls", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");

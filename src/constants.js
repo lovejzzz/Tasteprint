@@ -189,7 +189,7 @@ export const DEFAULT_PROPS = {
   "media-player":{ pct: 42, playing: true, liked: false, shuffle: false, muted: false, animated: true },
   testimonial:   { stars: 4, verified: 1, showAvatar: true, animated: true },
   rating:        { stars: 4, interactive: true, showCount: true, animated: true },
-  "sub-toggle":  { active: 1, animated: true },
+  "sub-toggle":  { active: 1, showBadge: true, animated: true },
   "dash-panel":  { bars: [65,42,78,35,55,88,48], ring: 72, showStatus: true, animated: true },
   chart:         { bars: [55,80,45,90,65,75], highlight: 3, animated: true, showLegend: true, showGrid: true },
   notification:  { read: [false, false, true], muted: false, showHeader: true, animated: true },
@@ -202,9 +202,9 @@ export const DEFAULT_PROPS = {
   skeleton:      { loading: true, showAvatar: true, animated: true },
   "bento-grid":  { active: 0, showLabels: true, animated: true },
   "feature-table":{ highlight: 1, compact: false, showCheck: true, animated: true },
-  "cart-item":   { qty: 1, saved: false, animated: true },
+  "cart-item":   { qty: 1, saved: false, showControls: true, animated: true },
   receipt:       { tip: 0, paid: 1, showBreakdown: true, animated: true },
-  "order-summary":{ discount: false, shipping: 0, animated: true },
+  "order-summary":{ discount: false, shipping: 0, showItems: true, animated: true },
   "promo-banner":{ dismissed: false, closable: true, animated: true },
   table:         { highlight: 0, sortCol: -1, sortable: true, striped: true, animated: true },
   card:          { featured: false, liked: false, loading: false, animated: true },
@@ -226,8 +226,8 @@ export const DEFAULT_PROPS = {
   search:        { results: 3, loading: false, clearable: true, animated: true },
   tooltip:       { on: true, position: 0, animated: true },
   heading:       { align: 0, size: 0, decorated: false, animated: true },
-  "image-placeholder": { shape: 0, uploadable: true, animated: true },
-  "code-block": { lineNumbers: true, copied: false, animated: true },
+  "image-placeholder": { shape: 0, uploadable: true, showCaption: true, animated: true },
+  "code-block": { lineNumbers: true, copied: false, showHeader: true, animated: true },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
