@@ -1242,6 +1242,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Shortcut toggle (tooltip) */
+  if ("showShortcut" in defaults && type === "tooltip") {
+    const on = G("showShortcut");
+    controls.push(<React.Fragment key="showShort-tt"><span style={label}>{on ? "Shortcut" : "No Shortcut"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showShortcut", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Copy Button toggle (code-block) */
+  if ("showCopy" in defaults && type === "code-block") {
+    const on = G("showCopy");
+    controls.push(<React.Fragment key="showCopy-cb"><span style={label}>{on ? "Copy Btn" : "No Copy"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCopy", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");

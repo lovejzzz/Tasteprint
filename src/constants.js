@@ -175,7 +175,7 @@ export const LIB = [
 export const DEFAULT_PROPS = {
   toggle:        { on: true, animated: true },
   checkbox:      { checked: [true, false, false], showDescription: true, animated: true },
-  tabs:          { active: 0, showIcon: true, animated: true },
+  tabs:          { active: 0, showIcon: true, showBadge: true, animated: true },
   navbar:        { active: 0, showCta: true, animated: true },
   sidebar:       { active: 0, collapsed: false, showHeader: true, animated: true },
   pagination:    { active: 2, total: 8, showTotal: true, showArrows: true, animated: true },
@@ -190,7 +190,7 @@ export const DEFAULT_PROPS = {
   testimonial:   { stars: 4, verified: 1, showAvatar: true, showName: true, animated: true },
   rating:        { stars: 4, interactive: true, showCount: true, showAuthor: true, animated: true },
   "sub-toggle":  { active: 1, showBadge: true, animated: true },
-  "dash-panel":  { bars: [65,42,78,35,55,88,48], ring: 72, showStatus: true, animated: true },
+  "dash-panel":  { bars: [65,42,78,35,55,88,48], ring: 72, showStatus: true, showLabels: true, animated: true },
   chart:         { bars: [55,80,45,90,65,75], highlight: 3, animated: true, showLegend: true, showGrid: true },
   notification:  { read: [false, false, true], muted: false, showHeader: true, showAvatar: true, animated: true },
   alert:         { level: 0, dismissed: false, showAction: true, showIcon: true, animated: true },
@@ -203,7 +203,7 @@ export const DEFAULT_PROPS = {
   "bento-grid":  { active: 0, showLabels: true, animated: true },
   "feature-table":{ highlight: 1, compact: false, showCheck: true, animated: true },
   "cart-item":   { qty: 1, saved: false, showControls: true, animated: true },
-  receipt:       { tip: 0, paid: 1, showBreakdown: true, animated: true },
+  receipt:       { tip: 0, paid: 1, showBreakdown: true, showStatus: true, animated: true },
   "order-summary":{ discount: false, shipping: 0, showItems: true, showCta: true, animated: true },
   "promo-banner":{ dismissed: false, closable: true, showCode: true, animated: true },
   table:         { highlight: 0, sortCol: -1, sortable: true, striped: true, showHeader: true, animated: true },
@@ -224,10 +224,10 @@ export const DEFAULT_PROPS = {
   input:         { focused: false, error: false, disabled: false, success: false, showHelper: true, animated: true },
   select:        { active: 0, disabled: false, searchable: false, showFlag: true, animated: true },
   search:        { results: 3, loading: false, clearable: true, showIcon: true, showCount: true, animated: true },
-  tooltip:       { on: true, position: 0, showArrow: true, animated: true },
+  tooltip:       { on: true, position: 0, showArrow: true, showShortcut: true, animated: true },
   heading:       { align: 0, size: 0, decorated: false, showSubtitle: true, animated: true },
   "image-placeholder": { shape: 0, uploadable: true, showCaption: true, animated: true },
-  "code-block": { lineNumbers: true, copied: false, showHeader: true, animated: true },
+  "code-block": { lineNumbers: true, copied: false, showHeader: true, showCopy: true, animated: true },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
