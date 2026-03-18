@@ -182,7 +182,7 @@ export const DEFAULT_PROPS = {
   stepper:       { active: 1, animated: true },
   timeline:      { active: 0, completed: [true, false, false] },
   accordion:     { open: [true, false, false], animated: true },
-  dropdown:      { active: 0, disabled: false },
+  dropdown:      { active: 0, disabled: false, animated: true },
   "cmd-palette": { active: 0, open: true },
   progress:      { pct: 68, indeterminate: false, showLabel: true },
   slider:        { pct: 65, disabled: false, showValue: true },
@@ -222,12 +222,12 @@ export const DEFAULT_PROPS = {
   navbar:        { active: 0, animated: true },
   breadcrumb:    { active: 2, collapsed: false, animated: true },
   input:         { focused: false, error: false, disabled: false, success: false },
-  select:        { active: 0, disabled: false, searchable: false },
-  search:        { results: 3, loading: false, clearable: true },
+  select:        { active: 0, disabled: false, searchable: false, animated: true },
+  search:        { results: 3, loading: false, clearable: true, animated: true },
   tooltip:       { on: true, position: 0, animated: true },
   heading:       { align: 0, size: 0, decorated: false },
   "image-placeholder": { shape: 0, uploadable: true },
-  "code-block": { lineNumbers: true, copied: false },
+  "code-block": { lineNumbers: true, copied: false, animated: true },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
