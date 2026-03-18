@@ -2074,6 +2074,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Title toggle (toast) */
+  if ("showTitle" in defaults && type === "toast") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="tst-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Title toggle (card) */
+  if ("showTitle" in defaults && type === "card") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="cd-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Title toggle (hero) */
+  if ("showTitle" in defaults && type === "hero") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="hr-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Labels toggle (breadcrumb) */
+  if ("showLabels" in defaults && type === "breadcrumb") {
+    const on = G("showLabels");
+    controls.push(<React.Fragment key="bc-lbl"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabels", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (tooltip) */
+  if ("showIcon" in defaults && type === "tooltip") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="tt-ico"><span style={label}>{on ? "Icon" : "No Icon"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
