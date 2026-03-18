@@ -1330,6 +1330,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Description toggle (timeline) */
+  if ("showDescription" in defaults && type === "timeline") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="showDesc-tl"><span style={label}>{on ? "Desc" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Count toggle (heading) */
+  if ("showCount" in defaults && type === "heading") {
+    const on = G("showCount");
+    controls.push(<React.Fragment key="showCount-hd"><span style={label}>{on ? "Count" : "No Count"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCount", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Cover toggle (media-player) */
+  if ("showCover" in defaults && type === "media-player") {
+    const on = G("showCover");
+    controls.push(<React.Fragment key="showCover-mp"><span style={label}>{on ? "Cover" : "No Cover"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCover", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Role toggle (testimonial) */
+  if ("showRole" in defaults && type === "testimonial") {
+    const on = G("showRole");
+    controls.push(<React.Fragment key="showRole-tm"><span style={label}>{on ? "Role" : "No Role"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showRole", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Time toggle (notification) */
+  if ("showTime" in defaults && type === "notification") {
+    const on = G("showTime");
+    controls.push(<React.Fragment key="showTime-nt"><span style={label}>{on ? "Time" : "No Time"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTime", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
