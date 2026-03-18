@@ -1874,6 +1874,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Price toggle (pricing-card) */
+  if ("showPrice" in defaults && type === "pricing-card") {
+    const on = G("showPrice");
+    controls.push(<React.Fragment key="pc-price"><span style={label}>{on ? "Price" : "No Price"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPrice", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Variant toggle (cart-item) */
+  if ("showVariant" in defaults && type === "cart-item") {
+    const on = G("showVariant");
+    controls.push(<React.Fragment key="ci-variant"><span style={label}>{on ? "Variant" : "No Variant"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showVariant", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Due Date toggle (kanban) */
+  if ("showDueDate" in defaults && type === "kanban") {
+    const on = G("showDueDate");
+    controls.push(<React.Fragment key="kb-due"><span style={label}>{on ? "Due Date" : "No Due Date"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDueDate", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Timer toggle (promo-banner) */
+  if ("showTimer" in defaults && type === "promo-banner") {
+    const on = G("showTimer");
+    controls.push(<React.Fragment key="pb-timer"><span style={label}>{on ? "Timer" : "No Timer"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTimer", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Title toggle (order-summary) */
+  if ("showTitle" in defaults && type === "order-summary") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="os-title"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
