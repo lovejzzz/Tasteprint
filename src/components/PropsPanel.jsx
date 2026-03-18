@@ -2154,6 +2154,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Nav Links toggle (navbar) */
+  if ("showNavLinks" in defaults && type === "navbar") {
+    const on = G("showNavLinks");
+    controls.push(<React.Fragment key="nv-lnk"><span style={label}>{on ? "Links" : "No Links"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showNavLinks", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Text toggle (promo-banner) */
+  if ("showText" in defaults && type === "promo-banner") {
+    const on = G("showText");
+    controls.push(<React.Fragment key="pb-txt"><span style={label}>{on ? "Text" : "No Text"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showText", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Total toggle (receipt) */
+  if ("showTotal" in defaults && type === "receipt") {
+    const on = G("showTotal");
+    controls.push(<React.Fragment key="rc-tot"><span style={label}>{on ? "Total" : "No Total"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTotal", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Dividers toggle (order-summary) */
+  if ("showDividers" in defaults && type === "order-summary") {
+    const on = G("showDividers");
+    controls.push(<React.Fragment key="os-div"><span style={label}>{on ? "Dividers" : "No Dividers"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDividers", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Filename toggle (code-block) */
+  if ("showFilename" in defaults && type === "code-block") {
+    const on = G("showFilename");
+    controls.push(<React.Fragment key="cb-file"><span style={label}>{on ? "Filename" : "No Filename"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showFilename", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");

@@ -203,9 +203,9 @@ export const DEFAULT_PROPS = {
   "bento-grid":  { active: 0, showLabels: true, showIcon: true, showValues: true, showDescription: true, animated: true },
   "feature-table":{ highlight: 1, compact: false, showCheck: true, showHeader: true, showCta: true, showFeatureLabels: true, animated: true },
   "cart-item":   { qty: 1, saved: false, showControls: true, showImage: true, showPrice: true, showVariant: true, showName: true, animated: true },
-  receipt:       { tip: 0, paid: 1, showBreakdown: true, showStatus: true, showPayment: true, showHeader: true, animated: true },
-  "order-summary":{ discount: false, shipping: 0, showItems: true, showCta: true, showBreakdown: true, showTitle: true, animated: true },
-  "promo-banner":{ dismissed: false, closable: true, showCode: true, showEmoji: true, showCta: true, showTimer: true, animated: true },
+  receipt:       { tip: 0, paid: 1, showBreakdown: true, showStatus: true, showPayment: true, showHeader: true, showTotal: true, animated: true },
+  "order-summary":{ discount: false, shipping: 0, showItems: true, showCta: true, showBreakdown: true, showTitle: true, showDividers: true, animated: true },
+  "promo-banner":{ dismissed: false, closable: true, showCode: true, showEmoji: true, showCta: true, showTimer: true, showText: true, animated: true },
   table:         { highlight: 0, sortCol: -1, sortable: true, striped: true, showHeader: true, showBorder: true, animated: true },
   card:          { featured: false, liked: false, loading: false, showAuthor: true, showCta: true, showDescription: true, showImage: true, showTitle: true, animated: true },
   badge:         { level: 0, count: 3, dot: false, showLabel: true, showCount: true, animated: true },
@@ -219,7 +219,7 @@ export const DEFAULT_PROPS = {
   hero:          { active: 0, centered: true, showTrust: true, showCta: true, showSubtitle: true, showBadge: true, showTitle: true, animated: true },
   toggle:        { on: true, disabled: false, showLabel: true, animated: true },
   button:        { loading: false, disabled: false, icon: false, showLabel: true, animated: true },
-  navbar:        { active: 0, showCta: true, showLogo: true, animated: true },
+  navbar:        { active: 0, showCta: true, showLogo: true, showNavLinks: true, animated: true },
   breadcrumb:    { active: 2, collapsed: false, showHome: true, showSeparator: true, showLabels: true, animated: true },
   input:         { focused: false, error: false, disabled: false, success: false, showHelper: true, showLabel: true, showIcon: true, animated: true },
   select:        { active: 0, disabled: false, searchable: false, showFlag: true, showLabel: true, showChevron: true, animated: true },
@@ -227,7 +227,7 @@ export const DEFAULT_PROPS = {
   tooltip:       { on: true, position: 0, showArrow: true, showShortcut: true, showDescription: true, showIcon: true, animated: true },
   heading:       { align: 0, size: 0, decorated: false, showSubtitle: true, showCount: true, showOverline: true, showDivider: true, animated: true },
   "image-placeholder": { shape: 0, uploadable: true, showCaption: true, showDimensions: true, showIcon: true, animated: true },
-  "code-block": { lineNumbers: true, copied: false, showHeader: true, showCopy: true, showLanguage: true, animated: true },
+  "code-block": { lineNumbers: true, copied: false, showHeader: true, showCopy: true, showLanguage: true, showFilename: true, animated: true },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
