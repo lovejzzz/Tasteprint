@@ -1298,6 +1298,38 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Close toggle (toast, alert) */
+  if ("showClose" in defaults) {
+    const on = G("showClose");
+    controls.push(<React.Fragment key="showClose"><span style={label}>{on ? "Close Btn" : "No Close"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showClose", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Footer toggle (sidebar) */
+  if ("showFooter" in defaults && type === "sidebar") {
+    const on = G("showFooter");
+    controls.push(<React.Fragment key="showFoot-sb"><span style={label}>{on ? "Footer" : "No Footer"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showFooter", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Label toggle (select) */
+  if ("showLabel" in defaults && type === "select") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="showLabel-sel"><span style={label}>{on ? "Label" : "No Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Label toggle (input) */
+  if ("showLabel" in defaults && type === "input") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="showLabel-inp"><span style={label}>{on ? "Label" : "No Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
