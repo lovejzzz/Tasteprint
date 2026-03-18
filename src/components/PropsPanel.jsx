@@ -1026,6 +1026,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Subtitle toggle (heading) */
+  if ("showSubtitle" in defaults) {
+    const on = G("showSubtitle");
+    controls.push(<React.Fragment key="showSubtitle"><span style={label}>{on ? "Subtitle" : "No Subtitle"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showSubtitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Code toggle (promo-banner) */
+  if ("showCode" in defaults) {
+    const on = G("showCode");
+    controls.push(<React.Fragment key="showCode"><span style={label}>{on ? "Code" : "No Code"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCode", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Label toggle (stat-card) */
+  if ("showLabel" in defaults && type === "stat-card") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="showLabel-stat"><span style={label}>{on ? "Label" : "No Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (card-sm) */
+  if ("showIcon" in defaults && type === "card-sm") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="showIcon-csm"><span style={label}>{on ? "Icon" : "No Icon"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show CTA toggle (card) */
+  if ("showCta" in defaults && type === "card") {
+    const on = G("showCta");
+    controls.push(<React.Fragment key="showCta"><span style={label}>{on ? "CTA" : "No CTA"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCta", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
