@@ -1914,6 +1914,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Header toggle (receipt) */
+  if ("showHeader" in defaults && type === "receipt") {
+    const on = G("showHeader");
+    controls.push(<React.Fragment key="rc-hdr"><span style={label}>{on ? "Header" : "No Header"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHeader", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (bento-grid) */
+  if ("showDescription" in defaults && type === "bento-grid") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="bg-desc"><span style={label}>{on ? "Description" : "No Description"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (image-placeholder) */
+  if ("showIcon" in defaults && type === "image-placeholder") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="ip-icon"><span style={label}>{on ? "Icon" : "No Icon"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Value toggle (stat-card) */
+  if ("showValue" in defaults && type === "stat-card") {
+    const on = G("showValue");
+    controls.push(<React.Fragment key="sc-val"><span style={label}>{on ? "Value" : "No Value"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showValue", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Quote toggle (testimonial) */
+  if ("showQuote" in defaults && type === "testimonial") {
+    const on = G("showQuote");
+    controls.push(<React.Fragment key="tm-quote"><span style={label}>{on ? "Quote" : "No Quote"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showQuote", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
