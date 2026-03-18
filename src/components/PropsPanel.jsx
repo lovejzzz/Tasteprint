@@ -1674,6 +1674,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Border toggle (table) */
+  if ("showBorder" in defaults && type === "table") {
+    const on = G("showBorder");
+    controls.push(<React.Fragment key="tb-border"><span style={label}>{on ? "Borders" : "No Borders"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBorder", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (dropdown) */
+  if ("showDescription" in defaults && type === "dropdown") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="dd-desc"><span style={label}>{on ? "Descriptions" : "No Descriptions"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Cover toggle (profile-card) */
+  if ("showCover" in defaults && type === "profile-card") {
+    const on = G("showCover");
+    controls.push(<React.Fragment key="pc-cover"><span style={label}>{on ? "Cover" : "No Cover"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCover", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Artist toggle (media-player) */
+  if ("showArtist" in defaults && type === "media-player") {
+    const on = G("showArtist");
+    controls.push(<React.Fragment key="mp-artist"><span style={label}>{on ? "Artist" : "No Artist"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showArtist", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show CTA toggle (feature-table) */
+  if ("showCta" in defaults && type === "feature-table") {
+    const on = G("showCta");
+    controls.push(<React.Fragment key="ft-cta"><span style={label}>{on ? "CTA" : "No CTA"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCta", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
