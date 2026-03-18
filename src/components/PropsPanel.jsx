@@ -1794,6 +1794,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Label toggle (checkbox) */
+  if ("showLabel" in defaults && type === "checkbox") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="ck-lbl"><span style={label}>{on ? "Label" : "No Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Title toggle (alert) */
+  if ("showTitle" in defaults && type === "alert") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="al-title"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (toast) */
+  if ("showDescription" in defaults && type === "toast") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="ts-desc"><span style={label}>{on ? "Description" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (notification) */
+  if ("showDescription" in defaults && type === "notification") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="nt-desc"><span style={label}>{on ? "Description" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Status toggle (list-item) */
+  if ("showStatus" in defaults && type === "list-item") {
+    const on = G("showStatus");
+    controls.push(<React.Fragment key="li-stat"><span style={label}>{on ? "Status" : "No Status"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showStatus", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
