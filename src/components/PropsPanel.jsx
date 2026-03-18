@@ -333,6 +333,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Line numbers toggle (code-block) */
+  if ("lineNumbers" in defaults) {
+    const on = G("lineNumbers");
+    controls.push(<React.Fragment key="lineNumbers"><span style={label}>{on ? "Lines" : "No lines"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("lineNumbers", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Copied state (code-block) */
+  if ("copied" in defaults) {
+    const on = G("copied");
+    controls.push(<React.Fragment key="copied"><span style={label}>{on ? "Copied!" : "Copy"}</span>
+      <button style={{ ...btn(on), fontSize: 10, width: 24, height: 20, color: on ? "#4CAF50" : p.mu, borderColor: on ? "#4CAF5060" : p.bd, background: on ? "#4CAF5015" : "transparent" }} onMouseDown={stop} onClick={() => { onProp("copied", true); setTimeout(() => onProp("copied", false), 2000); }}>{on ? "✓" : "⎘"}</button>
+    </React.Fragment>);
+  }
+
   /* Shape (image-placeholder) */
   if ("shape" in defaults) {
     const sh = G("shape");

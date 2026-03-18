@@ -227,6 +227,7 @@ export const DEFAULT_PROPS = {
   tooltip:       { on: true },
   heading:       { align: 0, size: 0 },
   "image-placeholder": { shape: 0 },
+  "code-block": { lineNumbers: true, copied: false },
 };
 
 export const HAS_PROPS = new Set(Object.keys(DEFAULT_PROPS));
