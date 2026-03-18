@@ -1066,6 +1066,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Header toggle (sidebar) */
+  if ("showHeader" in defaults && type === "sidebar") {
+    const on = G("showHeader");
+    controls.push(<React.Fragment key="showHeader-sb"><span style={label}>{on ? "Header" : "No Header"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHeader", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Stats toggle (profile-card) */
+  if ("showStats" in defaults && type === "profile-card") {
+    const on = G("showStats");
+    controls.push(<React.Fragment key="showStats"><span style={label}>{on ? "Stats" : "No Stats"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showStats", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Price toggle (product-card) */
+  if ("showPrice" in defaults && type === "product-card") {
+    const on = G("showPrice");
+    controls.push(<React.Fragment key="showPrice"><span style={label}>{on ? "Price" : "No Price"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPrice", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Name toggle (testimonial) */
+  if ("showName" in defaults && type === "testimonial") {
+    const on = G("showName");
+    controls.push(<React.Fragment key="showName"><span style={label}>{on ? "Name" : "No Name"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showName", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Avatar toggle (notification) */
+  if ("showAvatar" in defaults && type === "notification") {
+    const on = G("showAvatar");
+    controls.push(<React.Fragment key="showAvatar-notif"><span style={label}>{on ? "Avatar" : "No Avatar"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAvatar", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
