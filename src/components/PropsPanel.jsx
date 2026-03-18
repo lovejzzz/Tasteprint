@@ -1002,6 +1002,30 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Description toggle (list-item) */
+  if ("showDescription" in defaults) {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="showDescription"><span style={label}>{on ? "Description" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Author toggle (card) */
+  if ("showAuthor" in defaults) {
+    const on = G("showAuthor");
+    controls.push(<React.Fragment key="showAuthor"><span style={label}>{on ? "Author" : "No Author"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAuthor", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Badge toggle (pricing-card) */
+  if ("showBadge" in defaults && type === "pricing-card") {
+    const on = G("showBadge");
+    controls.push(<React.Fragment key="showBadge-pricing"><span style={label}>{on ? "Badge" : "No Badge"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBadge", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
