@@ -1954,6 +1954,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Title toggle (chart) */
+  if ("showTitle" in defaults && type === "chart") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="ch-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Data Points toggle (chart) */
+  if ("showDataPoints" in defaults && type === "chart") {
+    const on = G("showDataPoints");
+    controls.push(<React.Fragment key="ch-dp"><span style={label}>{on ? "Data Points" : "No Points"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDataPoints", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Trend toggle (dash-panel) */
+  if ("showTrend" in defaults && type === "dash-panel") {
+    const on = G("showTrend");
+    controls.push(<React.Fragment key="dp-tr"><span style={label}>{on ? "Trend" : "No Trend"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTrend", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Ring toggle (dash-panel) */
+  if ("showRing" in defaults && type === "dash-panel") {
+    const on = G("showRing");
+    controls.push(<React.Fragment key="dp-rg"><span style={label}>{on ? "Ring" : "No Ring"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showRing", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Socials toggle (profile-card) */
+  if ("showSocials" in defaults && type === "profile-card") {
+    const on = G("showSocials");
+    controls.push(<React.Fragment key="pc-soc"><span style={label}>{on ? "Socials" : "No Socials"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showSocials", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
