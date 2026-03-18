@@ -1994,6 +1994,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Title toggle (media-player) */
+  if ("showTitle" in defaults && type === "media-player") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="mp-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Review Text toggle (rating) */
+  if ("showReviewText" in defaults && type === "rating") {
+    const on = G("showReviewText");
+    controls.push(<React.Fragment key="rt-rv"><span style={label}>{on ? "Review" : "No Review"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showReviewText", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Price toggle (sub-toggle) */
+  if ("showPrice" in defaults && type === "sub-toggle") {
+    const on = G("showPrice");
+    controls.push(<React.Fragment key="st-pr"><span style={label}>{on ? "Price" : "No Price"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPrice", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Feature Labels toggle (feature-table) */
+  if ("showFeatureLabels" in defaults && type === "feature-table") {
+    const on = G("showFeatureLabels");
+    controls.push(<React.Fragment key="ft-fl"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showFeatureLabels", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Label toggle (tabs) */
+  if ("showLabel" in defaults && type === "tabs") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="tab-lbl"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
