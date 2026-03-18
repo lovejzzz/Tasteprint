@@ -1714,6 +1714,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Numbers toggle (stepper) */
+  if ("showNumbers" in defaults && type === "stepper") {
+    const on = G("showNumbers");
+    controls.push(<React.Fragment key="st-nums"><span style={label}>{on ? "Numbers" : "No Numbers"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showNumbers", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (timeline) */
+  if ("showIcon" in defaults && type === "timeline") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="tl-icon"><span style={label}>{on ? "Icons" : "No Icons"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Language toggle (code-block) */
+  if ("showLanguage" in defaults && type === "code-block") {
+    const on = G("showLanguage");
+    controls.push(<React.Fragment key="cb-lang"><span style={label}>{on ? "Language" : "No Language"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLanguage", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Category toggle (cmd-palette) */
+  if ("showCategory" in defaults && type === "cmd-palette") {
+    const on = G("showCategory");
+    controls.push(<React.Fragment key="cp-cat"><span style={label}>{on ? "Categories" : "No Categories"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCategory", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Chevron toggle (select) */
+  if ("showChevron" in defaults && type === "select") {
+    const on = G("showChevron");
+    controls.push(<React.Fragment key="sel-chev"><span style={label}>{on ? "Chevron" : "No Chevron"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showChevron", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
