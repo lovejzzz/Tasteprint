@@ -60,6 +60,26 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           whiteSpace: "nowrap", userSelect: "none",
           ...getTextureStyle(texture, p),
         }}>
+          {/* Drag handle */}
+          <div
+            onMouseDown={e => { e.stopPropagation(); onDown(e, s); }}
+            onTouchStart={e => { e.stopPropagation(); onDown(e, s); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "grab", padding: "4px 5px", borderRadius: 999,
+              color: p.mu, opacity: 0.5, transition: "opacity .15s",
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "0.5"; }}
+            title="Drag to move"
+          >
+            <svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor">
+              <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
+              <circle cx="2" cy="5" r="1.2"/><circle cx="6" cy="5" r="1.2"/>
+              <circle cx="2" cy="8" r="1.2"/><circle cx="6" cy="8" r="1.2"/>
+            </svg>
+          </div>
           {mx > 1 && <>
             <button aria-label="Previous variant" {...ph}
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, -1); }}
