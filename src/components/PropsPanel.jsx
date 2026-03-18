@@ -1282,6 +1282,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Chevron toggle (dropdown) */
+  if ("showChevron" in defaults && type === "dropdown") {
+    const on = G("showChevron");
+    controls.push(<React.Fragment key="showChev-dd"><span style={label}>{on ? "Chevron" : "No Chevron"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showChevron", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Rating toggle (product-card) */
+  if ("showRating" in defaults && type === "product-card") {
+    const on = G("showRating");
+    controls.push(<React.Fragment key="showRat-pc"><span style={label}>{on ? "Rating" : "No Rating"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showRating", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
