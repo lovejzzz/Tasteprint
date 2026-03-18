@@ -1258,6 +1258,30 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Lines toggle (skeleton) */
+  if ("showLines" in defaults && type === "skeleton") {
+    const on = G("showLines");
+    controls.push(<React.Fragment key="showLines-sk"><span style={label}>{on ? "Lines" : "No Lines"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLines", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Image toggle (cart-item) */
+  if ("showImage" in defaults && type === "cart-item") {
+    const on = G("showImage");
+    controls.push(<React.Fragment key="showImg-ci"><span style={label}>{on ? "Image" : "No Image"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showImage", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Emoji toggle (promo-banner) */
+  if ("showEmoji" in defaults && type === "promo-banner") {
+    const on = G("showEmoji");
+    controls.push(<React.Fragment key="showEmoji-pb"><span style={label}>{on ? "Emoji" : "No Emoji"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showEmoji", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
