@@ -1594,6 +1594,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Count toggle (tag-input) */
+  if ("showCount" in defaults && type === "tag-input") {
+    const on = G("showCount");
+    controls.push(<React.Fragment key="ti-count"><span style={label}>{on ? "Count" : "No Count"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCount", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show CTA toggle (promo-banner) */
+  if ("showCta" in defaults && type === "promo-banner") {
+    const on = G("showCta");
+    controls.push(<React.Fragment key="pb-cta"><span style={label}>{on ? "CTA" : "No CTA"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCta", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Breakdown toggle (order-summary) */
+  if ("showBreakdown" in defaults && type === "order-summary") {
+    const on = G("showBreakdown");
+    controls.push(<React.Fragment key="os-breakdown"><span style={label}>{on ? "Breakdown" : "No Breakdown"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBreakdown", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Price toggle (cart-item) */
+  if ("showPrice" in defaults && type === "cart-item") {
+    const on = G("showPrice");
+    controls.push(<React.Fragment key="ci-price"><span style={label}>{on ? "Price" : "No Price"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPrice", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Payment toggle (receipt) */
+  if ("showPayment" in defaults && type === "receipt") {
+    const on = G("showPayment");
+    controls.push(<React.Fragment key="rc-payment"><span style={label}>{on ? "Payment" : "No Payment"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPayment", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
