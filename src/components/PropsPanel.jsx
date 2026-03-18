@@ -578,6 +578,30 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Dismissible toggle (modal) */
+  if ("dismissible" in defaults) {
+    const on = G("dismissible");
+    controls.push(<React.Fragment key="dismissible"><span style={label}>{on ? "Closable" : "No Close"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("dismissible", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show header toggle (notification) */
+  if ("showHeader" in defaults) {
+    const on = G("showHeader");
+    controls.push(<React.Fragment key="showHeader"><span style={label}>{on ? "Header" : "No Header"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHeader", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Editable toggle (tag-input) */
+  if ("editable" in defaults) {
+    const on = G("editable");
+    controls.push(<React.Fragment key="editable"><span style={label}>{on ? "Edit" : "Read-only"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("editable", !on)} />
+    </React.Fragment>);
+  }
+
   /* Annual toggle (pricing-card) */
   if ("annual" in defaults) {
     const on = G("annual");
