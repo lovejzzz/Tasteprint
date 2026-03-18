@@ -508,6 +508,38 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Animated toggle (accordion) */
+  if ("animated" in defaults) {
+    const on = G("animated");
+    controls.push(<React.Fragment key="animated"><span style={label}>{on ? "Animated" : "Instant"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("animated", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Interactive toggle (rating) */
+  if ("interactive" in defaults) {
+    const on = G("interactive");
+    controls.push(<React.Fragment key="interactive"><span style={label}>{on ? "Interactive" : "Read-only"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("interactive", !on)} />
+    </React.Fragment>);
+  }
+
+  /* On Sale toggle (product-card) */
+  if ("onSale" in defaults) {
+    const on = G("onSale");
+    controls.push(<React.Fragment key="onSale"><span style={label}>{on ? "Sale" : "Regular"}</span>
+      <Sw on={on} color="#EF4444" stop={stop} onClick={() => onProp("onSale", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Newsletter toggle (footer) */
+  if ("newsletter" in defaults) {
+    const on = G("newsletter");
+    controls.push(<React.Fragment key="newsletter"><span style={label}>{on ? "Newsletter" : "No signup"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("newsletter", !on)} />
+    </React.Fragment>);
+  }
+
   /* Dismissed toggle (promo-banner) */
   if ("dismissed" in defaults) {
     const on = G("dismissed");
