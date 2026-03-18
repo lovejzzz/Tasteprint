@@ -258,6 +258,13 @@ export const DESIGN_MOODS = [
   { id: "bold",    label: "Bold",    icon: "■" },
   { id: "elegant", label: "Elegant", icon: "◇" },
   { id: "playful", label: "Playful", icon: "★" },
+  { id: "artdeco", label: "Art Deco", icon: "🏛" },
+  { id: "synthwave", label: "Synthwave", icon: "🌆" },
+  { id: "pixel", label: "Pixel Art", icon: "👾" },
+  { id: "lineart", label: "Line Art", icon: "✏️" },
+  { id: "stainedglass", label: "Stained Glass", icon: "🪟" },
+  { id: "embroidery", label: "Embroidery", icon: "🧵" },
+  { id: "disco", label: "Retro Disco", icon: "🪩" },
 ];
 
 /* Mood-specific overrides for variant/font/size selection */
@@ -310,6 +317,65 @@ const MOOD_CONFIG = {
       if (props.stars !== undefined) props.stars = 4 + Math.round(Math.random());
       if (props.pct !== undefined) props.pct = 60 + Math.floor(Math.random() * 35);
     },
+  },
+  artdeco: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.5) return tags.gradient;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.display]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.4) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  synthwave: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.6) return tags.gradient;
+      if (tags.brutal !== undefined && Math.random() < 0.3) return tags.brutal;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.display),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.15, 1.45) : cat === "small" ? randRange(0.9, 1.05) : randRange(1.0, 1.2),
+    propTweak: (props) => {},
+  },
+  pixel: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.brutal !== undefined && Math.random() < 0.6) return tags.brutal;
+      return Math.floor(Math.random() * Math.min(3, varCount));
+    },
+    fontPool: () => pick(FONT_CATS.body),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.0, 1.25) : cat === "small" ? randRange(0.85, 0.95) : randRange(0.9, 1.1),
+    propTweak: (props) => {},
+  },
+  lineart: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * Math.min(2, varCount)),
+    fontPool: () => pick(FONT_CATS.body),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.0, 1.2) : cat === "small" ? randRange(0.85, 0.95) : randRange(0.9, 1.05),
+    propTweak: (props) => { if (props.featured !== undefined) props.featured = false; },
+  },
+  stainedglass: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.6) return tags.gradient;
+      if (tags.glass !== undefined && Math.random() < 0.4) return tags.glass;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.display]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.35) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  embroidery: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * varCount),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.body, ...FONT_CATS.serif]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.05, 1.25) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.92, 1.1),
+    propTweak: (props) => {},
+  },
+  disco: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.55) return tags.gradient;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.display),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.15, 1.45) : cat === "small" ? randRange(0.92, 1.05) : randRange(1.0, 1.2),
+    propTweak: (props) => {},
   },
 };
 
@@ -1141,13 +1207,13 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     // 40% chance to adopt a random mood's personality for this component
     // 60% stays true auto (full spectrum) for variety
     if (Math.random() < 0.4) {
-      moodId = pick(["minimal", "bold", "elegant", "playful"]);
+      moodId = pick(["minimal", "bold", "elegant", "playful", "artdeco", "synthwave", "pixel", "lineart", "stainedglass", "embroidery", "disco"]);
     }
   }
 
   // --- Complexity budget (Round 86): cap total active effects per mood to prevent visual noise ---
   // Early effects (gradients, shadows) get priority; later decorative effects only apply if budget remains.
-  const _budgetMap = { minimal: 2, elegant: 3, auto: 4, bold: 5, playful: 5 };
+  const _budgetMap = { minimal: 2, elegant: 3, auto: 4, bold: 5, playful: 5, artdeco: 4, synthwave: 5, pixel: 3, lineart: 2, stainedglass: 4, embroidery: 3, disco: 5 };
   const _maxEffects = _budgetMap[moodId] || 4;
   let _effectCount = 0;
 
@@ -1177,6 +1243,20 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.borderRadius = pick([12, 14, 16, 20, 24]);
   } else if (moodId === "playful") {
     s.borderRadius = pick([16, 20, 24, 32, 999]);
+  } else if (moodId === "artdeco") {
+    s.borderRadius = pick([0, 2, 4]); // angular, geometric
+  } else if (moodId === "synthwave") {
+    s.borderRadius = pick([2, 3, 4]); // sharp corners
+  } else if (moodId === "pixel") {
+    s.borderRadius = 0; // hard pixel edges
+  } else if (moodId === "lineart") {
+    s.borderRadius = pick([0, 2, 4, 6]); // clean, precise
+  } else if (moodId === "stainedglass") {
+    s.borderRadius = pick([4, 5, 6]); // glass panels, slightly rounded
+  } else if (moodId === "embroidery") {
+    s.borderRadius = pick([8, 10, 12]); // rounded but not pill
+  } else if (moodId === "disco") {
+    s.borderRadius = pick([14, 16, 18, 20]); // bold rounded
   } else {
     // auto: weighted spectrum — favor interesting values over boring midrange
     const r = Math.random();
@@ -1283,6 +1363,20 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.boxShadow = pick([SHADOW_PRESETS[2], SHADOW_PRESETS[6], SHADOW_PRESETS[10], SHADOW_PRESETS[3]]);
   } else if (moodId === "playful") {
     s.boxShadow = pick([SHADOW_PRESETS[9], SHADOW_PRESETS[7], SHADOW_PRESETS[8], SHADOW_PRESETS[3], SHADOW_PRESETS[6]]);
+  } else if (moodId === "artdeco") {
+    s.boxShadow = pick([`0 4px 16px #C9A96E18`, `0 2px 12px #C9A96E12`, `0 6px 20px #C9A96E15, inset 0 0 8px #C9A96E06`]);
+  } else if (moodId === "synthwave") {
+    s.boxShadow = pick([`0 0 15px #00FFFF30, 0 0 30px #FF00FF15`, `0 0 20px #FF00FF25, 0 0 40px #00FFFF12`, `0 0 12px #00FFFF20, 0 0 24px #FF00FF10, 0 4px 16px ${shHex}15`]);
+  } else if (moodId === "pixel") {
+    s.boxShadow = pick([`4px 4px 0 ${acHex}35`, `3px 3px 0 ${gc1}30`, `4px 4px 0 ${shHex}25`]);
+  } else if (moodId === "lineart") {
+    s.boxShadow = "none";
+  } else if (moodId === "stainedglass") {
+    s.boxShadow = pick([`inset 0 0 15px ${acHex}18, 0 2px 8px ${shHex}10`, `inset 0 0 20px ${gc1}15, 0 4px 12px ${shHex}08`, `inset 0 0 12px ${gcGlow}12, 0 2px 10px ${shHex}0C`]);
+  } else if (moodId === "embroidery") {
+    s.boxShadow = pick([`inset 0 2px 6px ${shHex}08`, `inset 0 1px 4px ${shHex}06, 0 1px 3px ${shHex}04`, `inset 0 2px 8px ${shHex}0A`]);
+  } else if (moodId === "disco") {
+    s.boxShadow = pick([`0 4px 20px #F59E0B25, 0 0 30px #F59E0B10`, `0 6px 24px #EC489920, 0 0 20px #F59E0B12`, `0 4px 16px #D9770618, 0 0 25px #EC489915`]);
   } else {
     // auto: favor interesting shadows over "none"
     const r = Math.random();
@@ -2572,6 +2666,178 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       }
     }
 
+    /* ── ART DECO mood signature ── */
+    if (moodId === "artdeco") {
+      // Gold/champagne color scheme with geometric borders
+      s.borderTop = `3px solid #C9A96E`;
+      s.borderBottom = `3px solid #C9A96E`;
+      s.border = undefined; // only top/bottom accent lines
+      // Serif typography with wide letter-spacing and uppercase
+      s.fontFamily = "serif";
+      s.letterSpacing = "0.1em";
+      s.textTransform = "uppercase";
+      // Fan/sunburst overlay via conic-gradient
+      if (Math.random() < 0.45 && !s.gradientOverlay) {
+        s.gradientOverlay = `conic-gradient(from 180deg at 50% 100%, #C9A96E08 0%, transparent 15%, #C9A96E06 30%, transparent 45%, #C9A96E04 60%, transparent 75%, #C9A96E06 90%, transparent 100%)`;
+      }
+      // Angular clip-path: notched corners (chevron feel)
+      if (!isSmall && Math.random() < 0.3) {
+        const bevel = pick([6, 8, 10]);
+        s.clipPath = `polygon(0 ${bevel}px, ${bevel}px 0, calc(100% - ${bevel}px) 0, 100% ${bevel}px, 100% calc(100% - ${bevel}px), calc(100% - ${bevel}px) 100%, ${bevel}px 100%, 0 calc(100% - ${bevel}px))`;
+      }
+      // Gold-tinted shadows
+      if (!s.boxShadow || s.boxShadow === "none") {
+        s.boxShadow = `0 4px 16px #C9A96E15`;
+      }
+      // Strip playful effects
+      s.rotate = undefined;
+      s.skewX = undefined;
+      s.skewY = undefined;
+    }
+
+    /* ── SYNTHWAVE mood signature ── */
+    if (moodId === "synthwave") {
+      // Neon glow: double box-shadow in cyan and magenta
+      s.boxShadow = pick([
+        `0 0 15px #00FFFF30, 0 0 30px #FF00FF18`,
+        `0 0 20px #FF00FF25, 0 0 40px #00FFFF12`,
+        `0 0 12px #00FFFF22, 0 0 24px #FF00FF14, 0 4px 16px ${shHex}15`,
+      ]);
+      // Dark background tint + grid overlay
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(180deg, #1a0030AA 0%, #0d001aCC 100%)`;
+      }
+      // Grid perspective pattern via texture
+      s.textureOverlay = `repeating-linear-gradient(0deg, #FF00FF06 0px, #FF00FF06 1px, transparent 1px, transparent ${pick([20, 24, 28])}px), repeating-linear-gradient(90deg, #00FFFF06 0px, #00FFFF06 1px, transparent 1px, transparent ${pick([20, 24, 28])}px)`;
+      // Text shadow in neon pink/cyan
+      s.textShadow = pick([
+        `0 0 8px #00FFFF60, 0 0 16px #FF00FF30`,
+        `0 0 6px #FF00FF50, 0 0 12px #00FFFF25`,
+      ]);
+      // High saturation filter
+      const sat = `saturate(1.4)`;
+      s.filter = s.filter ? s.filter + " " + sat : sat;
+      // Sharp corners
+      s.borderRadius = pick([2, 3, 4]);
+      s.border = `1px solid #FF00FF30`;
+    }
+
+    /* ── PIXEL ART mood signature ── */
+    if (moodId === "pixel") {
+      // Zero border-radius, hard pixel edges
+      s.borderRadius = 0;
+      // Stepped box-shadow (no blur, hard pixel shadow)
+      s.boxShadow = `4px 4px 0 ${acHex}35`;
+      // Monospace-style letter-spacing
+      s.letterSpacing = "0.05em";
+      // Pixelated image rendering
+      s.imageRendering = "pixelated";
+      // Hard border
+      s.border = `${pick([2, 3])}px solid ${acHex}50`;
+      // No gradients — solid colors only
+      s.gradientOverlay = undefined;
+      s.gradientOverlay2 = undefined;
+      // Checkerboard pattern at 2px scale via repeating-conic-gradient
+      s.textureOverlay = `repeating-conic-gradient(${acHex}06 0% 25%, transparent 0% 50%)`;
+      s.textureSize = "4px 4px";
+      // Strip smooth effects
+      s.rotate = undefined;
+      s.skewX = undefined;
+      s.skewY = undefined;
+      s.backdropFilter = undefined;
+    }
+
+    /* ── LINE ART mood signature ── */
+    if (moodId === "lineart") {
+      // Transparent/no background
+      s.background = "transparent";
+      // Thin border only
+      s.border = "1px solid currentColor";
+      // No box-shadow
+      s.boxShadow = "none";
+      // No gradients
+      s.gradientOverlay = undefined;
+      s.gradientOverlay2 = undefined;
+      // Thin, precise typography
+      s.fontWeight = 300;
+      s.letterSpacing = "0.02em";
+      // Outline for sketch double-line effect
+      s.outline = "1px solid currentColor";
+      s.outlineOffset = "3px";
+      // Strip decorative effects
+      s.rotate = undefined;
+      s.hueRotate = undefined;
+      s.scale = undefined;
+      s.textureOverlay = undefined;
+      s.backdropFilter = undefined;
+      // Minimal filter
+      if (s.filter) s.filter = undefined;
+    }
+
+    /* ── STAINED GLASS mood signature ── */
+    if (moodId === "stainedglass") {
+      // Thick dark borders simulating lead cames
+      s.border = `3px solid #1a1a1a`;
+      // Jewel-tone gradient fills
+      const jewelColors = ["#9B111E", "#50C878", "#0F52BA", "#FFBF00", "#E0115F", "#009B7D"];
+      const jc1 = pick(jewelColors);
+      const jc2 = pick(jewelColors.filter(c => c !== jc1));
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(${pick([135, 160, 200])}deg, ${jc1}20 0%, ${jc2}18 50%, ${acHex}15 100%)`;
+      }
+      // Inner glow via inset shadow
+      s.boxShadow = `inset 0 0 18px ${jc1}15, 0 2px 10px ${shHex}0C`;
+      // Slight transparency
+      s.opacity = pick(["0.88", "0.90", "0.92", "0.95"]);
+      // Small border-radius (glass panels)
+      s.borderRadius = pick([4, 5, 6]);
+      // Vivid color via backdrop-filter
+      s.backdropFilter = `saturate(1.3)`;
+    }
+
+    /* ── EMBROIDERY mood signature ── */
+    if (moodId === "embroidery") {
+      // Dashed/dotted border simulating stitching
+      s.border = `2px dashed ${acHex}50`;
+      // Cross-stitch pattern via repeating-linear-gradient at 45deg
+      s.textureOverlay = `repeating-linear-gradient(45deg, ${acHex}06 0px, ${acHex}06 2px, transparent 2px, transparent 8px), repeating-linear-gradient(-45deg, ${acHex}06 0px, ${acHex}06 2px, transparent 2px, transparent 8px)`;
+      // Warm muted colors via sepia filter
+      const sepiaF = `sepia(0.15)`;
+      s.filter = s.filter ? s.filter + " " + sepiaF : sepiaF;
+      // Rounded but not pill
+      s.borderRadius = pick([8, 10, 12]);
+      // Subtle inner shadow for fabric depth
+      s.boxShadow = `inset 0 2px 8px ${shHex}0A, inset 0 -1px 4px ${shHex}06`;
+      // Strip hard-edge effects
+      s.clipPath = undefined;
+      s.rotate = undefined;
+    }
+
+    /* ── RETRO DISCO mood signature ── */
+    if (moodId === "disco") {
+      // Metallic gradient
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(${pick([135, 180, 225])}deg, #D9770620 0%, #EC489918 35%, #F59E0B15 65%, #D9770620 100%)`;
+      }
+      // Warm glow shadows
+      s.boxShadow = `0 4px 20px #F59E0B25, 0 0 30px #EC489912`;
+      // Bold rounded typography
+      s.fontWeight = pick([700, 800]);
+      s.borderRadius = pick([14, 16, 18, 20]);
+      // High brightness
+      const brF = `brightness(${randRange(1.05, 1.10).toFixed(2)})`;
+      s.filter = s.filter ? s.filter + " " + brF : brF;
+      // Shimmer animation reference
+      if (Math.random() < 0.35) {
+        s.animation = `tp-d-shimmer ${(6 + Math.random() * 4).toFixed(1)}s linear infinite`;
+        if (!s.backgroundSize) s.backgroundSize = "400% 100%";
+      }
+      // Warm background gradient
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(135deg, #F59E0B18 0%, #EC489915 100%)`;
+      }
+    }
+
     // --- Transition hints: give components a living, interactive feel ---
     // Sets CSS transition so hover/interaction effects feel smooth, not snappy.
     // Different moods = different motion personalities.
@@ -2805,7 +3071,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
     /* ── WILD CARDS — creative surprise combos with DNA colors + mood-weighted selection ── */
     // Auto: 50%, Bold: 12%, Playful: 18%, Elegant: 10%, Minimal: 6%
-    const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.06 : 0;
+    const wildChance = moodId === "auto" ? 0.50 : moodId === "bold" ? 0.12 : moodId === "playful" ? 0.18 : moodId === "elegant" ? 0.10 : moodId === "minimal" ? 0.06 : 0.10;
     if (wildChance > 0 && Math.random() < wildChance) {
       // Mood-weighted wild card selection — each mood favors certain aesthetics
       const WILD_CARDS = [
