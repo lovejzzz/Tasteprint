@@ -217,6 +217,7 @@ export default function App() {
     const otherShapes = shapes.filter(s => !targetSet.has(s.id));
 
     // Generate 3 candidate designs for single-target randomization
+    // Each candidate uses a different random mood for maximum variety
     if (targets.length === 1) {
       const shape = shapes.find(s => s.id === id);
       if (!shape) return;
@@ -228,11 +229,14 @@ export default function App() {
       });
       const defaults = DEFAULT_PROPS[shape.type];
       const allCandidates = [];
+      const moodPool = DESIGN_MOODS.map(m => m.id);
       for (let c = 0; c < 3; c++) {
         const ci = (curatedIdx.current[id] || 0) + c;
         const preset = getCuratedPreset(shape.type, ci);
-        const dna = generateDesignDNA(p, designMood);
-        const rnd = designerRandomize(shape.type, p, defaults, designMood, otherShapes, dna, shape.w, shape.h);
+        // Pick a random mood for each candidate to maximize variety
+        const rollMood = designMood === "auto" ? moodPool[Math.floor(Math.random() * moodPool.length)] : designMood;
+        const dna = generateDesignDNA(p, rollMood);
+        const rnd = designerRandomize(shape.type, p, defaults, rollMood, otherShapes, dna, shape.w, shape.h);
         if (preset) {
           allCandidates.push({ variant: preset.variant, font: preset.font, fsize: preset.fsize, props: { ...(shape.props || {}), ...rnd.props }, dStyles: rnd.dStyles });
         } else {
@@ -252,7 +256,9 @@ export default function App() {
     }
 
     // Multi-target: no candidate cycling, just randomize directly
-    const dna = generateDesignDNA(p, designMood);
+    // Use random mood when in auto mode for variety
+    const rollMood2 = designMood === "auto" ? DESIGN_MOODS[Math.floor(Math.random() * DESIGN_MOODS.length)].id : designMood;
+    const dna = generateDesignDNA(p, rollMood2);
     const newPrefV = { ...prefV };
     setShapes(prev => {
       const updated = [...prev];
@@ -261,7 +267,7 @@ export default function App() {
         const s = updated[i];
         if (!targetSet.has(s.id)) continue;
         const defaults = DEFAULT_PROPS[s.type];
-        const result = designerRandomize(s.type, p, defaults, designMood, alreadyRandomized, dna, s.w, s.h);
+        const result = designerRandomize(s.type, p, defaults, rollMood2, alreadyRandomized, dna, s.w, s.h);
         updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
         newPrefV[s.type] = result.variant;
         alreadyRandomized.push(updated[i]);
@@ -294,7 +300,9 @@ export default function App() {
     if (shapes.length === 0) return;
     rndUndo.current = { ids: shapes.map(s => s.id), prevShapes: shapes.map(s => ({ ...s })), prevPrefV: { ...prefV } };
     setHasRndUndo(true);
-    const dna = generateDesignDNA(p, designMood);
+    // Pick random mood for randomize-all when in auto mode
+    const rollMoodAll = designMood === "auto" ? DESIGN_MOODS[Math.floor(Math.random() * DESIGN_MOODS.length)].id : designMood;
+    const dna = generateDesignDNA(p, rollMoodAll);
     const newPrefV = { ...prefV };
     let randomizedCount = 0;
     let lockedCount = 0;
@@ -306,7 +314,7 @@ export default function App() {
         // Skip locked shapes — preserve their current design
         if (lockedShapes.has(s.id)) { already.push(s); lockedCount++; continue; }
         const defaults = DEFAULT_PROPS[s.type];
-        const result = designerRandomize(s.type, p, defaults, designMood, already, dna, s.w, s.h);
+        const result = designerRandomize(s.type, p, defaults, rollMoodAll, already, dna, s.w, s.h);
         updated[i] = { ...s, variant: result.variant, font: result.font, fsize: result.fsize, props: { ...(s.props || {}), ...result.props }, dStyles: result.dStyles };
         newPrefV[s.type] = result.variant;
         already.push(updated[i]);
@@ -722,7 +730,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} designHistory={designHistory[s.id]} undoDesign={undoDesign} isLocked={lockedShapes.has(s.id)} toggleLock={toggleLock} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} />
               ))}
             </div>
 
