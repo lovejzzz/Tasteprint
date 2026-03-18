@@ -458,6 +458,31 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Completed steps (timeline) */
+  if ("completed" in defaults) {
+    const completed = G("completed");
+    controls.push(<React.Fragment key="completed"><span style={label}>Done</span>
+      {completed.map((c, i) => <button key={i} style={btn(c)} onMouseDown={stop} onClick={() => { const next = [...completed]; next[i] = !next[i]; onProp("completed", next); }}>{c ? "✓" : i + 1}</button>)}
+    </React.Fragment>);
+  }
+
+  /* Modal size (small/medium/large) */
+  if ("size" in defaults && type === "modal") {
+    const sz = G("size");
+    const szLabels = ["S", "M", "L"];
+    controls.push(<React.Fragment key="size"><span style={label}>Size</span>
+      {szLabels.map((l, i) => <button key={i} style={{ ...btn(sz === i), fontSize: 9, minWidth: 22, height: 20 }} onMouseDown={stop} onClick={() => onProp("size", i)}>{l}</button>)}
+    </React.Fragment>);
+  }
+
+  /* Removable toggle (tag-input) */
+  if ("removable" in defaults) {
+    const on = G("removable");
+    controls.push(<React.Fragment key="removable"><span style={label}>{on ? "Editable" : "Read-only"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("removable", !on)} />
+    </React.Fragment>);
+  }
+
   /* Collapsed toggle (breadcrumb) */
   if ("collapsed" in defaults) {
     const on = G("collapsed");
