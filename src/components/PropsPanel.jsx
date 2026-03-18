@@ -578,6 +578,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Compact toggle (feature-table, kanban) */
+  if ("compact" in defaults) {
+    const on = G("compact");
+    controls.push(<React.Fragment key="compact"><span style={label}>{on ? "Compact" : "Normal"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("compact", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show count toggle (rating) */
+  if ("showCount" in defaults) {
+    const on = G("showCount");
+    controls.push(<React.Fragment key="showCount"><span style={label}>{on ? "Count" : "No Count"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCount", !on)} />
+    </React.Fragment>);
+  }
+
   /* Saved toggle (cart-item) */
   if ("saved" in defaults) {
     const on = G("saved");
