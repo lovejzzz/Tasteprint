@@ -458,6 +458,15 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Tooltip position (top/bottom) */
+  if ("position" in defaults) {
+    const pos = G("position");
+    controls.push(<React.Fragment key="position"><span style={label}>Pos</span>
+      <button style={{ ...btn(pos === 0), fontSize: 9, minWidth: 22, height: 20 }} onMouseDown={stop} onClick={() => onProp("position", 0)}>↑</button>
+      <button style={{ ...btn(pos === 1), fontSize: 9, minWidth: 22, height: 20 }} onMouseDown={stop} onClick={() => onProp("position", 1)}>↓</button>
+    </React.Fragment>);
+  }
+
   /* Completed steps (timeline) */
   if ("completed" in defaults) {
     const completed = G("completed");

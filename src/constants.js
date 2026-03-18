@@ -224,7 +224,7 @@ export const DEFAULT_PROPS = {
   input:         { focused: false, error: false },
   select:        { active: 0 },
   search:        { results: 3, loading: false },
-  tooltip:       { on: true },
+  tooltip:       { on: true, position: 0 },
   heading:       { align: 0, size: 0 },
   "image-placeholder": { shape: 0 },
   "code-block": { lineNumbers: true, copied: false },
