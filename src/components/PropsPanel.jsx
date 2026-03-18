@@ -690,6 +690,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Disabled toggle (input) */
+  if ("disabled" in defaults && type === "input") {
+    const on = G("disabled");
+    controls.push(<React.Fragment key="disabled"><span style={label}>{on ? "Disabled" : "Enabled"}</span>
+      <Sw on={!on} color={p.ac} stop={stop} onClick={() => onProp("disabled", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Success toggle (input) */
+  if ("success" in defaults) {
+    const on = G("success");
+    controls.push(<React.Fragment key="success"><span style={label}>{on ? "Valid" : "No Valid"}</span>
+      <Sw on={on} color="#10B981" stop={stop} onClick={() => onProp("success", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Sortable toggle (table) */
+  if ("sortable" in defaults) {
+    const on = G("sortable");
+    controls.push(<React.Fragment key="sortable"><span style={label}>{on ? "Sort" : "No Sort"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("sortable", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Loading toggle (card) */
+  if ("loading" in defaults && type === "card") {
+    const on = G("loading");
+    controls.push(<React.Fragment key="loading"><span style={label}>{on ? "Loading" : "Loaded"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("loading", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Subscribed toggle (footer) */
+  if ("subscribed" in defaults) {
+    const on = G("subscribed");
+    controls.push(<React.Fragment key="subscribed"><span style={label}>{on ? "Subscribed" : "Not Sub"}</span>
+      <Sw on={on} color="#10B981" stop={stop} onClick={() => onProp("subscribed", !on)} />
+    </React.Fragment>);
+  }
+
   /* Dismissed toggle (promo-banner) */
   if ("dismissed" in defaults) {
     const on = G("dismissed");
