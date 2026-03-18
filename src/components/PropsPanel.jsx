@@ -1146,6 +1146,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Time toggle (media-player) */
+  if ("showTime" in defaults && type === "media-player") {
+    const on = G("showTime");
+    controls.push(<React.Fragment key="showTime"><span style={label}>{on ? "Time" : "No Time"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTime", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Priority toggle (kanban) */
+  if ("showPriority" in defaults && type === "kanban") {
+    const on = G("showPriority");
+    controls.push(<React.Fragment key="showPriority"><span style={label}>{on ? "Priority" : "No Priority"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPriority", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Add toggle (tag-input) */
+  if ("showAdd" in defaults && type === "tag-input") {
+    const on = G("showAdd");
+    controls.push(<React.Fragment key="showAdd"><span style={label}>{on ? "Add Btn" : "No Add"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAdd", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Header toggle (table) */
+  if ("showHeader" in defaults && type === "table") {
+    const on = G("showHeader");
+    controls.push(<React.Fragment key="showHeader-tbl"><span style={label}>{on ? "Header" : "No Header"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHeader", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Copyright toggle (footer) */
+  if ("showCopyright" in defaults && type === "footer") {
+    const on = G("showCopyright");
+    controls.push(<React.Fragment key="showCopy"><span style={label}>{on ? "Copyright" : "No ©"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCopyright", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
