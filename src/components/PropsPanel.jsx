@@ -1450,6 +1450,30 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Description toggle (product-card, card) */
+  if ("showDescription" in defaults && (type === "product-card" || type === "card")) {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="showDesc-pc"><span style={label}>{on ? "Desc" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Image toggle (product-card, card) */
+  if ("showImage" in defaults && (type === "product-card" || type === "card")) {
+    const on = G("showImage");
+    controls.push(<React.Fragment key="showImg-pc"><span style={label}>{on ? "Image" : "No Image"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showImage", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Features toggle (pricing-card) */
+  if ("showFeatures" in defaults && type === "pricing-card") {
+    const on = G("showFeatures");
+    controls.push(<React.Fragment key="showFeat-pr"><span style={label}>{on ? "Features" : "No Feat"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showFeatures", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
