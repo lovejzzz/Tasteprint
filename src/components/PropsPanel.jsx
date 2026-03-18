@@ -1554,6 +1554,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Divider toggle (tabs) */
+  if ("showDivider" in defaults && type === "tabs") {
+    const on = G("showDivider");
+    controls.push(<React.Fragment key="tab-div"><span style={label}>{on ? "Divider" : "No Divider"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDivider", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Actions toggle (skeleton) */
+  if ("showActions" in defaults && type === "skeleton") {
+    const on = G("showActions");
+    controls.push(<React.Fragment key="sk-act"><span style={label}>{on ? "Actions" : "No Actions"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showActions", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Values toggle (bento-grid) */
+  if ("showValues" in defaults && type === "bento-grid") {
+    const on = G("showValues");
+    controls.push(<React.Fragment key="bg-val"><span style={label}>{on ? "Values" : "No Values"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showValues", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Names toggle (avatar-row) */
+  if ("showNames" in defaults && type === "avatar-row") {
+    const on = G("showNames");
+    controls.push(<React.Fragment key="av-names"><span style={label}>{on ? "Names" : "No Names"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showNames", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Chart toggle (dash-panel) */
+  if ("showChart" in defaults && type === "dash-panel") {
+    const on = G("showChart");
+    controls.push(<React.Fragment key="dp-chart"><span style={label}>{on ? "Chart" : "No Chart"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showChart", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
