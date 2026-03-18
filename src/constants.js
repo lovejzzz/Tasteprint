@@ -220,7 +220,7 @@ export const DEFAULT_PROPS = {
   toggle:        { on: true },
   button:        { loading: false, disabled: false },
   navbar:        { active: 0 },
-  breadcrumb:    { active: 2 },
+  breadcrumb:    { active: 2, collapsed: false },
   input:         { focused: false, error: false },
   select:        { active: 0 },
   search:        { results: 3, loading: false },

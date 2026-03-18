@@ -458,6 +458,14 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Collapsed toggle (breadcrumb) */
+  if ("collapsed" in defaults) {
+    const on = G("collapsed");
+    controls.push(<React.Fragment key="collapsed"><span style={label}>{on ? "Collapsed" : "Expanded"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("collapsed", !on)} />
+    </React.Fragment>);
+  }
+
   /* Dismissed toggle (promo-banner) */
   if ("dismissed" in defaults) {
     const on = G("dismissed");
