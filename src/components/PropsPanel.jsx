@@ -570,6 +570,14 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show total toggle (pagination) */
+  if ("showTotal" in defaults) {
+    const on = G("showTotal");
+    controls.push(<React.Fragment key="showTotal"><span style={label}>{on ? "Total" : "No Total"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTotal", !on)} />
+    </React.Fragment>);
+  }
+
   /* Annual toggle (pricing-card) */
   if ("annual" in defaults) {
     const on = G("annual");
