@@ -834,6 +834,38 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Badge toggle (card-sm) */
+  if ("showBadge" in defaults) {
+    const on = G("showBadge");
+    controls.push(<React.Fragment key="showBadge"><span style={label}>{on ? "Badge" : "No Badge"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBadge", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Trust toggle (hero) */
+  if ("showTrust" in defaults) {
+    const on = G("showTrust");
+    controls.push(<React.Fragment key="showTrust"><span style={label}>{on ? "Trust" : "No Trust"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTrust", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Socials toggle (footer) */
+  if ("showSocials" in defaults) {
+    const on = G("showSocials");
+    controls.push(<React.Fragment key="showSocials"><span style={label}>{on ? "Socials" : "No Socials"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showSocials", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Flags toggle (dropdown) */
+  if ("showFlags" in defaults) {
+    const on = G("showFlags");
+    controls.push(<React.Fragment key="showFlags"><span style={label}>{on ? "Flags" : "No Flags"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showFlags", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
