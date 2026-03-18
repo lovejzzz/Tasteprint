@@ -283,6 +283,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Followed toggle (profile-card) */
+  if ("followed" in defaults) {
+    const on = G("followed");
+    controls.push(<React.Fragment key="followed"><span style={label}>{on ? "Following" : "Follow"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("followed", !on)} />
+    </React.Fragment>);
+  }
+
+  /* In Cart toggle (product-card) */
+  if ("inCart" in defaults) {
+    const on = G("inCart");
+    controls.push(<React.Fragment key="inCart"><span style={label}>{on ? "In Cart" : "Not in Cart"}</span>
+      <Sw on={on} color="#10B981" stop={stop} onClick={() => onProp("inCart", !on)} />
+    </React.Fragment>);
+  }
+
   /* Loading toggle (skeleton, button) */
   if ("loading" in defaults) {
     const on = G("loading");
