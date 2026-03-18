@@ -730,6 +730,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Highlighted toggle (pricing-card) */
+  if ("highlighted" in defaults) {
+    const on = G("highlighted");
+    controls.push(<React.Fragment key="highlighted"><span style={label}>{on ? "Selected" : "Default"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("highlighted", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Stacked toggle (avatar-row) */
+  if ("stacked" in defaults) {
+    const on = G("stacked");
+    controls.push(<React.Fragment key="stacked"><span style={label}>{on ? "Stacked" : "Spread"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("stacked", !on)} />
+    </React.Fragment>);
+  }
+
   /* Dismissed toggle (promo-banner) */
   if ("dismissed" in defaults) {
     const on = G("dismissed");
