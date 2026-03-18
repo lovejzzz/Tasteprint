@@ -762,6 +762,38 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Icon toggle (button) */
+  if ("icon" in defaults) {
+    const on = G("icon");
+    controls.push(<React.Fragment key="icon"><span style={label}>{on ? "Icon" : "No Icon"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("icon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Dot mode toggle (badge) */
+  if ("dot" in defaults) {
+    const on = G("dot");
+    controls.push(<React.Fragment key="dot"><span style={label}>{on ? "Dot" : "Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("dot", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show CTA toggle (navbar) */
+  if ("showCta" in defaults) {
+    const on = G("showCta");
+    controls.push(<React.Fragment key="showCta"><span style={label}>{on ? "CTA" : "No CTA"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCta", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Closable toggle (promo-banner) */
+  if ("closable" in defaults) {
+    const on = G("closable");
+    controls.push(<React.Fragment key="closable"><span style={label}>{on ? "Closable" : "Permanent"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("closable", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
