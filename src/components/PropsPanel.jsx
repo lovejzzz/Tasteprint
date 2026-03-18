@@ -1754,6 +1754,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Stars toggle (testimonial) */
+  if ("showStars" in defaults && type === "testimonial") {
+    const on = G("showStars");
+    controls.push(<React.Fragment key="tm-stars"><span style={label}>{on ? "Stars" : "No Stars"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showStars", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (input) */
+  if ("showIcon" in defaults && type === "input") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="in-icon"><span style={label}>{on ? "Icon" : "No Icon"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Badge toggle (sidebar) */
+  if ("showBadge" in defaults && type === "sidebar") {
+    const on = G("showBadge");
+    controls.push(<React.Fragment key="sb-badge"><span style={label}>{on ? "Badges" : "No Badges"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBadge", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Percentage toggle (progress) */
+  if ("showPercentage" in defaults && type === "progress") {
+    const on = G("showPercentage");
+    controls.push(<React.Fragment key="pr-pct"><span style={label}>{on ? "Percentage" : "No %"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPercentage", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (modal) */
+  if ("showDescription" in defaults && type === "modal") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="md-desc"><span style={label}>{on ? "Description" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
