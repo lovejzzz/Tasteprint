@@ -642,6 +642,30 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Clearable toggle (search) */
+  if ("clearable" in defaults) {
+    const on = G("clearable");
+    controls.push(<React.Fragment key="clearable"><span style={label}>{on ? "Clear ×" : "No Clear"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("clearable", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Actionable toggle (toast) */
+  if ("actionable" in defaults) {
+    const on = G("actionable");
+    controls.push(<React.Fragment key="actionable"><span style={label}>{on ? "Action" : "No Action"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("actionable", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show value toggle (slider) */
+  if ("showValue" in defaults) {
+    const on = G("showValue");
+    controls.push(<React.Fragment key="showValue"><span style={label}>{on ? "Value" : "No Value"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showValue", !on)} />
+    </React.Fragment>);
+  }
+
   /* Dismissed toggle (promo-banner) */
   if ("dismissed" in defaults) {
     const on = G("dismissed");
