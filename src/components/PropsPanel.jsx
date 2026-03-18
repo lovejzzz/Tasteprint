@@ -1410,6 +1410,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Connectors toggle (stepper) */
+  if ("showConnectors" in defaults && type === "stepper") {
+    const on = G("showConnectors");
+    controls.push(<React.Fragment key="showConn-st"><span style={label}>{on ? "Lines" : "No Lines"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showConnectors", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Subtitle toggle (hero) */
+  if ("showSubtitle" in defaults && type === "hero") {
+    const on = G("showSubtitle");
+    controls.push(<React.Fragment key="showSub-hr"><span style={label}>{on ? "Subtitle" : "No Sub"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showSubtitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Badge toggle (hero) */
+  if ("showBadge" in defaults && type === "hero") {
+    const on = G("showBadge");
+    controls.push(<React.Fragment key="showBadge-hr"><span style={label}>{on ? "Badge" : "No Badge"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBadge", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Title toggle (modal) */
+  if ("showTitle" in defaults && type === "modal") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="showTitle-md"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Logo toggle (navbar) */
+  if ("showLogo" in defaults && type === "navbar") {
+    const on = G("showLogo");
+    controls.push(<React.Fragment key="showLogo-nv"><span style={label}>{on ? "Logo" : "No Logo"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLogo", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
