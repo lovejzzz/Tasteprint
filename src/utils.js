@@ -265,6 +265,14 @@ export const DESIGN_MOODS = [
   { id: "stainedglass", label: "Stained Glass", icon: "🪟" },
   { id: "embroidery", label: "Embroidery", icon: "🧵" },
   { id: "disco", label: "Retro Disco", icon: "🪩" },
+  { id: "papercraft", label: "Paper Craft", icon: "📄" },
+  { id: "papercut", label: "Paper Cut", icon: "✂️" },
+  { id: "collage", label: "Collage", icon: "🎨" },
+  { id: "scifi", label: "Sci-Fi", icon: "🚀" },
+  { id: "porcelain", label: "Porcelain", icon: "🏺" },
+  { id: "watercolor", label: "Watercolor", icon: "🎨" },
+  { id: "inkwash", label: "Ink Wash", icon: "🖌️" },
+  { id: "kawaii", label: "Kawaii", icon: "🧸" },
 ];
 
 /* Mood-specific overrides for variant/font/size selection */
@@ -375,6 +383,64 @@ const MOOD_CONFIG = {
     },
     fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.display),
     fsizeRange: (cat) => cat === "large" ? randRange(1.15, 1.45) : cat === "small" ? randRange(0.92, 1.05) : randRange(1.0, 1.2),
+    propTweak: (props) => {},
+  },
+  papercraft: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * Math.min(3, varCount)),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.body, ...FONT_CATS.serif]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.0, 1.2) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.92, 1.08),
+    propTweak: (props) => {},
+  },
+  papercut: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * Math.min(3, varCount)),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.display]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.05, 1.3) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  collage: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * varCount),
+    fontPool: (isLarge, isSmall) => pick([...FONT_CATS.body, ...FONT_CATS.display, ...FONT_CATS.serif]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.45) : cat === "small" ? randRange(0.82, 1.05) : randRange(0.88, 1.2),
+    propTweak: (props) => {},
+  },
+  scifi: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.brutal !== undefined && Math.random() < 0.4) return tags.brutal;
+      if (tags.gradient !== undefined && Math.random() < 0.3) return tags.gradient;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.body),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.35) : cat === "small" ? randRange(0.88, 1.0) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  porcelain: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.glass !== undefined && Math.random() < 0.4) return tags.glass;
+      return Math.floor(Math.random() * Math.min(3, varCount));
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.serif),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.05, 1.25) : cat === "small" ? randRange(0.88, 0.96) : randRange(0.94, 1.1),
+    propTweak: (props) => {},
+  },
+  watercolor: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.5) return tags.gradient;
+      return Math.floor(Math.random() * Math.min(3, varCount));
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.0, 1.2) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.92, 1.08),
+    propTweak: (props) => {},
+  },
+  inkwash: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * Math.min(2, varCount)),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.0, 1.2) : cat === "small" ? randRange(0.88, 0.96) : randRange(0.92, 1.08),
+    propTweak: (props) => {},
+  },
+  kawaii: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * varCount),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.display, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.4) : cat === "small" ? randRange(0.9, 1.05) : randRange(0.95, 1.2),
     propTweak: (props) => {},
   },
 };
@@ -1213,7 +1279,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
   // --- Complexity budget (Round 86): cap total active effects per mood to prevent visual noise ---
   // Early effects (gradients, shadows) get priority; later decorative effects only apply if budget remains.
-  const _budgetMap = { minimal: 2, elegant: 3, auto: 4, bold: 5, playful: 5, artdeco: 4, synthwave: 5, pixel: 3, lineart: 2, stainedglass: 4, embroidery: 3, disco: 5 };
+  const _budgetMap = { minimal: 2, elegant: 3, auto: 4, bold: 5, playful: 5, artdeco: 4, synthwave: 5, pixel: 3, lineart: 2, stainedglass: 4, embroidery: 3, disco: 5, papercraft: 3, papercut: 3, collage: 5, scifi: 4, porcelain: 3, watercolor: 3, inkwash: 3, kawaii: 4 };
   const _maxEffects = _budgetMap[moodId] || 4;
   let _effectCount = 0;
 
@@ -1257,6 +1323,22 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.borderRadius = pick([8, 10, 12]); // rounded but not pill
   } else if (moodId === "disco") {
     s.borderRadius = pick([14, 16, 18, 20]); // bold rounded
+  } else if (moodId === "papercraft") {
+    s.borderRadius = pick([12, 14, 16]); // soft rounded
+  } else if (moodId === "papercut") {
+    s.borderRadius = pick([0, 2, 4]); // sharp, flat paper
+  } else if (moodId === "collage") {
+    s.borderRadius = pick([4, 8, 12, 16, 20]); // eclectic mix
+  } else if (moodId === "scifi") {
+    s.borderRadius = pick([0, 1, 2]); // sharp tech corners
+  } else if (moodId === "porcelain") {
+    s.borderRadius = pick([8, 10, 12, 14]); // elegant, refined
+  } else if (moodId === "watercolor") {
+    s.borderRadius = pick([16, 18, 20, 24]); // soft, rounded everything
+  } else if (moodId === "inkwash") {
+    s.borderRadius = pick([6, 8, 10, 12]); // moderate, organic
+  } else if (moodId === "kawaii") {
+    s.borderRadius = pick([20, 24, 32, 999]); // ultra-round, pill everything
   } else {
     // auto: weighted spectrum — favor interesting values over boring midrange
     const r = Math.random();
@@ -1377,6 +1459,22 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.boxShadow = pick([`inset 0 2px 6px ${shHex}08`, `inset 0 1px 4px ${shHex}06, 0 1px 3px ${shHex}04`, `inset 0 2px 8px ${shHex}0A`]);
   } else if (moodId === "disco") {
     s.boxShadow = pick([`0 4px 20px #F59E0B25, 0 0 30px #F59E0B10`, `0 6px 24px #EC489920, 0 0 20px #F59E0B12`, `0 4px 16px #D9770618, 0 0 25px #EC489915`]);
+  } else if (moodId === "papercraft") {
+    s.boxShadow = pick([`2px 2px 0 ${shHex}10, 4px 4px 0 ${shHex}08, 6px 6px 0 ${shHex}06`, `1px 1px 0 ${shHex}0C, 3px 3px 0 ${shHex}08, 5px 5px 0 ${shHex}05, 7px 7px 0 ${shHex}03`, `2px 2px 0 ${shHex}0E, 4px 4px 0 ${shHex}08, 6px 6px 0 ${shHex}04`]);
+  } else if (moodId === "papercut") {
+    s.boxShadow = pick(["none", `1px 1px 0 #CC000010`, `2px 2px 0 #C9A96E08`]);
+  } else if (moodId === "collage") {
+    s.boxShadow = pick([`3px 3px 0 ${acHex}20`, `0 4px 16px ${shHex}12`, `2px 2px 0 ${gc1}18, 0 6px 20px ${shHex}08`, `4px 4px 0 ${acHex}15, -2px -2px 12px ${shHex}08`]);
+  } else if (moodId === "scifi") {
+    s.boxShadow = pick([`0 0 12px #00FFFF25, 0 0 24px #00FFFF10`, `0 0 8px #00FFFF30, 0 2px 16px #0a0a1a40`, `0 0 16px #00FFFF20, inset 0 0 8px #00FFFF08`]);
+  } else if (moodId === "porcelain") {
+    s.boxShadow = pick([`0 2px 8px #2055A00C`, `0 3px 12px #2055A010`, `0 2px 10px #2055A00A, inset 0 1px 4px #FFFFFF40`]);
+  } else if (moodId === "watercolor") {
+    s.boxShadow = pick([`0 4px 20px ${acHex}12, 0 8px 25px ${shHex}08`, `0 6px 22px ${gc1}10, 0 10px 25px ${shHex}06`, `0 4px 18px ${acHex}10, 0 8px 24px ${gc1}08`]);
+  } else if (moodId === "inkwash") {
+    s.boxShadow = pick([`0 4px 24px #00000012`, `0 6px 28px #00000010, 0 2px 12px #00000008`, `0 4px 20px #0000000E`]);
+  } else if (moodId === "kawaii") {
+    s.boxShadow = pick([`0 8px 0 ${acHex}25`, `0 6px 0 ${gc1}22`, `0 8px 0 ${acHex}20, 0 2px 8px ${shHex}08`]);
   } else {
     // auto: favor interesting shadows over "none"
     const r = Math.random();
@@ -2836,6 +2934,215 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       if (!s.gradientOverlay) {
         s.gradientOverlay = `linear-gradient(135deg, #F59E0B18 0%, #EC489915 100%)`;
       }
+    }
+
+    /* ── PAPER CRAFT mood signature ── */
+    if (moodId === "papercraft") {
+      // Stacked paper shadows (3-4 layers offset 2px each)
+      s.boxShadow = pick([
+        `2px 2px 0 ${shHex}10, 4px 4px 0 ${shHex}08, 6px 6px 0 ${shHex}06`,
+        `1px 1px 0 ${shHex}0C, 3px 3px 0 ${shHex}08, 5px 5px 0 ${shHex}05, 7px 7px 0 ${shHex}03`,
+      ]);
+      // Paper-white/cream background
+      s.background = pick(["#FEFEFE", "#FDF8F0", "#FAF7F2", "#FFFFF5"]);
+      // Slight rotation for hand-placed feel
+      s.rotate = `${pick([-1, -0.5, 0.5, 1])}deg`;
+      // Fold line via border-bottom
+      s.borderBottom = `1px solid ${shHex}12`;
+      s.border = undefined;
+      // Soft rounded corners
+      s.borderRadius = pick([12, 14, 16]);
+      // No heavy gradients
+      s.gradientOverlay = undefined;
+      s.gradientOverlay2 = undefined;
+      // Muted/flat color filter
+      const satF = `saturate(${randRange(0.85, 0.95).toFixed(2)})`;
+      s.filter = s.filter ? s.filter + " " + satF : satF;
+    }
+
+    /* ── PAPER CUT mood signature ── */
+    if (moodId === "papercut") {
+      // Red and gold color scheme
+      const pcRed = "#CC0000";
+      const pcGold = "#C9A96E";
+      // Thick borders in red/gold
+      s.border = `3px solid ${pick([pcRed, pcGold])}`;
+      // Deep red or cream background
+      s.background = pick(["#8B0000", "#CC000015", "#FDF5E6", "#FAF0E6"]);
+      // Symmetric clip-path cutouts (decorative polygon)
+      if (!isSmall && Math.random() < 0.45) {
+        s.clipPath = `polygon(5% 0%, 95% 0%, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0% 95%, 0% 5%)`;
+      }
+      // Minimal shadows — flat paper aesthetic
+      s.boxShadow = pick(["none", `1px 1px 0 ${pcRed}10`]);
+      // Bold silhouette typography
+      s.fontWeight = pick([600, 700]);
+      // No smooth effects
+      s.gradientOverlay = undefined;
+      s.rotate = undefined;
+      s.skewX = undefined;
+    }
+
+    /* ── COLLAGE mood signature ── */
+    if (moodId === "collage") {
+      // Slight random rotation
+      s.rotate = `${pick([-3, -2, -1, 1, 2, 3])}deg`;
+      // Mixed border styles: one side solid, another dashed
+      s.borderLeft = `2px solid ${acHex}40`;
+      s.borderRight = `2px dashed ${gc1}30`;
+      s.borderTop = undefined;
+      s.borderBottom = undefined;
+      s.border = undefined;
+      // Torn-edge effect via irregular clip-path
+      if (!isSmall && Math.random() < 0.4) {
+        s.clipPath = `polygon(0% 2%, 3% 0%, 15% 1%, 30% 0%, 45% 2%, 60% 0%, 75% 1%, 90% 0%, 97% 2%, 100% 0%, 100% 98%, 97% 100%, 85% 99%, 70% 100%, 55% 98%, 40% 100%, 25% 99%, 10% 100%, 3% 98%, 0% 100%)`;
+      }
+      // Tape accent: small gradient strip at top
+      if (Math.random() < 0.35 && !s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(180deg, ${pick([acHex, gc1])}15 0%, transparent 8%)`;
+      }
+      // Mixed shadows
+      s.boxShadow = pick([
+        `3px 3px 0 ${acHex}20, 0 6px 16px ${shHex}08`,
+        `2px 2px 0 ${gc1}15, -1px -1px 12px ${shHex}06`,
+      ]);
+    }
+
+    /* ── SCI-FI mood signature ── */
+    if (moodId === "scifi") {
+      // Cyan and dark color scheme
+      const sfCyan = "#00FFFF";
+      const sfDark = "#0a0a1a";
+      // Scanline overlay
+      s.textureOverlay = `repeating-linear-gradient(0deg, ${sfCyan}04 0px, ${sfCyan}04 1px, transparent 1px, transparent ${pick([3, 4, 5])}px)`;
+      // Sharp corners
+      s.borderRadius = pick([0, 1, 2]);
+      // Tech border with cyan glow
+      s.border = `1px solid ${sfCyan}40`;
+      // Monospace-like letter-spacing
+      s.letterSpacing = "0.06em";
+      // Dark background tint
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(180deg, ${sfDark}DD 0%, ${sfDark}EE 100%)`;
+      }
+      // Cyan text shadow
+      s.textShadow = `0 0 6px ${sfCyan}40`;
+      // Neon glow box-shadow
+      s.boxShadow = `0 0 12px ${sfCyan}20, 0 0 24px ${sfCyan}08`;
+      // Filter: contrast + slight brightness reduction
+      const scifiF = `contrast(1.1) brightness(0.95)`;
+      s.filter = scifiF;
+      // Strip playful effects
+      s.rotate = undefined;
+      s.skewX = undefined;
+    }
+
+    /* ── PORCELAIN mood signature ── */
+    if (moodId === "porcelain") {
+      // Blue and white only
+      const pcBlue = "#2055A0";
+      const pcWhite = "#F5F5F0";
+      // Fine repeating pattern overlay
+      s.textureOverlay = `repeating-linear-gradient(45deg, ${pcBlue}04 0px, ${pcBlue}04 1px, transparent 1px, transparent 6px), repeating-linear-gradient(-45deg, ${pcBlue}04 0px, ${pcBlue}04 1px, transparent 1px, transparent 6px)`;
+      // Thin precise borders in blue
+      s.border = `1px solid ${pcBlue}30`;
+      // Elegant serif typography
+      s.fontFamily = "serif";
+      s.letterSpacing = "0.03em";
+      // White background
+      s.background = pcWhite;
+      // Subtle glossy highlight gradient
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(160deg, #FFFFFF40 0%, transparent 40%, transparent 60%, #FFFFFF15 100%)`;
+      }
+      // Brightness lift
+      const brF = `brightness(1.02)`;
+      s.filter = s.filter ? s.filter + " " + brF : brF;
+      // Refined shadows
+      s.boxShadow = `0 2px 10px ${pcBlue}0A, inset 0 1px 4px #FFFFFF40`;
+      // Clean, no playful effects
+      s.rotate = undefined;
+      s.skewX = undefined;
+      s.hueRotate = undefined;
+    }
+
+    /* ── WATERCOLOR mood signature ── */
+    if (moodId === "watercolor") {
+      // Soft blur + sepia wash filter
+      const wcFilter = `blur(0.3px) sepia(0.1) saturate(0.9)`;
+      s.filter = wcFilter;
+      // Heavily blurred box-shadow simulating paint bleed
+      s.boxShadow = pick([
+        `0 4px 20px ${acHex}12, 0 8px 25px ${shHex}08`,
+        `0 6px 22px ${gc1}10, 0 10px 25px ${shHex}06`,
+      ]);
+      // Rounded everything
+      s.borderRadius = pick([16, 18, 20, 24]);
+      // No hard borders
+      s.border = "none";
+      // Soft pastel gradient backgrounds
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}0A 0%, ${gc1}08 50%, ${gc2}06 100%)`,
+          `radial-gradient(ellipse at 40% 30%, ${gc1}0C 0%, transparent 60%)`,
+        ]);
+      }
+      // Strip hard-edge effects
+      s.clipPath = undefined;
+      s.rotate = undefined;
+      s.textureOverlay = undefined;
+    }
+
+    /* ── INK WASH mood signature ── */
+    if (moodId === "inkwash") {
+      // Grayscale filter
+      const iwFilter = `grayscale(0.85)`;
+      s.filter = iwFilter;
+      // Ink-bleed shadows with 20px+ blur in black at low opacity
+      s.boxShadow = pick([
+        `0 4px 24px #00000012`,
+        `0 6px 28px #00000010, 0 2px 12px #00000008`,
+      ]);
+      // Brush-stroke-like borders: thick on left, thin/none on others
+      s.borderLeft = `${pick([4, 5, 6])}px solid #00000025`;
+      s.borderRight = "none";
+      s.borderTop = "none";
+      s.borderBottom = "none";
+      s.border = undefined;
+      // Elegant thin typography
+      s.fontWeight = pick([300, 400]);
+      s.letterSpacing = "0.03em";
+      // Near monochrome — strip vivid elements
+      s.gradientOverlay = undefined;
+      s.hueRotate = undefined;
+      // Slight paper texture (reuse embroidery-style cross pattern at very low opacity)
+      s.textureOverlay = `repeating-linear-gradient(45deg, #00000002 0px, #00000002 1px, transparent 1px, transparent 12px)`;
+      s.rotate = undefined;
+    }
+
+    /* ── KAWAII mood signature ── */
+    if (moodId === "kawaii") {
+      // Ultra-round: pill everything
+      s.borderRadius = pick([20, 24, 32, 999]);
+      // Pastel colors via filter
+      const kwFilter = `saturate(0.8) brightness(1.1)`;
+      s.filter = kwFilter;
+      // Thick borders in accent color
+      s.border = `3px solid ${acHex}50`;
+      // Bouncy flat bottom shadow
+      s.boxShadow = pick([
+        `0 8px 0 ${acHex}25`,
+        `0 6px 0 ${gc1}22`,
+        `0 8px 0 ${acHex}20, 0 2px 8px ${shHex}08`,
+      ]);
+      // Bold rounded typography
+      s.fontWeight = 700;
+      // Playful gentle transition with bounce curve
+      s.transition = `all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+      // Strip harsh effects
+      s.clipPath = undefined;
+      s.skewX = undefined;
+      s.textShadow = undefined;
     }
 
     // --- Transition hints: give components a living, interactive feel ---
