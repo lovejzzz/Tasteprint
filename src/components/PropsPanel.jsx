@@ -1226,6 +1226,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Separator toggle (breadcrumb) */
+  if ("showSeparator" in defaults && type === "breadcrumb") {
+    const on = G("showSeparator");
+    controls.push(<React.Fragment key="showSep-bc"><span style={label}>{on ? "Separators" : "No Sep"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showSeparator", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Footer toggle (modal) */
+  if ("showFooter" in defaults && type === "modal") {
+    const on = G("showFooter");
+    controls.push(<React.Fragment key="showFooter-md"><span style={label}>{on ? "Footer" : "No Footer"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showFooter", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
