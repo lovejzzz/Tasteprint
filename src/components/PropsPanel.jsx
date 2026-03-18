@@ -570,6 +570,14 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Annual toggle (pricing-card) */
+  if ("annual" in defaults) {
+    const on = G("annual");
+    controls.push(<React.Fragment key="annual"><span style={label}>{on ? "Annual" : "Monthly"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("annual", !on)} />
+    </React.Fragment>);
+  }
+
   /* Saved toggle (cart-item) */
   if ("saved" in defaults) {
     const on = G("saved");

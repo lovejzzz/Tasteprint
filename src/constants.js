@@ -195,7 +195,7 @@ export const DEFAULT_PROPS = {
   notification:  { read: [false, false, true], muted: false },
   alert:         { level: 0, dismissed: false, showAction: true },
   toast:         { level: 0, dismissed: false },
-  "pricing-card":{ featured: false, period: 0 },
+  "pricing-card":{ featured: false, period: 0, annual: false },
   "product-card":{ wishlisted: false, rating: 4, inCart: false, onSale: false },
   "profile-card":{ online: true, verified: true, followed: false },
   kanban:        { active: 1, compact: false },
