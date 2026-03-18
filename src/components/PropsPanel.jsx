@@ -1186,6 +1186,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Time toggle (timeline) */
+  if ("showTime" in defaults && type === "timeline") {
+    const on = G("showTime");
+    controls.push(<React.Fragment key="showTime-tl"><span style={label}>{on ? "Time" : "No Time"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTime", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Arrows toggle (pagination) */
+  if ("showArrows" in defaults && type === "pagination") {
+    const on = G("showArrows");
+    controls.push(<React.Fragment key="showArrows"><span style={label}>{on ? "Arrows" : "No Arrows"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showArrows", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Author toggle (rating) */
+  if ("showAuthor" in defaults && type === "rating") {
+    const on = G("showAuthor");
+    controls.push(<React.Fragment key="showAuthor-rt"><span style={label}>{on ? "Author" : "No Author"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAuthor", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Divider toggle (accordion) */
+  if ("showDivider" in defaults && type === "accordion") {
+    const on = G("showDivider");
+    controls.push(<React.Fragment key="showDivider"><span style={label}>{on ? "Dividers" : "No Dividers"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDivider", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (stepper) */
+  if ("showDescription" in defaults && type === "stepper") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="showDesc-st"><span style={label}>{on ? "Desc" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
