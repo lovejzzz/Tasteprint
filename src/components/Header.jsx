@@ -29,6 +29,7 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredBtn, setHoveredBtn] = useState(null);
   const [showStats, setShowStats] = useState(false);
+  const [moodOpen, setMoodOpen] = useState(false);
 
   /* Auto-show/dismiss randomize stats toast */
   useEffect(() => {
@@ -178,6 +179,35 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
                 {devices.map(d => deviceSeg(d, () => setMenuOpen(false)))}
               </div>
             </div>
+            {/* Mood */}
+            {designMood !== undefined && <div>
+              <span style={{ fontSize: 10, color: p.mu, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, display: "block" }}>
+                Mood
+              </span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {DESIGN_MOODS.map(m => {
+                  const active = (designMood || "auto") === m.id;
+                  const hid = `m-mood-${m.id}`;
+                  return (
+                    <button key={m.id}
+                      onClick={() => { setDesignMood(m.id); setMenuOpen(false); }}
+                      {...btnHandlers(hid)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4,
+                        padding: "6px 10px", borderRadius: 8, fontSize: 11, fontWeight: 500,
+                        background: active ? p.ac + "18" : hoveredBtn === hid ? p.su : "none",
+                        border: active ? `1.5px solid ${p.ac}44` : `1px solid transparent`,
+                        color: active ? p.ac : p.tx,
+                        cursor: "pointer", fontFamily: "inherit", outline: "none",
+                        transition: "all .12s ease", whiteSpace: "nowrap",
+                      }}>
+                      <span style={{ fontSize: 14 }}>{m.icon}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>}
             {/* Actions */}
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {[
@@ -245,15 +275,51 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
           {...btnHandlers("redo")} style={btn("redo")}>Redo</button>
         {shapes.length > 0 && <>
           <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px", flexShrink: 0 }} />
-          {designMood !== undefined && <button
-            onClick={() => { const idx = DESIGN_MOODS.findIndex(m => m.id === (designMood || "auto")); setDesignMood(DESIGN_MOODS[(idx + 1) % DESIGN_MOODS.length].id); }}
-            title={`Design mood: ${(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label} (click to cycle, M key)`}
-            aria-label="Cycle design mood"
-            {...btnHandlers("mood")}
-            style={btn("mood", { display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac })}>
-            <span style={{ fontSize: 12 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
-            <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
-          </button>}
+          {designMood !== undefined && <span style={{ position: "relative", display: "inline-flex" }}>
+            <button
+              onClick={() => setMoodOpen(v => !v)}
+              title={`Design mood: ${(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label} (M key to cycle)`}
+              aria-label="Open mood picker"
+              aria-expanded={moodOpen}
+              {...btnHandlers("mood")}
+              style={btn("mood", { display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac })}>
+              <span style={{ fontSize: 12 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
+              <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
+              <span style={{ fontSize: 8, marginLeft: 1, opacity: 0.6 }}>▾</span>
+            </button>
+            {moodOpen && <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setMoodOpen(false)} />
+              <div style={{
+                position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 999,
+                background: p.card, border: `1px solid ${p.bd}`, borderRadius: 12,
+                padding: 8, boxShadow: `0 8px 32px ${p.tx}12`,
+                display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4,
+                minWidth: 220, animation: "tp-tooltip-in .15s ease-out both",
+              }}>
+                {DESIGN_MOODS.map(m => {
+                  const active = (designMood || "auto") === m.id;
+                  const hid = `mood-${m.id}`;
+                  return (
+                    <button key={m.id}
+                      onClick={() => { setDesignMood(m.id); setMoodOpen(false); }}
+                      {...btnHandlers(hid)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4,
+                        padding: "6px 8px", borderRadius: 8, fontSize: 10, fontWeight: 500,
+                        background: active ? p.ac + "18" : hoveredBtn === hid ? p.su : "none",
+                        border: active ? `1.5px solid ${p.ac}44` : `1px solid transparent`,
+                        color: active ? p.ac : p.tx,
+                        cursor: "pointer", fontFamily: "inherit", outline: "none",
+                        transition: "all .12s ease", whiteSpace: "nowrap",
+                      }}>
+                      <span style={{ fontSize: 13 }}>{m.icon}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>}
+          </span>}
           <span style={{ position: "relative", display: "inline-flex" }}>
             <button onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
               {...btnHandlers("rndAll")} style={btn("rndAll", { display: "flex", alignItems: "center", gap: 4 })}>

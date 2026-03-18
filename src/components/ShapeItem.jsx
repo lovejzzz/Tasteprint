@@ -24,6 +24,7 @@ const KBHint = ({ label, p: pal, style: extraStyle }) => (
 
 const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore, candidates, candidateIdx, cycleVariation, designHistory, undoDesign, isLocked, toggleLock }) {
   const [hovered, setHovered] = useState(false);
+  const [moodPickerOpen, setMoodPickerOpen] = useState(false);
   const isDrg = drag === s.id;
   const sx = s.x, sy = s.y, sw = s.w, sh = s.h;
   const isSel = selAll.has(s.id), isPrimary = sel === s.id;
@@ -89,13 +90,48 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               style={{ ...pb, fontSize: 13, fontWeight: 600 }}>A+</button>
           </>}
           {sep}
-          <button aria-label="Cycle design mood"
-            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); const idx = DESIGN_MOODS.findIndex(m => m.id === (designMood || "auto")); setDesignMood(DESIGN_MOODS[(idx + 1) % DESIGN_MOODS.length].id); }}
-            {...ph}
-            style={{ ...pb, width: "auto", padding: "0 7px", gap: 3, fontSize: 9, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac }}>
-            <span style={{ fontSize: 10 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
-            <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
-          </button>
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            <button aria-label="Open mood picker"
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setMoodPickerOpen(v => !v); }}
+              {...ph}
+              style={{ ...pb, width: "auto", padding: "0 7px", gap: 3, fontSize: 9, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac }}>
+              <span style={{ fontSize: 10 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
+              <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
+              <span style={{ fontSize: 7, opacity: 0.6 }}>▾</span>
+            </button>
+            {moodPickerOpen && <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onPointerDown={e => { e.stopPropagation(); setMoodPickerOpen(false); }} />
+              <div style={{
+                position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", zIndex: 999,
+                background: p.card, border: `1px solid ${p.bd}`, borderRadius: 10,
+                padding: 6, boxShadow: `0 6px 24px ${p.tx}14`,
+                display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 3,
+                minWidth: 200, animation: "tp-tooltip-in .12s ease-out both",
+              }}>
+                {DESIGN_MOODS.map(m => {
+                  const active = (designMood || "auto") === m.id;
+                  return (
+                    <button key={m.id}
+                      onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setDesignMood(m.id); setMoodPickerOpen(false); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 3,
+                        padding: "5px 7px", borderRadius: 7, fontSize: 9, fontWeight: 500,
+                        background: active ? p.ac + "18" : "none",
+                        border: active ? `1.5px solid ${p.ac}44` : `1px solid transparent`,
+                        color: active ? p.ac : p.tx,
+                        cursor: "pointer", fontFamily: "inherit", outline: "none",
+                        transition: "all .1s ease", whiteSpace: "nowrap",
+                      }}
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = p.su; }}
+                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = "none"; }}>
+                      <span style={{ fontSize: 11 }}>{m.icon}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>}
+          </span>
           <div style={{ position: "relative", display: "inline-flex" }}>
             <button aria-label={isLocked ? "Unlock from randomize-all" : "Lock to protect from randomize-all"}
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); toggleLock(s.id); }}
