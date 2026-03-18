@@ -746,6 +746,30 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Muted toggle (media-player) */
+  if ("muted" in defaults) {
+    const on = G("muted");
+    controls.push(<React.Fragment key="muted"><span style={label}>{on ? "Muted" : "Sound"}</span>
+      <Sw on={!on} color={p.ac} stop={stop} onClick={() => onProp("muted", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Sold out toggle (product-card) */
+  if ("soldOut" in defaults) {
+    const on = G("soldOut");
+    controls.push(<React.Fragment key="soldOut"><span style={label}>{on ? "Sold Out" : "In Stock"}</span>
+      <Sw on={!on} color="#EF4444" stop={stop} onClick={() => onProp("soldOut", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Decorated toggle (heading) */
+  if ("decorated" in defaults) {
+    const on = G("decorated");
+    controls.push(<React.Fragment key="decorated"><span style={label}>{on ? "Decorated" : "Plain"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("decorated", !on)} />
+    </React.Fragment>);
+  }
+
   /* Dismissed toggle (promo-banner) */
   if ("dismissed" in defaults) {
     const on = G("dismissed");
