@@ -1474,6 +1474,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Disabled toggle (toggle) */
+  if ("disabled" in defaults && type === "toggle") {
+    const on = G("disabled");
+    controls.push(<React.Fragment key="tg-dis"><span style={label}>{on ? "Disabled" : "Enabled"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("disabled", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Label toggle (toggle) */
+  if ("showLabel" in defaults && type === "toggle") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="tg-lbl"><span style={label}>{on ? "Label" : "No Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Striped toggle (progress) */
+  if ("striped" in defaults && type === "progress") {
+    const on = G("striped");
+    controls.push(<React.Fragment key="pr-stripe"><span style={label}>{on ? "Striped" : "Solid"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("striped", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Dimensions toggle (image-placeholder) */
+  if ("showDimensions" in defaults && type === "image-placeholder") {
+    const on = G("showDimensions");
+    controls.push(<React.Fragment key="ip-dim"><span style={label}>{on ? "Dims" : "No Dims"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDimensions", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (stat-card) */
+  if ("showIcon" in defaults && type === "stat-card") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="sc-icon"><span style={label}>{on ? "Icon" : "No Icon"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");

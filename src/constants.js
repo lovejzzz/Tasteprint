@@ -173,7 +173,7 @@ export const LIB = [
 ];
 
 export const DEFAULT_PROPS = {
-  toggle:        { on: true, animated: true },
+  toggle:        { on: true, disabled: false, showLabel: true, animated: true },
   checkbox:      { checked: [true, false, false], showDescription: true, animated: true },
   tabs:          { active: 0, showIcon: true, showBadge: true, animated: true },
   navbar:        { active: 0, showCta: true, animated: true },
@@ -184,7 +184,7 @@ export const DEFAULT_PROPS = {
   accordion:     { open: [true, false, false], showIcon: true, showDivider: true, animated: true },
   dropdown:      { active: 0, disabled: false, showFlags: true, showChevron: true, animated: true },
   "cmd-palette": { active: 0, open: true, showHints: true, showIcon: true, animated: true },
-  progress:      { pct: 68, indeterminate: false, showLabel: true, animated: true },
+  progress:      { pct: 68, indeterminate: false, striped: false, showLabel: true, animated: true },
   slider:        { pct: 65, disabled: false, showValue: true, animated: true },
   "media-player":{ pct: 42, playing: true, liked: false, shuffle: false, muted: false, showTime: true, showCover: true, animated: true },
   testimonial:   { stars: 4, verified: 1, showAvatar: true, showName: true, showRole: true, animated: true },
@@ -210,14 +210,14 @@ export const DEFAULT_PROPS = {
   card:          { featured: false, liked: false, loading: false, showAuthor: true, showCta: true, showDescription: true, showImage: true, animated: true },
   badge:         { level: 0, count: 3, dot: false, showLabel: true, animated: true },
   modal:         { on: true, size: 1, dismissible: true, showIcon: true, showFooter: true, showTitle: true, animated: true },
-  "stat-card":   { trend: 0, sparkline: true, showDelta: true, showLabel: true, animated: true },
+  "stat-card":   { trend: 0, sparkline: true, showDelta: true, showLabel: true, showIcon: true, animated: true },
   "list-item":   { on: true, pinned: false, completed: false, showDescription: true, animated: true },
   "avatar-row":  { active: 0, stacked: true, showCount: true, showStatus: true, animated: true },
   "tag-input":   { active: 0, removable: true, editable: true, showAdd: true, animated: true },
   "card-sm":     { featured: false, showBadge: true, showIcon: true, animated: true },
   footer:        { active: 0, newsletter: false, subscribed: false, showSocials: true, showCopyright: true, showBrand: true, animated: true },
   hero:          { active: 0, centered: true, showTrust: true, showCta: true, showSubtitle: true, showBadge: true, animated: true },
-  toggle:        { on: true, animated: true },
+  toggle:        { on: true, disabled: false, showLabel: true, animated: true },
   button:        { loading: false, disabled: false, icon: false, showLabel: true, animated: true },
   navbar:        { active: 0, showCta: true, showLogo: true, animated: true },
   breadcrumb:    { active: 2, collapsed: false, showHome: true, showSeparator: true, animated: true },
@@ -226,7 +226,7 @@ export const DEFAULT_PROPS = {
   search:        { results: 3, loading: false, clearable: true, showIcon: true, showCount: true, animated: true },
   tooltip:       { on: true, position: 0, showArrow: true, showShortcut: true, animated: true },
   heading:       { align: 0, size: 0, decorated: false, showSubtitle: true, showCount: true, animated: true },
-  "image-placeholder": { shape: 0, uploadable: true, showCaption: true, animated: true },
+  "image-placeholder": { shape: 0, uploadable: true, showCaption: true, showDimensions: true, animated: true },
   "code-block": { lineNumbers: true, copied: false, showHeader: true, showCopy: true, animated: true },
 };
 
