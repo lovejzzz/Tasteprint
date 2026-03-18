@@ -986,6 +986,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Home icon toggle (breadcrumb) */
+  if ("showHome" in defaults) {
+    const on = G("showHome");
+    controls.push(<React.Fragment key="showHome"><span style={label}>{on ? "Home Icon" : "No Home"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHome", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Arrow toggle (tooltip) */
+  if ("showArrow" in defaults) {
+    const on = G("showArrow");
+    controls.push(<React.Fragment key="showArrow"><span style={label}>{on ? "Arrow" : "No Arrow"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showArrow", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
