@@ -5662,6 +5662,68 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.densityMultiplier = dm;
   }
 
+  // --- Color contrast safety check (prevent unreadable text) ---
+  // Extract effective background color and ensure sufficient contrast with text
+  const _extractBgColor = (bg) => {
+    if (!bg) return null;
+    // Hex color
+    const hexMatch = bg.match(/#([0-9a-fA-F]{6})/);
+    if (hexMatch) return "#" + hexMatch[1];
+    // rgba/rgb
+    const rgbMatch = bg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (rgbMatch) {
+      const toH = n => parseInt(n).toString(16).padStart(2, "0");
+      return "#" + toH(rgbMatch[1]) + toH(rgbMatch[2]) + toH(rgbMatch[3]);
+    }
+    // Gradient — grab first color stop
+    const gradHex = bg.match(/#([0-9a-fA-F]{6})/);
+    if (gradHex) return "#" + gradHex[1];
+    const gradRgb = bg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (gradRgb) {
+      const toH = n => parseInt(n).toString(16).padStart(2, "0");
+      return "#" + toH(gradRgb[1]) + toH(gradRgb[2]) + toH(gradRgb[3]);
+    }
+    return null;
+  };
+  const _relLuminance = (hex) => {
+    if (!hex || hex.length < 7) return 0.5;
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const srgb = c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    return 0.2126 * srgb(r) + 0.7152 * srgb(g) + 0.0722 * srgb(b);
+  };
+  const _contrastRatio = (l1, l2) => {
+    const lighter = Math.max(l1, l2), darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  };
+
+  const effectiveBg = _extractBgColor(s.background) || palette.bg;
+  const textColor = s.color || palette.tx;
+  const bgLum = _relLuminance(effectiveBg);
+  const txLum = _relLuminance(textColor);
+  const ratio = _contrastRatio(bgLum, txLum);
+
+  if (ratio < 3) {
+    // Contrast too low — override text color to ensure readability
+    // If bg is dark (lum < 0.2), use white text; if light (lum > 0.5), use near-black
+    // Otherwise pick whichever of palette.tx or palette.bg gives better contrast
+    if (bgLum < 0.2) {
+      s.color = "#ffffff";
+    } else if (bgLum > 0.5) {
+      s.color = "#1a1a1a";
+    } else {
+      // Mid-range bg: try both white and dark, pick better contrast
+      const whiteRatio = _contrastRatio(bgLum, _relLuminance("#ffffff"));
+      const darkRatio = _contrastRatio(bgLum, _relLuminance("#1a1a1a"));
+      s.color = whiteRatio > darkRatio ? "#ffffff" : "#1a1a1a";
+    }
+    // Also fix s.borderColor if it matches the old text color (common in some moods)
+    if (s.borderColor === textColor) {
+      s.borderColor = s.color;
+    }
+  }
+
   s._effectCount = _effectCount;
   return s;
 }
