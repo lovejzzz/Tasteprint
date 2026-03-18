@@ -906,6 +906,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Striped toggle (table) */
+  if ("striped" in defaults) {
+    const on = G("striped");
+    controls.push(<React.Fragment key="striped"><span style={label}>{on ? "Striped" : "Plain"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("striped", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Grid toggle (chart) */
+  if ("showGrid" in defaults) {
+    const on = G("showGrid");
+    controls.push(<React.Fragment key="showGrid"><span style={label}>{on ? "Grid" : "No Grid"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showGrid", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Breakdown toggle (receipt) */
+  if ("showBreakdown" in defaults) {
+    const on = G("showBreakdown");
+    controls.push(<React.Fragment key="showBreakdown"><span style={label}>{on ? "Breakdown" : "No Breakdown"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBreakdown", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Check toggle (feature-table) */
+  if ("showCheck" in defaults) {
+    const on = G("showCheck");
+    controls.push(<React.Fragment key="showCheck"><span style={label}>{on ? "Checks" : "No Checks"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showCheck", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Status toggle (dash-panel) */
+  if ("showStatus" in defaults) {
+    const on = G("showStatus");
+    controls.push(<React.Fragment key="showStatus"><span style={label}>{on ? "Status" : "No Status"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showStatus", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
