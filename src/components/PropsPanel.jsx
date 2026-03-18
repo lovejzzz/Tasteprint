@@ -1106,6 +1106,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Label toggle (badge) */
+  if ("showLabel" in defaults && type === "badge") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="showLabel-badge"><span style={label}>{on ? "Label" : "No Label"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Label toggle (button) */
+  if ("showLabel" in defaults && type === "button") {
+    const on = G("showLabel");
+    controls.push(<React.Fragment key="showLabel-btn"><span style={label}>{on ? "Label" : "Icon Only"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabel", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Helper toggle (input) */
+  if ("showHelper" in defaults && type === "input") {
+    const on = G("showHelper");
+    controls.push(<React.Fragment key="showHelper"><span style={label}>{on ? "Helper" : "No Helper"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showHelper", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Flag toggle (select) */
+  if ("showFlag" in defaults && type === "select") {
+    const on = G("showFlag");
+    controls.push(<React.Fragment key="showFlag"><span style={label}>{on ? "Flag" : "No Flag"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showFlag", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (checkbox) */
+  if ("showDescription" in defaults && type === "checkbox") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="showDesc-ck"><span style={label}>{on ? "Desc" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
