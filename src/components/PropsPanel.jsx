@@ -666,6 +666,30 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Animated toggle (chart) */
+  if ("animated" in defaults && type === "chart") {
+    const on = G("animated");
+    controls.push(<React.Fragment key="animated"><span style={label}>{on ? "Animated" : "Static"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("animated", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show legend toggle (chart) */
+  if ("showLegend" in defaults) {
+    const on = G("showLegend");
+    controls.push(<React.Fragment key="showLegend"><span style={label}>{on ? "Legend" : "No Legend"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLegend", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Searchable toggle (select) */
+  if ("searchable" in defaults) {
+    const on = G("searchable");
+    controls.push(<React.Fragment key="searchable"><span style={label}>{on ? "Search" : "No Search"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("searchable", !on)} />
+    </React.Fragment>);
+  }
+
   /* Dismissed toggle (promo-banner) */
   if ("dismissed" in defaults) {
     const on = G("dismissed");
