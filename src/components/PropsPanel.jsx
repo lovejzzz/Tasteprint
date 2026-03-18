@@ -2114,6 +2114,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Title toggle (list-item) */
+  if ("showTitle" in defaults && type === "list-item") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="li-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (alert) */
+  if ("showDescription" in defaults && type === "alert") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="al-desc"><span style={label}>{on ? "Description" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Divider toggle (heading) */
+  if ("showDivider" in defaults && type === "heading") {
+    const on = G("showDivider");
+    controls.push(<React.Fragment key="hd-div"><span style={label}>{on ? "Divider" : "No Divider"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDivider", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Icon toggle (sidebar) */
+  if ("showIcon" in defaults && type === "sidebar") {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="sb-ico"><span style={label}>{on ? "Icons" : "No Icons"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Name toggle (cart-item) */
+  if ("showName" in defaults && type === "cart-item") {
+    const on = G("showName");
+    controls.push(<React.Fragment key="ci-name"><span style={label}>{on ? "Name" : "No Name"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showName", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
