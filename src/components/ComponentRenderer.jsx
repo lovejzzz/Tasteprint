@@ -953,7 +953,7 @@ function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=
       <div style={{padding:14,display:"flex",flexDirection:"column",gap:6,flex:1}}>
         <T k="title" s={{fontSize:f(13),fontWeight:600,color:p.tx}}>Wireless Headphones</T>
         <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Active noise canceling, 30hr battery</T>
-        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>{[1,2,3,4,5].map(i=><span key={i} style={{cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}>{star(i<=pcR)}</span>)}<span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>{pcRAvg}</span></div>}
+        {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>{[1,2,3,4,5].map(i=><span key={i} style={{cursor:"pointer",transition:"transform .15s",display:"inline-block"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.3)"}} onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)"}}>{star(i<=pcR)}</span>)}<span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>{pcRAvg}</span></div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}>
           <T k="price" s={{fontSize:f(16),fontWeight:700,color:p.tx}}>$49.00</T>
           <div style={{height:30,width:72,borderRadius:8,background:pcInCart?"#10B981":p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .2s ease"}} {...pcCtaHov} onMouseDown={e=>e.stopPropagation()} onClick={pcCartClick}><span style={{color:onAc,fontSize:f(10),fontWeight:600}}>{pcInCart?"✓ Added":"Add"}</span></div>
@@ -969,9 +969,11 @@ function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=
         <T k="desc" s={{fontSize:f(10),color:p.mu,lineHeight:1.4}}>Limited time offer</T>
         {pcR>0&&<div style={{display:"flex",alignItems:"center",gap:3,color:p.ac}}>{[1,2,3,4,5].map(i=><span key={i} style={{cursor:"pointer"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>pcRClick(i,e)}>{star(i<=pcR)}</span>)}<span style={{fontSize:f(9),color:p.mu,marginLeft:2}}>{pcRAvg}</span></div>}
         <div style={{display:"flex",alignItems:"center",gap:8,marginTop:"auto"}}>
-          <T k="price" s={{fontSize:f(16),fontWeight:700,color:"#E05050"}}>$29.00</T>
-          <T k="orig" s={{fontSize:f(12),color:p.mu,textDecoration:"line-through"}}>$49.00</T>
-          <span style={{fontSize:f(9),fontWeight:600,color:"#E05050",background:"#E0505012",padding:"1px 6px",borderRadius:4,marginLeft:"auto"}}>-41%</span>
+          <div style={{flex:1}}>
+            <T k="price" s={{fontSize:f(16),fontWeight:700,color:"#E05050"}}>$29.00</T>
+            <T k="orig" s={{fontSize:f(10),color:p.mu,textDecoration:"line-through",marginLeft:4}}>$49</T>
+          </div>
+          <div style={{height:28,paddingInline:12,borderRadius:8,background:pcInCart?"#10B981":p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .2s ease"}} {...pcCtaHov} onMouseDown={e=>e.stopPropagation()} onClick={pcCartClick}><span style={{color:onAc,fontSize:f(10),fontWeight:600}}>{pcInCart?"✓ Added":"Add"}</span></div>
         </div>
       </div>
     </div>;
@@ -987,7 +989,7 @@ function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=
         </div>}
         <div style={{marginTop:"auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <T k="price" s={{fontSize:f(15),fontWeight:700,color:p.tx}}>$49.00</T>
-          <div style={{height:28,width:66,borderRadius:6,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .2s ease"}} {...pcCtaHov}><T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:600}}>Add</T></div>
+          <div style={{height:28,width:72,borderRadius:6,background:pcInCart?"#10B981":p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .2s ease"}} {...pcCtaHov} onMouseDown={e=>e.stopPropagation()} onClick={pcCartClick}><span style={{color:onAc,fontSize:f(10),fontWeight:600}}>{pcInCart?"✓ Added":"Add"}</span></div>
         </div>
       </div>
     </div>;
@@ -1013,9 +1015,9 @@ function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=
           <div style={{display:"flex",alignItems:"baseline",gap:4}}>
             <T k="price" s={{fontSize:f(16),fontWeight:700,color:p.tx}}>$49.00</T>
           </div>
-          <div style={{height:32,paddingInline:14,borderRadius:10,background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:5,transition:"all .2s ease"}} {...pcCtaHov}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2.5" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            <T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:600}}>Add to cart</T>
+          <div style={{height:32,paddingInline:14,borderRadius:10,background:pcInCart?"#10B981":p.ac,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:5,transition:"all .2s ease"}} {...pcCtaHov} onMouseDown={e=>e.stopPropagation()} onClick={pcCartClick}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2.5" strokeLinecap="round">{pcInCart?<polyline points="20 6 9 17 4 12"/>:<><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>}</svg>
+            <span style={{color:onAc,fontSize:f(10),fontWeight:600}}>{pcInCart?"Added":"Add to cart"}</span>
           </div>
         </div>
       </div>
@@ -1039,8 +1041,8 @@ function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=
         </div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto",paddingTop:4}}>
           <T k="price" s={{fontSize:f(17),fontWeight:800,color:p.tx}}>$49.00</T>
-          <div style={{height:34,paddingInline:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 12px ${p.ac}30`,transition:"all .2s ease"}} {...pcCtaHov}>
-            <T k="cta" s={{color:onAc,fontSize:f(11),fontWeight:600}}>Buy now</T>
+          <div style={{height:34,paddingInline:16,borderRadius:999,background:pcInCart?`linear-gradient(135deg,#10B981,#059669)`:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:pcInCart?`0 4px 12px #10B98130`:`0 4px 12px ${p.ac}30`,transition:"all .2s ease"}} {...pcCtaHov} onMouseDown={e=>e.stopPropagation()} onClick={pcCartClick}>
+            <span style={{color:onAc,fontSize:f(11),fontWeight:600}}>{pcInCart?"✓ In cart":"Buy now"}</span>
           </div>
         </div>
       </div>
@@ -1068,8 +1070,8 @@ function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=
           <div style={{background:p.tx,borderRadius:2,padding:"2px 10px"}}>
             <T k="price" s={{fontSize:f(18),fontWeight:900,color:p.card,letterSpacing:"-0.02em"}}>$49</T>
           </div>
-          <div style={{height:32,paddingInline:14,borderRadius:3,background:p.ac,border:`2px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`3px 3px 0 ${p.tx}`,transition:"transform .1s, box-shadow .1s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translate(1px,1px)";e.currentTarget.style.boxShadow="none"}} onMouseLeave={e=>{e.currentTarget.style.transform="translate(0,0)";e.currentTarget.style.boxShadow=`3px 3px 0 ${p.tx}`}}>
-            <T k="cta" s={{color:onAc,fontSize:f(10),fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em"}}>ADD</T>
+          <div style={{height:32,paddingInline:14,borderRadius:3,background:pcInCart?"#10B981":p.ac,border:`2px solid ${p.tx}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`3px 3px 0 ${p.tx}`,transition:"transform .1s, box-shadow .1s"}} onMouseDown={e=>e.stopPropagation()} onClick={pcCartClick} onMouseEnter={e=>{e.currentTarget.style.transform="translate(1px,1px)";e.currentTarget.style.boxShadow="none"}} onMouseLeave={e=>{e.currentTarget.style.transform="translate(0,0)";e.currentTarget.style.boxShadow=`3px 3px 0 ${p.tx}`}}>
+            <span style={{color:onAc,fontSize:f(10),fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em"}}>{pcInCart?"ADDED ✓":"ADD"}</span>
           </div>
         </div>
       </div>
@@ -1097,9 +1099,9 @@ function CRaw({type,v=0,p,editable,texts={},onText,props={},onProp,font=0,fsize=
             <T k="price" s={{fontSize:f(18),fontWeight:800,color:p.tx}}>$49.00</T>
             <div style={{width:5,height:5,borderRadius:999,background:p.ac,boxShadow:`0 0 6px ${p.ac}`,animation:"tp-pulse 2s ease-in-out infinite"}}/>
           </div>
-          <div style={{height:34,paddingInline:16,borderRadius:999,background:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 4px 16px ${p.ac}35`,position:"relative",overflow:"hidden",transition:"transform .15s, box-shadow .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow=`0 6px 20px ${p.ac}45`}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow=`0 4px 16px ${p.ac}35`}}>
+          <div style={{height:34,paddingInline:16,borderRadius:999,background:pcInCart?`linear-gradient(135deg,#10B981,#059669)`:`linear-gradient(135deg,${p.ac},${p.ac2||p.ac})`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:pcInCart?`0 4px 16px #10B98135`:`0 4px 16px ${p.ac}35`,position:"relative",overflow:"hidden",transition:"transform .15s, box-shadow .15s"}} onMouseDown={e=>e.stopPropagation()} onClick={pcCartClick} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow=pcInCart?`0 6px 20px #10B98145`:`0 6px 20px ${p.ac}45`}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow=pcInCart?`0 4px 16px #10B98135`:`0 4px 16px ${p.ac}35`}}>
             <div style={{position:"absolute",inset:0,background:`linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent)`,animation:"tp-shimmer-slide 2.5s ease-in-out infinite",pointerEvents:"none"}}/>
-            <T k="cta" s={{color:onAc,fontSize:f(11),fontWeight:600,position:"relative",zIndex:1}}>Buy now</T>
+            <span style={{color:onAc,fontSize:f(11),fontWeight:600,position:"relative",zIndex:1}}>{pcInCart?"✓ In cart":"Buy now"}</span>
           </div>
         </div>
       </div>
