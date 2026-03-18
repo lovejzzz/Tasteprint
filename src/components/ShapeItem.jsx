@@ -22,7 +22,7 @@ const KBHint = ({ label, p: pal, style: extraStyle }) => (
   <span style={{ fontSize: 8, padding: "1px 3px", borderRadius: 3, background: pal.su, color: pal.mu, fontFamily: "system-ui", lineHeight: 1, pointerEvents: "none", fontWeight: 500, letterSpacing: ".02em", whiteSpace: "nowrap", ...extraStyle }}>{label}</span>
 );
 
-const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, undoRandomize, hasRndUndo, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, dScore, candidates, candidateIdx, cycleVariation, designHistory, undoDesign, isLocked, toggleLock }) {
+const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFont, p, onDown, onSelect, onText, onProp, cycle, cycleFont, cycleFsize, randomize, styleSource, setStyleSource, copyStyle, delShape, setRsz, texture, designMood, setDesignMood, candidates, candidateIdx, cycleVariation, designHistory, undoDesign, isLocked, toggleLock }) {
   const [hovered, setHovered] = useState(false);
   const [moodPickerOpen, setMoodPickerOpen] = useState(false);
   const isDrg = drag === s.id;
@@ -153,22 +153,23 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             </>}
           </span>
           <div style={{ position: "relative", display: "inline-flex" }}>
-            <button aria-label={isLocked ? "Unlock from randomize-all" : "Lock to protect from randomize-all"}
+            <button aria-label={isLocked ? "Unlock — allow randomize-all to change this" : "Lock — keep this component when randomize-all"}
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); toggleLock(s.id); }}
               onMouseEnter={e => { e.currentTarget.style.background = isLocked ? p.ac + "28" : p.ac + "18"; e.currentTarget.style.transform = "scale(1.08)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = isLocked ? p.ac + "18" : p.su; e.currentTarget.style.transform = "scale(1)"; }}
-              style={{ ...pb, fontSize: 12, background: isLocked ? p.ac + "18" : p.su, color: isLocked ? p.ac : p.mu }}>
+              style={{ ...pb, fontSize: 9, width: "auto", padding: "0 7px", gap: 3, fontWeight: 500, background: isLocked ? p.ac + "18" : p.su, color: isLocked ? p.ac : p.mu }}>
               {isLocked ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 9.9-1" />
                 </svg>
               )}
+              <span>{isLocked ? "Locked" : "Lock"}</span>
             </button>
             {hovered && isPrimary && <KBHint label="L" p={p} style={{ position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)" }} />}
           </div>
@@ -231,20 +232,6 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
               {hovered && isPrimary && <KBHint label="\u2190/\u2192" p={p} style={{ position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)" }} />}
             </div>
           )}
-          {hasRndUndo && <button aria-label="Undo randomize" {...ph}
-            onPointerDown={e => { e.stopPropagation(); e.preventDefault(); undoRandomize(); }}
-            style={{ ...pb, fontSize: 11, width: "auto", padding: "0 6px" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-            </svg>
-          </button>}
-          {dScore > 0 && <span aria-label={`Design score: ${dScore} of 5`} style={{ display: "flex", gap: 2, alignItems: "center", padding: "0 5px", cursor: "default" }}
-            title={dScore >= 5 ? "Perfect harmony" : dScore >= 4 ? "Great design" : dScore >= 3 ? "Decent — try another roll" : dScore >= 2 ? "Clashing styles" : "Needs work"}>
-            {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ width: 4, height: 4, borderRadius: 2, background: i <= dScore ? (dScore >= 4 ? p.ac : dScore >= 3 ? p.mu : "#E0524D") : p.bd, transition: "background .2s ease" }} />)}
-            <span style={{ fontSize: 8, fontWeight: 600, color: dScore >= 4 ? p.ac : dScore >= 3 ? p.mu : "#E0524D", marginLeft: 1, opacity: 0.8 }}>
-              {dScore >= 5 ? "✦" : dScore >= 4 ? "◆" : dScore <= 2 ? "⚠" : ""}
-            </span>
-          </span>}
           {sep}
           {/* Style transfer: eyedropper to set source, or paste if source is active */}
           {hasActiveSource ? (
@@ -418,9 +405,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     prev.p === next.p &&
     prev.selAll.has(id) === next.selAll.has(id) &&
     prev.designMood === next.designMood &&
-    prev.hasRndUndo === next.hasRndUndo &&
     prev.styleSource === next.styleSource &&
-    prev.dScore === next.dScore &&
     prev.s.dStyles === next.s.dStyles &&
     prev.candidates === next.candidates &&
     prev.candidateIdx === next.candidateIdx &&

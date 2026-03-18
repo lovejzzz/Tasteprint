@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
 import { STORE_KEY, FONTS, FONT_URL, PAL, LIB, HAS_TEXT, HAS_PROPS, VARIANTS, DEFAULT_PROPS } from "./constants";
-import { load, uid, maxV, varName, snap, validateImport, designerRandomize, getCuratedPreset, designScore, generateDesignDNA, DESIGN_MOODS } from "./utils";
+import { load, uid, maxV, varName, snap, validateImport, designerRandomize, getCuratedPreset, generateDesignDNA, DESIGN_MOODS } from "./utils";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TpContext } from "./contexts/TpContext";
 import Header from "./components/Header";
@@ -691,7 +691,7 @@ export default function App() {
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: p.bg, fontFamily: "'DM Sans',system-ui,sans-serif", color: p.tx, transition: "background .4s,color .4s" }}>
       <link href={FONT_URL} rel="stylesheet" />
 
-      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} mobile={mobile} randomizeAll={randomizeAll} hasRndUndo={hasRndUndo} undoRandomize={undoRandomize} designMood={designMood} setDesignMood={setDesignMood} lastRandomizeStats={lastRandomizeStats} />
+      <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapes={shapes} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} p={p} mobile={mobile} randomizeAll={randomizeAll} designMood={designMood} setDesignMood={setDesignMood} lastRandomizeStats={lastRandomizeStats} />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: mobile ? "column" : "row" }}>
         {!mobile && <LibrarySidebar expCat={expCat} setExpCat={setExpCat} catItems={catItems} prefV={prefV} p={p} pDrag={pDrag} setPDrag={setPDrag} dRef={dRef} reorderLib={reorderLib} lastReorder={lastReorder} />}
@@ -722,7 +722,7 @@ export default function App() {
             <div style={{ position: "absolute", left: 0, top: 0, ...(device === "free" && !mobile ? { transform: `translate(${cam.x}px,${cam.y}px) scale(${cam.z})`, transformOrigin: "0 0", willChange: "transform" } : mobile ? { width: "100%", padding: "10px" } : {}), width: device !== "free" && !mobile ? "100%" : undefined, minHeight: !mobile ? deviceH || undefined : undefined }}>
               {shapes.map(s => (
                 <ShapeItem key={s.id} s={s} sel={sel} selAll={selAll} drag={drag} device={device} selFont={selFont} p={p}
-                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} undoRandomize={undoRandomize} hasRndUndo={hasRndUndo} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} dScore={sel === s.id ? designScore(s, p, shapes.filter(x => x.id !== s.id)) : 0} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} designHistory={designHistory[s.id]} undoDesign={undoDesign} isLocked={lockedShapes.has(s.id)} toggleLock={toggleLock} />
+                  onDown={onDown} onSelect={onSelect} onText={updateText} onProp={updateProp} cycle={cycle} cycleFont={cycleFont} cycleFsize={cycleFsize} randomize={randomize} styleSource={styleSource} setStyleSource={setStyleSource} copyStyle={copyStyle} delShape={delShape} setRsz={setRsz} designMood={designMood} setDesignMood={setDesignMood} candidates={candidates[s.id]} candidateIdx={candidateIdx[s.id] ?? -1} cycleVariation={cycleVariation} designHistory={designHistory[s.id]} undoDesign={undoDesign} isLocked={lockedShapes.has(s.id)} toggleLock={toggleLock} />
               ))}
             </div>
 

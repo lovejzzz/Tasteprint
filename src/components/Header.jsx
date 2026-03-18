@@ -25,7 +25,7 @@ function reflowForDevice(deviceKey, shapes, setShapes, setDevice, setCam) {
   setCam({ x: 0, y: 0, z: 1 });
 }
 
-export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, hasRndUndo, undoRandomize, designMood, setDesignMood, lastRandomizeStats }) {
+export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, designMood, setDesignMood, lastRandomizeStats }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredBtn, setHoveredBtn] = useState(null);
   const [showStats, setShowStats] = useState(false);
@@ -347,12 +347,6 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
               </span>
             )}
           </span>
-          {hasRndUndo && <button onClick={undoRandomize} title="Undo last randomize" aria-label="Undo randomize"
-            {...btnHandlers("rndUndo")} style={btn("rndUndo", { fontSize: 11 })}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-            </svg>
-          </button>}
         </>}
       </div>
     </header>
