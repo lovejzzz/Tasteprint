@@ -794,6 +794,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Icon toggle (tabs) */
+  if ("showIcon" in defaults) {
+    const on = G("showIcon");
+    controls.push(<React.Fragment key="showIcon"><span style={label}>{on ? "Icons" : "No Icons"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showIcon", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Labels toggle (stepper) */
+  if ("showLabels" in defaults) {
+    const on = G("showLabels");
+    controls.push(<React.Fragment key="showLabels"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLabels", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Avatar toggle (testimonial) */
+  if ("showAvatar" in defaults) {
+    const on = G("showAvatar");
+    controls.push(<React.Fragment key="showAvatar"><span style={label}>{on ? "Avatar" : "No Avatar"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showAvatar", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Delta toggle (stat-card) */
+  if ("showDelta" in defaults) {
+    const on = G("showDelta");
+    controls.push(<React.Fragment key="showDelta"><span style={label}>{on ? "Delta" : "No Delta"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDelta", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Bio toggle (profile-card) */
+  if ("showBio" in defaults) {
+    const on = G("showBio");
+    controls.push(<React.Fragment key="showBio"><span style={label}>{on ? "Bio" : "No Bio"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showBio", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
