@@ -273,6 +273,16 @@ export const DESIGN_MOODS = [
   { id: "watercolor", label: "Watercolor", icon: "🎨" },
   { id: "inkwash", label: "Ink Wash", icon: "🖌️" },
   { id: "kawaii", label: "Kawaii", icon: "🧸" },
+  { id: "clay3d", label: "3D Clay", icon: "🧱" },
+  { id: "ukiyoe", label: "Ukiyo-e", icon: "🌊" },
+  { id: "childbook", label: "Storybook", icon: "📚" },
+  { id: "botanical", label: "Botanical", icon: "🌿" },
+  { id: "shadowpuppet", label: "Shadow Play", icon: "🎭" },
+  { id: "cinematic", label: "Cinematic", icon: "🎬" },
+  { id: "watercolortattoo", label: "Tattoo Art", icon: "💉" },
+  { id: "lego", label: "Lego", icon: "🧱" },
+  { id: "plushie", label: "Plushie", icon: "🧸" },
+  { id: "popmart", label: "Pop Mart", icon: "🎪" },
 ];
 
 /* Mood-specific overrides for variant/font/size selection */
@@ -441,6 +451,85 @@ const MOOD_CONFIG = {
     variantBias: (tags, varCount, dark) => Math.floor(Math.random() * varCount),
     fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.display, ...FONT_CATS.body]),
     fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.4) : cat === "small" ? randRange(0.9, 1.05) : randRange(0.95, 1.2),
+    propTweak: (props) => {},
+  },
+  clay3d: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.4) return tags.gradient;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.display, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.4) : cat === "small" ? randRange(0.9, 1.05) : randRange(0.95, 1.2),
+    propTweak: (props) => {},
+  },
+  ukiyoe: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * Math.min(3, varCount)),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.display]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.05, 1.3) : cat === "small" ? randRange(0.88, 0.98) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  childbook: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * varCount),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.display, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.15, 1.45) : cat === "small" ? randRange(0.92, 1.08) : randRange(1.0, 1.25),
+    propTweak: (props) => {},
+  },
+  botanical: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * Math.min(2, varCount)),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.serif),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.0, 1.2) : cat === "small" ? randRange(0.88, 0.96) : randRange(0.92, 1.08),
+    propTweak: (props) => {},
+  },
+  shadowpuppet: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.brutal !== undefined && Math.random() < 0.4) return tags.brutal;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.display]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.35) : cat === "small" ? randRange(0.88, 1.0) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  cinematic: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.brutal !== undefined && Math.random() < 0.35) return tags.brutal;
+      if (tags.gradient !== undefined && Math.random() < 0.3) return tags.gradient;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.serif, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.35) : cat === "small" ? randRange(0.88, 1.0) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  watercolortattoo: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.5) return tags.gradient;
+      return Math.floor(Math.random() * Math.min(3, varCount));
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.display, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.05, 1.3) : cat === "small" ? randRange(0.88, 1.0) : randRange(0.92, 1.12),
+    propTweak: (props) => {},
+  },
+  lego: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.brutal !== undefined && Math.random() < 0.5) return tags.brutal;
+      return Math.floor(Math.random() * Math.min(3, varCount));
+    },
+    fontPool: () => pick(FONT_CATS.body),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.1, 1.35) : cat === "small" ? randRange(0.9, 1.0) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  plushie: {
+    variantBias: (tags, varCount, dark) => Math.floor(Math.random() * varCount),
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick([...FONT_CATS.display, ...FONT_CATS.body]),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.05, 1.3) : cat === "small" ? randRange(0.9, 1.05) : randRange(0.95, 1.15),
+    propTweak: (props) => {},
+  },
+  popmart: {
+    variantBias: (tags, varCount, dark) => {
+      if (tags.gradient !== undefined && Math.random() < 0.5) return tags.gradient;
+      return Math.floor(Math.random() * varCount);
+    },
+    fontPool: (isLarge, isSmall) => isSmall ? pick(FONT_CATS.body) : pick(FONT_CATS.display),
+    fsizeRange: (cat) => cat === "large" ? randRange(1.15, 1.5) : cat === "small" ? randRange(0.92, 1.08) : randRange(1.0, 1.25),
     propTweak: (props) => {},
   },
 };
@@ -1279,7 +1368,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
   // --- Complexity budget (Round 86): cap total active effects per mood to prevent visual noise ---
   // Early effects (gradients, shadows) get priority; later decorative effects only apply if budget remains.
-  const _budgetMap = { minimal: 2, elegant: 3, auto: 4, bold: 5, playful: 5, artdeco: 4, synthwave: 5, pixel: 3, lineart: 2, stainedglass: 4, embroidery: 3, disco: 5, papercraft: 3, papercut: 3, collage: 5, scifi: 4, porcelain: 3, watercolor: 3, inkwash: 3, kawaii: 4 };
+  const _budgetMap = { minimal: 2, elegant: 3, auto: 4, bold: 5, playful: 5, artdeco: 4, synthwave: 5, pixel: 3, lineart: 2, stainedglass: 4, embroidery: 3, disco: 5, papercraft: 3, papercut: 3, collage: 5, scifi: 4, porcelain: 3, watercolor: 3, inkwash: 3, kawaii: 4, clay3d: 4, ukiyoe: 3, childbook: 4, botanical: 2, shadowpuppet: 3, cinematic: 4, watercolortattoo: 3, lego: 3, plushie: 3, popmart: 4 };
   const _maxEffects = _budgetMap[moodId] || 4;
   let _effectCount = 0;
 
@@ -1339,6 +1428,26 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.borderRadius = pick([6, 8, 10, 12]); // moderate, organic
   } else if (moodId === "kawaii") {
     s.borderRadius = pick([20, 24, 32, 999]); // ultra-round, pill everything
+  } else if (moodId === "clay3d") {
+    s.borderRadius = pick([20, 22, 24, 28]); // heavy rounded for 3D clay feel
+  } else if (moodId === "ukiyoe") {
+    s.borderRadius = pick([0, 2, 4]); // flat woodblock, minimal rounding
+  } else if (moodId === "childbook") {
+    s.borderRadius = pick([18, 20, 22, 24]); // extra-round, friendly
+  } else if (moodId === "botanical") {
+    s.borderRadius = pick([6, 8, 10, 12]); // moderate, elegant
+  } else if (moodId === "shadowpuppet") {
+    s.borderRadius = pick([4, 6, 8]); // subtle, theatrical
+  } else if (moodId === "cinematic") {
+    s.borderRadius = pick([2, 4, 6]); // sharp, film-like
+  } else if (moodId === "watercolortattoo") {
+    s.borderRadius = pick([16, 20, 24, 32]); // soft organic edges
+  } else if (moodId === "lego") {
+    s.borderRadius = 0; // sharp geometric, zero radius
+  } else if (moodId === "plushie") {
+    s.borderRadius = 999; // pill everything, ultra-soft
+  } else if (moodId === "popmart") {
+    s.borderRadius = pick([18, 20, 22, 24]); // heavy rounded, toy-like
   } else {
     // auto: weighted spectrum — favor interesting values over boring midrange
     const r = Math.random();
@@ -1475,6 +1584,26 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     s.boxShadow = pick([`0 4px 24px #00000012`, `0 6px 28px #00000010, 0 2px 12px #00000008`, `0 4px 20px #0000000E`]);
   } else if (moodId === "kawaii") {
     s.boxShadow = pick([`0 8px 0 ${acHex}25`, `0 6px 0 ${gc1}22`, `0 8px 0 ${acHex}20, 0 2px 8px ${shHex}08`]);
+  } else if (moodId === "clay3d") {
+    s.boxShadow = pick([`0 4px 8px ${shHex}15, 0 8px 16px ${shHex}10, 0 12px 24px ${shHex}08`, `0 3px 6px ${shHex}18, 0 6px 12px ${shHex}12, 0 10px 20px ${shHex}08`, `0 4px 10px ${acHex}12, 0 8px 20px ${shHex}10, 0 14px 28px ${shHex}06`]);
+  } else if (moodId === "ukiyoe") {
+    s.boxShadow = pick([`2px 2px 0 #1a1a1a20`, `3px 3px 0 #1a1a1a18`, `2px 2px 0 #1a1a1a15, 0 2px 8px #1a1a1a08`]);
+  } else if (moodId === "childbook") {
+    s.boxShadow = pick([`0 4px 12px ${acHex}18, 0 2px 6px ${shHex}10`, `0 6px 16px ${gc1}15, 0 2px 8px ${shHex}08`, `0 4px 14px ${acHex}15, 0 8px 20px ${shHex}06`]);
+  } else if (moodId === "botanical") {
+    s.boxShadow = pick([`0 2px 8px #3a5a2a0C`, `0 3px 10px #3a5a2a0A`, `0 2px 6px #3a5a2a0E, 0 1px 3px #3a5a2a06`]);
+  } else if (moodId === "shadowpuppet") {
+    s.boxShadow = pick([`0 0 20px #D4A01730, 0 0 40px #D4A01715`, `0 0 24px #D4A01728, 0 0 48px #D4A01712`, `0 0 16px #D4A01735, 0 4px 20px #00000025`]);
+  } else if (moodId === "cinematic") {
+    s.boxShadow = pick([`8px 4px 20px ${shHex}25`, `10px 5px 24px ${shHex}22, -2px 2px 12px ${shHex}08`, `6px 3px 18px ${shHex}28, 0 8px 24px ${shHex}10`]);
+  } else if (moodId === "watercolortattoo") {
+    s.boxShadow = pick([`0 6px 24px ${acHex}15, 0 10px 30px ${shHex}08`, `0 8px 28px ${gc1}12, 0 12px 32px ${shHex}06`, `0 6px 22px ${acHex}10, 0 10px 26px ${gc1}08`]);
+  } else if (moodId === "lego") {
+    s.boxShadow = pick([`3px 3px 0 #1a1a1a`, `3px 3px 0 #1a1a1a, 0 2px 8px #1a1a1a15`, `4px 4px 0 #1a1a1a`]);
+  } else if (moodId === "plushie") {
+    s.boxShadow = pick([`0 8px 32px ${acHex}12, 0 12px 40px ${shHex}08`, `0 6px 30px ${gc1}10, 0 10px 36px ${shHex}06`, `0 8px 36px ${acHex}0E, 0 14px 42px ${shHex}06`]);
+  } else if (moodId === "popmart") {
+    s.boxShadow = pick([`0 4px 16px ${acHex}25, 0 0 20px ${acHex}10`, `0 6px 20px ${gc1}22, 0 0 24px ${gc1}08`, `0 4px 18px ${acHex}20, 0 0 16px ${gcGlow}12`]);
   } else {
     // auto: favor interesting shadows over "none"
     const r = Math.random();
@@ -3143,6 +3272,252 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
       s.clipPath = undefined;
       s.skewX = undefined;
       s.textShadow = undefined;
+    }
+
+    /* ── 3D CLAY mood signature ── */
+    if (moodId === "clay3d") {
+      // Heavy rounded corners
+      s.borderRadius = pick([20, 22, 24, 28]);
+      // Multi-layer depth shadows for 3D pop
+      s.boxShadow = pick([
+        `0 4px 8px ${shHex}15, 0 8px 16px ${shHex}10, 0 12px 24px ${shHex}08`,
+        `0 3px 6px ${shHex}18, 0 6px 12px ${shHex}12, 0 10px 20px ${shHex}08`,
+      ]);
+      // Glossy highlight gradient overlay
+      s.gradientOverlay = `linear-gradient(180deg, #FFFFFF30 0%, #FFFFFF10 30%, transparent 60%)`;
+      // Warm lighting filter
+      s.filter = `brightness(1.05) saturate(1.1)`;
+      // Thick soft border in lighter shade
+      s.border = `2px solid ${acHex}35`;
+      // Strip harsh effects
+      s.clipPath = undefined;
+      s.skewX = undefined;
+      s.rotate = undefined;
+    }
+
+    /* ── UKIYO-E mood signature ── */
+    if (moodId === "ukiyoe") {
+      // Bold outlines
+      s.border = `2.5px solid #1a1a1a`;
+      // Flat fills — NO gradients
+      s.gradientOverlay = undefined;
+      s.gradientOverlay2 = undefined;
+      // Limited muted palette background
+      s.background = pick(["#C84B31", "#2C3E6B", "#F5E6C8", "#1a1a1a", "#8B4513"]);
+      // Woodblock texture overlay (grain at higher opacity)
+      s.textureOverlay = `repeating-linear-gradient(45deg, #00000006 0px, #00000006 1px, transparent 1px, transparent 4px), repeating-linear-gradient(-45deg, #00000005 0px, #00000005 1px, transparent 1px, transparent 5px)`;
+      // Bold typography
+      s.fontWeight = 700;
+      s.letterSpacing = "0.01em";
+      // Flat corners
+      s.borderRadius = pick([0, 2, 4]);
+      // Hard shadows
+      s.boxShadow = pick([`2px 2px 0 #1a1a1a20`, `3px 3px 0 #1a1a1a18`]);
+      // Strip smooth effects
+      s.filter = undefined;
+      s.rotate = undefined;
+    }
+
+    /* ── STORYBOOK mood signature ── */
+    if (moodId === "childbook") {
+      // Thick rough borders in warm colors
+      const cbWarm = pick(["#E87C3E", "#D4A017", "#CC5500", "#8B4513"]);
+      s.border = `3px solid ${cbWarm}`;
+      // Extra-round corners
+      s.borderRadius = pick([18, 20, 22, 24]);
+      // Warm bright saturated colors
+      s.filter = `saturate(1.2) brightness(1.05)`;
+      // Crayon-like dashed outline
+      s.outline = `2px dashed ${pick([acHex, gc1])}40`;
+      s.outlineOffset = `${pick([2, 3, 4])}px`;
+      // Large friendly typography
+      s.fontWeight = pick([600, 700]);
+      // Warm playful shadows
+      s.boxShadow = pick([
+        `0 4px 12px ${cbWarm}20, 0 2px 6px ${shHex}10`,
+        `0 6px 16px ${cbWarm}18, 0 2px 8px ${shHex}08`,
+      ]);
+      // Strip harsh effects
+      s.clipPath = undefined;
+      s.skewX = undefined;
+      s.textShadow = undefined;
+    }
+
+    /* ── BOTANICAL mood signature ── */
+    if (moodId === "botanical") {
+      // Off-white/cream background
+      s.background = pick(["#FAF8F0", "#F5F0E0", "#FFFFF5", "#FDF8ED"]);
+      // Thin precise borders in botanical green
+      s.border = `1px solid #3a5a2a`;
+      // Botanical green accents
+      const botGreen = pick(["#3a5a2a", "#5a7a4a"]);
+      // Fine line top/bottom borders
+      s.borderTop = `1px solid ${botGreen}40`;
+      s.borderBottom = `1px solid ${botGreen}40`;
+      // Serif typography, elegant spacing
+      s.fontFamily = "serif";
+      s.letterSpacing = "0.04em";
+      // Vintage sepia tint
+      s.filter = `sepia(0.08)`;
+      // Moderate elegant radius
+      s.borderRadius = pick([6, 8, 10, 12]);
+      // Subtle shadows
+      s.boxShadow = pick([`0 2px 8px #3a5a2a0C`, `0 3px 10px #3a5a2a0A`]);
+      // Strip playful effects
+      s.gradientOverlay = undefined;
+      s.rotate = undefined;
+      s.skewX = undefined;
+      s.clipPath = undefined;
+    }
+
+    /* ── SHADOW PLAY mood signature ── */
+    if (moodId === "shadowpuppet") {
+      // Dark background for silhouette effect
+      s.background = pick(["#1a1008", "#2a1a0a", "#0d0d0d", "#1e150a"]);
+      // Warm amber glow
+      s.boxShadow = pick([
+        `0 0 20px #D4A01730, 0 0 40px #D4A01715`,
+        `0 0 24px #D4A01728, 0 0 48px #D4A01712`,
+      ]);
+      // Thin warm gold border
+      s.border = `1px solid #D4A01740`;
+      // Dramatic contrast
+      s.filter = `contrast(1.2) brightness(0.9)`;
+      // Subtle radius
+      s.borderRadius = pick([4, 6, 8]);
+      // Theatrical text shadow
+      s.textShadow = `0 0 8px #D4A01740`;
+      // Strip playful effects
+      s.gradientOverlay = undefined;
+      s.rotate = undefined;
+      s.skewX = undefined;
+      s.clipPath = undefined;
+    }
+
+    /* ── CINEMATIC mood signature ── */
+    if (moodId === "cinematic") {
+      // Film grain texture overlay
+      s.textureOverlay = `repeating-linear-gradient(0deg, #00000003 0px, transparent 1px, transparent ${pick([2, 3])}px), repeating-linear-gradient(90deg, #00000002 0px, transparent 1px, transparent ${pick([2, 3])}px)`;
+      // Desaturated dramatic filter
+      s.filter = `saturate(0.7) contrast(1.1)`;
+      // Dramatic asymmetric shadows (large x-offset)
+      s.boxShadow = pick([
+        `8px 4px 20px ${shHex}25`,
+        `10px 5px 24px ${shHex}22, -2px 2px 12px ${shHex}08`,
+      ]);
+      // Letterbox-style: thick dark borders top and bottom
+      s.borderTop = `4px solid #0a0a0a`;
+      s.borderBottom = `4px solid #0a0a0a`;
+      s.borderLeft = undefined;
+      s.borderRight = undefined;
+      s.border = undefined;
+      // Sharp cinematic corners
+      s.borderRadius = pick([2, 4, 6]);
+      // Moody dark gradient
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = `linear-gradient(180deg, #0a0a0a40 0%, transparent 30%, transparent 70%, #0a0a0a40 100%)`;
+      }
+      // Strip playful effects
+      s.rotate = undefined;
+      s.skewX = undefined;
+    }
+
+    /* ── TATTOO ART mood signature ── */
+    if (moodId === "watercolortattoo") {
+      // No hard borders
+      s.border = "none";
+      // Soft gradient bleeds background
+      if (!s.gradientOverlay) {
+        s.gradientOverlay = pick([
+          `linear-gradient(135deg, ${acHex}15 0%, ${gc1}10 40%, ${gc2}08 70%, transparent 100%)`,
+          `radial-gradient(ellipse at 30% 40%, ${gc1}12 0%, ${acHex}08 40%, transparent 70%)`,
+        ]);
+      }
+      // Watercolor wash filter
+      s.filter = `saturate(0.85) blur(0.2px)`;
+      // Splatter effect: irregular clip-path
+      if (!isSmall && Math.random() < 0.4) {
+        s.clipPath = `polygon(2% 5%, 8% 0%, 20% 3%, 35% 0%, 50% 2%, 65% 0%, 80% 3%, 92% 0%, 98% 5%, 100% 15%, 98% 30%, 100% 50%, 98% 70%, 100% 85%, 98% 95%, 92% 100%, 80% 97%, 65% 100%, 50% 98%, 35% 100%, 20% 97%, 8% 100%, 2% 95%, 0% 85%, 2% 70%, 0% 50%, 2% 30%, 0% 15%)`;
+      }
+      // High blur shadows
+      s.boxShadow = pick([
+        `0 6px 24px ${acHex}15, 0 10px 30px ${shHex}08`,
+        `0 8px 28px ${gc1}12, 0 12px 32px ${shHex}06`,
+      ]);
+      // Soft rounded corners
+      s.borderRadius = pick([16, 20, 24, 32]);
+      // Strip hard edges
+      s.rotate = undefined;
+      s.textureOverlay = undefined;
+    }
+
+    /* ── LEGO mood signature ── */
+    if (moodId === "lego") {
+      // Primary colors only
+      s.background = pick(["#D01012", "#0057A6", "#F5C400", "#00852B", "#FFFFFF"]);
+      // Stud-pattern dot overlay
+      s.textureOverlay = `radial-gradient(circle 3px at 10px 10px, #00000012 3px, transparent 3px)`;
+      s.textureSize = `20px 20px`;
+      // Zero border-radius (sharp geometric)
+      s.borderRadius = 0;
+      // Bold thick borders
+      s.border = `3px solid #1a1a1a`;
+      // Hard shadows
+      s.boxShadow = pick([`3px 3px 0 #1a1a1a`, `4px 4px 0 #1a1a1a`]);
+      // Bold typography
+      s.fontWeight = 700;
+      // Strip smooth effects
+      s.gradientOverlay = undefined;
+      s.rotate = undefined;
+      s.skewX = undefined;
+      s.filter = undefined;
+    }
+
+    /* ── PLUSHIE mood signature ── */
+    if (moodId === "plushie") {
+      // Ultra-soft shadows with high blur
+      s.boxShadow = pick([
+        `0 8px 32px ${acHex}12, 0 12px 40px ${shHex}08`,
+        `0 6px 30px ${gc1}10, 0 10px 36px ${shHex}06`,
+      ]);
+      // Pastel everything
+      s.filter = `saturate(0.75) brightness(1.08)`;
+      // Pill border-radius
+      s.borderRadius = 999;
+      // Fuzzy texture overlay (grain at higher opacity)
+      s.textureOverlay = `repeating-linear-gradient(45deg, #00000004 0px, #00000004 1px, transparent 1px, transparent 6px), repeating-linear-gradient(-45deg, #00000003 0px, #00000003 1px, transparent 1px, transparent 7px)`;
+      // Soft thick pastel border
+      s.border = `2px solid ${acHex}30`;
+      // Gentle typography
+      s.fontWeight = pick([500, 600]);
+      // Strip harsh effects
+      s.clipPath = undefined;
+      s.skewX = undefined;
+      s.textShadow = undefined;
+      s.rotate = undefined;
+    }
+
+    /* ── POP MART mood signature ── */
+    if (moodId === "popmart") {
+      // Glossy gradient highlight for plastic sheen
+      s.gradientOverlay = `linear-gradient(180deg, #FFFFFF35 0%, #FFFFFF12 25%, transparent 50%)`;
+      // Candy-bright colors
+      s.filter = `saturate(1.4) brightness(1.05)`;
+      // Heavy rounded corners
+      s.borderRadius = pick([18, 20, 22, 24]);
+      // Plastic sheen shadow with colored glow
+      s.boxShadow = pick([
+        `0 4px 16px ${acHex}25, 0 0 20px ${acHex}10`,
+        `0 6px 20px ${gc1}22, 0 0 24px ${gc1}08`,
+      ]);
+      // Bold playful typography
+      s.fontWeight = 800;
+      // Playful bounce transition
+      s.transition = `all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+      // Strip gritty effects
+      s.clipPath = undefined;
+      s.skewX = undefined;
+      s.textureOverlay = undefined;
     }
 
     // --- Transition hints: give components a living, interactive feel ---
