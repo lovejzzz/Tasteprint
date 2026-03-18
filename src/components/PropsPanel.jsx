@@ -1834,6 +1834,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Links toggle (footer) */
+  if ("showLinks" in defaults && type === "footer") {
+    const on = G("showLinks");
+    controls.push(<React.Fragment key="ft-links"><span style={label}>{on ? "Links" : "No Links"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showLinks", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Shortcut toggle (search) */
+  if ("showShortcut" in defaults && type === "search") {
+    const on = G("showShortcut");
+    controls.push(<React.Fragment key="sr-short"><span style={label}>{on ? "Shortcut" : "No Shortcut"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showShortcut", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Image toggle (skeleton) */
+  if ("showImage" in defaults && type === "skeleton") {
+    const on = G("showImage");
+    controls.push(<React.Fragment key="sk-img"><span style={label}>{on ? "Image" : "No Image"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showImage", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Description toggle (tooltip) */
+  if ("showDescription" in defaults && type === "tooltip") {
+    const on = G("showDescription");
+    controls.push(<React.Fragment key="tt-desc"><span style={label}>{on ? "Description" : "No Desc"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showDescription", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Overline toggle (heading) */
+  if ("showOverline" in defaults && type === "heading") {
+    const on = G("showOverline");
+    controls.push(<React.Fragment key="hd-over"><span style={label}>{on ? "Overline" : "No Overline"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showOverline", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
