@@ -570,6 +570,14 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Saved toggle (cart-item) */
+  if ("saved" in defaults) {
+    const on = G("saved");
+    controls.push(<React.Fragment key="saved"><span style={label}>{on ? "Saved" : "In Cart"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("saved", !on)} />
+    </React.Fragment>);
+  }
+
   /* Centered toggle (hero) */
   if ("centered" in defaults) {
     const on = G("centered");
