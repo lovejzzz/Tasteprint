@@ -2034,6 +2034,46 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
+  /* Show Title toggle (product-card) */
+  if ("showTitle" in defaults && type === "product-card") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="pd-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Title toggle (card-sm) */
+  if ("showTitle" in defaults && type === "card-sm") {
+    const on = G("showTitle");
+    controls.push(<React.Fragment key="cs-ttl"><span style={label}>{on ? "Title" : "No Title"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showTitle", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Questions toggle (accordion) */
+  if ("showQuestions" in defaults && type === "accordion") {
+    const on = G("showQuestions");
+    controls.push(<React.Fragment key="ac-q"><span style={label}>{on ? "Questions" : "No Questions"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showQuestions", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Selected Text toggle (dropdown) */
+  if ("showSelectedText" in defaults && type === "dropdown") {
+    const on = G("showSelectedText");
+    controls.push(<React.Fragment key="dd-sel"><span style={label}>{on ? "Selected" : "No Selected"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showSelectedText", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Show Page Labels toggle (pagination) */
+  if ("showPageLabels" in defaults && type === "pagination") {
+    const on = G("showPageLabels");
+    controls.push(<React.Fragment key="pg-lbl"><span style={label}>{on ? "Labels" : "No Labels"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("showPageLabels", !on)} />
+    </React.Fragment>);
+  }
+
   /* Decorated toggle (heading) */
   if ("decorated" in defaults) {
     const on = G("decorated");
