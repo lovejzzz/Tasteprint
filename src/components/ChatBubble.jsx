@@ -142,6 +142,18 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   const idRef = useRef((() => { const saved = loadChat(); return saved ? Math.max(...saved.map(m => m.id)) + 1 : 3; })());
   const busyRef = useRef(false);
 
+  /* Start a new conversation — reset messages and AI state */
+  const newChat = useCallback(() => {
+    setMessages([...DEFAULT_MSGS.map((m, i) => ({ ...m, id: i, ts: Date.now() - (2 - i) * 1000 }))]);
+    idRef.current = 3;
+    setTyping(false);
+    setTypingExit(false);
+    setSending(null);
+    setInputVal("");
+    busyRef.current = false;
+    try { localStorage.removeItem(CHAT_STORE_KEY); } catch {}
+  }, []);
+
   /* Persist messages to localStorage on change */
   useEffect(() => { saveChat(messages); }, [messages]);
 
@@ -300,6 +312,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
         <div style={{ width: 8, height: 8, borderRadius: 999, background: "#4CAF50", boxShadow: "0 0 6px #4CAF5060" }} />
         <span style={{ fontSize: 11, fontWeight: 600, color: p.tx }}>Chat</span>
         <span style={{ fontSize: 9, color: p.mu, marginLeft: "auto" }}>online</span>
+        <button aria-label="New chat" onPointerDown={e => { e.stopPropagation(); newChat(); }}
+          onMouseEnter={e => { e.currentTarget.style.background = p.su; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          style={{ background: "transparent", border: "none", borderRadius: 6, padding: 3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", outline: "none", transition: "background .15s" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
       </div>
 
       {/* Messages */}
@@ -398,7 +417,14 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       <div data-ide-drag style={{ padding: "6px 8px", display: "flex", alignItems: "center", gap: 6, cursor: "grab", borderBottom: `1px solid ${p.bd}` }}>
         <div style={{ width: 6, height: 6, borderRadius: 999, background: "#4CAF50" }} />
         <span style={{ fontSize: 10, fontWeight: 600, color: p.tx }}>Chat</span>
-        <span style={{ fontSize: 9, color: p.mu, marginLeft: "auto" }}>{messages.length} messages</span>
+        <span style={{ fontSize: 9, color: p.mu, marginLeft: "auto" }}>{messages.length} msgs</span>
+        <button aria-label="New chat" onPointerDown={e => { e.stopPropagation(); newChat(); }}
+          onMouseEnter={e => { e.currentTarget.style.background = p.su; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          style={{ background: "transparent", border: "none", borderRadius: 6, padding: 3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", outline: "none", transition: "background .15s" }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
       </div>
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", minHeight: 0, padding: "4px 0" }}>
@@ -492,6 +518,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
       <div data-ide-drag style={{ padding: "4px 10px", borderBottom: `1px solid ${p.ac}15`, display: "flex", alignItems: "center", gap: 6, cursor: "grab" }}>
         <div style={{ width: 5, height: 5, borderRadius: 999, background: p.ac, animation: "tp-pulse 2s ease infinite" }} />
         <span style={{ fontSize: 9, color: p.ac, opacity: 0.6, letterSpacing: "0.06em" }}>CHAT v1.0</span>
+        <button aria-label="New chat" onPointerDown={e => { e.stopPropagation(); newChat(); }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.5"; }}
+          style={{ background: "transparent", border: "none", padding: 3, cursor: "pointer", display: "flex", alignItems: "center", marginLeft: "auto", opacity: 0.5, transition: "opacity .15s", outline: "none" }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.ac} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
       </div>
 
       {/* Messages */}
@@ -569,6 +602,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
             <span style={{ fontSize: 8, color: p.mu }}>Online</span>
           </div>
         </div>
+        <button aria-label="New chat" onPointerDown={e => { e.stopPropagation(); newChat(); }}
+          onMouseEnter={e => { e.currentTarget.style.background = p.ac + "18"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          style={{ background: "transparent", border: "none", borderRadius: 8, padding: 5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", outline: "none", transition: "background .15s", marginLeft: "auto" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={p.mu} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
       </div>
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", minHeight: 0 }}>
@@ -629,6 +669,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
           </div>
         </div>
         <span style={{ fontSize: 8, color: onAc, opacity: 0.4 }}>{messages.length} msg</span>
+        <button aria-label="New chat" onPointerDown={e => { e.stopPropagation(); newChat(); }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={e => { e.currentTarget.style.opacity = "0.6"; }}
+          style={{ background: "transparent", border: "none", padding: 3, cursor: "pointer", display: "flex", alignItems: "center", opacity: 0.6, transition: "opacity .15s", outline: "none", position: "relative" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={onAc} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
       </div>
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0, background: p.bg }}>
@@ -690,6 +737,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
         <div style={{ padding: "1px 6px", background: p.tx, borderRadius: 1 }}>
           <span style={{ fontSize: 8, fontWeight: 800, color: p.card }}>{messages.length}</span>
         </div>
+        <button aria-label="New chat" onPointerDown={e => { e.stopPropagation(); newChat(); }}
+          onMouseEnter={e => { e.currentTarget.style.background = p.ac + "30"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          style={{ background: "transparent", border: `1.5px solid ${p.tx}`, borderRadius: 2, padding: 3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", outline: "none", transition: "background .15s" }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={p.tx} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
       </div>
       <div ref={scrollRef} style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 0 }}>
         {messages.map((m) => (
