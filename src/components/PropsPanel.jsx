@@ -103,9 +103,15 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
   /* Accordion open items */
   if ("open" in defaults) {
     const open = G("open");
-    controls.push(<React.Fragment key="open"><span style={label}>Open</span>
-      {open.map((o, i) => <button key={i} style={btn(o)} onMouseDown={stop} onClick={() => { const next = [...open]; next[i] = !next[i]; onProp("open", next); }}>{o ? "▾" : "›"}</button>)}
-    </React.Fragment>);
+    if (Array.isArray(open)) {
+      controls.push(<React.Fragment key="open"><span style={label}>Open</span>
+        {open.map((o, i) => <button key={i} style={btn(o)} onMouseDown={stop} onClick={() => { const next = [...open]; next[i] = !next[i]; onProp("open", next); }}>{o ? "▾" : "›"}</button>)}
+      </React.Fragment>);
+    } else {
+      controls.push(<React.Fragment key="open"><span style={label}>{open ? "Open" : "Closed"}</span>
+        <Sw on={open} color={p.ac} stop={stop} onClick={() => onProp("open", !open)} />
+      </React.Fragment>);
+    }
   }
 
   /* Percentage (progress, slider, media-player) */
@@ -537,6 +543,22 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     const on = G("newsletter");
     controls.push(<React.Fragment key="newsletter"><span style={label}>{on ? "Newsletter" : "No signup"}</span>
       <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("newsletter", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Uploadable toggle (image-placeholder) */
+  if ("uploadable" in defaults) {
+    const on = G("uploadable");
+    controls.push(<React.Fragment key="uploadable"><span style={label}>{on ? "Upload" : "Static"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("uploadable", !on)} />
+    </React.Fragment>);
+  }
+
+  /* Centered toggle (hero) */
+  if ("centered" in defaults) {
+    const on = G("centered");
+    controls.push(<React.Fragment key="centered"><span style={label}>{on ? "Center" : "Left"}</span>
+      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("centered", !on)} />
     </React.Fragment>);
   }
 
