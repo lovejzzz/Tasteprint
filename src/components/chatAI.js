@@ -3,6 +3,11 @@
    Round 153: Selective attention — interest scoring, go-back callbacks, multi-point reactions
    ═══════════════════════════════════════════════════════════════════ */
 
+/* Maintenance note:
+ * This file is a standalone experimental sidecar and intentionally keeps broad
+ * detection coverage in one place. Keep edits mechanical and section-scoped.
+ */
+
 /* ── Sentence Encoder — Semantic Understanding Brain ──
  * Uses a tiny transformer model (~17-23MB) via @huggingface/transformers
  * to convert text into 384-dim meaning vectors. This gives the SLM
@@ -366,6 +371,7 @@ function _isQuestionHot() {
 // Spam detection: count consecutive identical messages
 let _spamCount = 0;
 
+
 /* ── Tokenizer & NLP Core ── */
 
 const STOP = new Set("i me my we our you your he she it they them a an the is am are was were be been being have has had do does did will would could should can may might shall to of in for on with at by from as into about up out so and but or if then than too very just that this what which who how when where there here not no don t s re ve ll d m im its thats dont doesnt cant isnt arent wont didnt hasn haven wasn weren".split(" "));
@@ -406,7 +412,7 @@ const SLANG_MAP = {
   // common abbreviations
   "wyd":"what are you doing","hbu":"how about you","wbu":"what about you",
   "wya":"where are you","nm":"not much","nvm":"nevermind","idk":"i don't know",
-  "imo":"in my opinion","imo":"in my opinion","ngl":"not gonna lie",
+  "imo":"in my opinion","ngl":"not gonna lie",
   "fr":"for real","tbh":"to be honest","lowkey":"kind of","highkey":"really",
   "deadass":"seriously","rn":"right now","irl":"in real life","smh":"shaking my head",
   "fwiw":"for what it's worth","icymi":"in case you missed it",
@@ -424,7 +430,7 @@ const SLANG_MAP = {
   "abt":"about","tho":"though","nah":"no","yea":"yeah","yep":"yes",
   "obvi":"obviously","def":"definitely","prob":"probably","p":"pretty",
   "v":"very","fs":"for sure","ofc":"of course","ig":"i guess",
-  "ion":"i don't","ong":"on god",
+  "ion":"i don't",
 };
 
 // Slang that expresses sentiment/reaction (don't expand, just tag)
@@ -514,7 +520,7 @@ function normalizeSlang(text) {
  * instead of falling through to confused fallbacks.
  */
 
-function respondToFragment(fragment, text, slangInfo) {
+function respondToFragment(fragment, text, _slangInfo) {
   const lower = text.toLowerCase().trim();
 
   if (fragment === "relatable") {
@@ -618,17 +624,6 @@ function sentiment(text) {
  * conversation history, and emoji usage. Returns the dominant emotion
  * with a confidence score so the response generator can match tone.
  */
-
-const EMOTIONS = {
-  excited:     { weight: 0, signals: [] },
-  frustrated:  { weight: 0, signals: [] },
-  amused:      { weight: 0, signals: [] },
-  curious:     { weight: 0, signals: [] },
-  sarcastic:   { weight: 0, signals: [] },
-  venting:     { weight: 0, signals: [] },
-  affectionate:{ weight: 0, signals: [] },
-  neutral:     { weight: 0, signals: [] },
-};
 
 function detectEmotion(text, sent, parsed) {
   const scores = { excited:0, frustrated:0, amused:0, curious:0, sarcastic:0, venting:0, affectionate:0, neutral:1 };
@@ -814,13 +809,7 @@ const SUBTEXT_PATTERNS = {
   },
 };
 
-// Sentence-ending cues that modify interpretation
-const PUNCTUATION_SUBTEXT = {
-  "...": { modifier: "trailing", weight: 0.3 },      // trailing off = uncertainty or passive
-  ".": { modifier: "curt", weight: 0.2 },             // single sentence + period = curt
-  "!": { modifier: "emphatic", weight: 0.1 },
-};
-
+// Sentence-ending cues that modify interpretation are currently handled inline in pattern checks.
 function detectSubtext(text, sent) {
   const lower = text.toLowerCase().trim();
   const detected = [];
@@ -1397,7 +1386,7 @@ function checkSessionGap() {
       const lastTs = parseInt(stored, 10);
       _sessionGapMs = isNaN(lastTs) ? 0 : Date.now() - lastTs;
     }
-  } catch (_) {
+  } catch {
     _sessionGapMs = 0;
   }
 }
@@ -1407,7 +1396,7 @@ function updateLastActive() {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("sam_last_active", String(Date.now()));
     }
-  } catch (_) {}
+  } catch { /* no-op */ }
 }
 
 // Classify the gap into a human-readable bucket
@@ -1590,7 +1579,7 @@ function trackAIQuestion(response) {
   mem.lastQuestion = { text: question, topic, options, expectation, askedAt: mem.turn };
 }
 
-function detectAnswerToQuestion(text, parsed) {
+function detectAnswerToQuestion(text, _parsed) {
   const q = mem.lastQuestion;
   if (!q) return null;
 
@@ -1632,8 +1621,8 @@ function detectAnswerToQuestion(text, parsed) {
   return null;
 }
 
-function respondToAnswer(answer, sent) {
-  const { type, picked, other, topic, options, question } = answer;
+function respondToAnswer(answer, _sent) {
+  const { type, picked, other, topic, options } = answer;
 
   const acks = {
     choice: [
@@ -1878,9 +1867,8 @@ function analyzeSemantics(text) {
 }
 
 // Generate a response that addresses the actual semantic structure
-function respondToSemantics(sem, text, topics, sent) {
-  const { stance, action, details, reason, involves } = sem;
-  const agent = sem.agent || "user";
+function respondToSemantics(sem, text, topics, _sent) {
+  const { stance, action, details, involves } = sem;
 
   // ── Switch/Migration ──
   if (action === "switch" && details.from && details.to) {
@@ -2047,7 +2035,7 @@ function parseLifeEvent(text) {
   return null;
 }
 
-function respondToLifeEvent(event, text, sent) {
+function respondToLifeEvent(event, _text, _sent) {
   const { type, what } = event;
   const w = what || "";
 
@@ -2152,9 +2140,8 @@ const INTENTS = {
 };
 
 function classify(text) {
-  const { keywords, stemmed, raw } = extractKW(text);
+  const { keywords, raw } = extractKW(text);
   const all = new Set([...keywords,...raw]);
-  const short = raw.length <= 3;
   const results = [];
   for (const [name, I] of Object.entries(INTENTS)) {
     let sc = 0;
@@ -3027,10 +3014,6 @@ function handleOpinionRequest(text, topics) {
     const opinion = pick(assoc.opinions);
     const hook = pick(assoc.hooks || COMP.deepeners);
 
-    // Extract what they're considering
-    const shouldMatch = lower.match(/should I (?:use|learn|try|start|get into|switch to)\s+(.+?)[\?\.!]?$/i);
-    const thing = shouldMatch ? shouldMatch[1] : topic;
-
     const recs = [
       `tbh yeah — ${opinion}. id say go for it`,
       `i think its worth trying! ${opinion}. ${hook}`,
@@ -3222,15 +3205,6 @@ function pickNew(arr) {
 function fillSlots(tpl, slots={}) {
   let r = typeof tpl==="function"?tpl(slots):tpl;
   for (const [k,v] of Object.entries(slots)) r = r.replace(new RegExp(`\\{${k}\\}`,"g"),v);
-  return r;
-}
-
-/* Build a composed response from understanding */
-function compose(parts) {
-  let r = "";
-  if (parts.opener) r += parts.opener;
-  if (parts.body) r += (r ? " " : "") + parts.body;
-  if (parts.followup) r += (r ? " " : "") + parts.followup;
   return r;
 }
 
@@ -3459,21 +3433,6 @@ function resolveAnaphora(text) {
 
   result.resolved = resolved;
   return result;
-}
-
-// Get a natural reference phrase when AI wants to use the resolved referent
-// Instead of awkwardly using the raw noun, frame it conversationally
-function getReferencePhrase(pronoun, referent) {
-  const templates = {
-    it: [`${referent}`, `the ${referent} thing`, referent],
-    that: [`${referent}`, `${referent}`, `the ${referent} stuff`],
-    this: [referent, `${referent}`],
-    they: [referent, `those ${referent}`],
-    them: [referent],
-    one: [`${referent}`],
-  };
-  const pool = templates[pronoun.toLowerCase()] || [referent];
-  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 /* ── Topic & Entity Extraction ── */
@@ -3874,7 +3833,7 @@ function resolveFragment(text, lower, parsed, topics) {
   const contextTopic = lastTopics[0] || topics[0] || "";
 
   // ── "What about X?" — pivot to new subject in current context ──
-  const whatAbout = lower.match(/^(?:what about|how about|and|but)\s+(.+?)[\?.]?$/i);
+  const whatAbout = lower.match(/^(?:what about|how about|and|but)\s+(.+?)[?.]?$/i);
   if (whatAbout && whatAbout[1].length > 1 && whatAbout[1].length < 40) {
     const newSubject = whatAbout[1].trim();
     // Check if it's in our knowledge base
@@ -4326,7 +4285,7 @@ const HYPOTHETICALS = [
    fourth wall and need special handling to feel genuine.
    ══════════════════════════════════════════════════════════════════ */
 
-function handleMetaConversation(text, lower, sent) {
+function handleMetaConversation(text, lower, _sent) {
   // ── Compliments about the AI ──
   if (/\b(you'?re|you are|ur) (pretty |really |so |actually |surprisingly )?(smart|clever|good|great|amazing|impressive|helpful|awesome|cool|fun|funny|brilliant)\b/i.test(lower) ||
       /\b(wow|damn|whoa),? (you'?re|that'?s|that was) (really |pretty |actually )?(good|smart|helpful|impressive)\b/i.test(lower)) {
@@ -4669,7 +4628,7 @@ function reasonThroughWYR(hyp) {
 }
 
 // Main handler: detects and reasons through hypotheticals
-function handleHypothetical(text, topics) {
+function handleHypothetical(text, _topics) {
   const hyp = parseHypothetical(text);
   if (!hyp) return null;
 
@@ -4682,7 +4641,7 @@ function handleHypothetical(text, topics) {
 // Track if user is answering a hypothetical we posed
 let lastHypothetical = null;
 
-function handleHypotheticalAnswer(text, lower) {
+function handleHypotheticalAnswer(text, _lower) {
   if (!lastHypothetical) return null;
   const hyp = lastHypothetical;
   lastHypothetical = null; // consume it
@@ -4932,7 +4891,6 @@ function generateObservationalWit(response, text, topics) {
  */
 
 let humorTimingHistory = [];
-let lastHumorGateTurn = 0;
 
 const HUMOR_SENSITIVE_SIGNALS = [
   /\b(died|death|funeral|grief|mourning|passed away)\b/i,
@@ -4968,7 +4926,6 @@ function shouldAttemptHumor(text, sent) {
   if (text.trim().split(/\s+/).length <= 3 && typeof sent === "number" && sent < 0) return false;
 
   // Green light — humor is contextually appropriate
-  lastHumorGateTurn = turn;
   return true;
 }
 
@@ -5024,8 +4981,6 @@ function getStoryFragment(topics) {
   return pickNew(topicStories.general);
 }
 
-// Legacy flat array for backward compat (used in one place)
-const JOKES = TOPIC_JOKES.general.concat(TOPIC_JOKES.code);
 
 const EMPATHY = [
   "ugh that sucks, i'm sorry",
@@ -5181,7 +5136,7 @@ function handleMultiSentence(text) {
 // "Can you explain X?" → explain X (not "yes I can")
 // "Could you tell me about X?" → tell me about X
 // "Would you mind explaining X?" → explain X
-function detectIndirectRequest(text, lower, topics) {
+function detectIndirectRequest(text, lower, _topics) {
   // "Can/could/would you [verb] X?" → extract the actual request
   const abilityMatch = lower.match(/^(?:can|could|would) you (?:please )?(tell me about|explain|help (?:me )?(?:with|understand)?|describe|teach me(?: about)?|show me|talk about|give me (?:info|information) (?:on|about))\s+(.+?)(?:\?|$)/);
   if (abilityMatch) {
@@ -5209,7 +5164,7 @@ function detectIndirectRequest(text, lower, topics) {
 // "I don't know much about X" → offer to explain X
 // "I'm new to X" / "I'm a beginner at X" → explain X at a basic level
 // "I've never used X" → intro to X
-function detectKnowledgeGap(text, lower, topics) {
+function detectKnowledgeGap(text, lower, _topics) {
   const gapPatterns = [
     { pat: /i (?:don'?t|do not) (?:really )?(?:know|understand|get) (?:much about |anything about |about )?(.+?)(?:\.|$)/i, level: "basic" },
     { pat: /i'?m (?:new|a (?:beginner|newbie|noob)) (?:to|at|with|in) (.+?)(?:\.|$)/i, level: "intro" },
@@ -5453,7 +5408,7 @@ function detectExperienceContext(text, lower, topics) {
   return null;
 }
 
-function respondToExperienceContext(exp, text, sent, topics) {
+function respondToExperienceContext(exp, _text, _sent, _topics) {
   const subject = exp.subject || (exp.topics[0] || "that");
   const topic = exp.topics[0] || subject;
   const hasAssoc = ASSOC[topic];
@@ -5502,7 +5457,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       return resp;
     }
     case "perspective_on_decision": {
-      let resp = "";
+      let resp;
       const openers = [
         `oh interesting — ${subject} huh? i have thoughts. `,
         `${subject}?? ok yeah that's a move. `,
@@ -5527,7 +5482,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       return resp;
     }
     case "trend_explanation": {
-      let resp = "";
+      let resp;
       const openers = [
         `yeah ${subject} is having a MOMENT rn. so basically, `,
  `the ${subject} hype is real and fr pretty deserved. `,
@@ -5599,7 +5554,7 @@ function respondToExperienceContext(exp, text, sent, topics) {
       return resp;
     }
     case "decision_help": {
-      let resp = "";
+      let resp;
       // Try to find a comparison
       const parts = exp.subject.split(/\s+(?:or|vs\.?|versus)\s+/i).map(s => s.trim().toLowerCase());
       if (parts.length >= 2) {
@@ -5762,7 +5717,7 @@ function respondToContradiction(change) {
   return pick(responses);
 }
 
-function respondToRevelation(rev, text) {
+function respondToRevelation(rev, _text) {
   switch (rev.weight) {
     case "celebration": {
       const reactions = {
@@ -6288,9 +6243,8 @@ function generateResponse(text) {
 
 /* ── Specialized Response Helpers ── */
 
-function respondToSharing(parsed, topics) {
+function respondToSharing(parsed, _topics) {
   const pref = parsed.preferences[0];
-  const name = mem.userName;
 
   switch (pref.type) {
     case "likes": {
@@ -6500,7 +6454,6 @@ function handleTurnSignal(signal) {
       }
 
       // Generic continuations that reference the last message
-      const snippet = lastText.length > 50 ? lastText.substring(0, 50).replace(/\s\w+$/, "") + "..." : lastText;
       const conts = [
         `So building on that — ${pick(COMP.deepeners)}`,
         `And the thing is, there's more to it. ${pick(COMP.deepeners)}`,
@@ -6607,7 +6560,6 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
   const primary = intents[0];
   const intentName = primary.intent;
   const cat = KB[intentName];
-  const slots = { topic: primaryTopic || "that" };
 
   // Check if returning to a topic
   const returning = primaryTopic && mem.topics[primaryTopic] > 1;
@@ -6671,7 +6623,7 @@ function respondToTopic(intents, topics, primaryTopic, parsed) {
   return response;
 }
 
-function respondFallback(text, tokens, keywords) {
+function respondFallback(text, tokens, _keywords) {
   const words = tokens.filter(w=>!STOP.has(w)&&w.length>2);
 
   // Reference what they said — like a friend would
@@ -7667,7 +7619,7 @@ function repairConfusion(confusionType) {
   return null;
 }
 
-function handleAmbiguity(text, intents, topics) {
+function handleAmbiguity(text, intents, _topics) {
   // If multiple strong intents compete (both >0.6), the input is ambiguous
   if (intents.length >= 2 && intents[0].conf > 0.6 && intents[1].conf > 0.55) {
     const diff = intents[0].conf - intents[1].conf;
@@ -9037,7 +8989,7 @@ const TRAIT_DAMPENERS = {
   depth:      /\s*\b(fundamentally|at its core|what's interesting is)\b[,:—]?\s*/gi,
 };
 
-function applyTraitBalancing(response, text) {
+function applyTraitBalancing(response, _text) {
   const turn = mem.turn;
   // Always track, even if we don't nudge
   const scores = measureTraitExpression(response);
@@ -9408,7 +9360,7 @@ const META_HUMOR_LINES = {
 };
 
 // Detect context for which meta-humor pool to use
-function pickMetaHumorContext(text, response) {
+function pickMetaHumorContext(text, _response) {
   if (/\b(you('re| are) (good|great|smart|amazing|impressive|awesome))\b/i.test(text) ||
       /\b(nice (job|one)|well done|love (this|that|you))\b/i.test(text)) return "compliment";
   if (/\b(meaning|purpose|consciousness|philosophy|existence|reality|think|feel)\b/i.test(text) &&
@@ -9439,7 +9391,6 @@ function applyMetaHumor(response, text) {
   metaHumorCount++;
 
   // Append as a parenthetical aside, naturally separated
-  const sep = response.endsWith("?") ? " " : " ";
   return response.replace(/[.!]?\s*$/, ". (" + line + ")");
 }
 
@@ -10587,6 +10538,7 @@ function getTargetLength(userWords) {
   const gear = getUserGear(userWords);
   switch (gear) {
     case "terse":    return { min: 3, max: 12, ratio: 2.0 };
+
     case "casual":   return { min: 8, max: 25, ratio: 1.5 };
     case "moderate": return { min: 15, max: 45, ratio: 1.2 };
     case "detailed": return { min: 25, max: 65, ratio: 0.9 };
@@ -10959,7 +10911,7 @@ function trackReciprocity(response) {
   if (reciprocityHistory.length > 10) reciprocityHistory.shift();
 }
 
-function applyReciprocityBalance(response, text) {
+function applyReciprocityBalance(response, _text) {
   const turn = mem.turn;
   if (turn - lastReciprocityNudgeTurn < 4) return response; // 4-turn cooldown
   if (reciprocityHistory.length < 5) return response; // need history
@@ -11838,7 +11790,7 @@ function detectSituation(text, lower) {
   return null;
 }
 
-function generateSituationalResponse(situation, text) {
+function generateSituationalResponse(situation, _text) {
   const pool = SITUATION_RESPONSES[situation.situation];
   if (!pool) return null;
   return pickNew(pool);
@@ -11999,7 +11951,7 @@ const FILLER_WORDS = new Set(["just","basically","literally","actually","honestl
 
 let lastEnrichTurn = 0;
 
-function enrichVocabulary(response, topics) {
+function enrichVocabulary(response, _topics) {
   if (response.length < 30 || response.length > 300) return response;
   if (mem.turn - lastEnrichTurn < 2) return response; // 2-turn cooldown
   if (/^(hi|hey|hello|bye|goodbye|thanks|thank)/i.test(response)) return response;
@@ -12284,7 +12236,7 @@ function detectPatternRut() {
   return null;
 }
 
-function breakPattern(response, text, topics, energy) {
+function breakPattern(response, text, topics, _energy) {
   // Guards
   if (response.length < 30) return response;
   if (/^(hey|hi|hello|bye|see you|take care|nice to meet)/i.test(response)) return response;
@@ -12403,7 +12355,7 @@ function breakPattern(response, text, topics, energy) {
 let lastEchoTurn = 0;
 
 // Extract structured content from user input
-function extractContent(text, tokens, lower) {
+function extractContent(text, _tokens, _lower) {
   const content = { actions: [], concepts: [], struggles: [], tools: [], emotions: [] };
 
   // Actions: what the user is DOING (verb phrases)
@@ -13030,7 +12982,7 @@ function findCallback(currentTopics) {
 }
 
 // Generate a bridge phrase based on the topic shift type
-function generateBridge(shift, callback) {
+function generateBridge(shift, _callback) {
   if (!shift) return null;
 
   if (shift.type === "continuation") {
@@ -13414,7 +13366,7 @@ function detectNarrative(text, lower, tokens, sent) {
   return { score, elements, sentenceCount, sentimentOverall: sent };
 }
 
-function respondToNarrative(narrative, text, sent) {
+function respondToNarrative(narrative, _text, _sent) {
   const { elements } = narrative;
   const parts = [];
 
@@ -13928,7 +13880,7 @@ function analyzeTrajectory() {
   return { type: "stable", slope, volatility: avgDiff, lastSent, prevAvg };
 }
 
-function applyTrajectoryAwareness(response, sent) {
+function applyTrajectoryAwareness(response, _sent) {
   if (mem.turn - lastTrajectoryTurn < 5 || mem.turn < 5) return response;
 
   const traj = analyzeTrajectory();
@@ -14048,7 +14000,7 @@ function detectPaceShift() {
 }
 
 // Adapt response for current pacing context
-function applyPacingAwareness(response, text) {
+function applyPacingAwareness(response, _text) {
   if (mem.turn - lastPacingTurn < 6 || mem.turn < 3) return response;
 
   const shift = detectPaceShift();
@@ -14296,7 +14248,7 @@ function trySynthesis(response) {
 }
 
 // Enhanced agreement response that builds on shared ground
-function buildOnAgreement(response, text) {
+function buildOnAgreement(response, _text) {
   // Only enhance when there's actual shared ground to reference
   if (sharedGround.length < 1) return response;
 
@@ -14436,7 +14388,7 @@ let rapportLevel = 0;     // 0=stranger, 1=acquaintance, 2=friendly, 3=close, 4=
 const PERSONAL_MARKERS = /\b(my (?:life|family|mom|dad|brother|sister|wife|husband|partner|friend|dog|cat|kid|job|boss|work|team|project|apartment|house)|I (?:feel|felt|love|hate|miss|wish|hope|fear|worry|struggle|dream|believe|grew up|used to|remember|can't stop)|honestly|between us|don't tell|I've never told|the truth is|confession|vulnerable|scared|anxious|lonely|embarrassed)\b/i;
 
 // Humor attempt indicators
-const HUMOR_MARKERS = /\b(lol|lmao|haha|😂|🤣|just kidding|jk|no but seriously|plot twist|imagine if|what if.*absurd|rofl)\b/i;
+const HUMOR_MARKERS = /\b(lol|lmao|haha|😂|🤣|just kidding|jk|no but seriously|plot twist|imagine if|what if.*absurd|rofl)\b/iu;
 
 // Vulnerability indicators (going beyond surface)
 const VULNERABILITY_MARKERS = /\b(I'm afraid|I struggle|I don't know if|it's hard to admit|I've been thinking|keeps me up|I'm not sure I|can I be honest|I feel like I'm|I'm worried|I sometimes|I never really|to be vulnerable)\b/i;
@@ -14457,7 +14409,7 @@ function measureRapportSignals(text) {
 
   // Humor attempts (showing comfort)
   if (HUMOR_MARKERS.test(text)) signals.humor += 2;
-  if (/[😄😊🙈😅🤷]/.test(text)) signals.humor += 1;
+  if (/[😄😊🙈😅🤷]/u.test(text)) signals.humor += 1;
 
   // Vulnerability (trust signal)
   if (VULNERABILITY_MARKERS.test(text)) signals.vulnerability += 3;
@@ -14931,7 +14883,7 @@ function applyNaturalRedirect(response, text, topics, sent) {
   // Try topic-aware pivot first — feels more organic than random
   const currentTopic = topics[0] || "";
   const topicKey = stem(currentTopic).toLowerCase();
-  let target = null;
+  let target;
   let openerPool;
 
   // Check if we have a related pivot for the current topic
@@ -15022,7 +14974,7 @@ function detectClosureOpportunity(text) {
   return score >= 0.6 ? { score, category: bestCategory } : null;
 }
 
-function applyConversationalClosure(response, text, topics) {
+function applyConversationalClosure(response, text, _topics) {
   const turn = mem.turn;
   if (turn - lastClosureTurn < 10) return response; // 10-turn cooldown
   if (Math.random() > 0.20) return response; // 20% fire rate
@@ -15987,7 +15939,7 @@ function applyEchoBack(response, text, sent, topics) {
   if (!fragment) return response;
 
   lastEchoBackTurn = turn;
-  let echo = "";
+  let echo;
 
   switch (fragment.type) {
     case "number": {
@@ -16327,7 +16279,7 @@ let lastPredictionTurn = 0;
 let predictionHits = 0;
 let predictionMisses = 0;
 
-function predictNextMove(topics, text, intents) {
+function predictNextMove(topics, text, _intents) {
   const preds = [];
   const lower = text.toLowerCase();
 
@@ -19377,11 +19329,11 @@ function detectNotableMoment(userText, aiText, turn) {
   }
 
   // Type 2: Heavy laughing (3+ laugh indicators in one message)
-  const laughCount = (lower.match(/\b(lol|lmao|lmfao|haha|hahaha|rofl|dying|dead|😂|🤣|💀)\b/g) || []).length
-    + (lower.match(/😂|🤣|💀/g) || []).length;
+  const laughCount = (lower.match(/\b(lol|lmao|lmfao|haha|hahaha|rofl|dying|dead)\b/g) || []).length
+    + (lower.match(/😂|🤣|💀/gu) || []).length;
   if (laughCount >= 3) {
     // Try to extract what was funny from the non-laugh content
-    const substance = lower.replace(/\b(lol|lmao|lmfao|haha+|rofl|dying|dead|omg|bruh)\b/g, "").replace(/[😂🤣💀]/g, "").trim();
+    const substance = lower.replace(/\b(lol|lmao|lmfao|haha+|rofl|dying|dead|omg|bruh)\b/g, "").replace(/[😂🤣💀]/gu, "").trim();
     const summary = substance.length > 5 ? substance.substring(0, 40).trim() : "that thing that had you dying";
     if (!notableMoments.some(m => m.type === "laugh_moment" && turn - m.turn < 4)) {
       notableMoments.push({ turn, summary, type: "laugh_moment", userText: userText.substring(0, 60) });
@@ -21397,7 +21349,6 @@ function applyTextingImperfections(response, sent) {
     const afterCorrection = applySelfCorrection(r);
     if (afterCorrection !== r) {
       r = afterCorrection;
-      imperfectionCount++;
     }
   }
 
@@ -21615,7 +21566,7 @@ function tryUltraShortResponse(text, sent) {
   }
 
   // Emoji-only inputs → emoji-only response
-  const emojiOnly = /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]+$/u.test(lower);
+  const emojiOnly = /^(?:\p{Extended_Pictographic}|\uFE0F|\u200D|\u20E3)+$/u.test(lower);
   if (emojiOnly && len <= 8) {
     const emojiResps = ["😂", "💀", "lol", "fr", "mood", "^^", "same energy"];
     return pick(emojiResps);
@@ -22095,7 +22046,7 @@ function scoreInterest(sentence, allTopics) {
 // Analyze a full message: split into parts, score each, rank by interest
 function analyzeInterest(text) {
   // Split by sentence boundaries, commas with conjunctions, or "oh and" / "also" / "btw" markers
-  let parts = [];
+  let parts;
 
   // First try sentence splitting
   const sentences = text
@@ -22484,7 +22435,7 @@ export async function getAIResponse(input) {
   if (encoderReady) {
     try {
       lastSemanticMatch = await semanticMatch(text);
-    } catch (e) {
+    } catch {
       lastSemanticMatch = null;
     }
   } else if (!encoderLoading && !encoderFailed) {
@@ -22752,7 +22703,6 @@ export async function getAIResponse(input) {
 
   // ═══ Cross-domain analogy: unexpected connections between fields ═══
   response = injectAnalogy(response, currentTopics);
-
   // ═══ Rhythm variation & breath: structural variance to break monotony ═══
   response = addBreath(response, text, inputEnergy);
 
@@ -23122,7 +23072,7 @@ export async function getAIResponse(input) {
   return { text: response, typingMs, pause };
 }
 
-export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; recentOpeners = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; lastHumorGateTurn = 0; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; lastTopicRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; notableMoments = []; lastCallbackJokeTurn = 0; lastDisagreeTurn = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; _sessionGapMs = 0; _isVeryFirstSession = false; _sessionGapChecked = false; }
+export function resetMemory() { currentPersonality = "chill"; mem.reset(); threadManager.threads = {}; lastDiscourseMove = "neutral"; Object.keys(strategyScores).forEach(k => strategyScores[k] = 0); lastAIStrategyType = "questions"; subtextHistory = []; lastSemanticTurn = 0; lastGroundingTurn = 0; lastGroundingType = ""; lastArcTurn = 0; referentStack = []; sessionStartTime = Date.now(); lastMessageTime = Date.now(); lastEpistemicTurn = 0; lastHypothetical = null; lastDisfluencyTurn = 0; energyCurve = []; lastDetailTurn = 0; lastBreathTurn = 0; lastEnrichTurn = 0; lastAnalogyTurn = 0; lastSituationTurn = 0; lastPatternBreakTurn = 0; recentResponseShapes = []; recentOpeners = []; lastEchoTurn = 0; lastStanceTurn = 0; lastDeepenerTurn = 0; Object.keys(topicDepth).forEach(k => delete topicDepth[k]); lastBridgeTurn = 0; previousTopics = []; topicHistory = []; userPhraseBank = []; lastMirrorTurn = 0; Object.keys(beliefStore).forEach(k => delete beliefStore[k]); lastBeliefTurn = 0; lastObservationTurn = 0; messageLengthHistory = []; lastArchitecture = ""; openLoops = []; lastHookTurn = 0; lastLoopCloseTurn = 0; emotionalTrajectory = []; lastTrajectoryTurn = 0; lastTrajectoryType = ""; messageTimings = []; lastPacingTurn = 0; currentPaceMode = "normal"; topicPairHistory = {}; lastInsightTurn = 0; sharedGround = []; lastSynthesisTurn = 0; lastGiftTurn = 0; giftHistory = []; rapportSignals = []; lastRapportTurn = 0; rapportLevel = 0; topicStamina = {}; lastFatigueTurn = 0; lastPivotTopic = ""; lastWeaveTurn = 0; aiSelfModel.opinions = {}; aiSelfModel.claims = []; aiSelfModel.preferences = {}; aiSelfModel.style = {}; lastSelfRefTurn = 0; floorHistory.length = 0; currentFloor = "shared"; floorStreak = 0; lastInitiativeTurn = 0; lastVibeTurn = 0; prevVibe = "neutral"; vibeStreak = 0; vibeHistory = []; lastMiniOpinionTurn = 0; lastEchoBackTurn = 0; usedSurprises.clear(); lastSurpriseTurn = 0; momentumHistory = []; lastMomentumTurn = 0; currentFlowState = "cruising"; predictions = []; lastPredictionTurn = 0; predictionHits = 0; predictionMisses = 0; cadenceProfile = { wordCounts: [], questionMsgs: 0, totalMsgs: 0, listCount: 0, fragmentCount: 0, emojiCount: 0 }; lastCadenceTurn = 0; repairHistory = []; lastRepairTurn = 0; consecutiveRepairs = 0; lastMetaTurn = 0; metaMode = "none"; topicEngagement = {}; lastDepthTurn = 0; lastStoryTurn = 0; storyCount = 0; lastRhetoricTurn = 0; lastRhetoricDevice = ""; lastProsodyTurn = 0; lastProsodyMode = ""; lastParallelTurn = 0; scaffoldState = { topic: "", claims: [], turns: 0, lastTurn: 0 }; lastScaffoldTurn = 0; lastAgreeTurn = 0; lastAgreeLevel = ""; agreementHistory = []; lastAnchorTurn = 0; lastContrastTurn = 0; lastTemporalCBTurn = 0; usedTemporalCBs = new Set(); lastDigressionTurn = 0; comedyMoments = []; lastComedyCallbackTurn = 0; comedyCallbackCount = 0; lastRecapTurn = 0; vocabRegister = 0.5; lastRegisterTurn = 0; lastReactionTurn = 0; recentReactions = []; lastHedgeTurn = 0; lastEncourageTurn = 0; recentEncouragements = []; lastMirrorEmTurn = 0; recentMirrors = []; lastWarmthTurn = 0; recentWarmthMarkers = []; lastClosureTurn = 0; recentClosures = []; cognitiveLoadHistory = []; lastLoadTurn = 0; currentLoadLevel = "low"; emotionalMemoryBank = []; lastEmoMemTurn = 0; usedEmoMemTopics = new Set(); lastPerspTurn = 0; recentPerspAcks = []; conversationStart = { topics: [], claims: [], turn: 0, captured: false }; lastBookendTurn = 0; usedBookends = new Set(); lastReframeTurn = 0; recentReframes = []; lastCuriosityTurn = 0; recentCuriosityTargets = []; lastImplicitAgreeTurn = 0; implicitAgreeStreak = 0; recentImplicitAcks = []; humorTimingHistory = []; msgLengthWindow = []; lastSilenceTurn = 0; silenceStreak = 0; comprehensionSignals = []; currentDensityLevel = "normal"; lastDensityTurn = 0; commitmentBank = []; lastCommitFollowupTurn = 0; usedCommitFollowups = new Set(); reciprocityHistory = []; lastReciprocityNudgeTurn = 0; afterglowState = { active: false, turnsLeft: 0, type: "" }; lastAfterglowTrigger = 0; topicExpertise = {}; lastExpertiseTurn = 0; emotionWordHistory = []; lastEmoVocabTurn = 0; lastCompletenessFixTurn = 0; traitHistory = []; lastTraitNudgeTurn = 0; lastRhetDetectTurn = 0; idiolect = {}; idiolectSeeded = false; lastIdiolectTurn = 0; lastSocraticTurn = 0; socraticCount = 0; lastMetaHumorTurn = 0; metaHumorCount = 0; lastDisclosureTurn = 0; disclosureCount = 0; pendingDepthTopic = ""; lastTransitionTurn = 0; prevTurnTopics = []; lastChallengeTurn = 0; challengeCount = 0; lastMicroValTurn = 0; recentMicroVals = []; lastContagionTurn = 0; currentMoodEnergy = "neutral"; lastLeapTurn = 0; leapCount = 0; lastNormTurn = 0; normCount = 0; lastLabelTurn = 0; labelCount = 0; lastCompletionTurn = 0; completionCount = 0; lastProfileTurn = 0; profileCount = 0; Object.values(USER_TRAITS).forEach(t => t.weight = 0); lastCelebTurn = 0; celebCount = 0; pacingWindow = []; lastPacingAdaptTurn = 0; lastClarifyTurn = 0; clarifyCount = 0; lastAdmissionTurn = 0; admissionCount = 0; userQuestionQueue = []; lastDeferredRecoverTurn = 0; _spamCount = 0; topicStreakTracker = { topic: "", count: 0, lastTurn: 0 }; lastRedirectTurn = 0; lastTopicRedirectTurn = 0; runningBits = {}; insideJokes = []; userNicknames = []; lastInsideJokeTurn = 0; insideJokeCount = 0; notableMoments = []; lastCallbackJokeTurn = 0; lastDisagreeTurn = 0; userMsgLengthTracker = []; goBackTopics = []; lastGoBackTurn = 0; lastSelectiveAttentionResult = null; lastInternetCultureTurn = 0; internetCultureCount = 0; _sessionGapMs = 0; _isVeryFirstSession = false; _sessionGapChecked = false; }
 
 export function setPersonality(name) {
   const valid = Object.keys(PERSONALITY_MODES);

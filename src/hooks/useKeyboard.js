@@ -1,17 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { uid } from "../utils";
 
 export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource }) {
+  // Store all handler props in a single ref so the keydown listener
+  // never needs to be torn down and re-attached when props change.
+  const ref = useRef();
+  ref.current = { onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource };
+
   useEffect(() => {
     const h = e => {
+      const { onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource } = ref.current;
       const ae = document.activeElement;
       const isEditing = ae && (ae.isContentEditable || ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.closest?.("[contenteditable]"));
       if ((e.key === "Backspace" || e.key === "Delete") && !isEditing) {
-        e.preventDefault(); onDel();
+        e.preventDefault(); onDel(); return;
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "z") { e.preventDefault(); redo(); return; }
-      if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
-      if ((e.metaKey || e.ctrlKey) && e.key === "d") { e.preventDefault(); dupShape(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key === "d") { e.preventDefault(); dupShape(); return; }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "g") {
         e.preventDefault();
         setShapes(prev => prev.map(s => selAll.has(s.id) ? { ...s, group: undefined } : s));
@@ -46,5 +52,5 @@ export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, se
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource]);
+  }, []);
 }

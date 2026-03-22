@@ -1,17 +1,23 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import C from "./ComponentRenderer";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { LIB } from "../constants";
-import { varName, getTextureStyle } from "../utils";
+import { varName } from "../utils";
 
-const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, catItems, prefV, p, pDrag, setPDrag, dRef, reorderLib, lastReorder, texture }) {
+/** Check reduced-motion preference (module-level, avoids per-render overhead). */
+const _prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, catItems, prefV, p, pDrag, setPDrag, dRef, reorderLib, lastReorder }) {
   const cardRefs = useRef(new Map());
   const prevRects = useRef(new Map());
   const [hovCat, setHovCat] = useState(null);
   const [hovCard, setHovCard] = useState(null);
 
-  /* ── FLIP reorder animation ── */
+  /* ── FLIP reorder animation (respects prefers-reduced-motion) ── */
   useLayoutEffect(() => {
     if (prevRects.current.size === 0) return;
+    const skipAnimation = _prefersReducedMotion();
     cardRefs.current.forEach((el, type) => {
       const oldR = prevRects.current.get(type);
       if (!el || !oldR) return;
@@ -19,10 +25,12 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
       const dy = oldR.top - newR.top;
       if (Math.abs(dy) < 2) return;
       el.getAnimations().forEach(a => a.cancel());
-      el.animate(
-        [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
-        { duration: 280, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "none" }
-      );
+      if (!skipAnimation) {
+        el.animate(
+          [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
+          { duration: 280, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "none" }
+        );
+      }
     });
     prevRects.current = new Map();
   });
@@ -37,8 +45,6 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
     reorderLib(fromType, toType);
   };
 
-  const texStyle = getTextureStyle(texture, p);
-
   return (
     <aside style={{
       display: "flex", flexShrink: 0,
@@ -46,7 +52,6 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
       background: p.card + "88",
       backdropFilter: "blur(8px)",
       transition: "all .4s",
-      ...texStyle,
     }} role="complementary" aria-label="Component library">
 
       {/* ── Category Nav ── */}
@@ -86,6 +91,7 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
         display: "flex", flexDirection: "column", gap: 14,
         scrollbarWidth: "thin",
       }} role="tabpanel" aria-label={`${expCat} components`}>
+        <div role="list" aria-label={`${expCat} component list`} style={{ display: "contents" }}>
         {catItems.map(item => {
           const pv = prefV[item.type] || 0;
           const vn = varName(item.type, pv);
@@ -125,12 +131,15 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
                 overflow: "hidden", pointerEvents: "none", alignSelf: "center",
               }}>
                 <div style={{ transform: `scale(${ts})`, transformOrigin: "top left", width: item.w, height: item.h }}>
-                  <C type={item.type} v={pv} p={p} />
+                  <ErrorBoundary fallback={<div style={{ padding: 8, fontSize: 10, color: "#C53030" }}>Preview error</div>}>
+                    <C type={item.type} v={pv} p={p} />
+                  </ErrorBoundary>
                 </div>
               </div>
             </div>
           );
         })}
+        </div>
       </div>
     </aside>
   );
@@ -139,8 +148,7 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
   prev.catItems === next.catItems &&
   prev.prefV === next.prefV &&
   prev.p === next.p &&
-  prev.pDrag === next.pDrag &&
-  prev.texture === next.texture
+  prev.pDrag === next.pDrag
 );
 
 export default LibrarySidebar;

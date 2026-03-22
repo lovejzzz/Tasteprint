@@ -1,5 +1,14 @@
 import { useState, useCallback } from "react";
 
+/**
+ * Generic undo/redo history hook with a 40-step cap.
+ *
+ * NOTE: App.jsx currently manages its own undo/redo inline (hist/future state +
+ * push/undo/redo callbacks) because the Designer System needs direct access to
+ * shapesRef and other refs that are awkward to thread through a generic hook.
+ * This hook exists as a clean, tested abstraction for future refactoring or for
+ * use in sub-features that need independent history stacks.
+ */
 export function useHistory(initial) {
   const [current, setCurrent] = useState(initial);
   const [past, setPast] = useState([]);

@@ -2,14 +2,40 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23E07A5F'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='white'>T</text></svg>" />
-    <title>Tasteprint Playground</title>
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%23E07A5F'/><text x='90' y='130' text-anchor='middle' font-size='110' font-family='system-ui,sans-serif' font-weight='700' fill='white'>T</text></svg>" />
+    <meta name="apple-mobile-web-app-title" content="Tasteprint" />
+    <title>Tasteprint — Designer-First Rapid Prototyping</title>
+    <meta name="description" content="From blank canvas to presentation-ready screen in minutes. A designer-first rapid prototyping tool for websites and apps." />
+    <meta property="og:title" content="Tasteprint — Designer-First Rapid Prototyping" />
+    <meta property="og:description" content="From blank canvas to presentation-ready screen in minutes. 40+ components, smart randomization, and instant PNG export." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Tasteprint — Designer-First Rapid Prototyping" />
+    <meta name="twitter:description" content="From blank canvas to presentation-ready screen in minutes." />
+    <meta name="theme-color" content="#E07A5F" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- UI font: loaded eagerly for app chrome (toolbar, sidebar, panels) -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Canvas fonts: loaded async via media="print" trick so they don't block first paint.
+         Note: do NOT add a <link rel="preload"> for this URL — it would force an eager
+         high-priority fetch, defeating the deferred-load intent. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Instrument+Serif&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Nunito+Sans:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Instrument+Serif&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Nunito+Sans:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="text-align:center;padding:3rem 1rem;font-family:system-ui,sans-serif;color:#3D2C2C">
+        Tasteprint requires JavaScript to run. Please enable it in your browser settings.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

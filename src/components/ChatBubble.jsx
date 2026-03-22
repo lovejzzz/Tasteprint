@@ -1,6 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { getAIResponse } from "./chatAI";
 import { getTextureStyle } from "../utils";
+
+// Lazy-load the heavy chatAI sidecar so first paint/editor interactions stay snappy.
+let chatAIResponseFn = null;
+async function getAIResponseLazy(text) {
+  if (!chatAIResponseFn) {
+    const mod = await import("./chatAI");
+    chatAIResponseFn = mod.getAIResponse;
+  }
+  return chatAIResponseFn(text);
+}
 
 /* ── Emoji Picker ── */
 const EMOJI_CATS = [
@@ -139,8 +148,13 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
   const [deliveredId, setDeliveredId] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
-  const idRef = useRef((() => { const saved = loadChat(); return saved ? Math.max(...saved.map(m => m.id)) + 1 : 3; })());
+  const idRef = useRef(3);
   const busyRef = useRef(false);
+
+  // Derive the next message id from the hydrated chat once.
+  useEffect(() => {
+    idRef.current = messages.reduce((max, m) => Math.max(max, m.id), -1) + 1;
+  }, []);
 
   /* Start a new conversation — reset messages and AI state */
   const newChat = useCallback(() => {
@@ -196,7 +210,7 @@ export default function ChatBubble({ v = 0, p, editable, texts, onText, font, fs
     setInputVal("");
 
     // Compute AI response (async for sentence encoder, fast ~5-10ms when warm)
-    const ai = await getAIResponse(text);
+    const ai = await getAIResponseLazy(text);
     const aiText = typeof ai === "string" ? ai : ai.text;
     const typingMs = typeof ai === "object" ? ai.typingMs : (800 + Math.random() * 1200);
     const pause = typeof ai === "object" ? ai.pause : null;

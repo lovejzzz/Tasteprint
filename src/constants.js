@@ -15,12 +15,12 @@ export const FONTS = [
   {name:"JetBrains Mono",family:"'JetBrains Mono',monospace"},
   {name:"Playfair Display",family:"'Playfair Display',Georgia,serif"},
   {name:"Bricolage Grotesque",family:"'Bricolage Grotesque',system-ui,sans-serif"},
-  {name:"General Sans",family:"'General Sans',system-ui,sans-serif"},
-  {name:"Cabinet Grotesk",family:"'Cabinet Grotesk',system-ui,sans-serif"},
+  {name:"Nunito Sans",family:"'Nunito Sans',system-ui,sans-serif"},
+  {name:"Be Vietnam Pro",family:"'Be Vietnam Pro',system-ui,sans-serif"},
   {name:"Poppins",family:"'Poppins',system-ui,sans-serif"},
 ];
 
-export const FONT_URL = "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Instrument+Serif&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap";
+// Fonts are loaded via <link> in index.html (single source of truth).
 
 export const PAL = {
   warm:  { bg:"#FFF8F2",card:"#FFFFFF",ac:"#E07A5F",ac2:"#F2B880",tx:"#3D2C2C",mu:"#9C8578",bd:"rgba(224,122,95,0.12)",su:"#FDF0E8",name:"Warm" },
@@ -96,6 +96,14 @@ export const VARIANTS = {
 };
 
 export const LIB = [
+  { cat:"Starter", items:[
+    {type:"hero",label:"Hero",w:480,h:210},
+    {type:"navbar",label:"Nav bar",w:480,h:52},
+    {type:"button",label:"Button",w:148,h:44},
+    {type:"input",label:"Text input",w:248,h:44},
+    {type:"card",label:"Card",w:280,h:200},
+    {type:"pricing-card",label:"Pricing card",w:240,h:280},
+  ]},
   { cat:"Structure", items:[
     {type:"card",label:"Card",w:280,h:200},
     {type:"card-sm",label:"Small card",w:200,h:130},
@@ -173,10 +181,8 @@ export const LIB = [
 ];
 
 export const DEFAULT_PROPS = {
-  toggle:        { on: true, disabled: false, showLabel: true, animated: true },
   checkbox:      { checked: [true, false, false], disabled: false, showDescription: true, showLabel: true, animated: true },
   tabs:          { active: 0, showIcon: true, showBadge: true, showDivider: true, showLabel: true, animated: true },
-  navbar:        { active: 0, showCta: true, animated: true },
   sidebar:       { active: 0, collapsed: false, showHeader: true, showFooter: true, showBadge: true, showIcon: true, animated: true },
   pagination:    { active: 2, total: 8, showTotal: true, showArrows: true, showPageNumbers: true, showPageLabels: true, animated: true },
   stepper:       { active: 1, showLabels: true, showDescription: true, showConnectors: true, showNumbers: true, animated: true },

@@ -1,11 +1,10 @@
 import React from "react";
 import { DEFAULT_PROPS, HAS_PROPS } from "../constants";
-import { getTextureStyle } from "../utils";
 
 /* ── Toggle switch helper ── */
 function Sw({ on, color, stop, onClick }) {
   return (
-    <button style={{
+    <button type="button" role="switch" aria-checked={on} style={{
       width: 32, height: 18, borderRadius: 999, padding: 2, border: "none",
       display: "flex", alignItems: "center",
       justifyContent: on ? "flex-end" : "flex-start",
@@ -22,7 +21,7 @@ function Sw({ on, color, stop, onClick }) {
 }
 
 /* Compact props panel for customizing component visual state */
-export default function PropsPanel({ type, props, onProp, p, texture }) {
+const PropsPanel = React.memo(function PropsPanel({ type, props, onProp, p }) {
   if (!HAS_PROPS.has(type)) return null;
   const defaults = DEFAULT_PROPS[type] || {};
   const G = (k) => props[k] !== undefined ? props[k] : defaults[k];
@@ -36,7 +35,6 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     padding: "6px 10px", boxShadow: `0 4px 16px ${p.tx}10`,
     display: "flex", gap: 6, alignItems: "center",
     userSelect: "none", whiteSpace: "nowrap",
-    ...getTextureStyle(texture, p),
   };
   const label = { fontSize: 8, color: p.mu, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 };
   const btn = (active) => ({
@@ -474,7 +472,7 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
   }
 
   /* Completed steps (timeline) */
-  if ("completed" in defaults) {
+  if ("completed" in defaults && Array.isArray(G("completed"))) {
     const completed = G("completed");
     controls.push(<React.Fragment key="completed"><span style={label}>Done</span>
       {completed.map((c, i) => <button key={i} style={btn(c)} onMouseDown={stop} onClick={() => { const next = [...completed]; next[i] = !next[i]; onProp("completed", next); }}>{c ? "✓" : i + 1}</button>)}
@@ -610,13 +608,7 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
     </React.Fragment>);
   }
 
-  /* Compact toggle (feature-table, kanban) */
-  if ("compact" in defaults) {
-    const on = G("compact");
-    controls.push(<React.Fragment key="compact"><span style={label}>{on ? "Compact" : "Normal"}</span>
-      <Sw on={on} color={p.ac} stop={stop} onClick={() => onProp("compact", !on)} />
-    </React.Fragment>);
-  }
+  /* Compact toggle (feature-table, kanban) — handled by the generic "compact" block above */
 
   /* Show count toggle (rating) */
   if ("showCount" in defaults) {
@@ -2220,5 +2212,18 @@ export default function PropsPanel({ type, props, onProp, p, texture }) {
 
   if (controls.length === 0) return null;
 
-  return <div style={sty} onMouseDown={stop}>{controls}</div>;
-}
+  // Deduplicate controls by React key — type-specific blocks (later in the
+  // list) intentionally override generic blocks (earlier) with the same key.
+  const seen = new Set();
+  const deduped = [];
+  for (let i = controls.length - 1; i >= 0; i--) {
+    const k = controls[i].key;
+    if (k && seen.has(k)) continue;
+    if (k) seen.add(k);
+    deduped.unshift(controls[i]);
+  }
+
+  return <div style={sty} onMouseDown={stop}>{deduped}</div>;
+});
+
+export default PropsPanel;

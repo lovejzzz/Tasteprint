@@ -1,5 +1,11 @@
 import { STORE_KEY, VARIANTS } from "./constants";
 
+/**
+ * Load a value from localStorage under the Tasteprint store key.
+ * @param {string} k - The property key to retrieve.
+ * @param {*} d - Default value if key is missing or parse fails.
+ * @returns {*} The stored value or the default.
+ */
 export function load(k, d) {
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
@@ -9,18 +15,41 @@ export function load(k, d) {
   }
 }
 
+/**
+ * Generate a random 9-character alphanumeric ID.
+ * @returns {string}
+ */
 export function uid() {
   return Math.random().toString(36).slice(2, 11);
 }
 
+/**
+ * Get the number of available variants for a component type.
+ * @param {string} t - Component type (e.g. "button", "card").
+ * @returns {number} Variant count (minimum 1).
+ */
 export function maxV(t) {
   return (VARIANTS[t] || []).length || 1;
 }
 
+/**
+ * Get the display name for a specific variant of a component type.
+ * @param {string} t - Component type.
+ * @param {number} v - Variant index.
+ * @returns {string} Variant name (e.g. "Filled", "Outline") or "Standard".
+ */
 export function varName(t, v) {
   return (VARIANTS[t] || [])[v] || "Standard";
 }
 
+/**
+ * Calculate snap guides for a shape against all other shapes on the canvas.
+ * Checks center alignment, edge alignment, and gap-based spacing (12/16/24px).
+ * @param {{ id: string, x: number, y: number, w: number, h: number }} s - The shape being moved.
+ * @param {Array<{ id: string, x: number, y: number, w: number, h: number }>} all - All shapes on canvas.
+ * @param {number} [thr=10] - Snap threshold in pixels.
+ * @returns {{ x: number|null, y: number|null, g: Array<{ t: 'v'|'h', p: number }> }} Snapped position and guide lines.
+ */
 export function snap(s, all, thr = 10) {
   const r = { x: null, y: null, g: [] };
   const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
@@ -41,6 +70,12 @@ export function snap(s, all, thr = 10) {
   return r;
 }
 
+/**
+ * Sanitize HTML by removing dangerous elements (script, iframe, etc.)
+ * and event-handler attributes. Allows safe subset for rich text display.
+ * @param {string} html - Raw HTML string.
+ * @returns {string} Sanitized HTML string.
+ */
 export function sanitizeHtml(html) {
   if (typeof html !== "string") return html;
   if (!/<\w/.test(html)) return html;
@@ -49,38 +84,113 @@ export function sanitizeHtml(html) {
   div.querySelectorAll("script,iframe,object,embed,form,link,meta").forEach(el => el.remove());
   div.querySelectorAll("*").forEach(el => {
     for (const attr of [...el.attributes]) {
-      if (attr.name.startsWith("on") || attr.name === "href" && el.getAttribute("href")?.startsWith("javascript")) {
+      if (attr.name.startsWith("on")) {
         el.removeAttribute(attr.name);
+      } else if (attr.name === "href" || attr.name === "src" || attr.name === "action") {
+        // eslint-disable-next-line no-control-regex
+        const val = (el.getAttribute(attr.name) || "").replace(/[\s\u0000-\u001F]+/g, "").toLowerCase();
+        if (val.startsWith("javascript:") || val.startsWith("vbscript:") || (val.startsWith("data:") && !val.startsWith("data:image/"))) {
+          el.removeAttribute(attr.name);
+        }
       }
     }
   });
   return div.innerHTML;
 }
 
+/**
+ * Validate and sanitize imported Tasteprint JSON data.
+ * Ensures shapes have required fields, sanitizes HTML in text/props,
+ * and validates palette/variant preferences.
+ * @param {object} data - Raw parsed JSON from an import file.
+ * @returns {object|null} Cleaned import data, or null if invalid.
+ */
 export function validateImport(data) {
   if (!data || typeof data !== "object") return null;
   const result = {};
   if (Array.isArray(data.shapes)) {
-    result.shapes = data.shapes.filter(s =>
-      s && typeof s === "object" &&
-      typeof s.id === "string" &&
-      typeof s.type === "string" &&
-      typeof s.x === "number" &&
-      typeof s.y === "number" &&
-      typeof s.w === "number" &&
-      typeof s.h === "number"
-    );
+    result.shapes = data.shapes
+      .filter(s =>
+        s && typeof s === "object" &&
+        typeof s.id === "string" &&
+        typeof s.type === "string" &&
+        typeof s.x === "number" &&
+        typeof s.y === "number" &&
+        typeof s.w === "number" &&
+        typeof s.h === "number"
+      )
+      .map(s => {
+        const clean = { ...s };
+        // Sanitize any string field that could contain HTML (text, label, etc.)
+        for (const key of Object.keys(clean)) {
+          if (typeof clean[key] === "string" && key !== "id" && key !== "type") {
+            clean[key] = sanitizeHtml(clean[key]);
+          }
+        }
+        // Sanitize nested texts object string values (contenteditable HTML)
+        if (clean.texts && typeof clean.texts === "object") {
+          const cleanTexts = { ...clean.texts };
+          for (const key of Object.keys(cleanTexts)) {
+            if (typeof cleanTexts[key] === "string") {
+              cleanTexts[key] = sanitizeHtml(cleanTexts[key]);
+            }
+          }
+          clean.texts = cleanTexts;
+        }
+        // Sanitize nested props object string values
+        if (clean.props && typeof clean.props === "object") {
+          const cleanProps = { ...clean.props };
+          for (const key of Object.keys(cleanProps)) {
+            if (typeof cleanProps[key] === "string") {
+              cleanProps[key] = sanitizeHtml(cleanProps[key]);
+            }
+          }
+          clean.props = cleanProps;
+        }
+        return clean;
+      });
   }
   if (typeof data.pal === "string") result.pal = data.pal;
-  if (typeof data.prefV === "object" && data.prefV) result.prefV = data.prefV;
-  if (typeof data.gest === "number") result.gest = data.gest;
+  if (typeof data.prefV === "object" && data.prefV && !Array.isArray(data.prefV)) {
+    // Only keep numeric variant preferences keyed by string component types
+    const cleanPrefV = {};
+    for (const [k, v] of Object.entries(data.prefV)) {
+      if (typeof k === "string" && typeof v === "number" && Number.isFinite(v)) {
+        cleanPrefV[k] = v;
+      }
+    }
+    result.prefV = cleanPrefV;
+  }
+  if (typeof data.gest === "number" && Number.isFinite(data.gest)) result.gest = data.gest;
   return result;
+}
+
+/**
+ * Return a readable text color (#1a1a1a or #fff) for a given background hex color.
+ * Uses YIQ luminance formula for contrast detection.
+ * @param {string} hexColor - Background color as hex string (e.g. "#1A1A1E").
+ * @returns {string} Dark or light text color for readability.
+ */
+export function getReadableTextColor(hexColor) {
+  if (typeof hexColor !== "string") return "#fff";
+  const hex = hexColor.replace("#", "");
+  if (hex.length < 6) return "#fff";
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? "#1a1a1a" : "#fff";
 }
 
 /* ── Texture Modifier System ──
  * CSS-only textures applied via inline styles. Each component can accept
  * a `texture` prop (string) to overlay a visual texture effect.
  * Returns a style object to spread onto the target element.
+ */
+/**
+ * Generate CSS-only texture styles for a component.
+ * @param {string} texture - Texture name (e.g. "glass", "noise", "gradient", "dots").
+ * @param {object} p - Current palette object with bg, card, ac, ac2, tx, mu, bd, su colors.
+ * @returns {object} React inline style object to spread onto the target element.
  */
 export function getTextureStyle(texture, p) {
   if (!texture) return {};
@@ -145,8 +255,14 @@ export function getTextureStyle(texture, p) {
   }
 }
 
-let debounceTimer = null;
+/**
+ * Create a debounced version of a function.
+ * @param {Function} fn - Function to debounce.
+ * @param {number} ms - Delay in milliseconds.
+ * @returns {Function} Debounced function.
+ */
 export function debounce(fn, ms) {
+  let debounceTimer = null;
   return (...args) => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fn(...args), ms);
@@ -159,17 +275,17 @@ export function debounce(fn, ms) {
 
 /* ── Font categories for harmonious pairing ── */
 const FONT_CATS = {
-  display: [0, 4, 5, 6, 9, 12, 13, 15],   // DM Sans, Space Grotesk, Outfit, Sora, Instrument Serif, Playfair, Bricolage, Cabinet
-  body:    [1, 2, 3, 7, 8, 10, 14, 16],    // Inter, Plus Jakarta, Manrope, Work Sans, Figtree, Geist, General Sans, Poppins
+  display: [0, 4, 5, 6, 9, 12, 13],        // DM Sans, Space Grotesk, Outfit, Sora, Instrument Serif, Playfair, Bricolage Grotesque
+  body:    [1, 2, 3, 7, 8, 10, 14, 15, 16], // Inter, Plus Jakarta, Manrope, Work Sans, Figtree, Geist, Nunito Sans, Be Vietnam Pro, Poppins
   mono:    [11],                             // JetBrains Mono
   serif:   [9, 12],                          // Instrument Serif, Playfair Display
 };
 
 /* ── Component size categories for font sizing ── */
-const SIZE_CAT = {
+export const SIZE_CAT = {
   large:  new Set(["hero", "heading", "pricing-card", "profile-card", "modal"]),
-  medium: new Set(["card", "card-sm", "stat-card", "dash-panel", "testimonial", "bento-grid", "product-card", "order-summary", "receipt", "feature-table", "kanban"]),
-  small:  new Set(["button", "badge", "toggle", "pagination", "breadcrumb", "tag-input", "avatar-row", "tooltip", "checkbox", "slider"]),
+  medium: new Set(["card", "card-sm", "stat-card", "dash-panel", "testimonial", "bento-grid", "product-card", "order-summary", "receipt", "feature-table", "kanban", "table", "accordion", "chart", "skeleton", "stepper", "timeline", "chat", "media-player", "notification", "promo-banner", "cart-item", "list-item", "image-placeholder", "alert"]),
+  small:  new Set(["button", "badge", "toggle", "pagination", "breadcrumb", "tag-input", "avatar-row", "tooltip", "checkbox", "slider", "toast", "progress", "rating", "sub-toggle"]),
   nav:    new Set(["navbar", "tabs", "sidebar", "footer"]),
   input:  new Set(["input", "search", "select", "dropdown", "cmd-palette"]),
   code:   new Set(["code-block"]),
@@ -286,6 +402,7 @@ export const DESIGN_MOODS = [
 ];
 
 /* Mood-specific overrides for variant/font/size selection */
+/* eslint-disable no-unused-vars -- many mood handlers share a common signature for consistency */
 const MOOD_CONFIG = {
   auto: null, // uses default smart logic
   minimal: {
@@ -533,6 +650,7 @@ const MOOD_CONFIG = {
     propTweak: (props) => {},
   },
 };
+/* eslint-enable no-unused-vars */
 
 /* ── Multi-component harmony helpers ── */
 function _analyzeHarmony(shapes) {
@@ -1258,8 +1376,6 @@ const SHADOW_PRESETS = [
   "0 1px 2px {s}08, 0 8px 24px {s}10",       // layered
 ];
 
-const RADIUS_PRESETS = [0, 4, 8, 12, 16, 20, 24, 32, 999];
-
 // ── Round 90: Mood-specific gradient palette generator ──
 // Generates distinctive gradient CSS strings based on mood personality.
 // Each mood has unique gradient flavors: bold = harsh/split, elegant = subtle/metallic,
@@ -1945,7 +2061,6 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
   // --- Gradient overlay (DNA-driven or harmony-adaptive chance, skip nav/code/small) ---
   if (_effectCount < _maxEffects && !isNav && !isCode && !isSmall) {
-    const ac2 = palette.ac2 || palette.ac || "#888";
     const dnaGrad = dna && dna.gradientStyle !== "none";
     // Harmony-adaptive fallback rate: match canvas gradient density
     const gradFallback = harmony ? (harmony.gradientRate > 0.6 ? 0.55 : harmony.gradientRate > 0.3 ? 0.30 : 0.12) : 0.25;
@@ -2855,7 +2970,6 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
 
     if (moodId === "playful") {
       // Signature: multicolor shadow using derived colors for genuinely colorful depth
-      const ac2 = palette.ac2 || palette.ac || "#888";
       if (Math.random() < 0.3 && !isSmall) {
         s.boxShadow = pick([
           `3px 3px 0 ${acHex}25, -2px -2px 0 ${gc1}20`,
@@ -4439,7 +4553,6 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
   if (!isNav && !isCode) {
     const typoRoll = Math.random();
     const isHeading = /heading|hero|title|h[1-3]/i.test(type);
-    const isBody = /body|paragraph|text|content/i.test(type);
 
     // Line-height per mood — affects text rhythm and readability feel
     if (typoRoll < 0.35) {
@@ -4816,7 +4929,7 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
         if (s.animation && effectCount > 3) { s.animation = undefined; effectCount--; }
         if (s.rotate && effectCount > 3) { s.rotate = undefined; effectCount--; }
         if (s.textStroke && effectCount > 3) { s.textStroke = undefined; effectCount--; }
-        if (s.outline && effectCount > 3) { s.outline = "none"; effectCount--; }
+        if (s.outline && effectCount > 3) { s.outline = "none"; }
       }
     }
   }
@@ -5724,6 +5837,14 @@ function _generateDesignStyles(type, variant, palette, mood, sizeCat, dark, harm
     }
   }
 
+  // Final minimal cleanup — wild cards may re-add properties stripped earlier
+  if (moodId === "minimal" && !isNav && !isCode) {
+    s.gradientOverlay = undefined;
+    s.rotate = undefined;
+    s.hueRotate = undefined;
+    s.scale = undefined;
+  }
+
   s._effectCount = _effectCount;
   return s;
 }
@@ -5767,7 +5888,6 @@ export function designScore(shape, palette, otherShapes = []) {
   // 4. Cross-component consistency (+0.5/-0.5)
   if (otherShapes.length >= 2) {
     const otherFonts = otherShapes.map(s => s.font || 0);
-    const otherFontCats = otherFonts.map(f => Object.entries(FONT_CATS).find(([, ids]) => ids.includes(f))?.[0] || "body");
     const dominantCat = _dominantFontCat(otherFonts);
     if (fontCat === dominantCat) score += 0.4; // matches canvas font vibe
     else score -= 0.2;

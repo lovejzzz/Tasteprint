@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tasteprint</title>
+  <script>
+    // GitHub Pages SPA redirect: Tasteprint is a single-page app with no
+    // client-side router, so all paths should land on the app root.
+    // Derive the base path from the first URL segment (repo name on GH Pages).
+    var segments = window.location.pathname.split('/');
+    var base = segments.length > 1 && segments[1] ? '/' + segments[1] + '/' : '/';
+    window.location.replace(window.location.origin + base);
+  </script>
+</head>
+<body></body>
+</html>

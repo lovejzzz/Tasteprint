@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { PAL } from "../constants";
-import { DESIGN_MOODS } from "../utils";
+import { DESIGN_MOODS, getReadableTextColor } from "../utils";
+import "./header.css";
 
 /* ── Shared layout logic for device mode switching ── */
-function reflowForDevice(deviceKey, shapes, setShapes, setDevice, setCam) {
+function reflowForDevice(deviceKey, setShapes, setDevice, setCam) {
   if (deviceKey !== "free") {
     const cw = deviceKey === "desktop" ? 1280 : 390;
     const pd = deviceKey === "desktop" ? 32 : 16;
@@ -25,11 +26,12 @@ function reflowForDevice(deviceKey, shapes, setShapes, setDevice, setCam) {
   setCam({ x: 0, y: 0, z: 1 });
 }
 
-export default function Header({ pal, setPal, device, setDevice, shapes, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, p, mobile, randomizeAll, designMood, setDesignMood, lastRandomizeStats }) {
+export default React.memo(function Header({ pal, setPal, device, setDevice, shapeCount, setShapes, setCam, clearAll, exportPng, exportJSON, importJSON, undo, redo, canUndo, canRedo, p, mobile, randomizeAll, designMood, setDesignMood, lastRandomizeStats, pickyMode, enterPicky, cancelPicky }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [hoveredBtn, setHoveredBtn] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [moodOpen, setMoodOpen] = useState(false);
+
+  const activeMood = DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0];
 
   /* Auto-show/dismiss randomize stats toast */
   useEffect(() => {
@@ -40,30 +42,8 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
   }, [lastRandomizeStats]);
 
   const switchDevice = useCallback((key) => {
-    reflowForDevice(key, shapes, setShapes, setDevice, setCam);
-  }, [shapes, setShapes, setDevice, setCam]);
-
-  /* ── Button style with hover support ── */
-  const btn = (id, extra = {}) => ({
-    background: hoveredBtn === id ? p.su : "none",
-    border: `1px solid ${hoveredBtn === id ? p.ac + "44" : p.bd}`,
-    borderRadius: 8,
-    padding: "5px 12px",
-    fontSize: 11,
-    color: hoveredBtn === id ? p.tx : p.mu,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    transition: "all .15s ease",
-    outline: "none",
-    ...extra,
-  });
-
-  const btnHandlers = (id) => ({
-    onMouseEnter: () => setHoveredBtn(id),
-    onMouseLeave: () => setHoveredBtn(null),
-    onFocus: () => setHoveredBtn(id),
-    onBlur: () => setHoveredBtn(null),
-  });
+    reflowForDevice(key, setShapes, setDevice, setCam);
+  }, [setShapes, setDevice, setCam]);
 
   /* ── Palette swatch ── */
   const swatch = (k, v, size = 18) => {
@@ -71,15 +51,11 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
     return (
       <button key={k} onClick={() => { setPal(k); if (mobile) setMenuOpen(false); }}
         title={v.name} aria-label={`${v.name} palette`} aria-pressed={active}
-        {...btnHandlers(`pal-${k}`)}
+        className={`tp-swatch${active ? " tp-swatch--active" : ""}`}
         style={{
-          width: size, height: size, borderRadius: 999,
-          border: active ? `2.5px solid ${p.ac}` : hoveredBtn === `pal-${k}` ? `2px solid ${p.mu}` : "2px solid transparent",
+          width: size, height: size,
+          borderColor: active ? p.ac : undefined,
           background: k === "noir" || k === "neon" ? "#1A1A1E" : v.ac,
-          cursor: "pointer",
-          transition: "all .2s ease",
-          transform: active ? "scale(1.2)" : hoveredBtn === `pal-${k}` ? "scale(1.1)" : "scale(1)",
-          outline: "none",
           boxShadow: active ? `0 0 0 3px ${p.ac}22` : "none",
         }} />
     );
@@ -88,118 +64,88 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
   /* ── Device toggle segment ── */
   const deviceSeg = (d, closeFn) => {
     const active = device === d.k;
-    const hovered = hoveredBtn === `dev-${d.k}`;
     return (
       <button key={d.k} aria-pressed={active}
         onClick={() => { switchDevice(d.k); closeFn?.(); }}
-        {...btnHandlers(`dev-${d.k}`)}
+        className={`tp-dev-seg${mobile ? " tp-dev-seg--mobile" : " tp-dev-seg--desktop"}${active ? " tp-dev-seg--active" : ""}`}
         style={{
-          flex: 1, background: active ? p.su : hovered ? p.su + "66" : "none",
-          border: "none", padding: mobile ? "8px 10px" : "5px 10px",
-          fontSize: mobile ? 12 : 10, color: active ? p.tx : p.mu,
-          cursor: "pointer", fontFamily: "inherit",
+          background: active ? p.su : "none",
+          color: active ? p.tx : p.mu,
           fontWeight: active ? 500 : 400,
-          transition: "all .15s ease", outline: "none",
         }}>
         {d.l}
       </button>
     );
   };
 
-  const devices = [{ k: "free", l: "Free" }, { k: "desktop", l: "Desktop" }, { k: "phone", l: "Phone" }];
-  const separator = <div style={{ width: 1, height: 20, background: p.bd, flexShrink: 0 }} />;
+  // Designer-first ordering: keep constrained outputs front-and-center,
+  // with free canvas available but de-emphasized.
+  const devices = [{ k: "desktop", l: "Desktop" }, { k: "phone", l: "Phone" }, { k: "free", l: "Free" }];
 
   /* ════════ Mobile Layout ════════ */
   if (mobile) {
     return (
-      <header style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "8px 14px", borderBottom: `1px solid ${p.bd}`,
-        background: p.card + "cc", backdropFilter: "blur(12px)",
-        zIndex: 50, transition: "all .4s", position: "relative",
-      }} role="toolbar" aria-label="Canvas toolbar">
-        <span style={{ fontFamily: "'Instrument Serif',Georgia,serif", fontSize: 18, color: p.tx, letterSpacing: "-0.02em" }}>
+      <header className="tp-header tp-header--mobile"
+        style={{ borderColor: p.bd, background: p.card + "cc" }}
+        role="toolbar" aria-label="Canvas toolbar">
+        <span className="tp-header-brand tp-header-brand--mobile" style={{ color: p.tx }}>
           Tasteprint
         </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={undo} aria-label="Undo" {...btnHandlers("m-undo")}
-            style={btn("m-undo", { padding: "5px 8px", fontSize: 13 })}>↩</button>
-          <button onClick={redo} aria-label="Redo" {...btnHandlers("m-redo")}
-            style={btn("m-redo", { padding: "5px 8px", fontSize: 13 })}>↪</button>
-          {shapes.length > 0 && <span style={{ position: "relative", display: "inline-flex" }}>
-            <button onClick={randomizeAll} aria-label="Randomize all" {...btnHandlers("m-rndAll")}
-              style={btn("m-rndAll", { padding: "5px 8px", fontSize: 12 })}>🎲</button>
+        <div className="tp-header-actions tp-header-actions--mobile">
+          <button onClick={undo} aria-label="Undo" disabled={!canUndo}
+            className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 13, borderColor: p.bd, color: p.mu }}>↩</button>
+          <button onClick={redo} aria-label="Redo" disabled={!canRedo}
+            className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 13, borderColor: p.bd, color: p.mu }}>↪</button>
+          {shapeCount > 0 && <span className="tp-btn-wrap">
+            <button onClick={randomizeAll} aria-label="Randomize all"
+              className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 12, borderColor: p.bd, color: p.mu }}>🎲</button>
             {showStats && lastRandomizeStats && (
-              <span style={{
-                position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
-                background: p.ac, color: (() => { const hex = p.ac.replace("#", ""); const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); return (r*299+g*587+b*114)/1000 > 150 ? "#1a1a1a" : "#fff"; })(),
-                fontSize: 9, fontWeight: 600, fontFamily: "inherit",
-                padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap",
-                pointerEvents: "none", zIndex: 100,
-                animation: "tp-rnd-toast .2s ease-out, tp-rnd-toast .3s ease-out 2.5s reverse both",
-                boxShadow: `0 2px 8px ${p.ac}44`,
-              }}>
+              <span className="tp-rnd-stats tp-rnd-stats--mobile"
+                style={{ background: p.ac, color: getReadableTextColor(p.ac), boxShadow: `0 2px 8px ${p.ac}44` }}>
                 {lastRandomizeStats.skipped > 0
                   ? `\u2713 ${lastRandomizeStats.count} \u00b7 ${lastRandomizeStats.skipped} locked`
                   : `\u2713 ${lastRandomizeStats.count} updated`}
               </span>
             )}
           </span>}
-          <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" {...btnHandlers("m-menu")}
-            style={btn("m-menu", { padding: "5px 10px", fontSize: 16, background: menuOpen ? p.su : hoveredBtn === "m-menu" ? p.su : "none" })}>
+          <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu"
+            className="tp-hdr-btn" style={{ padding: "5px 10px", fontSize: 16, borderColor: p.bd, color: p.mu, background: menuOpen ? p.su : "none" }}>
             ☰
           </button>
         </div>
 
         {menuOpen && <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setMenuOpen(false)} />
-          <div style={{
-            position: "absolute", top: "100%", right: 8, zIndex: 999,
-            background: p.card, border: `1px solid ${p.bd}`, borderRadius: 14,
-            padding: 16, boxShadow: `0 8px 32px ${p.tx}12`,
-            display: "flex", flexDirection: "column", gap: 14, minWidth: 240,
-            animation: "tp-tooltip-in .15s ease-out both",
-          }}>
+          <div className="tp-menu-backdrop" onClick={() => setMenuOpen(false)} />
+          <div className="tp-menu-dropdown"
+            style={{ background: p.card, border: `1px solid ${p.bd}`, boxShadow: `0 8px 32px ${p.tx}12`, animation: "tp-tooltip-in .15s ease-out both" }}>
             {/* Palette */}
             <div>
-              <span style={{ fontSize: 10, color: p.mu, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, display: "block" }}>
-                Palette
-              </span>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }} role="radiogroup" aria-label="Color palette">
+              <span className="tp-menu-section-label" style={{ color: p.mu }}>Palette</span>
+              <div className="tp-palette-group tp-palette-group--mobile" role="radiogroup" aria-label="Color palette">
                 {Object.entries(PAL).map(([k, v]) => swatch(k, v, 28))}
               </div>
             </div>
             {/* Device */}
             <div>
-              <span style={{ fontSize: 10, color: p.mu, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, display: "block" }}>
-                Device
-              </span>
-              <div style={{ display: "flex", alignItems: "center", border: `1px solid ${p.bd}`, borderRadius: 8, overflow: "hidden" }}
-                role="radiogroup" aria-label="Device mode">
+              <span className="tp-menu-section-label" style={{ color: p.mu }}>Device</span>
+              <div className="tp-dev-group" style={{ borderColor: p.bd }} role="radiogroup" aria-label="Device mode">
                 {devices.map(d => deviceSeg(d, () => setMenuOpen(false)))}
               </div>
             </div>
             {/* Mood */}
             {designMood !== undefined && <div>
-              <span style={{ fontSize: 10, color: p.mu, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, display: "block" }}>
-                Mood
-              </span>
+              <span className="tp-menu-section-label" style={{ color: p.mu }}>Mood</span>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {DESIGN_MOODS.map(m => {
                   const active = (designMood || "auto") === m.id;
-                  const hid = `m-mood-${m.id}`;
                   return (
                     <button key={m.id}
                       onClick={() => { setDesignMood(m.id); setMenuOpen(false); }}
-                      {...btnHandlers(hid)}
+                      className={`tp-mood-btn tp-mood-btn--mobile${active ? " tp-mood-btn--active" : ""}`}
                       style={{
-                        display: "flex", alignItems: "center", gap: 4,
-                        padding: "6px 10px", borderRadius: 8, fontSize: 11, fontWeight: 500,
-                        background: active ? p.ac + "18" : hoveredBtn === hid ? p.su : "none",
-                        border: active ? `1.5px solid ${p.ac}44` : `1px solid transparent`,
+                        background: active ? p.ac + "18" : "none",
+                        borderColor: active ? p.ac + "44" : "transparent",
                         color: active ? p.ac : p.tx,
-                        cursor: "pointer", fontFamily: "inherit", outline: "none",
-                        transition: "all .12s ease", whiteSpace: "nowrap",
                       }}>
                       <span style={{ fontSize: 14 }}>{m.icon}</span>
                       <span>{m.label}</span>
@@ -211,21 +157,14 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
             {/* Actions */}
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {[
-                { id: "m-new", label: "New canvas", fn: () => { clearAll(); setMenuOpen(false); } },
-                { id: "m-png", label: "Export PNG", fn: () => { exportPng(); setMenuOpen(false); }, dis: !shapes.length },
-                { id: "m-json", label: "Export JSON", fn: () => { exportJSON(); setMenuOpen(false); }, dis: !shapes.length },
-                { id: "m-import", label: "Import JSON", fn: () => { importJSON(); setMenuOpen(false); } },
+                { label: "New canvas", fn: () => { clearAll(); setMenuOpen(false); } },
+                { label: "Export PNG", fn: () => { exportPng(); setMenuOpen(false); }, dis: !shapeCount },
+                { label: "Export JSON", fn: () => { exportJSON(); setMenuOpen(false); }, dis: !shapeCount },
+                { label: "Import JSON", fn: () => { importJSON(); setMenuOpen(false); } },
               ].map(a => (
-                <button key={a.id} onClick={a.fn} disabled={a.dis}
-                  {...(!a.dis ? btnHandlers(a.id) : {})}
-                  style={{
-                    background: hoveredBtn === a.id ? p.su : "none",
-                    border: "none", padding: "10px 12px", fontSize: 13,
-                    color: a.dis ? p.mu + "44" : p.tx,
-                    cursor: a.dis ? "default" : "pointer",
-                    fontFamily: "inherit", textAlign: "left", borderRadius: 8,
-                    transition: "background .15s", outline: "none",
-                  }}>
+                <button key={a.label} onClick={a.fn} disabled={a.dis}
+                  className="tp-menu-action"
+                  style={{ color: a.dis ? p.mu + "44" : p.tx }}>
                   {a.label}
                 </button>
               ))}
@@ -238,79 +177,66 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
 
   /* ════════ Desktop Layout ════════ */
   return (
-    <header style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "10px 20px", borderBottom: `1px solid ${p.bd}`,
-      background: p.card + "cc", backdropFilter: "blur(12px)",
-      zIndex: 50, transition: "all .4s",
-    }} role="toolbar" aria-label="Canvas toolbar">
+    <header className="tp-header tp-header--desktop"
+      style={{ borderColor: p.bd, background: p.card + "cc" }}
+      role="toolbar" aria-label="Canvas toolbar">
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ fontFamily: "'Instrument Serif',Georgia,serif", fontSize: 22, color: p.tx, letterSpacing: "-0.02em" }}>
+        <span className="tp-header-brand tp-header-brand--desktop" style={{ color: p.tx }}>
           Tasteprint
         </span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 220 }} role="radiogroup" aria-label="Color palette">
+      <div className="tp-header-actions tp-header-actions--desktop">
+        <div className="tp-palette-group tp-palette-group--desktop" role="radiogroup" aria-label="Color palette">
           {Object.entries(PAL).map(([k, v]) => swatch(k, v, 18))}
         </div>
-        {separator}
-        <div style={{ display: "flex", alignItems: "center", border: `1px solid ${p.bd}`, borderRadius: 8, overflow: "hidden" }}
-          role="radiogroup" aria-label="Device mode">
+        {!pickyMode && <>
+        <div className="tp-hdr-sep" style={{ background: p.bd }} />
+        <div className="tp-dev-group" style={{ borderColor: p.bd }} role="radiogroup" aria-label="Device mode">
           {devices.map(d => deviceSeg(d))}
         </div>
-        {separator}
+        <div className="tp-hdr-sep" style={{ background: p.bd }} />
         <button onClick={clearAll} title="New canvas" aria-label="New canvas"
-          {...btnHandlers("new")} style={btn("new")}>New</button>
+          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>New canvas</button>
         <button onClick={exportPng} title="Export as PNG" aria-label="Export as PNG"
-          disabled={!shapes.length} {...(shapes.length ? btnHandlers("png") : {})}
-          style={btn("png", { opacity: shapes.length ? 1 : .4, cursor: shapes.length ? "pointer" : "default" })}>PNG</button>
+          disabled={!shapeCount}
+          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>PNG</button>
         <button onClick={exportJSON} title="Export JSON" aria-label="Export as JSON"
-          disabled={!shapes.length} {...(shapes.length ? btnHandlers("json") : {})}
-          style={btn("json", { opacity: shapes.length ? 1 : .4, cursor: shapes.length ? "pointer" : "default" })}>JSON</button>
+          disabled={!shapeCount}
+          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>JSON</button>
         <button onClick={importJSON} title="Import JSON" aria-label="Import JSON"
-          {...btnHandlers("import")} style={btn("import")}>Import</button>
-        <button onClick={undo} title="Undo (⌘Z)" aria-label="Undo"
-          {...btnHandlers("undo")} style={btn("undo")}>Undo</button>
-        <button onClick={redo} title="Redo (⌘⇧Z)" aria-label="Redo"
-          {...btnHandlers("redo")} style={btn("redo")}>Redo</button>
-        {shapes.length > 0 && <>
-          <div style={{ width: 1, height: 16, background: p.bd, margin: "0 2px", flexShrink: 0 }} />
-          {designMood !== undefined && <span style={{ position: "relative", display: "inline-flex" }}>
+          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>Import</button>
+        <button onClick={undo} title="Undo (⌘Z)" aria-label="Undo" disabled={!canUndo}
+          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>Undo</button>
+        <button onClick={redo} title="Redo (⌘⇧Z)" aria-label="Redo" disabled={!canRedo}
+          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>Redo</button>
+        {shapeCount > 0 && <>
+          <div className="tp-hdr-sep tp-hdr-sep--small" style={{ background: p.bd }} />
+          {designMood !== undefined && <span className="tp-btn-wrap">
             <button
               onClick={() => setMoodOpen(v => !v)}
-              title={`Design mood: ${(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label} (M key to cycle)`}
+              title={`Design mood: ${activeMood.label} (M key to cycle)`}
               aria-label="Open mood picker"
               aria-expanded={moodOpen}
-              {...btnHandlers("mood")}
-              style={btn("mood", { display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 500, color: designMood === "auto" ? p.mu : p.ac })}>
-              <span style={{ fontSize: 12 }}>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).icon}</span>
-              <span>{(DESIGN_MOODS.find(m => m.id === (designMood || "auto")) || DESIGN_MOODS[0]).label}</span>
-              <span style={{ fontSize: 8, marginLeft: 1, opacity: 0.6 }}>▾</span>
+              className="tp-hdr-btn"
+              style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 500, borderColor: p.bd, color: designMood === "auto" ? p.mu : p.ac }}>
+              <span style={{ fontSize: 12 }}>{activeMood.icon}</span>
+              <span>{activeMood.label}</span>
+              <span className="tp-mood-caret">▾</span>
             </button>
             {moodOpen && <>
-              <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setMoodOpen(false)} />
-              <div style={{
-                position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 999,
-                background: p.card, border: `1px solid ${p.bd}`, borderRadius: 12,
-                padding: 8, boxShadow: `0 8px 32px ${p.tx}12`,
-                display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4,
-                minWidth: 220, animation: "tp-tooltip-in .15s ease-out both",
-              }}>
+              <div className="tp-menu-backdrop" onClick={() => setMoodOpen(false)} />
+              <div className="tp-mood-grid"
+                style={{ background: p.card, border: `1px solid ${p.bd}`, boxShadow: `0 8px 32px ${p.tx}12`, animation: "tp-tooltip-in .15s ease-out both" }}>
                 {DESIGN_MOODS.map(m => {
                   const active = (designMood || "auto") === m.id;
-                  const hid = `mood-${m.id}`;
                   return (
                     <button key={m.id}
                       onClick={() => { setDesignMood(m.id); setMoodOpen(false); }}
-                      {...btnHandlers(hid)}
+                      className={`tp-mood-btn tp-mood-btn--desktop${active ? " tp-mood-btn--active" : ""}`}
                       style={{
-                        display: "flex", alignItems: "center", gap: 4,
-                        padding: "6px 8px", borderRadius: 8, fontSize: 10, fontWeight: 500,
-                        background: active ? p.ac + "18" : hoveredBtn === hid ? p.su : "none",
-                        border: active ? `1.5px solid ${p.ac}44` : `1px solid transparent`,
+                        background: active ? p.ac + "18" : "none",
+                        borderColor: active ? p.ac + "44" : "transparent",
                         color: active ? p.ac : p.tx,
-                        cursor: "pointer", fontFamily: "inherit", outline: "none",
-                        transition: "all .12s ease", whiteSpace: "nowrap",
                       }}>
                       <span style={{ fontSize: 13 }}>{m.icon}</span>
                       <span>{m.label}</span>
@@ -320,9 +246,9 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
               </div>
             </>}
           </span>}
-          <span style={{ position: "relative", display: "inline-flex" }}>
+          <span className="tp-btn-wrap">
             <button onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
-              {...btnHandlers("rndAll")} style={btn("rndAll", { display: "flex", alignItems: "center", gap: 4 })}>
+              className="tp-hdr-btn" style={{ display: "flex", alignItems: "center", gap: 4, borderColor: p.bd, color: p.mu }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="2" width="20" height="20" rx="3" />
                 <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
@@ -332,23 +258,32 @@ export default function Header({ pal, setPal, device, setDevice, shapes, setShap
               All
             </button>
             {showStats && lastRandomizeStats && (
-              <span style={{
-                position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
-                background: p.ac, color: (() => { const hex = p.ac.replace("#", ""); const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); return (r*299+g*587+b*114)/1000 > 150 ? "#1a1a1a" : "#fff"; })(),
-                fontSize: 10, fontWeight: 600, fontFamily: "inherit",
-                padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap",
-                pointerEvents: "none", zIndex: 100,
-                animation: "tp-rnd-toast .2s ease-out, tp-rnd-toast .3s ease-out 2.5s reverse both",
-                boxShadow: `0 2px 8px ${p.ac}44`,
-              }}>
+              <span className="tp-rnd-stats tp-rnd-stats--desktop"
+                style={{ background: p.ac, color: getReadableTextColor(p.ac), boxShadow: `0 2px 8px ${p.ac}44` }}>
                 {lastRandomizeStats.skipped > 0
                   ? `\u2713 ${lastRandomizeStats.count} updated \u00b7 ${lastRandomizeStats.skipped} locked`
                   : `\u2713 ${lastRandomizeStats.count} updated`}
               </span>
             )}
           </span>
+          {/* Picky mode button */}
+          <button onClick={enterPicky} title="Picky — build a page step by step" aria-label="Picky mode"
+            className="tp-hdr-btn" style={{ display: "flex", alignItems: "center", gap: 4, borderColor: p.bd, color: p.mu }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+            </svg>
+            Picky
+          </button>
         </>}
+        </>}
+        {/* Simplified header during Picky mode */}
+        {pickyMode && (
+          <button onClick={cancelPicky} className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>
+            Exit Picky
+          </button>
+        )}
       </div>
     </header>
   );
-}
+})
