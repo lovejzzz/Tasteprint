@@ -92,6 +92,11 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
           Tasteprint
         </span>
         <div className="tp-header-actions tp-header-actions--mobile">
+          {pickyMode ? (
+            <button onClick={cancelPicky} className="tp-hdr-btn" style={{ padding: "5px 10px", fontSize: 11, borderColor: p.bd, color: p.mu }}>
+              Exit Picky
+            </button>
+          ) : <>
           <button onClick={undo} aria-label="Undo" disabled={!canUndo}
             className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 13, borderColor: p.bd, color: p.mu }}>↩</button>
           <button onClick={redo} aria-label="Redo" disabled={!canRedo}
@@ -112,6 +117,7 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
             className="tp-hdr-btn" style={{ padding: "5px 10px", fontSize: 16, borderColor: p.bd, color: p.mu, background: menuOpen ? p.su : "none" }}>
             ☰
           </button>
+          </>}
         </div>
 
         {menuOpen && <>
@@ -157,6 +163,7 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
             {/* Actions */}
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {[
+                { label: "Picky Mode", fn: () => { enterPicky(); setMenuOpen(false); } },
                 { label: "New canvas", fn: () => { clearAll(); setMenuOpen(false); } },
                 { label: "Export PNG", fn: () => { exportPng(); setMenuOpen(false); }, dis: !shapeCount },
                 { label: "Export JSON", fn: () => { exportJSON(); setMenuOpen(false); }, dis: !shapeCount },
