@@ -12,17 +12,19 @@ import { uid, validateImport } from "../utils";
  * @param {React.MutableRefObject<Array>} params.shapesRef - ref to current shapes array
  * @param {React.MutableRefObject<string>} params.palRef - ref to current palette name
  * @param {React.MutableRefObject<string>} params.deviceRef - ref to current device mode
+ * @param {React.MutableRefObject<object>} params.prefVRef - ref to current preferred variants
  * @param {Function} params.setShapes - shapes state setter
  * @param {Function} params.setHist - history state setter
  * @param {Function} params.setFuture - future state setter
  * @param {Function} params.setPal - palette state setter
+ * @param {Function} params.setPrefV - preferred-variants state setter
  * @param {Function} params.setDevice - device mode setter
  * @param {Function} params.resetTransientEditorState - clears ephemeral editing state
  * @returns {object} The tp API object (also exposed as window.tp)
  */
 export function useTpApi({
-  shapesRef, palRef, deviceRef,
-  setShapes, setHist, setFuture, setPal, setDevice,
+  shapesRef, palRef, deviceRef, prefVRef,
+  setShapes, setHist, setFuture, setPal, setPrefV, setDevice,
   resetTransientEditorState,
 }) {
   const libSizes = useMemo(() => {
@@ -121,7 +123,7 @@ export function useTpApi({
       /* ---- SAVE / RESET ---- */
       save: (name) => {
         const key = name ? `tp_save_${name}` : 'tp_save_default';
-        const data = { shapes: shapesRef.current, pal: palRef.current, device: deviceRef.current };
+        const data = { shapes: shapesRef.current, pal: palRef.current, prefV: prefVRef.current, device: deviceRef.current };
         localStorage.setItem(key, JSON.stringify(data));
         return key;
       },
@@ -136,6 +138,7 @@ export function useTpApi({
           const prev = shapesRef.current; _push(prev);
           if (validated.shapes) _set(validated.shapes);
           if (validated.pal && PAL[validated.pal]) setPal(validated.pal);
+          if (validated.prefV) setPrefV(validated.prefV);
           if (data.device && ['free', 'desktop', 'phone'].includes(data.device)) setDevice(data.device);
           return true;
         } catch { return false; }
@@ -156,7 +159,7 @@ export function useTpApi({
         setDevice('desktop');
         resetTransientEditorState();
       },
-      export: () => ({ shapes: shapesRef.current, pal: palRef.current, device: deviceRef.current }),
+      export: () => ({ shapes: shapesRef.current, pal: palRef.current, prefV: prefVRef.current, device: deviceRef.current }),
     };
-  }, [libSizes, shapesRef, palRef, deviceRef, setPal, setDevice, resetTransientEditorState, setShapes, setHist, setFuture]);
+  }, [libSizes, shapesRef, palRef, deviceRef, prefVRef, setPal, setPrefV, setDevice, resetTransientEditorState, setShapes, setHist, setFuture]);
 }

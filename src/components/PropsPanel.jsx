@@ -1,21 +1,23 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { DEFAULT_PROPS, HAS_PROPS } from "../constants";
+import "./propspanel.css";
 
 /* ── Toggle switch helper ── */
-function Sw({ on, color, stop, onClick }) {
+function Sw({ on, color, stop, onClick, label }) {
+  // Auto-derive accessible name from the adjacent <span> label when no explicit
+  // label prop is provided. Every Sw follows the pattern: <span>Label</span><Sw/>.
+  const labelRef = useCallback((el) => {
+    if (!el) return;
+    if (label) return; // explicit label takes precedence
+    const prev = el.previousElementSibling;
+    if (prev) el.setAttribute("aria-label", prev.textContent);
+  }, [label]);
   return (
-    <button type="button" role="switch" aria-checked={on} style={{
-      width: 32, height: 18, borderRadius: 999, padding: 2, border: "none",
-      display: "flex", alignItems: "center",
-      justifyContent: on ? "flex-end" : "flex-start",
-      background: on ? color : "rgba(128,128,128,.2)",
-      cursor: "pointer", transition: "background .2s ease",
-    }} onMouseDown={stop} onClick={onClick}>
-      <div style={{
-        width: 14, height: 14, borderRadius: 999, background: "#fff",
-        boxShadow: "0 1px 2px rgba(0,0,0,.12)",
-        transition: "transform .15s cubic-bezier(.4,1,.6,1)",
-      }} />
+    <button ref={labelRef} type="button" role="switch" aria-checked={on} aria-label={label || undefined}
+      className={`tp-sw ${on ? "tp-sw--on" : "tp-sw--off"}`}
+      style={{ background: on ? color : "rgba(128,128,128,.2)" }}
+      onMouseDown={stop} onClick={onClick}>
+      <div className="tp-sw-thumb" />
     </button>
   );
 }
@@ -28,24 +30,15 @@ const PropsPanel = React.memo(function PropsPanel({ type, props, onProp, p }) {
   const stop = e => e.stopPropagation();
 
   const sty = {
-    position: "absolute", bottom: -6, left: "50%",
-    transform: "translate(-50%, 100%)", zIndex: 200,
-    background: p.card + "EE", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-    border: `1px solid ${p.bd}`, borderRadius: 10,
-    padding: "6px 10px", boxShadow: `0 4px 16px ${p.tx}10`,
-    display: "flex", gap: 6, alignItems: "center",
-    userSelect: "none", whiteSpace: "nowrap",
+    background: p.card + "EE",
+    border: `1px solid ${p.bd}`,
+    boxShadow: `0 4px 16px ${p.tx}10`,
   };
-  const label = { fontSize: 8, color: p.mu, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2 };
+  const label = { color: p.mu };
   const btn = (active) => ({
-    width: 22, height: 22, borderRadius: 6,
     border: active ? `1.5px solid ${p.ac}` : `1px solid ${p.bd}`,
     background: active ? p.ac + "18" : "transparent",
     color: active ? p.ac : p.mu,
-    fontSize: 10, fontWeight: 500, cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    padding: 0, fontFamily: "inherit",
-    transition: "all .15s ease", outline: "none",
   });
 
   const controls = [];
@@ -2223,7 +2216,7 @@ const PropsPanel = React.memo(function PropsPanel({ type, props, onProp, p }) {
     deduped.unshift(controls[i]);
   }
 
-  return <div style={sty} onMouseDown={stop}>{deduped}</div>;
+  return <div className="tp-props-panel" style={sty} onMouseDown={stop}>{deduped}</div>;
 });
 
 export default PropsPanel;

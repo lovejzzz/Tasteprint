@@ -1,5 +1,10 @@
 # Tasteprint
 
+[![CI](https://github.com/skyxzzz/Tasteprint/actions/workflows/ci.yml/badge.svg)](https://github.com/skyxzzz/Tasteprint/actions/workflows/ci.yml)
+[![Deploy](https://github.com/skyxzzz/Tasteprint/actions/workflows/deploy.yml/badge.svg)](https://github.com/skyxzzz/Tasteprint/actions/workflows/deploy.yml)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
+[![Node 22](https://img.shields.io/badge/node-22-brightgreen.svg)](.nvmrc)
+
 Tasteprint is a **designer-first rapid prototyping tool** for websites and apps.
 
 It is built around one promise:

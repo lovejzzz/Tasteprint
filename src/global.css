@@ -1,5 +1,18 @@
 /* Global resets & utility styles for Tasteprint */
 
+/* ── Palette CSS Custom Properties ──
+ * Set on .tp-app-root in App.jsx, available to all descendant CSS:
+ *   --tp-bg   Background
+ *   --tp-card Card/surface background
+ *   --tp-ac   Accent color
+ *   --tp-ac2  Secondary accent
+ *   --tp-tx   Text color
+ *   --tp-mu   Muted/secondary text
+ *   --tp-bd   Border color
+ *   --tp-su   Subtle/surface tint
+ * Use these in CSS files instead of inline style={{ color: p.mu }} etc.
+ */
+
 * {
   box-sizing: border-box;
   margin: 0;

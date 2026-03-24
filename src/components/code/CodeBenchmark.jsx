@@ -1,8 +1,7 @@
 import React from "react";
 import { HighlightLine } from "./tokenizer";
-import { getTextureStyle } from "../../utils";
 
-export default function CodeBenchmark({b,fsize=1,texture,p}){
+export default function CodeBenchmark({b,fsize=1}){
   const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const [running,setRunning]=React.useState(false);
   const [results,setResults]=React.useState(null);
@@ -22,8 +21,7 @@ export default function CodeBenchmark({b,fsize=1,texture,p}){
       setRunning(false);
     },100);
   };
-  const texStyle = texture && p ? getTextureStyle(texture, p) : {};
-  return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono,transition:'all .3s ease',...texStyle}}>
+  return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono,transition:'all .3s ease'}}>
     <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6}}>
       <span style={{fontSize:9,color:'#f9e2af',fontWeight:600}}>⚡</span>
       <span style={{fontSize:10,color:'#cdd6f4',fontWeight:500}}>Benchmark</span>

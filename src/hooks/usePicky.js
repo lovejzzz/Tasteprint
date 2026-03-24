@@ -89,13 +89,13 @@ export const PAGE_TEMPLATES = [
   },
 ];
 
-/* Look up LIB dimensions for a component type */
-function libEntry(type) {
+/* Look up LIB entry (dimensions + label) for a component type */
+export function libEntry(type) {
   for (const cat of LIB) {
     const item = cat.items.find(i => i.type === type);
     if (item) return item;
   }
-  return { type, w: 300, h: 200 }; // fallback
+  return { type, label: type, w: 300, h: 200 }; // fallback
 }
 
 /* Pick a contrasting mood (not the current one, not auto) */
@@ -169,18 +169,25 @@ function generateOptions(type, palette, dna, sessionMood, libItem) {
   const h = libItem.h;
   const used = new Set();
 
-  // Option A: session DNA + session mood (coherent anchor)
-  const a = _genUnique(type, palette, defaults, sessionMood, [], dna, w, h, used);
-  a.mood = sessionMood;
+  // Parse blend format: "blend:mood1+mood2"
+  const isBlend = sessionMood.startsWith("blend:");
+  const mood1 = isBlend ? sessionMood.split(":")[1].split("+")[0] : sessionMood;
+  const mood2 = isBlend ? sessionMood.split(":")[1].split("+")[1] : null;
+
+  // Option A: session DNA + primary mood
+  const a = _genUnique(type, palette, defaults, mood1, [], dna, w, h, used);
+  a.mood = mood1;
   used.add(a.variant);
 
-  // Option B: session DNA + session mood, different variant
-  const b = _genUnique(type, palette, defaults, sessionMood, [], dna, w, h, used);
-  b.mood = sessionMood;
+  // Option B: session DNA + secondary mood (or same mood, different variant)
+  const bMood = mood2 || mood1;
+  const bDna = mood2 ? generateDesignDNA(palette, mood2) : dna;
+  const b = _genUnique(type, palette, defaults, bMood, [], bDna, w, h, used);
+  b.mood = bMood;
   used.add(b.variant);
 
-  // Option C: session DNA + palette-aware contrasting mood
-  const cMood = paletteAwareMood(palette, sessionMood);
+  // Option C: palette-aware contrasting mood (or blend's secondary for variety)
+  const cMood = isBlend ? paletteAwareMood(palette, mood2) : paletteAwareMood(palette, mood1);
   const c = _genUnique(type, palette, defaults, cMood, [], dna, w, h, used);
   c.mood = cMood;
   used.add(c.variant);
@@ -202,6 +209,11 @@ function generateOptions(type, palette, dna, sessionMood, libItem) {
  * @param {boolean} mobile - viewport is mobile
  * @returns {Array<object>} shapes array ready for push()
  */
+/* Layout categories for smart assembly */
+const FULL_WIDTH_TYPES = new Set(["navbar", "footer", "hero", "promo-banner", "heading"]);
+const SMALL_TYPES = new Set(["stat-card", "card-sm", "badge", "button", "toggle", "rating"]);
+const SIDEBAR_TYPE = "sidebar";
+
 export function assembleShapes(template, picks, device, mobile) {
   const isPhone = device === "phone" || mobile;
   const canvasWidth = isPhone ? 390 : 1280;
@@ -209,35 +221,94 @@ export function assembleShapes(template, picks, device, mobile) {
   const gap = isPhone ? 12 : 16;
   const maxW = canvasWidth - pad * 2;
 
-  const shapes = [];
-  let cy = pad;
-
+  // Collect picked slots in order
+  const pickedSlots = [];
   for (let i = 0; i < template.slots.length; i++) {
     const pick = picks.get(i);
-    if (!pick) continue; // skipped slot
+    if (!pick) continue;
+    pickedSlots.push({ slot: template.slots[i], pick, lib: libEntry(template.slots[i].type) });
+  }
 
-    const slot = template.slots[i];
-    const lib = libEntry(slot.type);
+  const shapes = [];
+  let cy = pad;
+  let idx = 0;
+
+  while (idx < pickedSlots.length) {
+    const { slot, pick, lib } = pickedSlots[idx];
+    const type = slot.type;
+
+    // ── Full-width components: stretch to maxW ──
+    if (FULL_WIDTH_TYPES.has(type)) {
+      const w = maxW;
+      const h = lib.h * (maxW / lib.w);
+      shapes.push(_mkShape(type, pad, cy, w, h, pick, shapes.length));
+      cy += h + gap;
+      idx++;
+      continue;
+    }
+
+    // ── Sidebar + next content: side-by-side (desktop only) ──
+    if (!isPhone && type === SIDEBAR_TYPE && idx + 1 < pickedSlots.length) {
+      const next = pickedSlots[idx + 1];
+      const sideW = Math.min(lib.w, maxW * 0.22);
+      const sideH = lib.h * (sideW / lib.w);
+      const contentW = maxW - sideW - gap;
+      const contentH = next.lib.h * (contentW / next.lib.w);
+      const rowH = Math.max(sideH, contentH);
+      shapes.push(_mkShape(type, pad, cy, sideW, rowH, pick, shapes.length));
+      shapes.push(_mkShape(next.slot.type, pad + sideW + gap, cy, contentW, rowH, next.pick, shapes.length));
+      cy += rowH + gap;
+      idx += 2;
+      continue;
+    }
+
+    // ── Small components: grid up to 3 per row (desktop only) ──
+    if (!isPhone && SMALL_TYPES.has(type)) {
+      const row = [pickedSlots[idx]];
+      while (row.length < 3 && idx + row.length < pickedSlots.length && SMALL_TYPES.has(pickedSlots[idx + row.length].slot.type)) {
+        row.push(pickedSlots[idx + row.length]);
+      }
+      const colW = (maxW - gap * (row.length - 1)) / row.length;
+      let rowH = 0;
+      for (const r of row) {
+        const h = r.lib.h * (colW / r.lib.w);
+        if (h > rowH) rowH = h;
+      }
+      for (let c = 0; c < row.length; c++) {
+        const cx = pad + c * (colW + gap);
+        shapes.push(_mkShape(row[c].slot.type, cx, cy, colW, rowH, row[c].pick, shapes.length));
+      }
+      cy += rowH + gap;
+      idx += row.length;
+      continue;
+    }
+
+    // ── Default: centered, scaled to fit ──
     const scale = Math.min(1, maxW / lib.w);
     const w = lib.w * scale;
     const h = lib.h * scale;
     const x = canvasWidth / 2 - w / 2;
-
-    shapes.push({
-      id: uid(),
-      type: slot.type,
-      x, y: cy, w, h,
-      variant: pick.variant,
-      font: pick.font,
-      fsize: pick.fsize,
-      texts: {},
-      props: pick.props || {},
-      dStyles: pick.dStyles || {},
-      _pickyDelay: shapes.length * 120,
-    });
+    shapes.push(_mkShape(type, x, cy, w, h, pick, shapes.length));
     cy += h + gap;
+    idx++;
   }
+
   return shapes;
+}
+
+function _mkShape(type, x, y, w, h, pick, idx) {
+  return {
+    id: uid(),
+    type,
+    x, y, w, h,
+    variant: pick.variant,
+    font: pick.font,
+    fsize: pick.fsize,
+    texts: {},
+    props: pick.props || {},
+    dStyles: pick.dStyles || {},
+    _pickyDelay: idx * 120,
+  };
 }
 
 /**
@@ -262,8 +333,48 @@ export const QUICK_PRESETS = [
   { template: "resume",    mood: "minimal",   label: "Clean Resume" },
 ];
 
+/* Available component types for the custom template builder */
+export const CUSTOM_SLOT_OPTIONS = [
+  { type: "navbar",        label: "Navigation" },
+  { type: "hero",          label: "Hero" },
+  { type: "heading",       label: "Heading" },
+  { type: "card",          label: "Card" },
+  { type: "stat-card",     label: "Stats" },
+  { type: "testimonial",   label: "Testimonial" },
+  { type: "pricing-card",  label: "Pricing" },
+  { type: "product-card",  label: "Product" },
+  { type: "chart",         label: "Chart" },
+  { type: "table",         label: "Table" },
+  { type: "bento-grid",    label: "Grid" },
+  { type: "timeline",      label: "Timeline" },
+  { type: "accordion",     label: "Accordion" },
+  { type: "profile-card",  label: "Profile" },
+  { type: "sidebar",       label: "Sidebar" },
+  { type: "promo-banner",  label: "Banner" },
+  { type: "footer",        label: "Footer" },
+];
+
+/* ── Picky session history (localStorage) ── */
+const HISTORY_KEY = "tp_picky_history";
+const MAX_HISTORY = 3;
+
+export function loadPickyHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw).slice(0, MAX_HISTORY) : [];
+  } catch { return []; }
+}
+
+function saveToHistory(templateId, templateLabel, mood) {
+  try {
+    const hist = loadPickyHistory().filter(h => !(h.templateId === templateId && h.mood === mood));
+    hist.unshift({ templateId, templateLabel, mood, timestamp: Date.now() });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, MAX_HISTORY)));
+  } catch { /* ignore storage errors */ }
+}
+
 export function usePicky({ pRef, device, mobile }) {
-  const [phase, setPhase] = useState("idle"); // idle | template | mood | picking | done
+  const [phase, setPhase] = useState("idle"); // idle | template | custom | mood | picking | done
   const [template, setTemplate] = useState(null);
   const [step, setStep] = useState(0);
   const [picks, setPicks] = useState(new Map());
@@ -292,13 +403,33 @@ export function usePicky({ pRef, device, mobile }) {
     setPhase("mood");
   }, []);
 
+  const enterCustom = useCallback(() => {
+    setPhase("custom");
+  }, []);
+
+  const confirmCustom = useCallback((selectedTypes) => {
+    if (!selectedTypes || selectedTypes.length === 0) return;
+    const slots = selectedTypes.map(type => {
+      const opt = CUSTOM_SLOT_OPTIONS.find(o => o.type === type);
+      return { type, label: opt?.label || type };
+    });
+    const tmpl = { id: "custom", label: "Custom", icon: "wrench", slots };
+    setTemplate(tmpl);
+    setStep(0);
+    setPicks(new Map());
+    optionsCache.current = new Map();
+    setPhase("mood");
+  }, []);
+
   const selectMood = useCallback((moodId) => {
-    // "surprise" picks a random core mood
-    const mood = moodId === "surprise"
-      ? CORE_MOODS[Math.floor(Math.random() * CORE_MOODS.length)]
-      : moodId;
+    let mood = moodId;
+    if (moodId === "surprise") {
+      mood = CORE_MOODS[Math.floor(Math.random() * CORE_MOODS.length)];
+    }
     moodRef.current = mood;
-    dnaRef.current = generateDesignDNA(pRef.current, mood);
+    // For blends ("blend:x+y"), generate DNA from the first mood
+    const dnaMood = mood.startsWith("blend:") ? mood.split(":")[1].split("+")[0] : mood;
+    dnaRef.current = generateDesignDNA(pRef.current, dnaMood);
     optionsCache.current = new Map();
     setPhase("picking");
   }, [pRef]);
@@ -382,6 +513,11 @@ export function usePicky({ pRef, device, mobile }) {
     setPicks(prev => new Map(prev));
   }, [phase, template, step]);
 
+  const clearCache = useCallback(() => {
+    optionsCache.current = new Map();
+    setPicks(prev => new Map(prev)); // force re-render
+  }, []);
+
   const goToStep = useCallback((idx) => {
     if (!template || idx < 0 || idx >= template.slots.length) return;
     if (phase === "done") setPhase("picking");
@@ -390,8 +526,29 @@ export function usePicky({ pRef, device, mobile }) {
 
   const assemble = useCallback(() => {
     if (!template) return [];
+    saveToHistory(template.id, template.label, moodRef.current);
     return assembleShapes(template, picks, device, mobile);
   }, [template, picks, device, mobile]);
+
+  const addSlot = useCallback((type) => {
+    if (!template) return;
+    const opt = CUSTOM_SLOT_OPTIONS.find(o => o.type === type);
+    const newSlot = { type, label: opt?.label || type };
+    const newTemplate = { ...template, slots: [...template.slots, newSlot] };
+    setTemplate(newTemplate);
+    setStep(newTemplate.slots.length - 1); // jump to the new slot
+    setPhase("picking");
+  }, [template]);
+
+  const remix = useCallback(() => {
+    if (!template) return;
+    // Keep template, mood, and picks — just regenerate all options
+    optionsCache.current = new Map();
+    // Regenerate DNA for fresh variety while keeping same mood
+    dnaRef.current = generateDesignDNA(pRef.current, moodRef.current);
+    setStep(0);
+    setPhase("picking");
+  }, [template, pRef]);
 
   const cancelPicky = useCallback(() => {
     setPhase("idle");
@@ -420,14 +577,19 @@ export function usePicky({ pRef, device, mobile }) {
 
     enterPicky,
     selectTemplate,
+    enterCustom,
+    confirmCustom,
     selectMood,
     quickStart,
     pickOption,
     skipSlot,
     prevStep,
     regenerate,
+    clearCache,
     goToStep,
     assemble,
+    addSlot,
+    remix,
     cancelPicky,
   };
 }

@@ -1,0 +1,142 @@
+/* ChatBubble structural styles — static layout + hover states in CSS.
+ * Dynamic palette colors remain inline in JSX. */
+
+/* ── Emoji Picker ── */
+.tp-emoji-picker {
+  position: absolute;
+  bottom: 0;
+  left: 100%;
+  margin-left: 6px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 8px;
+  width: 210px;
+  animation: tp-tooltip-in .15s ease-out both;
+  z-index: 100;
+}
+
+.tp-emoji-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+}
+
+.tp-emoji-tab {
+  flex: 1;
+  border: none;
+  border-radius: 6px;
+  padding: 3px 0;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background .15s ease;
+  outline: none;
+}
+
+.tp-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.tp-emoji-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  outline: none;
+  transition: background .1s ease, transform .1s ease;
+}
+
+.tp-emoji-btn:hover {
+  background: var(--chat-hover-bg, rgba(128,128,128,0.1));
+  transform: scale(1.15);
+}
+
+/* ── New chat button (shared across all variants) ── */
+.tp-chat-newbtn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: background .15s;
+}
+
+.tp-chat-newbtn:hover {
+  background: var(--chat-hover-bg);
+}
+
+/* Terminal variant: opacity hover instead of background */
+.tp-chat-newbtn--opacity {
+  background: transparent;
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  opacity: 0.5;
+  transition: opacity .15s;
+  outline: none;
+}
+
+.tp-chat-newbtn--opacity:hover {
+  opacity: 1;
+}
+
+/* Brutal variant new chat button */
+.tp-chat-newbtn--brutal {
+  background: transparent;
+  border-radius: 2px;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: background .15s;
+}
+
+.tp-chat-newbtn--brutal:hover {
+  background: var(--chat-hover-bg);
+}
+
+/* Gradient variant: opacity-based hover */
+.tp-chat-newbtn--grad {
+  background: transparent;
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  transition: opacity .15s;
+  outline: none;
+  position: relative;
+}
+
+.tp-chat-newbtn--grad:hover {
+  opacity: 1;
+}
+
+/* ── Emoji toggle button (round) ── */
+.tp-chat-emoji-toggle {
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .15s;
+}

@@ -4,8 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
+  border-bottom: 1px solid var(--tp-bd);
   backdrop-filter: blur(12px);
   z-index: 50;
   transition: all .4s;
@@ -23,10 +22,11 @@
 .tp-header-brand {
   font-family: 'Instrument Serif', Georgia, serif;
   letter-spacing: -0.02em;
+  color: var(--tp-tx);
 }
 
 .tp-header-brand--desktop {
-  font-size: 22;
+  font-size: 22px;
 }
 
 .tp-header-brand--mobile {
@@ -55,8 +55,8 @@
   font-family: inherit;
   transition: all .15s ease;
   outline: none;
-  border-width: 1px;
-  border-style: solid;
+  border: 1px solid var(--tp-bd);
+  color: var(--tp-mu);
   background: none;
 }
 
@@ -111,6 +111,8 @@
   cursor: pointer;
   transition: all .15s ease;
   outline: none;
+  color: var(--tp-mu);
+  background: none;
 }
 
 .tp-dev-seg--desktop {
@@ -125,6 +127,8 @@
 
 .tp-dev-seg--active {
   font-weight: 500;
+  background: var(--tp-su);
+  color: var(--tp-tx);
 }
 
 /* ── Separator ── */
@@ -132,6 +136,7 @@
   width: 1px;
   height: 20px;
   flex-shrink: 0;
+  background: var(--tp-bd);
 }
 
 .tp-hdr-sep--small {
@@ -158,8 +163,7 @@
 .tp-dev-group {
   display: flex;
   align-items: center;
-  border-width: 1px;
-  border-style: solid;
+  border: 1px solid var(--tp-bd);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -191,6 +195,7 @@
   letter-spacing: 0.06em;
   margin-bottom: 8px;
   display: block;
+  color: var(--tp-mu);
 }
 
 /* ── Menu action button ── */

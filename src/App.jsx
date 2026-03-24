@@ -7,6 +7,7 @@ import { useTpApi } from "./hooks/useTpApi";
 import { useDesigner } from "./hooks/useDesigner";
 import { TpContext } from "./contexts/TpContext";
 import { useViewport } from "./hooks/useViewport";
+import { useLatestRef } from "./hooks/useLatestRef";
 import { usePicky } from "./hooks/usePicky";
 import Header from "./components/Header";
 import PickyOverlay from "./components/PickyOverlay";
@@ -43,18 +44,13 @@ export default function App() {
   const cRef = useRef(null);
   const dRef = useRef(null);
   const dirtyText = useRef(null);
-  const shapesRef = useRef(shapes);
-  shapesRef.current = shapes;
+  const shapesRef = useLatestRef(shapes);
   const lastReorder = useRef(0);
-  const camRef = useRef(cam);
-  camRef.current = cam;
+  const camRef = useLatestRef(cam);
   const p = PAL[pal];
-  const pRef = useRef(p);
-  pRef.current = p;
-  const selAllRef = useRef(selAll);
-  selAllRef.current = selAll;
-  const prefVRef = useRef(prefV);
-  prefVRef.current = prefV;
+  const pRef = useLatestRef(p);
+  const selAllRef = useLatestRef(selAll);
+  const prefVRef = useLatestRef(prefV);
 
   const {
     designMood, setDesignMood,
@@ -112,10 +108,8 @@ export default function App() {
   }, [updateText]);
 
   /* ---- EXPORT / IMPORT ---- */
-  const palRef = useRef(pal);
-  palRef.current = pal;
-  const gestRef = useRef(gest);
-  gestRef.current = gest;
+  const palRef = useLatestRef(pal);
+  const gestRef = useLatestRef(gest);
   const exportJSON = useCallback(() => {
     flushDirtyText();
     const data = JSON.stringify({ shapes: shapesRef.current, pal: palRef.current, prefV: prefVRef.current, gest: gestRef.current }, null, 2);
@@ -154,8 +148,7 @@ export default function App() {
     input.click();
   }, [resetTransientEditorState]);
 
-  const selRef = useRef(sel);
-  selRef.current = sel;
+  const selRef = useLatestRef(sel);
   const exportPng = useCallback(() => {
     flushDirtyText();
     const el = cRef.current; if (!el) return;
@@ -172,8 +165,7 @@ export default function App() {
   }, [flushDirtyText]);
 
   /* ---- CANVAS COORD HELPERS ---- */
-  const deviceRef = useRef(device);
-  deviceRef.current = device;
+  const deviceRef = useLatestRef(device);
   const toCanvas = useCallback((cx, cy) => {
     const r = cRef.current.getBoundingClientRect();
     if (deviceRef.current !== "free") return { x: cx - r.left, y: cy - r.top };
@@ -182,10 +174,8 @@ export default function App() {
   }, []);
 
   const push = useCallback(ns => { setHist(h => [...h.slice(-40), shapesRef.current]); setFuture([]); setShapes(ns) }, []);
-  const histRef = useRef(hist);
-  histRef.current = hist;
-  const futureRef = useRef(future);
-  futureRef.current = future;
+  const histRef = useLatestRef(hist);
+  const futureRef = useLatestRef(future);
   const undo = useCallback(() => { const h = histRef.current; if (!h.length) return; setFuture(f => [...f, shapesRef.current]); setShapes(h[h.length - 1]); setHist(h.slice(0, -1)); }, []);
   const redo = useCallback(() => { const f = futureRef.current; if (!f.length) return; setHist(h => [...h, shapesRef.current]); setShapes(f[f.length - 1]); setFuture(f.slice(0, -1)); }, []);
   const clearAll = useCallback(() => {
@@ -197,8 +187,7 @@ export default function App() {
   /* ── Picky Mode ── */
   const [pickyMode, setPickyMode] = useState(false);
   const picky = usePicky({ pRef, device, mobile });
-  const pickyRef = useRef(picky);
-  pickyRef.current = picky;
+  const pickyRef = useLatestRef(picky);
 
   const enterPicky = useCallback(() => {
     setPickyMode(true);
@@ -232,8 +221,7 @@ export default function App() {
     });
   }, []);
 
-  const selFontRef = useRef(selFont);
-  selFontRef.current = selFont;
+  const selFontRef = useLatestRef(selFont);
   const cycleFont = useCallback((id, dir) => {
     const ws = window.getSelection();
     if (ws && !ws.isCollapsed && ws.rangeCount > 0) {
@@ -382,14 +370,10 @@ export default function App() {
     setOff({ x: pt.x - s.x, y: pt.y - s.y });
   }, [toCanvas, flushDirtyText]);
 
-  const dragRef = useRef(drag);
-  dragRef.current = drag;
-  const rszRef = useRef(rsz);
-  rszRef.current = rsz;
-  const offRef = useRef(off);
-  offRef.current = off;
-  const panRef = useRef(pan);
-  panRef.current = pan;
+  const dragRef = useLatestRef(drag);
+  const rszRef = useLatestRef(rsz);
+  const offRef = useLatestRef(off);
+  const panRef = useLatestRef(pan);
   const onMove = useCallback(e => {
     const cx = e.clientX ?? e.touches?.[0]?.clientX;
     const cy = e.clientY ?? e.touches?.[0]?.clientY;
@@ -520,8 +504,8 @@ export default function App() {
 
   /* ---- tp API for Live IDE ---- */
   const tp = useTpApi({
-    shapesRef, palRef, deviceRef,
-    setShapes, setHist, setFuture, setPal, setDevice,
+    shapesRef, palRef, deviceRef, prefVRef,
+    setShapes, setHist, setFuture, setPal, setPrefV, setDevice,
     resetTransientEditorState,
   });
 
@@ -531,13 +515,13 @@ export default function App() {
 
   return (
     <TpContext.Provider value={tp}>
-    <div className="tp-app-root" style={{ background: p.bg, color: p.tx }}>
+    <div className="tp-app-root" style={{ background: p.bg, color: p.tx, '--tp-bg': p.bg, '--tp-card': p.card, '--tp-ac': p.ac, '--tp-ac2': p.ac2, '--tp-tx': p.tx, '--tp-mu': p.mu, '--tp-bd': p.bd, '--tp-su': p.su }}>
       {/* Skip link: WCAG 2.4.1 — lets keyboard users jump past toolbar to canvas */}
       <a href="#tp-canvas" className="tp-skip-link" style={{ background: p.ac, color: getReadableTextColor(p.ac) }}>Skip to canvas</a>
       <Header pal={pal} setPal={setPal} device={device} setDevice={setDevice} shapeCount={shapes.length} setShapes={setShapes} setCam={setCam} clearAll={clearAll} exportPng={exportPng} exportJSON={exportJSON} importJSON={importJSON} undo={undo} redo={redo} canUndo={hist.length > 0} canRedo={future.length > 0} p={p} mobile={mobile} randomizeAll={randomizeAll} designMood={designMood} setDesignMood={setDesignMood} lastRandomizeStats={lastRandomizeStats} pickyMode={pickyMode} enterPicky={enterPicky} cancelPicky={cancelPicky} />
 
       {pickyMode ? (
-        <PickyOverlay picky={picky} p={p} mobile={mobile} device={device} onExit={exitPicky} onCancel={cancelPicky} />
+        <PickyOverlay picky={picky} p={p} pal={pal} setPal={setPal} mobile={mobile} device={device} onExit={exitPicky} onCancel={cancelPicky} />
       ) : (
       <>
       <div className={`tp-layout${mobile ? " tp-layout--mobile" : ""}`}>
@@ -615,9 +599,9 @@ export default function App() {
 
             {/* zoom controls - hide on mobile */}
             {!mobile && <div data-no-export="1" className="tp-zoom-group" role="group" aria-label="Zoom controls">
-              <button aria-label="Zoom out" onClick={() => zoomBy(-0.15)} className="tp-zoom-btn" style={{ border: `1px solid ${p.bd}`, background: p.card, color: p.mu }}>-</button>
-              <button aria-label={`Reset zoom (${zoomPct}%)`} onClick={() => setCam({ x: 0, y: 0, z: 1 })} title="Reset zoom" className="tp-zoom-label" style={{ color: p.mu, background: p.card, border: `1px solid ${p.bd}` }}>{zoomPct}%</button>
-              <button aria-label="Zoom in" onClick={() => zoomBy(0.15)} className="tp-zoom-btn" style={{ border: `1px solid ${p.bd}`, background: p.card, color: p.mu }}>+</button>
+              <button type="button" aria-label="Zoom out" onClick={() => zoomBy(-0.15)} className="tp-zoom-btn" style={{ border: `1px solid ${p.bd}`, background: p.card, color: p.mu }}>-</button>
+              <button type="button" aria-label={`Reset zoom (${zoomPct}%)`} onClick={() => setCam({ x: 0, y: 0, z: 1 })} title="Reset zoom" className="tp-zoom-label" style={{ color: p.mu, background: p.card, border: `1px solid ${p.bd}` }}>{zoomPct}%</button>
+              <button type="button" aria-label="Zoom in" onClick={() => zoomBy(0.15)} className="tp-zoom-btn" style={{ border: `1px solid ${p.bd}`, background: p.card, color: p.mu }}>+</button>
             </div>}
           </div>
         </main>

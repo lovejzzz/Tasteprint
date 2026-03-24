@@ -1,8 +1,9 @@
-import React, { useState, useRef, useLayoutEffect } from "react";
+import React, { useRef, useLayoutEffect } from "react";
 import C from "./ComponentRenderer";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { LIB } from "../constants";
 import { varName } from "../utils";
+import "./librarysidebar.css";
 
 /** Check reduced-motion preference (module-level, avoids per-render overhead). */
 const _prefersReducedMotion = () =>
@@ -11,8 +12,6 @@ const _prefersReducedMotion = () =>
 const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, catItems, prefV, p, pDrag, setPDrag, dRef, reorderLib, lastReorder }) {
   const cardRefs = useRef(new Map());
   const prevRects = useRef(new Map());
-  const [hovCat, setHovCat] = useState(null);
-  const [hovCard, setHovCard] = useState(null);
 
   /* ── FLIP reorder animation (respects prefers-reduced-motion) ── */
   useLayoutEffect(() => {
@@ -46,38 +45,24 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
   };
 
   return (
-    <aside style={{
-      display: "flex", flexShrink: 0,
+    <aside className="tp-lib-aside" style={{
       borderRight: `1px solid ${p.bd}`,
       background: p.card + "88",
-      backdropFilter: "blur(8px)",
-      transition: "all .4s",
     }} role="complementary" aria-label="Component library">
 
       {/* ── Category Nav ── */}
-      <nav style={{
-        width: 100, padding: "10px 0", overflowY: "auto",
-        borderRight: `1px solid ${p.bd}`,
-        display: "flex", flexDirection: "column", gap: 1,
-        scrollbarWidth: "thin",
-      }} role="tablist" aria-label="Component categories">
+      <nav className="tp-lib-catnav" style={{ borderRight: `1px solid ${p.bd}` }} role="tablist" aria-label="Component categories">
         {LIB.map(cat => {
           const active = expCat === cat.cat;
-          const hovered = hovCat === cat.cat && !active;
           return (
             <div key={cat.cat} role="tab" aria-selected={active} tabIndex={0}
               onClick={() => setExpCat(cat.cat)}
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpCat(cat.cat); } }}
-              onMouseEnter={() => setHovCat(cat.cat)}
-              onMouseLeave={() => setHovCat(null)}
+              className={`tp-lib-cattab${active ? " tp-lib-cattab--active" : ""}`}
               style={{
-                padding: "10px 12px", fontSize: 11, cursor: "pointer", userSelect: "none",
-                fontWeight: active ? 600 : 400,
-                color: active ? p.tx : hovered ? p.tx : p.mu,
-                background: active ? p.su : hovered ? p.su + "66" : "transparent",
-                borderRight: active ? `2px solid ${p.ac}` : "2px solid transparent",
-                transition: "all .15s ease",
-                outline: "none",
+                color: active ? p.tx : p.mu,
+                background: active ? p.su : undefined,
+                borderRightColor: active ? p.ac : undefined,
               }}>
               {cat.cat}
             </div>
@@ -86,18 +71,13 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
       </nav>
 
       {/* ── Component Cards Panel ── */}
-      <div style={{
-        width: 280, padding: 12, overflowY: "auto",
-        display: "flex", flexDirection: "column", gap: 14,
-        scrollbarWidth: "thin",
-      }} role="tabpanel" aria-label={`${expCat} components`}>
+      <div className="tp-lib-cards" role="tabpanel" aria-label={`${expCat} components`}>
         <div role="list" aria-label={`${expCat} component list`} style={{ display: "contents" }}>
         {catItems.map(item => {
           const pv = prefV[item.type] || 0;
           const vn = varName(item.type, pv);
           const tw = 240, ts = Math.min(tw / item.w, 1), th = item.h * ts;
           const isDragging = pDrag === item.type;
-          const isHovered = hovCard === item.type && !isDragging;
           return (
             <div key={item.type}
               ref={el => { if (el) cardRefs.current.set(item.type, el); else cardRefs.current.delete(item.type); }}
@@ -107,29 +87,16 @@ const LibrarySidebar = React.memo(function LibrarySidebar({ expCat, setExpCat, c
               onDragStart={e => { dRef.current = item; setPDrag(item.type); e.dataTransfer.effectAllowed = "copyMove"; }}
               onDragOver={e => { e.preventDefault(); if (pDrag && pDrag !== item.type && Date.now() - lastReorder.current > 250) { lastReorder.current = Date.now(); handleReorder(pDrag, item.type); } }}
               onDragEnd={() => setPDrag(null)}
-              onMouseEnter={() => setHovCard(item.type)}
-              onMouseLeave={() => setHovCard(null)}
+              className={`tp-lib-card${isDragging ? " tp-lib-card--dragging" : ""}`}
               style={{
-                padding: 10, borderRadius: 10, cursor: "grab",
-                display: "flex", flexDirection: "column", gap: 6,
-                border: `1px solid ${isHovered ? p.mu + "44" : p.mu + "22"}`,
-                background: isDragging ? p.su + "88" : isHovered ? p.su : "transparent",
-                opacity: isDragging ? .5 : 1,
-                boxShadow: isHovered ? `0 2px 8px ${p.tx}06` : "none",
-                transition: "opacity .2s, background .15s, border-color .15s, box-shadow .2s",
+                border: `1px solid ${p.mu}22`,
+                background: isDragging ? p.su + "88" : undefined,
               }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: p.tx }}>{item.label}</span>
-                <span style={{
-                  fontSize: 10, color: p.mu,
-                  opacity: isHovered ? .8 : .6,
-                  transition: "opacity .15s",
-                }}>{vn}</span>
+              <div className="tp-lib-card-header">
+                <span className="tp-lib-card-label" style={{ color: p.tx }}>{item.label}</span>
+                <span className="tp-lib-card-variant" style={{ color: p.mu }}>{vn}</span>
               </div>
-              <div style={{
-                width: tw, height: th, borderRadius: 6,
-                overflow: "hidden", pointerEvents: "none", alignSelf: "center",
-              }}>
+              <div className="tp-lib-card-preview" style={{ width: tw, height: th }}>
                 <div style={{ transform: `scale(${ts})`, transformOrigin: "top left", width: item.w, height: item.h }}>
                   <ErrorBoundary fallback={<div style={{ padding: 8, fontSize: 10, color: "#C53030" }}>Preview error</div>}>
                     <C type={item.type} v={pv} p={p} />

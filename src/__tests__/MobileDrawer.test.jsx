@@ -50,8 +50,8 @@ describe("MobileDrawer", () => {
   it("shows backdrop when open", () => {
     const setLibOpen = vi.fn();
     const { container } = render(<MobileDrawer {...makeProps({ libOpen: true, setLibOpen })} />);
-    // Backdrop is the div with inset:0 (covers entire screen)
-    const backdrop = container.querySelector('div[style*="inset"]');
+    // Backdrop is the decorative overlay div
+    const backdrop = container.querySelector('.tp-mob-backdrop');
     expect(backdrop).toBeInTheDocument();
     fireEvent.click(backdrop);
     expect(setLibOpen).toHaveBeenCalledWith(false);

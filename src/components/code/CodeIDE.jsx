@@ -1,7 +1,7 @@
 import React from "react";
 import { HighlightLine, tokenize, TC } from "./tokenizer";
 import { TpContext } from "../../contexts/TpContext";
-import { getTextureStyle } from "../../utils";
+
 
 /* ========== Raw source imports (Vite ?raw) ========== */
 import SRC_App from "../../App.jsx?raw";
@@ -537,7 +537,7 @@ function genDevice(tp) {
 }
 
 /* ========== Component ========== */
-export default function CodeIDE({ b, p, fsize = 1, texture }) {
+export default function CodeIDE({ b, p, fsize = 1 }) {
   const tp = React.useContext(TpContext);
 
   /* ---- File system ---- */
@@ -3854,7 +3854,7 @@ export default function CodeIDE({ b, p, fsize = 1, texture }) {
 
   /* ========== RENDER ========== */
   return (
-    <div data-ide-scroll style={{ ...b, background: '#1e1e2e', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: MONO, ...getTextureStyle(texture, p) }}>
+    <div data-ide-scroll style={{ ...b, background: '#1e1e2e', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: MONO }}>
       {/* Custom scrollbar styling */}
       <style>{`
         [data-ide-scroll] *::-webkit-scrollbar { width: 6px; height: 6px; }

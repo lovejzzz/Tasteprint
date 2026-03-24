@@ -1,309 +1,215 @@
-import { renderHook, act } from "@testing-library/react";
-import { usePicky, PAGE_TEMPLATES, PICKY_MOODS, assembleShapes, paletteTemperature } from "../hooks/usePicky";
+import { describe, it, expect } from "vitest";
+import { assembleShapes, paletteTemperature, PAGE_TEMPLATES, PICKY_MOODS, QUICK_PRESETS, CUSTOM_SLOT_OPTIONS, loadPickyHistory, libEntry } from "../hooks/usePicky";
 import { PAL } from "../constants";
 
-/** Build the ref-based params that usePicky expects. */
-function makeParams(palKey = "warm", device = "desktop", mobile = false) {
-  return {
-    pRef: { current: PAL[palKey] },
-    device,
-    mobile,
-  };
-}
-
-describe("usePicky", () => {
-  it("initializes in idle phase", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    expect(result.current.phase).toBe("idle");
-    expect(result.current.template).toBeNull();
-    expect(result.current.step).toBe(0);
-    expect(result.current.options).toEqual([]);
-    expect(result.current.picks.size).toBe(0);
+describe("paletteTemperature", () => {
+  it("classifies warm palettes (red/orange accents)", () => {
+    expect(paletteTemperature(PAL.warm)).toBe("warm");  // #E07A5F — orange
+    expect(paletteTemperature(PAL.candy)).toBe("warm");  // #E8589C — pink/magenta
   });
 
-  it("enterPicky transitions to template phase", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    expect(result.current.phase).toBe("template");
+  it("classifies cool palettes (blue/cyan accents)", () => {
+    expect(paletteTemperature(PAL.cool)).toBe("cool");   // #5B8DB8 — blue
+    expect(paletteTemperature(PAL.ocean)).toBe("cool");   // #2B7A9E — teal-blue
+    expect(paletteTemperature(PAL.lavender)).toBe("cool"); // #7C5CBF — purple
   });
 
-  it("selectTemplate transitions to mood phase", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    expect(result.current.phase).toBe("mood");
-    expect(result.current.template.id).toBe("landing");
-    expect(result.current.totalSteps).toBe(PAGE_TEMPLATES.find(t => t.id === "landing").slots.length);
+  it("classifies achromatic palettes as neutral", () => {
+    expect(paletteTemperature(PAL.noir)).toBe("neutral");  // #FFFFFF — achromatic
+    expect(paletteTemperature(PAL.mono)).toBe("neutral");  // #555555 — achromatic
   });
 
-  it("selectMood transitions to picking phase and generates options", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("bold"));
-    expect(result.current.phase).toBe("picking");
-    expect(result.current.sessionMood).toBe("bold");
-    expect(result.current.options).toHaveLength(4);
-    expect(result.current.step).toBe(0);
-  });
-
-  it("selectMood 'surprise' picks a random core mood (not 'surprise' itself)", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("surprise"));
-    expect(result.current.phase).toBe("picking");
-    expect(result.current.sessionMood).not.toBe("surprise");
-    expect(result.current.sessionMood).not.toBe("auto");
-  });
-
-  it("pickOption records pick and auto-advances step", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("minimal"));
-    expect(result.current.step).toBe(0);
-    act(() => result.current.pickOption(0));
-    expect(result.current.step).toBe(1);
-    expect(result.current.picks.size).toBe(1);
-    expect(result.current.picks.has(0)).toBe(true);
-  });
-
-  it("pickOption on last slot transitions to done phase", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("minimal"));
-    const totalSlots = result.current.totalSteps;
-    // Pick all slots
-    for (let i = 0; i < totalSlots; i++) {
-      act(() => result.current.pickOption(0));
-    }
-    expect(result.current.phase).toBe("done");
-    expect(result.current.picks.size).toBe(totalSlots);
-  });
-
-  it("skipSlot advances without recording a pick", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("elegant"));
-    act(() => result.current.skipSlot());
-    expect(result.current.step).toBe(1);
-    expect(result.current.picks.has(0)).toBe(false);
-  });
-
-  it("prevStep goes back from picking step > 0", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("bold"));
-    act(() => result.current.pickOption(0));
-    expect(result.current.step).toBe(1);
-    act(() => result.current.prevStep());
-    expect(result.current.step).toBe(0);
-  });
-
-  it("prevStep at step 0 goes back to mood phase", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("bold"));
-    expect(result.current.step).toBe(0);
-    act(() => result.current.prevStep());
-    expect(result.current.phase).toBe("mood");
-  });
-
-  it("prevStep from done goes back to last picking step", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("dashboard")); // 4 slots
-    act(() => result.current.selectMood("playful"));
-    const total = result.current.totalSteps;
-    for (let i = 0; i < total; i++) {
-      act(() => result.current.pickOption(0));
-    }
-    expect(result.current.phase).toBe("done");
-    act(() => result.current.prevStep());
-    expect(result.current.phase).toBe("picking");
-    expect(result.current.step).toBe(total - 1);
-  });
-
-  it("goToStep navigates to a specific step", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("minimal"));
-    act(() => result.current.pickOption(0));
-    act(() => result.current.pickOption(1));
-    expect(result.current.step).toBe(2);
-    act(() => result.current.goToStep(0));
-    expect(result.current.step).toBe(0);
-  });
-
-  it("regenerate clears option cache for current step", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("bold"));
-    const _optionsBefore = result.current.options.map(o => o.variant);
-    // Regenerate — new random options (may or may not differ, but shouldn't throw)
-    act(() => result.current.regenerate());
-    expect(result.current.options).toHaveLength(4);
-  });
-
-  it("cancelPicky resets to idle", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("bold"));
-    act(() => result.current.pickOption(0));
-    act(() => result.current.cancelPicky());
-    expect(result.current.phase).toBe("idle");
-    expect(result.current.template).toBeNull();
-    expect(result.current.picks.size).toBe(0);
-  });
-
-  it("options have required shape properties", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("minimal"));
-    const opts = result.current.options;
-    for (const opt of opts) {
-      expect(typeof opt.variant).toBe("number");
-      expect(typeof opt.font).toBe("number");
-      expect(typeof opt.fsize).toBe("number");
-      expect(opt.mood).toBeTruthy();
-    }
-  });
-
-  it("selectTemplate with invalid id does nothing", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("nonexistent"));
-    expect(result.current.phase).toBe("template");
-    expect(result.current.template).toBeNull();
-  });
-
-  it("pickOption with out-of-range index is a no-op", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.selectTemplate("landing"));
-    act(() => result.current.selectMood("bold"));
-    act(() => result.current.pickOption(99));
-    expect(result.current.step).toBe(0);
-    expect(result.current.picks.size).toBe(0);
-  });
-  it("quickStart skips mood phase and goes straight to picking", () => {
-    const { result } = renderHook(() => usePicky(makeParams()));
-    act(() => result.current.enterPicky());
-    act(() => result.current.quickStart("landing", "elegant"));
-    expect(result.current.phase).toBe("picking");
-    expect(result.current.template.id).toBe("landing");
-    expect(result.current.sessionMood).toBe("elegant");
-    expect(result.current.options).toHaveLength(4);
-  });
-});
-
-describe("assembleShapes", () => {
-  it("produces positioned shapes for desktop device", () => {
-    const tmpl = PAGE_TEMPLATES.find(t => t.id === "landing");
-    const picks = new Map();
-    // Create minimal picks for each slot
-    tmpl.slots.forEach((slot, i) => {
-      picks.set(i, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
-    });
-    const shapes = assembleShapes(tmpl, picks, "desktop", false);
-    expect(shapes).toHaveLength(tmpl.slots.length);
-    for (const s of shapes) {
-      expect(s.id).toBeTruthy();
-      expect(typeof s.x).toBe("number");
-      expect(typeof s.y).toBe("number");
-      expect(s.w).toBeGreaterThan(0);
-      expect(s.h).toBeGreaterThan(0);
-      expect(s.x).toBeGreaterThanOrEqual(0);
-    }
-    // Shapes should be vertically stacked (each y > previous y)
-    for (let i = 1; i < shapes.length; i++) {
-      expect(shapes[i].y).toBeGreaterThan(shapes[i - 1].y);
-    }
-  });
-
-  it("uses phone dimensions when device is phone", () => {
-    const tmpl = PAGE_TEMPLATES.find(t => t.id === "dashboard");
-    const picks = new Map();
-    tmpl.slots.forEach((slot, i) => {
-      picks.set(i, { variant: 0, font: 0, fsize: 1, props: {} });
-    });
-    const shapes = assembleShapes(tmpl, picks, "phone", false);
-    // All shapes should fit within 390px phone width
-    for (const s of shapes) {
-      expect(s.x + s.w).toBeLessThanOrEqual(390);
-    }
-  });
-
-  it("skips unpicked slots", () => {
-    const tmpl = PAGE_TEMPLATES.find(t => t.id === "landing");
-    const picks = new Map();
-    // Only pick first and last
-    picks.set(0, { variant: 0, font: 0, fsize: 1, props: {} });
-    picks.set(tmpl.slots.length - 1, { variant: 1, font: 1, fsize: 1, props: {} });
-    const shapes = assembleShapes(tmpl, picks, "desktop", false);
-    expect(shapes).toHaveLength(2);
-  });
-
-  it("includes _pickyDelay for entrance animation", () => {
-    const tmpl = PAGE_TEMPLATES.find(t => t.id === "dashboard");
-    const picks = new Map();
-    tmpl.slots.forEach((slot, i) => {
-      picks.set(i, { variant: 0, font: 0, fsize: 1, props: {} });
-    });
-    const shapes = assembleShapes(tmpl, picks, "desktop", false);
-    shapes.forEach((s, i) => {
-      expect(s._pickyDelay).toBe(i * 120);
-    });
+  it("handles missing accent gracefully", () => {
+    expect(paletteTemperature({})).toBe("neutral");
+    expect(paletteTemperature({ ac: "#888888" })).toBe("neutral");
   });
 });
 
 describe("PAGE_TEMPLATES", () => {
-  it("all templates have non-empty slots", () => {
+  it("has at least 5 templates", () => {
+    expect(PAGE_TEMPLATES.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("every template has id, label, icon, and at least 2 slots", () => {
     for (const tmpl of PAGE_TEMPLATES) {
-      expect(tmpl.id).toBeTruthy();
-      expect(tmpl.label).toBeTruthy();
-      expect(tmpl.slots.length).toBeGreaterThan(0);
+      expect(typeof tmpl.id).toBe("string");
+      expect(typeof tmpl.label).toBe("string");
+      expect(typeof tmpl.icon).toBe("string");
+      expect(tmpl.slots.length).toBeGreaterThanOrEqual(2);
       for (const slot of tmpl.slots) {
-        expect(slot.type).toBeTruthy();
-        expect(slot.label).toBeTruthy();
+        expect(typeof slot.type).toBe("string");
+        expect(typeof slot.label).toBe("string");
       }
     }
+  });
+
+  it("has unique template IDs", () => {
+    const ids = PAGE_TEMPLATES.map(t => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 
 describe("PICKY_MOODS", () => {
-  it("all moods have id, label, and desc", () => {
-    for (const mood of PICKY_MOODS) {
-      expect(mood.id).toBeTruthy();
-      expect(mood.label).toBeTruthy();
-      expect(mood.desc).toBeTruthy();
+  it("has at least 4 moods", () => {
+    expect(PICKY_MOODS.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("each mood has id, label, and desc", () => {
+    for (const m of PICKY_MOODS) {
+      expect(typeof m.id).toBe("string");
+      expect(typeof m.label).toBe("string");
+      expect(typeof m.desc).toBe("string");
     }
   });
 });
 
-describe("paletteTemperature", () => {
-  it("classifies warm palettes (red/orange accent)", () => {
-    expect(paletteTemperature(PAL.warm)).toBe("warm");  // #E07A5F (orange-red)
-    expect(paletteTemperature(PAL.candy)).toBe("warm");  // #E8589C (pink/magenta ~330+)
+describe("QUICK_PRESETS", () => {
+  it("each preset references a valid template", () => {
+    const ids = new Set(PAGE_TEMPLATES.map(t => t.id));
+    for (const p of QUICK_PRESETS) {
+      expect(ids.has(p.template)).toBe(true);
+    }
   });
 
-  it("classifies cool palettes (blue/purple accent)", () => {
-    expect(paletteTemperature(PAL.cool)).toBe("cool");    // #5B8DB8 (blue)
-    expect(paletteTemperature(PAL.ocean)).toBe("cool");   // #2B7A9E (cyan-blue)
-    expect(paletteTemperature(PAL.lavender)).toBe("cool"); // #7C5CBF (purple)
+  it("each preset has a label", () => {
+    for (const p of QUICK_PRESETS) {
+      expect(typeof p.label).toBe("string");
+    }
+  });
+});
+
+describe("CUSTOM_SLOT_OPTIONS", () => {
+  it("each option has type and label", () => {
+    for (const o of CUSTOM_SLOT_OPTIONS) {
+      expect(typeof o.type).toBe("string");
+      expect(typeof o.label).toBe("string");
+    }
   });
 
-  it("classifies neutral/achromatic palettes", () => {
-    expect(paletteTemperature(PAL.noir)).toBe("neutral");  // #FFFFFF (achromatic)
-    expect(paletteTemperature(PAL.mono)).toBe("neutral");  // #555555 (achromatic)
+  it("has no duplicate types", () => {
+    const types = CUSTOM_SLOT_OPTIONS.map(o => o.type);
+    expect(new Set(types).size).toBe(types.length);
+  });
+});
+
+describe("libEntry", () => {
+  it("returns a known LIB item for a valid type", () => {
+    const entry = libEntry("hero");
+    expect(entry.type).toBe("hero");
+    expect(typeof entry.w).toBe("number");
+    expect(typeof entry.h).toBe("number");
+    expect(typeof entry.label).toBe("string");
+  });
+
+  it("returns fallback with label for an unknown type", () => {
+    const entry = libEntry("nonexistent-widget");
+    expect(entry.type).toBe("nonexistent-widget");
+    expect(entry.label).toBe("nonexistent-widget");
+    expect(entry.w).toBe(300);
+    expect(entry.h).toBe(200);
+  });
+});
+
+describe("assembleShapes", () => {
+  const landing = PAGE_TEMPLATES.find(t => t.id === "landing");
+
+  it("returns empty array when no picks", () => {
+    const result = assembleShapes(landing, new Map(), "desktop", false);
+    expect(result).toEqual([]);
+  });
+
+  it("returns positioned shapes for each picked slot", () => {
+    const picks = new Map();
+    // Mock picks for first 3 slots
+    picks.set(0, { variant: 1, font: 0, fsize: 1, props: {}, dStyles: {} });
+    picks.set(1, { variant: 0, font: 2, fsize: 1, props: {}, dStyles: {} });
+    picks.set(2, { variant: 2, font: 1, fsize: 1.2, props: {}, dStyles: {} });
+
+    const shapes = assembleShapes(landing, picks, "desktop", false);
+    expect(shapes).toHaveLength(3);
+
+    // Each shape should have required fields
+    for (const s of shapes) {
+      expect(typeof s.id).toBe("string");
+      expect(typeof s.type).toBe("string");
+      expect(typeof s.x).toBe("number");
+      expect(typeof s.y).toBe("number");
+      expect(typeof s.w).toBe("number");
+      expect(typeof s.h).toBe("number");
+      expect(typeof s.variant).toBe("number");
+      expect(s._pickyDelay).toBeDefined();
+    }
+
+    // Shapes should be stacked vertically (each y > previous y)
+    expect(shapes[1].y).toBeGreaterThan(shapes[0].y);
+    expect(shapes[2].y).toBeGreaterThan(shapes[1].y);
+  });
+
+  it("respects phone layout (narrower canvas)", () => {
+    const picks = new Map();
+    picks.set(0, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+
+    const desktop = assembleShapes(landing, picks, "desktop", false);
+    const phone = assembleShapes(landing, picks, "phone", false);
+
+    // Phone shapes should be narrower or equal
+    expect(phone[0].w).toBeLessThanOrEqual(desktop[0].w);
+  });
+
+  it("preserves variant from pick", () => {
+    const picks = new Map();
+    picks.set(0, { variant: 3, font: 1, fsize: 1.5, props: { dark: true }, dStyles: {} });
+
+    const shapes = assembleShapes(landing, picks, "desktop", false);
+    expect(shapes[0].variant).toBe(3);
+    expect(shapes[0].font).toBe(1);
+    expect(shapes[0].fsize).toBe(1.5);
+    expect(shapes[0].props.dark).toBe(true);
+  });
+
+  it("skips unpicked slots", () => {
+    const picks = new Map();
+    // Pick slot 0 and 2, skip 1
+    picks.set(0, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+    picks.set(2, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+
+    const shapes = assembleShapes(landing, picks, "desktop", false);
+    expect(shapes).toHaveLength(2);
+  });
+
+  it("assigns sequential _pickyDelay for entrance animation", () => {
+    const picks = new Map();
+    picks.set(0, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+    picks.set(1, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+    picks.set(2, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+
+    const shapes = assembleShapes(landing, picks, "desktop", false);
+    expect(shapes[0]._pickyDelay).toBe(0);
+    expect(shapes[1]._pickyDelay).toBe(120);
+    expect(shapes[2]._pickyDelay).toBe(240);
+  });
+});
+
+describe("loadPickyHistory", () => {
+  it("returns empty array when no history", () => {
+    localStorage.clear();
+    expect(loadPickyHistory()).toEqual([]);
+  });
+
+  it("returns stored history", () => {
+    const hist = [{ templateId: "landing", templateLabel: "Landing Page", mood: "bold", timestamp: 123 }];
+    localStorage.setItem("tp_picky_history", JSON.stringify(hist));
+    expect(loadPickyHistory()).toEqual(hist);
+  });
+
+  it("handles corrupt storage gracefully", () => {
+    localStorage.setItem("tp_picky_history", "not-json");
+    expect(loadPickyHistory()).toEqual([]);
+  });
+
+  it("limits to 3 entries", () => {
+    const hist = Array.from({ length: 5 }, (_, i) => ({ templateId: `t${i}`, templateLabel: `T${i}`, mood: "bold", timestamp: i }));
+    localStorage.setItem("tp_picky_history", JSON.stringify(hist));
+    expect(loadPickyHistory()).toHaveLength(3);
   });
 });

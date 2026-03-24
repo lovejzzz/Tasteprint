@@ -55,14 +55,20 @@ src/
   components/
     ComponentRenderer.jsx  # Renders all 40+ component types by type/variant
     Header.jsx             # Top toolbar (palette, device, mood, undo/redo, export)
+    header.css             # Header structural styles
     LibrarySidebar.jsx     # Desktop component library sidebar
+    librarysidebar.css     # LibrarySidebar structural styles (nav, cards, hover states)
     MobileDrawer.jsx       # Mobile bottom drawer (FAB, category tabs, component grid)
     ShapeItem.jsx          # Individual canvas shape (selection, toolbars, resize)
+    shapeitem.css          # ShapeItem structural styles (toolbar, resize handle, badges)
     PropsPanel.jsx         # Per-component props editor (toggles, sliders, etc.)
+    propspanel.css         # PropsPanel structural styles (panel, toggle switch, buttons)
     PickyOverlay.jsx       # Guided wizard overlay (template → mood → per-slot picking)
+    picky.css              # Picky wizard structural styles (phases, cards, navigation)
     PickyCard.jsx          # Option card with preview for wizard steps
     ErrorBoundary.jsx      # Crash-resilient wrapper for component renders
     ChatBubble.jsx         # Chat component — 7 variants (iMessage/Slack/terminal/glass/gradient/brutal/glow)
+    chatbubble.css         # ChatBubble structural styles (emoji picker, new-chat buttons, hover states)
     chatAI.js              # Chat AI response engine (lazy-loaded sidecar)
     animations.css         # Shared CSS keyframe animations for components
     code/                  # Code block components (lazy-chunked)
@@ -82,6 +88,7 @@ src/
     usePicky.js        # Guided "Picky" wizard state machine + page templates
     useTpApi.js        # tp Live IDE console API
     useHistory.js      # Generic undo/redo hook
+    useLatestRef.js    # Always-current ref (replaces manual ref sync pattern)
   contexts/
     TpContext.js       # React context for the tp Live IDE API
   __tests__/           # Vitest + Testing Library tests

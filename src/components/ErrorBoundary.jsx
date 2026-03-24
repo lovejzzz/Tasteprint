@@ -31,6 +31,7 @@ export class ErrorBoundary extends React.Component {
         }}>
           <strong>Component error</strong>
           <button
+            type="button"
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{
               marginLeft: 12,

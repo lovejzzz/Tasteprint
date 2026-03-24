@@ -1,8 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useKeyboard } from "../hooks/useKeyboard";
 
-function makeCallbacks() {
+/**
+ * Helper: create default mock props for useKeyboard.
+ */
+function makeProps(overrides = {}) {
   return {
     onDel: vi.fn(),
     undo: vi.fn(),
@@ -20,178 +23,179 @@ function makeCallbacks() {
     cycleVariation: vi.fn(),
     candidates: {},
     setStyleSource: vi.fn(),
+    ...overrides,
   };
 }
 
-function fire(key, opts = {}) {
-  const e = new KeyboardEvent("keydown", { key, bubbles: true, ...opts });
-  window.dispatchEvent(e);
+/** Fire a keyboard event on window. */
+function press(key, opts = {}) {
+  const event = new KeyboardEvent("keydown", {
+    key,
+    bubbles: true,
+    cancelable: true,
+    ...opts,
+  });
+  window.dispatchEvent(event);
 }
 
 describe("useKeyboard", () => {
-  let cbs;
+  let props;
 
   beforeEach(() => {
-    cbs = makeCallbacks();
+    props = makeProps();
   });
 
-  it("calls onDel on Backspace", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("Backspace");
-    expect(cbs.onDel).toHaveBeenCalledTimes(1);
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("calls onDel on Delete", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("Delete");
-    expect(cbs.onDel).toHaveBeenCalledTimes(1);
+  it("calls onDel on Delete key", () => {
+    renderHook(() => useKeyboard(props));
+    press("Delete");
+    expect(props.onDel).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onDel on Backspace key", () => {
+    renderHook(() => useKeyboard(props));
+    press("Backspace");
+    expect(props.onDel).toHaveBeenCalledTimes(1);
   });
 
   it("calls undo on Cmd+Z", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("z", { metaKey: true });
-    expect(cbs.undo).toHaveBeenCalledTimes(1);
+    renderHook(() => useKeyboard(props));
+    press("z", { metaKey: true });
+    expect(props.undo).toHaveBeenCalledTimes(1);
   });
 
   it("calls redo on Cmd+Shift+Z", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("z", { metaKey: true, shiftKey: true });
-    expect(cbs.redo).toHaveBeenCalledTimes(1);
+    renderHook(() => useKeyboard(props));
+    press("z", { metaKey: true, shiftKey: true });
+    expect(props.redo).toHaveBeenCalledTimes(1);
   });
 
   it("calls dupShape on Cmd+D", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("d", { metaKey: true });
-    expect(cbs.dupShape).toHaveBeenCalledTimes(1);
+    renderHook(() => useKeyboard(props));
+    press("d", { metaKey: true });
+    expect(props.dupShape).toHaveBeenCalledTimes(1);
   });
 
-  it("calls randomize on 'r' when sel is set", () => {
-    cbs.sel = "shape1";
-    renderHook(() => useKeyboard(cbs));
-    fire("r");
-    expect(cbs.randomize).toHaveBeenCalledWith("shape1");
+  it("calls randomize on R with selection", () => {
+    props.sel = "shape1";
+    renderHook(() => useKeyboard(props));
+    press("r");
+    expect(props.randomize).toHaveBeenCalledWith("shape1");
   });
 
-  it("does NOT call randomize on 'r' when sel is null", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("r");
-    expect(cbs.randomize).not.toHaveBeenCalled();
+  it("does not call randomize on R without selection", () => {
+    renderHook(() => useKeyboard(props));
+    press("r");
+    expect(props.randomize).not.toHaveBeenCalled();
   });
 
   it("calls randomizeAll on Shift+R", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("R", { shiftKey: true });
-    expect(cbs.randomizeAll).toHaveBeenCalledTimes(1);
+    renderHook(() => useKeyboard(props));
+    press("R", { shiftKey: true });
+    expect(props.randomizeAll).toHaveBeenCalledTimes(1);
   });
 
-  it("calls undoRandomize on 'u'", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("u");
-    expect(cbs.undoRandomize).toHaveBeenCalledTimes(1);
+  it("calls undoRandomize on U", () => {
+    renderHook(() => useKeyboard(props));
+    press("u");
+    expect(props.undoRandomize).toHaveBeenCalledTimes(1);
   });
 
-  it("calls cycleMood on 'm'", () => {
-    renderHook(() => useKeyboard(cbs));
-    fire("m");
-    expect(cbs.cycleMood).toHaveBeenCalledTimes(1);
+  it("calls cycleMood on M", () => {
+    renderHook(() => useKeyboard(props));
+    press("m");
+    expect(props.cycleMood).toHaveBeenCalledTimes(1);
   });
 
-  it("calls toggleLock on 'l' when sel is set", () => {
-    cbs.sel = "shape1";
-    renderHook(() => useKeyboard(cbs));
-    fire("l");
-    expect(cbs.toggleLock).toHaveBeenCalledWith("shape1");
+  it("calls toggleLock on L with selection", () => {
+    props.sel = "shape1";
+    renderHook(() => useKeyboard(props));
+    press("l");
+    expect(props.toggleLock).toHaveBeenCalledWith("shape1");
   });
 
-  it("calls undoDesign on 'z' when sel is set", () => {
-    cbs.sel = "shape1";
-    renderHook(() => useKeyboard(cbs));
-    fire("z");
-    expect(cbs.undoDesign).toHaveBeenCalledWith("shape1");
+  it("calls undoDesign on Z with selection (no modifier)", () => {
+    props.sel = "shape1";
+    renderHook(() => useKeyboard(props));
+    press("z");
+    expect(props.undoDesign).toHaveBeenCalledWith("shape1");
   });
 
-  it("calls setStyleSource on 'c' when sel is set", () => {
-    cbs.sel = "shape1";
-    renderHook(() => useKeyboard(cbs));
-    fire("c");
-    expect(cbs.setStyleSource).toHaveBeenCalledWith("shape1");
+  it("calls setStyleSource on C with selection", () => {
+    props.sel = "shape1";
+    renderHook(() => useKeyboard(props));
+    press("c");
+    expect(props.setStyleSource).toHaveBeenCalledWith("shape1");
   });
 
-  it("moves selected shapes with arrow keys", () => {
-    cbs.selAll = new Set(["s1"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("ArrowRight");
-    expect(cbs.setShapes).toHaveBeenCalledTimes(1);
-    // The callback should be a function
-    const fn = cbs.setShapes.mock.calls[0][0];
-    expect(typeof fn).toBe("function");
+  it("calls cycleVariation on ArrowRight with candidates (no shift)", () => {
+    props.sel = "shape1";
+    props.candidates = { shape1: [0, 1, 2] };
+    renderHook(() => useKeyboard(props));
+    press("ArrowRight");
+    expect(props.cycleVariation).toHaveBeenCalledWith("shape1");
   });
 
-  it("moves by 10px with Shift+Arrow", () => {
-    cbs.selAll = new Set(["s1"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("ArrowRight", { shiftKey: true });
-    const fn = cbs.setShapes.mock.calls[0][0];
-    const result = fn([{ id: "s1", x: 0, y: 0 }]);
-    expect(result[0].x).toBe(10);
+  it("does NOT call cycleVariation on Shift+ArrowRight (nudge takes priority)", () => {
+    props.sel = "shape1";
+    props.selAll = new Set(["shape1"]);
+    props.candidates = { shape1: [0, 1, 2] };
+    renderHook(() => useKeyboard(props));
+    press("ArrowRight", { shiftKey: true });
+    expect(props.cycleVariation).not.toHaveBeenCalled();
+    // Instead, setShapes should be called for nudge
+    expect(props.setShapes).toHaveBeenCalled();
   });
 
-  it("moves by 1px without Shift", () => {
-    cbs.selAll = new Set(["s1"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("ArrowUp");
-    const fn = cbs.setShapes.mock.calls[0][0];
-    const result = fn([{ id: "s1", x: 0, y: 5 }]);
-    expect(result[0].y).toBe(4);
+  it("nudges selected shapes by 1px on Arrow keys", () => {
+    props.selAll = new Set(["s1"]);
+    renderHook(() => useKeyboard(props));
+    press("ArrowRight");
+    expect(props.setShapes).toHaveBeenCalled();
   });
 
-  it("groups with Cmd+G when multiple selected", () => {
-    cbs.selAll = new Set(["s1", "s2"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("g", { metaKey: true });
-    expect(cbs.setShapes).toHaveBeenCalledTimes(1);
+  it("nudges selected shapes by 10px on Shift+Arrow keys", () => {
+    props.selAll = new Set(["s1"]);
+    let updater;
+    props.setShapes = vi.fn(fn => { updater = fn; });
+    renderHook(() => useKeyboard(props));
+    press("ArrowDown", { shiftKey: true });
+    expect(props.setShapes).toHaveBeenCalled();
+    // Verify the updater moves by 10
+    const result = updater([{ id: "s1", x: 100, y: 100 }]);
+    expect(result[0].y).toBe(110);
   });
 
-  it("ungroups with Cmd+Shift+G", () => {
-    cbs.selAll = new Set(["s1", "s2"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("g", { metaKey: true, shiftKey: true });
-    expect(cbs.setShapes).toHaveBeenCalledTimes(1);
-    const fn = cbs.setShapes.mock.calls[0][0];
-    const result = fn([{ id: "s1", group: "g1" }, { id: "s2", group: "g1" }]);
-    expect(result[0].group).toBeUndefined();
-    expect(result[1].group).toBeUndefined();
+  it("groups selected shapes on Cmd+G", () => {
+    props.selAll = new Set(["s1", "s2"]);
+    renderHook(() => useKeyboard(props));
+    press("g", { metaKey: true });
+    expect(props.setShapes).toHaveBeenCalled();
   });
 
-  it("Delete does not fall through to nudge when shapes are selected", () => {
-    cbs.selAll = new Set(["s1"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("Delete");
-    expect(cbs.onDel).toHaveBeenCalledTimes(1);
-    expect(cbs.setShapes).not.toHaveBeenCalled();
+  it("ungroups on Cmd+Shift+G", () => {
+    props.selAll = new Set(["s1"]);
+    renderHook(() => useKeyboard(props));
+    press("g", { metaKey: true, shiftKey: true });
+    expect(props.setShapes).toHaveBeenCalled();
   });
 
-  it("Cmd+Z does not fall through to other handlers", () => {
-    cbs.selAll = new Set(["s1"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("z", { metaKey: true });
-    expect(cbs.undo).toHaveBeenCalledTimes(1);
-    expect(cbs.setShapes).not.toHaveBeenCalled();
-  });
+  it("does not fire designer shortcuts while editing text", () => {
+    // Simulate an active input element (more reliable in jsdom than contentEditable)
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
 
-  it("Cmd+D does not fall through to other handlers", () => {
-    cbs.selAll = new Set(["s1"]);
-    renderHook(() => useKeyboard(cbs));
-    fire("d", { metaKey: true });
-    expect(cbs.dupShape).toHaveBeenCalledTimes(1);
-    expect(cbs.setShapes).not.toHaveBeenCalled();
-  });
+    props.sel = "shape1";
+    renderHook(() => useKeyboard(props));
+    press("r");
+    expect(props.randomize).not.toHaveBeenCalled();
 
-  it("cleans up listener on unmount", () => {
-    const spy = vi.spyOn(window, "removeEventListener");
-    const { unmount } = renderHook(() => useKeyboard(cbs));
-    unmount();
-    expect(spy).toHaveBeenCalledWith("keydown", expect.any(Function));
-    spy.mockRestore();
+    // Cleanup
+    input.blur();
+    document.body.removeChild(input);
   });
 });

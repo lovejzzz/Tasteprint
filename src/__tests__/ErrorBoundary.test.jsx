@@ -1,63 +1,64 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
-function ThrowingChild({ error }) {
-  if (error) throw new Error(error);
-  return <span>OK</span>;
+/* A component that always throws on render */
+function Bomb({ shouldThrow = true }) {
+  if (shouldThrow) throw new Error("💥 boom");
+  return <div>safe content</div>;
 }
 
 describe("ErrorBoundary", () => {
-  // Suppress React error boundary console noise during tests
+  // Suppress console.error noise from React and componentDidCatch during tests
   const originalError = console.error;
-  beforeEach(() => { console.error = vi.fn(); });
-  afterEach(() => { console.error = originalError; });
+  beforeAll(() => { console.error = vi.fn(); });
+  afterAll(() => { console.error = originalError; });
 
-  it("renders children when no error occurs", () => {
+  it("renders children when no error", () => {
     render(
       <ErrorBoundary>
-        <span>child content</span>
+        <div>hello</div>
       </ErrorBoundary>
     );
-    expect(screen.getByText("child content")).toBeInTheDocument();
+    expect(screen.getByText("hello")).toBeInTheDocument();
   });
 
-  it("renders default error UI when a child throws", () => {
+  it("renders default error UI when child throws", () => {
     render(
       <ErrorBoundary>
-        <ThrowingChild error="test error" />
+        <Bomb />
       </ErrorBoundary>
     );
     expect(screen.getByText("Component error")).toBeInTheDocument();
-    expect(screen.getByText("Retry")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
   it("renders custom fallback when provided", () => {
     render(
       <ErrorBoundary fallback={<div>custom fallback</div>}>
-        <ThrowingChild error="test error" />
+        <Bomb />
       </ErrorBoundary>
     );
     expect(screen.getByText("custom fallback")).toBeInTheDocument();
+    expect(screen.queryByText("Component error")).not.toBeInTheDocument();
   });
 
-  it("recovers when Retry button is clicked", async () => {
+  it("recovers after clicking Retry when child no longer throws", () => {
     const { rerender } = render(
       <ErrorBoundary>
-        <ThrowingChild error="test error" />
+        <Bomb shouldThrow={true} />
       </ErrorBoundary>
     );
     expect(screen.getByText("Component error")).toBeInTheDocument();
 
-    // Click retry — this resets the error state
-    screen.getByText("Retry").click();
-
-    // Re-render with a non-throwing child to verify recovery
+    // Swap to a non-throwing child, then click Retry
     rerender(
       <ErrorBoundary>
-        <ThrowingChild error={null} />
+        <Bomb shouldThrow={false} />
       </ErrorBoundary>
     );
-    expect(screen.getByText("OK")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(screen.getByText("safe content")).toBeInTheDocument();
+    expect(screen.queryByText("Component error")).not.toBeInTheDocument();
   });
 });

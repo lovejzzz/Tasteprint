@@ -91,6 +91,7 @@ The design randomization system in `utils.js` is the most complex part:
 - **`usePicky`** — guided "Picky" wizard: walks users through template selection → mood selection → per-slot option picking → assembled page. Manages a state machine (`idle` → `template` → `mood` → `picking` → `done`) and produces a complete set of positioned, randomized shapes via `assembleShapes`.
 - **`useTpApi`** — the `tp` Live IDE API exposed on `window.tp` for console scripting and automation
 - **`useHistory`** — generic undo/redo hook (available but App.jsx uses its own implementation for tighter integration)
+- **`useLatestRef`** — tiny utility: returns a ref that always holds the latest value, replacing the `const xRef = useRef(x); xRef.current = x;` boilerplate. Used in App.jsx (17 refs) and useKeyboard (1 ref).
 
 ## Picky Wizard
 
@@ -105,7 +106,7 @@ State machine: `idle` → `template` → `mood` → `picking` → `done`. Users 
 
 ## Performance Patterns
 
-- **Ref-based callbacks** — high-frequency handlers (`onMove`, `onUp`, `onDown`) read state from refs instead of closing over it, keeping callback identity stable across renders
+- **Ref-based callbacks** — high-frequency handlers (`onMove`, `onUp`, `onDown`) read state from refs instead of closing over it, keeping callback identity stable across renders. The `useLatestRef` hook eliminates boilerplate for the common `const xRef = useRef(x); xRef.current = x;` pattern.
 - **`React.memo` with custom comparator** — `ShapeItem` skips re-render unless its specific shape/selection/drag state changed
 - **Debounced persist** — localStorage writes are debounced (300ms) to avoid thrashing during drag
 - **Async font loading** — only the UI font (DM Sans) blocks first paint; 16 canvas fonts load async

@@ -23,6 +23,11 @@
   ],
   "author": "Tasteprint Contributors",
   "license": "ISC",
+  "homepage": "https://skyxzzz.github.io/Tasteprint/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skyxzzz/Tasteprint.git"
+  },
   "description": "Designer-first rapid prototyping tool for websites and apps.",
   "engines": {
     "node": ">=22 <23"

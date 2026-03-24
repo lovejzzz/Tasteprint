@@ -1,5 +1,51 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+#### Testing
+- **ChatBubble tests** — 10 tests covering all 7 variant smoke renders (iMessage, Slack, Terminal, Glass, Gradient, Brutal, Glow), default message display, input field, new chat button, emoji picker toggle, dark palette render, and editable mode across all variants. First test coverage for the ~860-line chat component.
+- **ComponentRenderer smoke tests** — 300+ tests covering every component type × variant combination, plus edge cases (unknown type, out-of-range variant, editable mode, dark palette, custom font/fsize). First test coverage for the ~2200-line core rendering module.
+- **useDesigner tests** — 22 tests covering mood cycling, randomize, candidates, lock/unlock, style transfer, undo, reset, and edge cases
+- **Core utils tests** — 40+ tests covering `uid`, `maxV`, `varName`, `snap`, `sanitizeHtml`, `validateImport`, `getReadableTextColor`, `getTextureStyle`, `debounce`, `load`
+- **Header Picky mode tests** — 6 tests covering Picky button, toolbar hiding, Exit Picky button, palette persistence, device selector hiding
+- **PropsPanel toggle accessibility test** — verifies all toggle switches render with `role="switch"` and `aria-checked`
+- **useKeyboard fallthrough-guard tests** — 3 tests verifying Delete, Cmd+Z, and Cmd+D don't fall through to subsequent handlers
+
+#### Infrastructure
+- **`useLatestRef` hook** — extracted common `useRef` + sync pattern into `src/hooks/useLatestRef.js`; replaced 17 manual ref-sync pairs in App.jsx, reducing boilerplate and making intent explicit
+- **Dependabot** — `.github/dependabot.yml` for automated npm (weekly) and GitHub Actions (monthly) dependency updates, with grouped minor/patch PRs
+- **CI workflow split** — `ci.yml` and `deploy.yml` now run lint, test, and build as separate steps for instant visual feedback on which phase failed
+
+### Changed
+
+#### Refactors
+- **ChatBubble CSS extraction** — extracted static styles into `chatbubble.css`; removed `hovEmoji` state and all `onMouseEnter`/`onMouseLeave` JS hover handlers across all 7 variants (emoji picker, new-chat buttons), replaced with CSS classes and `:hover` rules using CSS custom properties for dynamic palette colors
+- **LibrarySidebar CSS extraction** — extracted static styles into `librarysidebar.css`; removed `hovCat`/`hovCard` React state and JS hover handlers, replaced with CSS `:hover` rules (eliminates per-hover re-renders across all sidebar elements)
+
+#### Accessibility
+- **Toggle switch accessible names** — `Sw` component now auto-derives `aria-label` from its adjacent sibling label text via a callback ref, giving all ~60 toggle switches a programmatic accessible name (previously screen readers announced "switch, off" with no context)
+- **Picky wizard aria-live step announcements** — the picking-phase step counter now has `aria-live="polite"` and `aria-atomic="true"` so screen readers announce "Step X of Y: [section name]" when steps change; custom builder selection count also has `aria-live="polite"`
+- **PropsPanel toggle switches** — added `type="button"`, `role="switch"`, and `aria-checked` to the `Sw` component (affects ~50 toggles across the props panel)
+- **`type="button"` on all buttons** — added to ~50 `<button>` elements across 7 files (Header, PickyOverlay, PickyCard, ShapeItem, MobileDrawer, ErrorBoundary, App) to prevent implicit `type="submit"` behavior; follow-up pass added missing `type="button"` to MobileDrawer category tabs and component grid buttons; final pass added ~20 missing `type="button"` to ChatBubble.jsx across all 7 chat variants (emoji picker, send, new-chat buttons)
+- **prefers-reduced-motion JS support** — `useViewport` now exposes `reducedMotion` state; ShapeItem strips inline `animation`/`transition` from dStyles and suppresses Picky entrance animations when active; LibrarySidebar FLIP reorder animation skips `el.animate()` transition
+
+#### UX
+- **Picky Escape key** — pressing `Esc` now cancels Picky mode from any phase (template, mood, picking, done)
+- **Picky done-phase preview** — defaults to the user's active device mode instead of always Desktop
+- **Picky keyboard hint bar** — now shows `Esc cancel`
+
+### Fixed
+- **useKeyboard early returns** — added missing `return` after `onDel()`, `undo()`, and `dupShape()` handlers to prevent potential fallthrough to subsequent key checks
+- **Header brand font-size** — fixed `font-size: 22` → `font-size: 22px` in `header.css` (unitless values are invalid CSS, may cause brand text to render at wrong size)
+
+### Documentation
+- **ARCHITECTURE.md** — added Picky wizard section, ChatBubble variants, code/ subdirectory, bundle strategy table
+- **CONTRIBUTING.md** — added Picky files, chatAI.js, animations.css, canvas.css, and full code/ directory listing
+- **README.md** — added Guided Page Builder (Picky) section with keyboard shortcuts
+- **PRODUCT.md** — refreshed to reflect current state (Picky, full test coverage, security, accessibility, Dependabot)
+
 ## 1.0.0
 
 ### Added

@@ -1,11 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { uid } from "../utils";
+import { useLatestRef } from "./useLatestRef";
 
 export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource }) {
   // Store all handler props in a single ref so the keydown listener
   // never needs to be torn down and re-attached when props change.
-  const ref = useRef();
-  ref.current = { onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource };
+  const ref = useLatestRef({ onDel, undo, redo, dupShape, selAll, setShapes, sel, randomize, randomizeAll, undoRandomize, cycleMood, toggleLock, undoDesign, cycleVariation, candidates, setStyleSource });
 
   useEffect(() => {
     const h = e => {
@@ -40,7 +40,7 @@ export function useKeyboard({ onDel, undo, redo, dupShape, selAll, setShapes, se
         if (e.key === "l" && sel && toggleLock) { e.preventDefault(); toggleLock(sel); return; }
         if (e.key === "z" && sel && undoDesign) { e.preventDefault(); undoDesign(sel); return; }
         if (e.key === "c" && sel && setStyleSource) { e.preventDefault(); setStyleSource(sel); return; }
-        if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && sel && cycleVariation && candidates && candidates[sel] && candidates[sel].length > 1) { e.preventDefault(); cycleVariation(sel); return; }
+        if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.shiftKey && sel && cycleVariation && candidates && candidates[sel] && candidates[sel].length > 1) { e.preventDefault(); cycleVariation(sel); return; }
       }
       if (selAll.size > 0 && !isEditing && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault();

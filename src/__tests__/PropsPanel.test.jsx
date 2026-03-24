@@ -111,6 +111,19 @@ describe("PropsPanel", () => {
     }
   });
 
+  it("toggle switches have aria-label derived from adjacent label text", () => {
+    const onProp = vi.fn();
+    render(
+      <PropsPanel type="button" props={{}} onProp={onProp} p={p} />
+    );
+    const switches = screen.getAllByRole("switch");
+    // Every switch should have a non-empty aria-label (auto-derived from sibling span)
+    for (const sw of switches) {
+      expect(sw).toHaveAttribute("aria-label");
+      expect(sw.getAttribute("aria-label")).not.toBe("");
+    }
+  });
+
   it("deduplicates controls with the same key (type-specific wins)", () => {
     // This is a structural test — just verify no duplicate keys cause crashes
     // for a type with many toggles

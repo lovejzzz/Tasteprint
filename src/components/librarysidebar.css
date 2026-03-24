@@ -1,0 +1,99 @@
+/* LibrarySidebar — static/hover styles extracted from inline JS */
+
+.tp-lib-aside {
+  display: flex;
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  transition: all 0.4s;
+}
+
+.tp-lib-catnav {
+  width: 100px;
+  padding: 10px 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  scrollbar-width: thin;
+}
+
+.tp-lib-cattab {
+  padding: 10px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 400;
+  background: transparent;
+  border-right: 2px solid transparent;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.tp-lib-cattab:hover:not(.tp-lib-cattab--active) {
+  opacity: 1;
+}
+
+.tp-lib-card:hover {
+  border-color: rgba(128, 128, 128, 0.27) !important;
+}
+
+.tp-lib-cattab--active {
+  font-weight: 600;
+}
+
+.tp-lib-cards {
+  width: 280px;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+}
+
+.tp-lib-card {
+  padding: 10px;
+  border-radius: 10px;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 1;
+  transition: opacity 0.2s, background 0.15s, border-color 0.15s, box-shadow 0.2s;
+}
+
+.tp-lib-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.024);
+}
+
+.tp-lib-card--dragging {
+  opacity: 0.5;
+}
+
+.tp-lib-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tp-lib-card-label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tp-lib-card-variant {
+  font-size: 10px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.tp-lib-card:hover .tp-lib-card-variant {
+  opacity: 0.8;
+}
+
+.tp-lib-card-preview {
+  border-radius: 6px;
+  overflow: hidden;
+  pointer-events: none;
+  align-self: center;
+}

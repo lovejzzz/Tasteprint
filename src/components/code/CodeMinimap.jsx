@@ -2,14 +2,13 @@ import React from "react";
 import { tokenize, TC, HighlightLine } from "./tokenizer";
 import { getTextureStyle } from "../../utils";
 
-export default function CodeMinimap({b,fsize=1,texture}){
+export default function CodeMinimap({b,fsize=1,texture,p={}}){
   const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const code="import express from 'express';\nimport cors from 'cors';\nimport { db } from './database';\n\nconst app = express();\napp.use(cors());\napp.use(express.json());\n\n// Routes\napp.get('/api/users', async (req, res) => {\n  const users = await db.query('SELECT * FROM users');\n  res.json({ data: users, count: users.length });\n});\n\napp.post('/api/users', async (req, res) => {\n  const { name, email } = req.body;\n  const user = await db.insert('users', { name, email });\n  res.status(201).json(user);\n});\n\napp.delete('/api/users/:id', async (req, res) => {\n  await db.delete('users', req.params.id);\n  res.status(204).end();\n});\n\n// Error handler\napp.use((err, req, res, next) => {\n  console.error(err.stack);\n  res.status(500).json({ error: 'Internal server error' });\n});\n\napp.listen(3000, () => {\n  console.log('Server running on :3000');\n});";
   const lines=code.split('\n');
   const [scroll,setScroll]=React.useState(0);
   const [hoveredBtn,setHoveredBtn]=React.useState(null);
   const visible=12;const mmScale=0.18;
-  const p = 0.5;
   const trans = 'all 0.2s ease';
   return <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono,transition:trans,...getTextureStyle(texture, p)}}>
     {/* Header bar */}

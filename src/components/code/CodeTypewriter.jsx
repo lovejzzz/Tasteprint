@@ -1,7 +1,6 @@
 import React from "react";
-import { getTextureStyle } from "../../utils";
 
-export default function CodeTypewriter({b,fsize=1,texture,p}){
+export default function CodeTypewriter({b,fsize=1}){
   const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const full="import { useState } from 'react';\n\nfunction Counter() {\n  const [n, set] = useState(0);\n  return (\n    <button onClick={() => set(n+1)}>\n      Clicked {n} times\n    </button>\n  );\n}";
   const [pos,setPos]=React.useState(0);
@@ -14,8 +13,7 @@ export default function CodeTypewriter({b,fsize=1,texture,p}){
   const vLines=visible.split('\n');
   const done=pos>=full.length;
   const hi=(s)=>s.startsWith('import')||s.startsWith('function')?'#cba6f7':s.includes("'")?'#a6e3a1':s.includes('//')?'#585b70':s.trim().startsWith('<')?'#89b4fa':s.includes('const')?'#89b4fa':'#cdd6f4';
-  const texStyle=getTextureStyle(texture,p);
-  return <div style={{...b,...texStyle,background:'#1e1e2e',borderRadius:12,padding:14,fontFamily:mono,overflow:'hidden',display:'flex',flexDirection:'column',scrollbarWidth:'thin',transition:'box-shadow 0.3s ease, transform 0.3s ease'}}>
+  return <div style={{...b,background:'#1e1e2e',borderRadius:12,padding:14,fontFamily:mono,overflow:'hidden',display:'flex',flexDirection:'column',scrollbarWidth:'thin',transition:'box-shadow 0.3s ease, transform 0.3s ease'}}>
     <div style={{display:'flex',gap:6,marginBottom:10,alignItems:'center'}}>
       {['#ff5f56','#ffbd2e','#27c93f'].map((c,i)=><div
         key={i}

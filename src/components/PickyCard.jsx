@@ -12,14 +12,15 @@ function moodLabel(moodId) {
  * Single option card for Picky mode.
  * Renders a scaled ComponentRenderer preview with mood label.
  */
-const PickyCard = React.memo(function PickyCard({ option, type, libItem, p, selected, onClick }) {
+const PickyCard = React.memo(function PickyCard({ option, type, libItem, p, selected, comparing, onClick }) {
   const containerW = 260;
   const ts = Math.min(containerW / libItem.w, 1);
   const th = Math.min(libItem.h * ts, 200);
 
   return (
     <button
-      className={`tp-picky-card${selected ? " tp-picky-card--selected" : ""}`}
+      type="button"
+      className={`tp-picky-card${selected ? " tp-picky-card--selected" : ""}${comparing ? " tp-picky-card--comparing" : ""}`}
       onClick={onClick}
       style={{
         background: p.card,

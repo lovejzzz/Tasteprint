@@ -25,14 +25,19 @@ function makePicky(overrides = {}) {
     sessionMood: "bold",
     enterPicky: vi.fn(),
     selectTemplate: vi.fn(),
+    enterCustom: vi.fn(),
+    confirmCustom: vi.fn(),
     selectMood: vi.fn(),
     quickStart: vi.fn(),
     pickOption: vi.fn(),
     skipSlot: vi.fn(),
     prevStep: vi.fn(),
     regenerate: vi.fn(),
+    clearCache: vi.fn(),
     goToStep: vi.fn(),
     assemble: vi.fn(() => []),
+    addSlot: vi.fn(),
+    remix: vi.fn(),
     cancelPicky: vi.fn(),
     ...overrides,
   };
@@ -62,6 +67,21 @@ describe("PickyOverlay", () => {
     render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByText("Landing Page"));
     expect(picky.selectTemplate).toHaveBeenCalledWith("landing");
+  });
+
+  it("template phase shows Build Your Own button that calls enterCustom", () => {
+    const picky = makePicky({ phase: "template" });
+    render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByText("Build Your Own"));
+    expect(picky.enterCustom).toHaveBeenCalled();
+  });
+
+  it("custom phase renders component type checklist", () => {
+    const picky = makePicky({ phase: "custom" });
+    render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByText("Build your own template")).toBeInTheDocument();
+    expect(screen.getByText("Hero")).toBeInTheDocument();
+    expect(screen.getByText("Footer")).toBeInTheDocument();
   });
 
   it("renders mood picker in mood phase", () => {
@@ -104,7 +124,7 @@ describe("PickyOverlay", () => {
     });
     render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText("Hero Section")).toBeInTheDocument();
-    expect(screen.getByText("Step 1 of 1")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 1: Hero Section")).toBeInTheDocument();
     // Should render mood labels
     expect(screen.getByText("Minimal")).toBeInTheDocument();
     expect(screen.getByText("Bold")).toBeInTheDocument();
@@ -181,6 +201,35 @@ describe("PickyOverlay", () => {
     expect(onExit).toHaveBeenCalledWith(assembled);
   });
 
+  it("done phase shows Export PNG button", () => {
+    const picks = new Map();
+    picks.set(0, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+    const picky = makePicky({
+      phase: "done",
+      template: { id: "landing", slots: [{ type: "hero", label: "Hero" }] },
+      totalSteps: 1,
+      picks,
+    });
+    render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByText("Export PNG")).toBeInTheDocument();
+  });
+
+  it("done phase shows Remix button that calls picky.remix", () => {
+    const picks = new Map();
+    picks.set(0, { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {} });
+    const picky = makePicky({
+      phase: "done",
+      template: { id: "landing", slots: [{ type: "hero", label: "Hero" }] },
+      totalSteps: 1,
+      picks,
+    });
+    render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
+    const remixBtn = screen.getByText("Remix");
+    expect(remixBtn).toBeInTheDocument();
+    fireEvent.click(remixBtn);
+    expect(picky.remix).toHaveBeenCalled();
+  });
+
   it("calls onCancel from template phase", () => {
     const onCancel = vi.fn();
     const picky = makePicky({ phase: "template" });
@@ -232,6 +281,32 @@ describe("PickyOverlay", () => {
     // Should have 2 slot placeholders (one picked, one pending)
     const slots = container.querySelectorAll(".tp-picky-preview-slot");
     expect(slots.length).toBe(2);
+  });
+
+  it("clicking a preview-strip thumbnail calls goToStep for undo/re-pick", () => {
+    const options = [
+      { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {}, mood: "minimal" },
+      { variant: 1, font: 1, fsize: 1, props: {}, dStyles: {}, mood: "bold" },
+      { variant: 2, font: 2, fsize: 1, props: {}, dStyles: {}, mood: "elegant" },
+      { variant: 3, font: 3, fsize: 1, props: {}, dStyles: {}, mood: "playful" },
+    ];
+    const picks = new Map();
+    picks.set(0, options[1]);
+    const picky = makePicky({
+      phase: "picking",
+      template: { id: "landing", slots: [
+        { type: "navbar", label: "Navigation" },
+        { type: "hero", label: "Hero" },
+      ]},
+      step: 1, totalSteps: 2, options, picks,
+      currentSlot: { type: "hero", label: "Hero" },
+    });
+    const { container } = render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
+    const slots = container.querySelectorAll(".tp-picky-preview-slot");
+    expect(slots.length).toBe(2);
+    // Click the first slot (already picked) to go back and re-pick
+    fireEvent.click(slots[0]);
+    expect(picky.goToStep).toHaveBeenCalledWith(0);
   });
 
   it("option cards have staggered entrance animation wrappers", () => {
@@ -288,6 +363,7 @@ describe("PickyOverlay", () => {
       step: 0, totalSteps: 1, options,
       currentSlot: { type: "hero", label: "Hero" },
       regenerate: vi.fn(),
+    clearCache: vi.fn(),
     });
     render(<PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByText("Shuffle"));
@@ -435,5 +511,81 @@ describe("PickyOverlay", () => {
     // Preview should use phone border-radius (16)
     const preview = container.querySelector(".tp-picky-page-preview");
     expect(preview.style.borderRadius).toBe("16px");
+  });
+
+  it("picking phase shows palette swatches that call setPal and clearCache", () => {
+    const options = [
+      { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {}, mood: "minimal" },
+      { variant: 1, font: 1, fsize: 1, props: {}, dStyles: {}, mood: "bold" },
+      { variant: 2, font: 2, fsize: 1, props: {}, dStyles: {}, mood: "elegant" },
+      { variant: 3, font: 3, fsize: 1, props: {}, dStyles: {}, mood: "playful" },
+    ];
+    const setPal = vi.fn();
+    const picky = makePicky({
+      phase: "picking",
+      template: { id: "landing", slots: [{ type: "hero", label: "Hero" }] },
+      step: 0, totalSteps: 1, options,
+      currentSlot: { type: "hero", label: "Hero" },
+    });
+    const { container } = render(
+      <PickyOverlay picky={picky} p={p} pal="warm" setPal={setPal} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />
+    );
+    const swatches = container.querySelectorAll(".tp-picky-palette-swatch");
+    expect(swatches.length).toBeGreaterThan(0);
+    // Click a non-active swatch (second one)
+    fireEvent.click(swatches[1]);
+    expect(setPal).toHaveBeenCalled();
+    expect(picky.clearCache).toHaveBeenCalled();
+  });
+
+  it("picking phase step counter has aria-live for screen reader announcements", () => {
+    const options = [
+      { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {}, mood: "minimal" },
+      { variant: 1, font: 1, fsize: 1, props: {}, dStyles: {}, mood: "bold" },
+      { variant: 2, font: 2, fsize: 1, props: {}, dStyles: {}, mood: "elegant" },
+      { variant: 3, font: 3, fsize: 1, props: {}, dStyles: {}, mood: "playful" },
+    ];
+    const picky = makePicky({
+      phase: "picking",
+      template: { id: "landing", slots: [{ type: "hero", label: "Hero" }, { type: "card", label: "Cards" }] },
+      step: 0, totalSteps: 2, options,
+      currentSlot: { type: "hero", label: "Hero" },
+    });
+    const { container } = render(
+      <PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />
+    );
+    const liveRegion = container.querySelector("[aria-live='polite']");
+    expect(liveRegion).not.toBeNull();
+    expect(liveRegion.textContent).toContain("Step 1 of 2");
+    expect(liveRegion.textContent).toContain("Hero");
+    expect(liveRegion.getAttribute("aria-atomic")).toBe("true");
+  });
+
+  it("Shift+click on two cards shows compare overlay", () => {
+    const options = [
+      { variant: 0, font: 0, fsize: 1, props: {}, dStyles: {}, mood: "minimal" },
+      { variant: 1, font: 1, fsize: 1, props: {}, dStyles: {}, mood: "bold" },
+      { variant: 2, font: 2, fsize: 1, props: {}, dStyles: {}, mood: "elegant" },
+      { variant: 3, font: 3, fsize: 1, props: {}, dStyles: {}, mood: "playful" },
+    ];
+    const picky = makePicky({
+      phase: "picking",
+      template: { id: "landing", slots: [{ type: "hero", label: "Hero" }] },
+      step: 0, totalSteps: 1, options,
+      currentSlot: { type: "hero", label: "Hero" },
+    });
+    const { container } = render(
+      <PickyOverlay picky={picky} p={p} mobile={false} device="desktop" onExit={vi.fn()} onCancel={vi.fn()} />
+    );
+    const cards = container.querySelectorAll(".tp-picky-card");
+    // Shift+click two cards
+    fireEvent.click(cards[0], { shiftKey: true });
+    fireEvent.click(cards[2], { shiftKey: true });
+    // Compare overlay should appear
+    const compare = container.querySelector(".tp-picky-compare");
+    expect(compare).not.toBeNull();
+    expect(screen.getByText("Compare — click one to pick")).toBeInTheDocument();
+    // Options should be dimmed
+    expect(container.querySelector(".tp-picky-options--dimmed")).not.toBeNull();
   });
 });

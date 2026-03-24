@@ -1,6 +1,6 @@
 /* ---- JS TOKENIZER for syntax highlighting ---- */
 import React from "react";
-import { getTextureStyle } from "../../utils";
+
 
 const KW=/^(const|let|var|function|return|if|else|for|while|do|class|import|export|from|new|typeof|instanceof|async|await|try|catch|throw|switch|case|break|continue|default|of|in|yield|extends|super|static|get|set|delete|void)$/;
 const BI=/^(console|Math|Array|Object|String|Number|JSON|Promise|setTimeout|setInterval|clearTimeout|clearInterval|document|window|null|undefined|true|false|NaN|Infinity|Error|Map|Set|RegExp|Date|parseInt|parseFloat|isNaN|require|module|exports)$/;
@@ -31,7 +31,7 @@ export function HighlightLine({text}){
 const CAT_LABELS={kw:'keyword',bi:'built-in',st:'string',nu:'number',cm:'comment',op:'operator',id:'identifier',tx:'text'};
 
 /* ---- Default export: Tokenizer visualization component ---- */
-export default function Tokenizer({b,fsize=1,texture,p={}}){
+export default function Tokenizer({b,fsize=1,p={}}){
   const mono="'JetBrains Mono',monospace";
   const cfs=n=>Math.round(n*fsize);
   const [hovTok,setHovTok]=React.useState(-1);
@@ -58,7 +58,7 @@ export default function Tokenizer({b,fsize=1,texture,p={}}){
       overflow:'hidden',
       fontFamily:mono,
       scrollbarWidth:'thin',
-      ...getTextureStyle(texture,p),
+
     }}>
       {/* Title bar */}
       <div style={{

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { DEFAULT_PROPS } from "../constants";
 import { maxV, designerRandomize, getCuratedPreset, generateDesignDNA, DESIGN_MOODS } from "../utils";
+import { useLatestRef } from "./useLatestRef";
 
 /**
  * Encapsulates all designer randomization state and logic.
@@ -29,15 +30,11 @@ export function useDesigner({ shapesRef, prefVRef, pRef, selAllRef, setShapes, s
   const rndUndo = useRef(null);
   const curatedIdx = useRef({});
 
-  // Keep refs current for stable callbacks
-  const designMoodRef = useRef(designMood);
-  designMoodRef.current = designMood;
-  const lockedShapesRef = useRef(lockedShapes);
-  lockedShapesRef.current = lockedShapes;
-  const candidatesRef = useRef(candidates);
-  candidatesRef.current = candidates;
-  const candidateIdxRef = useRef(candidateIdx);
-  candidateIdxRef.current = candidateIdx;
+  // Keep refs current for stable callbacks (same pattern as App.jsx)
+  const designMoodRef = useLatestRef(designMood);
+  const lockedShapesRef = useLatestRef(lockedShapes);
+  const candidatesRef = useLatestRef(candidates);
+  const candidateIdxRef = useLatestRef(candidateIdx);
 
   const randomize = useCallback((id) => {
     const sa = selAllRef.current;

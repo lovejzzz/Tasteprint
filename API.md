@@ -58,7 +58,7 @@ tp.setPalette("midnight")
 | `tp.load(name?)` | `boolean` | Load a saved state. Returns `true` on success |
 | `tp.saves()` | `string[]` | List all saved state names |
 | `tp.deleteSave(name?)` | — | Delete a saved state |
-| `tp.export()` | `object` | Export current state as `{ shapes, pal, device }` |
+| `tp.export()` | `object` | Export current state as `{ shapes, pal, prefV, device }` |
 
 ## Examples
 

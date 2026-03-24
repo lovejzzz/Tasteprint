@@ -1,7 +1,7 @@
 import React from "react";
 import { getTextureStyle } from "../../utils";
 
-export default function AsciiArt({b,fsize=1,texture,p}){
+export default function AsciiArt({b,fsize=1,texture,p={}}){
   const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const [text,setText]=React.useState('CODE');
   const [hovered,setHovered]=React.useState(null);

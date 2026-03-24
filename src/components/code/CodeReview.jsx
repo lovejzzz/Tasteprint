@@ -1,8 +1,7 @@
 import React from "react";
 import { HighlightLine } from "./tokenizer";
-import { getTextureStyle } from "../../utils";
 
-export default function CodeReview({ b, fsize = 1, texture }) {
+export default function CodeReview({ b, fsize = 1 }) {
   const mono = "'JetBrains Mono',monospace";
   const cfs = (n) => Math.round(n * fsize);
   const code = [
@@ -31,9 +30,6 @@ export default function CodeReview({ b, fsize = 1, texture }) {
   const [hovLine, setHovLine] = React.useState(null);
   const stop = (e) => e.stopPropagation();
 
-  const p = 1;
-  const texStyle = getTextureStyle(texture, p);
-
   const transition = "all 0.2s cubic-bezier(.4,0,.2,1)";
 
   return (
@@ -47,7 +43,6 @@ export default function CodeReview({ b, fsize = 1, texture }) {
         overflow: "hidden",
         fontFamily: mono,
         transition,
-        ...texStyle,
       }}
     >
       {/* Header */}

@@ -1,5 +1,5 @@
 import React from "react";
-import { getTextureStyle } from "../../utils";
+
 
 const scrollbarCSS = `
 .codenotebook-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -8,7 +8,7 @@ const scrollbarCSS = `
 .codenotebook-scroll::-webkit-scrollbar-thumb:hover { background: #ffffff30; }
 `;
 
-export default function CodeNotebook({b,fsize=1,texture}){
+export default function CodeNotebook({b,fsize=1}){
   const mono="'JetBrains Mono',monospace";const cfs=n=>Math.round(n*fsize);
   const [cells,setCells]=React.useState([
     {code:'const greet = name => `Hello, ${name}!`;\ngreet("World");',out:null},
@@ -31,11 +31,9 @@ export default function CodeNotebook({b,fsize=1,texture}){
   const delCell=(idx)=>{if(cells.length<=1)return;setCells(prev=>prev.filter((_,i)=>i!==idx));};
   const updateCell=(idx,code)=>setCells(prev=>prev.map((c,i)=>i===idx?{...c,code}:c));
 
-  const texStyle = texture ? getTextureStyle(texture, 0.5) : {};
-
   return <>
     <style>{scrollbarCSS}</style>
-    <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono,...texStyle}}>
+    <div style={{...b,background:'#1e1e2e',borderRadius:12,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:mono}}>
     <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderBottom:'1px solid #ffffff10',gap:6,backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',background:'#1e1e2e99'}}>
       <span style={{fontSize:9,color:'#cba6f7',fontWeight:600}}>⬡</span>
       <span style={{fontSize:10,color:'#cdd6f4',fontWeight:500}}>Notebook</span>

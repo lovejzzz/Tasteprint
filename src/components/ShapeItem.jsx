@@ -49,37 +49,37 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             </svg>
           </div>
           {mx > 1 && <>
-            <button aria-label="Previous variant" className="tp-pill-btn"
+            <button type="button" aria-label="Previous variant" className="tp-pill-btn"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, -1); }}
               style={{ background: p.su, color: p.tx, fontSize: 15 }}>{"‹"}</button>
             <span className="tp-toolbar-label tp-toolbar-label--variant" style={{ color: p.mu }}>{vn}</span>
-            <button aria-label="Next variant" className="tp-pill-btn"
+            <button type="button" aria-label="Next variant" className="tp-pill-btn"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycle(s.id, 1); }}
               style={{ background: p.su, color: p.tx, fontSize: 15 }}>{"›"}</button>
             {(HAS_TEXT.has(s.type) || s.type === "code-block") && <div className="tp-toolbar-sep" style={{ background: p.bd }} />}
           </>}
           {HAS_TEXT.has(s.type) && s.type !== "code-block" && <>
-            <button aria-label="Previous font" className="tp-pill-btn"
+            <button type="button" aria-label="Previous font" className="tp-pill-btn"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, -1); }}
               style={{ background: p.su, color: p.tx, fontSize: 15 }}>{"‹"}</button>
             <span className="tp-toolbar-label tp-toolbar-label--font" style={{ color: p.ac, fontFamily: ff }}>{fn}</span>
-            <button aria-label="Next font" className="tp-pill-btn"
+            <button type="button" aria-label="Next font" className="tp-pill-btn"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFont(s.id, 1); }}
               style={{ background: p.su, color: p.tx, fontSize: 15 }}>{"›"}</button>
             <div className="tp-toolbar-sep" style={{ background: p.bd }} />
           </>}
           {(HAS_TEXT.has(s.type) || s.type === "code-block") && <>
-            <button aria-label="Decrease font size" className="tp-pill-btn"
+            <button type="button" aria-label="Decrease font size" className="tp-pill-btn"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFsize(s.id, -1); }}
               style={{ background: p.su, color: p.tx, fontSize: 11, fontWeight: 600 }}>A&#x2212;</button>
             <span className="tp-toolbar-label tp-toolbar-label--fsize" style={{ color: p.mu }}>{Math.round((s.fsize || 1) * 100)}%</span>
-            <button aria-label="Increase font size" className="tp-pill-btn"
+            <button type="button" aria-label="Increase font size" className="tp-pill-btn"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); cycleFsize(s.id, 1); }}
               style={{ background: p.su, color: p.tx, fontSize: 13, fontWeight: 600 }}>A+</button>
           </>}
           <div className="tp-toolbar-sep" style={{ background: p.bd }} />
           {/* Dice — randomize design */}
-          <button aria-label="Randomize design" className="tp-pill-btn tp-pill-btn--dice"
+          <button type="button" aria-label="Randomize design" className="tp-pill-btn tp-pill-btn--dice"
             onPointerDown={e => {
               e.stopPropagation(); e.preventDefault();
               const btn = e.currentTarget;
@@ -99,7 +99,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
             </svg>
           </button>
           {/* Copy style */}
-          <button aria-label={isStyleSource ? "Cancel copy" : "Copy style"} className="tp-pill-btn"
+          <button type="button" aria-label={isStyleSource ? "Cancel copy" : "Copy style"} className="tp-pill-btn"
             onPointerDown={e => { e.stopPropagation(); e.preventDefault(); isStyleSource ? setStyleSource(null) : setStyleSource(s.id); }}
             style={{ background: isStyleSource ? p.ac + "18" : p.su, color: isStyleSource ? p.ac : p.mu, fontSize: 11 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -109,7 +109,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
           </button>
           {/* Paste style */}
           {hasActiveSource && (
-            <button aria-label="Paste style" className="tp-pill-btn"
+            <button type="button" aria-label="Paste style" className="tp-pill-btn"
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); copyStyle(styleSource, s.id); }}
               style={{ background: p.ac + "18", color: p.ac, fontSize: 11 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -123,7 +123,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
 
       {/* ── Delete button ── */}
       {isPrimary && !isDrg && s.type !== "code-block" && (
-        <button aria-label="Delete component" className="tp-delete-btn"
+        <button type="button" aria-label="Delete component" className="tp-delete-btn"
           onPointerDown={e => { e.stopPropagation(); e.preventDefault(); delShape(s.id); }}
           style={{ background: p.mu + "88" }}>
           <svg width="10" height="10" viewBox="0 0 10 10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" /></svg>
@@ -210,7 +210,7 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
 
       {/* ── Paste style target button (visible on non-source when source is active and not primary) ── */}
       {hasActiveSource && !isPrimary && (
-        <button aria-label="Apply style from source" className="tp-apply-style-btn"
+        <button type="button" aria-label="Apply style from source" className="tp-apply-style-btn"
           onPointerDown={e => { e.stopPropagation(); e.preventDefault(); copyStyle(styleSource, s.id); }}
           style={{ background: p.ac + "CC", boxShadow: `0 2px 8px ${p.ac}30` }}>Apply Style</button>
       )}
@@ -231,7 +231,11 @@ const ShapeItem = memo(function ShapeItem({ s, sel, selAll, drag, device, selFon
     (wasPrimary ? prev.selFont : null) === (isPrimary ? next.selFont : null) &&
     prev.p === next.p &&
     prev.selAll.has(id) === next.selAll.has(id) &&
-    prev.styleSource === next.styleSource &&
+    // Compare derived booleans instead of raw styleSource value.
+    // This avoids re-rendering ALL shapes when styleSource changes between
+    // two non-null values (only the old and new source shapes need to update).
+    (prev.styleSource === id) === (next.styleSource === id) &&
+    (prev.styleSource != null && prev.styleSource !== id) === (next.styleSource != null && next.styleSource !== id) &&
     prev.s.dStyles === next.s.dStyles &&
     prev.reducedMotion === next.reducedMotion;
 });

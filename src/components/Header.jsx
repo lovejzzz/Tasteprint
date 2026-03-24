@@ -49,7 +49,7 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
   const swatch = (k, v, size = 18) => {
     const active = pal === k;
     return (
-      <button key={k} onClick={() => { setPal(k); if (mobile) setMenuOpen(false); }}
+      <button key={k} type="button" onClick={() => { setPal(k); if (mobile) setMenuOpen(false); }}
         title={v.name} aria-label={`${v.name} palette`} aria-pressed={active}
         className={`tp-swatch${active ? " tp-swatch--active" : ""}`}
         style={{
@@ -65,14 +65,9 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
   const deviceSeg = (d, closeFn) => {
     const active = device === d.k;
     return (
-      <button key={d.k} aria-pressed={active}
+      <button key={d.k} type="button" aria-pressed={active}
         onClick={() => { switchDevice(d.k); closeFn?.(); }}
-        className={`tp-dev-seg${mobile ? " tp-dev-seg--mobile" : " tp-dev-seg--desktop"}${active ? " tp-dev-seg--active" : ""}`}
-        style={{
-          background: active ? p.su : "none",
-          color: active ? p.tx : p.mu,
-          fontWeight: active ? 500 : 400,
-        }}>
+        className={`tp-dev-seg${mobile ? " tp-dev-seg--mobile" : " tp-dev-seg--desktop"}${active ? " tp-dev-seg--active" : ""}`}>
         {d.l}
       </button>
     );
@@ -86,24 +81,24 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
   if (mobile) {
     return (
       <header className="tp-header tp-header--mobile"
-        style={{ borderColor: p.bd, background: p.card + "cc" }}
+        style={{ background: p.card + "cc" }}
         role="toolbar" aria-label="Canvas toolbar">
-        <span className="tp-header-brand tp-header-brand--mobile" style={{ color: p.tx }}>
+        <span className="tp-header-brand tp-header-brand--mobile">
           Tasteprint
         </span>
         <div className="tp-header-actions tp-header-actions--mobile">
           {pickyMode ? (
-            <button onClick={cancelPicky} className="tp-hdr-btn" style={{ padding: "5px 10px", fontSize: 11, borderColor: p.bd, color: p.mu }}>
+            <button type="button" onClick={cancelPicky} className="tp-hdr-btn" style={{ padding: "5px 10px", fontSize: 11 }}>
               Exit Picky
             </button>
           ) : <>
-          <button onClick={undo} aria-label="Undo" disabled={!canUndo}
-            className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 13, borderColor: p.bd, color: p.mu }}>↩</button>
-          <button onClick={redo} aria-label="Redo" disabled={!canRedo}
-            className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 13, borderColor: p.bd, color: p.mu }}>↪</button>
+          <button type="button" onClick={undo} aria-label="Undo" disabled={!canUndo}
+            className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 13 }}>↩</button>
+          <button type="button" onClick={redo} aria-label="Redo" disabled={!canRedo}
+            className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 13 }}>↪</button>
           {shapeCount > 0 && <span className="tp-btn-wrap">
-            <button onClick={randomizeAll} aria-label="Randomize all"
-              className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 12, borderColor: p.bd, color: p.mu }}>🎲</button>
+            <button type="button" onClick={randomizeAll} aria-label="Randomize all"
+              className="tp-hdr-btn" style={{ padding: "5px 8px", fontSize: 12 }}>🎲</button>
             {showStats && lastRandomizeStats && (
               <span className="tp-rnd-stats tp-rnd-stats--mobile"
                 style={{ background: p.ac, color: getReadableTextColor(p.ac), boxShadow: `0 2px 8px ${p.ac}44` }}>
@@ -113,8 +108,8 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
               </span>
             )}
           </span>}
-          <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu"
-            className="tp-hdr-btn" style={{ padding: "5px 10px", fontSize: 16, borderColor: p.bd, color: p.mu, background: menuOpen ? p.su : "none" }}>
+          <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu"
+            className="tp-hdr-btn" style={{ padding: "5px 10px", fontSize: 16, background: menuOpen ? p.su : "none" }}>
             ☰
           </button>
           </>}
@@ -126,26 +121,26 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
             style={{ background: p.card, border: `1px solid ${p.bd}`, boxShadow: `0 8px 32px ${p.tx}12`, animation: "tp-tooltip-in .15s ease-out both" }}>
             {/* Palette */}
             <div>
-              <span className="tp-menu-section-label" style={{ color: p.mu }}>Palette</span>
+              <span className="tp-menu-section-label">Palette</span>
               <div className="tp-palette-group tp-palette-group--mobile" role="radiogroup" aria-label="Color palette">
                 {Object.entries(PAL).map(([k, v]) => swatch(k, v, 28))}
               </div>
             </div>
             {/* Device */}
             <div>
-              <span className="tp-menu-section-label" style={{ color: p.mu }}>Device</span>
-              <div className="tp-dev-group" style={{ borderColor: p.bd }} role="radiogroup" aria-label="Device mode">
+              <span className="tp-menu-section-label">Device</span>
+              <div className="tp-dev-group" role="radiogroup" aria-label="Device mode">
                 {devices.map(d => deviceSeg(d, () => setMenuOpen(false)))}
               </div>
             </div>
             {/* Mood */}
             {designMood !== undefined && <div>
-              <span className="tp-menu-section-label" style={{ color: p.mu }}>Mood</span>
+              <span className="tp-menu-section-label">Mood</span>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {DESIGN_MOODS.map(m => {
                   const active = (designMood || "auto") === m.id;
                   return (
-                    <button key={m.id}
+                    <button key={m.id} type="button"
                       onClick={() => { setDesignMood(m.id); setMenuOpen(false); }}
                       className={`tp-mood-btn tp-mood-btn--mobile${active ? " tp-mood-btn--active" : ""}`}
                       style={{
@@ -169,7 +164,7 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
                 { label: "Export JSON", fn: () => { exportJSON(); setMenuOpen(false); }, dis: !shapeCount },
                 { label: "Import JSON", fn: () => { importJSON(); setMenuOpen(false); } },
               ].map(a => (
-                <button key={a.label} onClick={a.fn} disabled={a.dis}
+                <button key={a.label} type="button" onClick={a.fn} disabled={a.dis}
                   className="tp-menu-action"
                   style={{ color: a.dis ? p.mu + "44" : p.tx }}>
                   {a.label}
@@ -185,10 +180,10 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
   /* ════════ Desktop Layout ════════ */
   return (
     <header className="tp-header tp-header--desktop"
-      style={{ borderColor: p.bd, background: p.card + "cc" }}
+      style={{ background: p.card + "cc" }}
       role="toolbar" aria-label="Canvas toolbar">
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span className="tp-header-brand tp-header-brand--desktop" style={{ color: p.tx }}>
+        <span className="tp-header-brand tp-header-brand--desktop">
           Tasteprint
         </span>
       </div>
@@ -197,35 +192,36 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
           {Object.entries(PAL).map(([k, v]) => swatch(k, v, 18))}
         </div>
         {!pickyMode && <>
-        <div className="tp-hdr-sep" style={{ background: p.bd }} />
-        <div className="tp-dev-group" style={{ borderColor: p.bd }} role="radiogroup" aria-label="Device mode">
+        <div className="tp-hdr-sep" />
+        <div className="tp-dev-group" role="radiogroup" aria-label="Device mode">
           {devices.map(d => deviceSeg(d))}
         </div>
-        <div className="tp-hdr-sep" style={{ background: p.bd }} />
-        <button onClick={clearAll} title="New canvas" aria-label="New canvas"
-          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>New canvas</button>
-        <button onClick={exportPng} title="Export as PNG" aria-label="Export as PNG"
+        <div className="tp-hdr-sep" />
+        <button type="button" onClick={clearAll} title="New canvas" aria-label="New canvas"
+          className="tp-hdr-btn">New canvas</button>
+        <button type="button" onClick={exportPng} title="Export as PNG" aria-label="Export as PNG"
           disabled={!shapeCount}
-          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>PNG</button>
-        <button onClick={exportJSON} title="Export JSON" aria-label="Export as JSON"
+          className="tp-hdr-btn">PNG</button>
+        <button type="button" onClick={exportJSON} title="Export JSON" aria-label="Export as JSON"
           disabled={!shapeCount}
-          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>JSON</button>
-        <button onClick={importJSON} title="Import JSON" aria-label="Import JSON"
-          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>Import</button>
-        <button onClick={undo} title="Undo (⌘Z)" aria-label="Undo" disabled={!canUndo}
-          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>Undo</button>
-        <button onClick={redo} title="Redo (⌘⇧Z)" aria-label="Redo" disabled={!canRedo}
-          className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>Redo</button>
+          className="tp-hdr-btn">JSON</button>
+        <button type="button" onClick={importJSON} title="Import JSON" aria-label="Import JSON"
+          className="tp-hdr-btn">Import</button>
+        <button type="button" onClick={undo} title="Undo (⌘Z)" aria-label="Undo" disabled={!canUndo}
+          className="tp-hdr-btn">Undo</button>
+        <button type="button" onClick={redo} title="Redo (⌘⇧Z)" aria-label="Redo" disabled={!canRedo}
+          className="tp-hdr-btn">Redo</button>
         {shapeCount > 0 && <>
-          <div className="tp-hdr-sep tp-hdr-sep--small" style={{ background: p.bd }} />
+          <div className="tp-hdr-sep tp-hdr-sep--small" />
           {designMood !== undefined && <span className="tp-btn-wrap">
             <button
+              type="button"
               onClick={() => setMoodOpen(v => !v)}
               title={`Design mood: ${activeMood.label} (M key to cycle)`}
               aria-label="Open mood picker"
               aria-expanded={moodOpen}
               className="tp-hdr-btn"
-              style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 500, borderColor: p.bd, color: designMood === "auto" ? p.mu : p.ac }}>
+              style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 500, color: designMood === "auto" ? undefined : p.ac }}>
               <span style={{ fontSize: 12 }}>{activeMood.icon}</span>
               <span>{activeMood.label}</span>
               <span className="tp-mood-caret">▾</span>
@@ -237,7 +233,7 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
                 {DESIGN_MOODS.map(m => {
                   const active = (designMood || "auto") === m.id;
                   return (
-                    <button key={m.id}
+                    <button key={m.id} type="button"
                       onClick={() => { setDesignMood(m.id); setMoodOpen(false); }}
                       className={`tp-mood-btn tp-mood-btn--desktop${active ? " tp-mood-btn--active" : ""}`}
                       style={{
@@ -254,8 +250,8 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
             </>}
           </span>}
           <span className="tp-btn-wrap">
-            <button onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
-              className="tp-hdr-btn" style={{ display: "flex", alignItems: "center", gap: 4, borderColor: p.bd, color: p.mu }}>
+            <button type="button" onClick={randomizeAll} title="Randomize all components" aria-label="Randomize canvas"
+              className="tp-hdr-btn" style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="2" width="20" height="20" rx="3" />
                 <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
@@ -274,8 +270,8 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
             )}
           </span>
           {/* Picky mode button */}
-          <button onClick={enterPicky} title="Picky — build a page step by step" aria-label="Picky mode"
-            className="tp-hdr-btn" style={{ display: "flex", alignItems: "center", gap: 4, borderColor: p.bd, color: p.mu }}>
+          <button type="button" onClick={enterPicky} title="Picky — build a page step by step" aria-label="Picky mode"
+            className="tp-hdr-btn" style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 11l3 3L22 4" />
               <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
@@ -286,7 +282,7 @@ export default React.memo(function Header({ pal, setPal, device, setDevice, shap
         </>}
         {/* Simplified header during Picky mode */}
         {pickyMode && (
-          <button onClick={cancelPicky} className="tp-hdr-btn" style={{ borderColor: p.bd, color: p.mu }}>
+          <button type="button" onClick={cancelPicky} className="tp-hdr-btn">
             Exit Picky
           </button>
         )}
